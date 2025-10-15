@@ -22,6 +22,10 @@ int main(int, char**)
 	// https://github.com/KhronosGroup/Vulkan-Tutorial/tree/03d05cf0aaf4b321254721b652eaecbcb95ea09b/en/Building_a_Simple_Engine
 	// https://shader-slang.org/docs/coming-from-glsl/
 	
+	// https://github.com/ragulnathMB/VulkanProjectTemplate
+	// https://www.youtube.com/playlist?list=PL8327DO66nu9qYVKLDmdLW_84-yE4auCR
+	// https://github.com/milkru/vulkanizer
+
 	std::cout << "Root Path: " << ex::ExampleConfig::RootPath << std::endl;
 
 	return EXIT_SUCCESS;
