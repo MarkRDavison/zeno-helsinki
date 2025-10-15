@@ -1,6 +1,6 @@
 SET(MODULE_LIBS
 	"helsinki-system${LIB_EXTENSION_SHARED}"
-	Vulkan::cppm
+	Vulkan::Vulkan
 	glfw
 )
 
