@@ -57,6 +57,46 @@ private:
         createInstance();
         setupDebugMessenger();
         pickPhysicalDevice();
+        createLogicalDevice();
+    }
+
+    void createLogicalDevice()
+    {
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+        queueCreateInfo.queueCount = 1; 
+        
+        float queuePriority = 1.0f;
+        queueCreateInfo.pQueuePriorities = &queuePriority; 
+        
+        VkPhysicalDeviceFeatures deviceFeatures{};
+
+        VkDeviceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pQueueCreateInfos = &queueCreateInfo;
+        createInfo.queueCreateInfoCount = 1;
+        createInfo.pEnabledFeatures = &deviceFeatures;
+        createInfo.enabledExtensionCount = 0;
+
+        if (enableValidationLayers)
+        {
+            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+        }
+        else
+        {
+            createInfo.enabledLayerCount = 0;
+        }
+        
+        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create logical device!");
+        }
+        
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
     }
 
     static bool isDeviceSuitable(VkPhysicalDevice device)
@@ -105,7 +145,6 @@ private:
 
     void pickPhysicalDevice()
     {
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; 
         uint32_t deviceCount = 0;
 
         vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr); 
@@ -118,11 +157,11 @@ private:
         std::vector<VkPhysicalDevice> devices(deviceCount);
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()); 
         
-        for (const auto& device : devices)
+        for (const auto& d : devices)
         {
-            if (isDeviceSuitable(device))
+            if (isDeviceSuitable(d))
             {
-                physicalDevice = device;
+                physicalDevice = d;
                 break;
             }
         }
@@ -256,6 +295,8 @@ private:
 
     void cleanup() 
     {
+        vkDestroyDevice(device, nullptr);
+
         if (enableValidationLayers)
         {
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -329,8 +370,11 @@ private:
     }
 
     GLFWwindow* window{ nullptr };
-    VkInstance instance{ nullptr };
-    VkDebugUtilsMessengerEXT debugMessenger{ nullptr };
+    VkInstance instance{ VK_NULL_HANDLE };
+    VkDebugUtilsMessengerEXT debugMessenger{ VK_NULL_HANDLE };
+    VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
+    VkDevice device{ VK_NULL_HANDLE }; 
+    VkQueue graphicsQueue{ VK_NULL_HANDLE };
 };
 
 int main() 
