@@ -1,5 +1,7 @@
 SET(MODULE_LIBS
 	"helsinki-system${LIB_EXTENSION_SHARED}"
+	Vulkan::cppm
+	glfw
 )
 
 SET(INCLUDE_DIRS
