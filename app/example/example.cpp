@@ -3,6 +3,7 @@
 
 #include <helsinki/System/SystemConfiguration.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
+#include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Example/ExampleConfiguration.hpp>
 #include <helsinki/System/Infrastructure/FileManager.hpp>
 #include "ExampleConfig.hpp"
@@ -15,6 +16,7 @@ int main(int, char**)
 
 	auto sys = hl::SystemConfiguration();
 	auto ren = hl::RendererConfiguration();
+	auto eng = hl::EngineConfiguration();
 	auto example = ex::ExampleConfiguration();
 
 	// https://docs.vulkan.org/tutorial/latest/01_Overview.html

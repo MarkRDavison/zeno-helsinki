@@ -6,7 +6,7 @@ namespace ex
 	class ExampleConfig
 	{
 	public:
-		static constexpr const char RootPath[] = "F:/Workspace/Github/zeno-helsinki/app/example";		
+		static constexpr const char RootPath[] = "C:/Workspace/Git/zeno-helsinki/app/example";		
 	};
 
 }
