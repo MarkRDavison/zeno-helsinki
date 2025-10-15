@@ -1,47 +1,37 @@
-cmake_minimum_required(VERSION 3.28)
-project(helsinki LANGUAGES CXX)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.15)
+PROJECT(helsinki CXX)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_CXX_STANDARD 23)
+SET(HELSINKI_CXX_STANDARD 23)
 
-add_definitions( -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} )
+SET(CMAKE_CXX_STANDARD ${HELSINKI_CXX_STANDARD})
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+OPTION(CMAKE_COMPILE_WARNING_AS_ERROR "Compile warnings as errors" ON)
+OPTION(HELSINKI_STRICT "Enable strict compile options" ON)
 
-include(FetchContent)
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-function(add_git_dependency libName gitURL gitTag)
-    FetchContent_Declare(${libName}
-        GIT_REPOSITORY ${gitURL}
-        GIT_TAG        ${gitTag}
-        GIT_SHALLOW    TRUE
-        GIT_PROGRESS   TRUE
-    )
-    FetchContent_MakeAvailable(${libName})
-    target_compile_options(${libName} PRIVATE "-w")
-endfunction()
+SET(CMAKE_DEBUG_POSTFIX "-d")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	add_definitions(-DHELSINKI_DEBUG)
+endif()
 
-set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE) # don't build the supplied examples
-set(BUILD_GAMES    OFF CACHE BOOL "" FORCE) # don't build the supplied example games
-add_git_dependency(
-    raylib
-    https://github.com/raysan5/raylib.git
-    5.0)
-    
-file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/**/*.cpp")
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
+  CMAKE_POLICY(SET CMP0110 NEW)
+endif()
 
-set(PROJECT_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/src/")
+ADD_SUBDIRECTORY(thirdparty)
+ADD_SUBDIRECTORY(lib)
 
-add_executable(${PROJECT_NAME} main.cpp   "src/Scene/SceneManager.cpp" "src/Scene/Title/TitleScene.cpp" "src/Scene/Game/GameScene.cpp")
-target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCES})
-target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_INCLUDE})
-target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    # We're in the root, define additional targets for developers.
+    option(HELSINKI_BUILD_APPS     "whether or not apps should be built" ON)
+    option(HELSINKI_BUILD_TESTS    "whether or not tests should be built" ON)
 
-# Setting ASSETS_PATH
-if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DDEBUG")
-
-    # Set the asset path macro to the absolute path on the dev machine
-    target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")
-else()
-    # Set the asset path macro in release mode to a relative path that assumes the assets folder is in the same directory as the game executable
-    target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="./assets/")
+    if(HELSINKI_BUILD_APPS)
+        ADD_SUBDIRECTORY(app)
+    endif()
+    if(HELSINKI_BUILD_TESTS)
+        ENABLE_TESTING()
+        ADD_SUBDIRECTORY(test)
+    endif()
 endif()
