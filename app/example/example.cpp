@@ -1,87 +1,107 @@
-#include <cstdlib>
-#include <iostream>
-
-#include <helsinki/System/SystemConfiguration.hpp>
-#include <helsinki/Renderer/RendererConfiguration.hpp>
-#include <helsinki/Engine/EngineConfiguration.hpp>
-#include <helsinki/Example/ExampleConfiguration.hpp>
-#include <helsinki/System/Infrastructure/FileManager.hpp>
-
-#include "ExampleConfig.hpp"
-
-#include <glm/glm.hpp>
+#include <vulkan/vulkan.h>
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-void error_callback(int error, const char* description)
-{
-	fprintf(stderr, "Error: %d - %s\n", error, description);
-}
+#include <iostream>
+#include <stdexcept>
+#include <cstdlib>
+#include <vector>
 
-static void key_callback(GLFWwindow* window, int key, int, int action, int)
-{
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-	{
-		glfwSetWindowShouldClose(window, GLFW_TRUE);
-	}
-}
+constexpr uint32_t WIDTH = 800;
+constexpr uint32_t HEIGHT = 600;
 
-int main(int, char**)
-{
-	hl::FileManager fileManager;
+class HelloTriangleApplication {
+public:
+    void run() {
+        initWindow();
+        initVulkan();
+        mainLoop();
+        cleanup();
+    }
 
-	fileManager.registerDirectory(ex::ExampleConfig::RootPath);
+private:
+    void initWindow() {
+        glfwInit();
 
-	auto sys = hl::SystemConfiguration();
-	auto ren = hl::RendererConfiguration();
-	auto eng = hl::EngineConfiguration();
-	auto example = ex::ExampleConfiguration();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        
+        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    }
+    void initVulkan() {
+        createInstance();
+    }
 
-	// https://docs.vulkan.org/tutorial/latest/01_Overview.html
-	// https://github.com/KhronosGroup/Vulkan-Tutorial/pull/119
-	// https://github.com/KhronosGroup/Vulkan-Tutorial/tree/03d05cf0aaf4b321254721b652eaecbcb95ea09b/en/Building_a_Simple_Engine
-	// https://shader-slang.org/docs/coming-from-glsl/
-	
-	// https://github.com/ragulnathMB/VulkanProjectTemplate
-	// https://www.youtube.com/playlist?list=PL8327DO66nu9qYVKLDmdLW_84-yE4auCR
-	// https://github.com/milkru/vulkanizer
+    void createInstance() {
+        VkApplicationInfo appInfo{};
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pApplicationName = "Hello Triangle";
+        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.pEngineName = "No Engine";
+        appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.apiVersion = VK_API_VERSION_1_0;
 
-	std::cout << "Root Path: " << ex::ExampleConfig::RootPath << std::endl;
+        VkInstanceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        createInfo.pApplicationInfo = &appInfo;
 
-	glm::vec2 vec{ 1,2 };
+        uint32_t glfwExtensionCount = 0;
+        const char** glfwExtensions;
 
-	std::cout << "Vec2: " << vec.x << "," << vec.y << std::endl;
+        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
+        createInfo.enabledExtensionCount = glfwExtensionCount;
+        createInfo.ppEnabledExtensionNames = glfwExtensions;
+        createInfo.enabledLayerCount = 0;
 
-	glfwSetErrorCallback(error_callback);
-	if (!glfwInit())
-	{
-		std::cerr << "Failed to initialise glfw" << std::endl;
-		return EXIT_FAILURE;
-	}
+        if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) 
+        {
+            throw std::runtime_error("failed to create instance!");
+        }
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	GLFWwindow* window = glfwCreateWindow(640, 480, "My Title", NULL, NULL);
-	if (!window)
-	{
-		std::cerr << "Failed to create glfw window" << std::endl;
-		return EXIT_FAILURE;
-	}
+        uint32_t extensionCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> extensions(extensionCount);
 
-	glfwSetKeyCallback(window, key_callback);
-	
-	glfwMakeContextCurrent(window);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+        std::cout << "available extensions:\n";
 
-	while (!glfwWindowShouldClose(window))
-	{
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-	}
+        for (const auto& extension : extensions)
+        {
+            std::cout << '\t' << extension.extensionName << '\n';
+        }
+    }
 
-	glfwDestroyWindow(window);
+    void mainLoop() {
+        while (!glfwWindowShouldClose(window)) {
+            glfwPollEvents();
+        }
+    }
 
-	glfwTerminate();
+    void cleanup() {
+        vkDestroyInstance(instance, nullptr);
 
-	return EXIT_SUCCESS;
+        glfwDestroyWindow(window);
+
+        glfwTerminate();
+    }
+
+    GLFWwindow* window{ nullptr };
+    VkInstance instance{ nullptr };
+};
+
+int main() {
+    HelloTriangleApplication app;
+
+    std::cout << "Currently at: https://vulkan-tutorial.com/en/Drawing_a_triangle/Setup/Validation_layers" << std::endl;
+
+    try {
+        app.run();
+    }
+    catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
