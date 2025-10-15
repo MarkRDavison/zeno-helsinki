@@ -4,10 +4,15 @@
 #include <helsinki/System/SystemConfiguration.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Example/ExampleConfiguration.hpp>
+#include <helsinki/System/Infrastructure/FileManager.hpp>
 #include "ExampleConfig.hpp"
 
 int main(int, char**)
 {
+	hl::FileManager fileManager;
+
+	fileManager.registerDirectory(ex::ExampleConfig::RootPath);
+
 	auto sys = hl::SystemConfiguration();
 	auto ren = hl::RendererConfiguration();
 	auto example = ex::ExampleConfiguration();
