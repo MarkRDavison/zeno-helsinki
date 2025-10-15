@@ -11,6 +11,7 @@ int main(int, char**)
 	// https://docs.vulkan.org/tutorial/latest/01_Overview.html
 	// https://github.com/KhronosGroup/Vulkan-Tutorial/pull/119
 	// https://github.com/KhronosGroup/Vulkan-Tutorial/tree/03d05cf0aaf4b321254721b652eaecbcb95ea09b/en/Building_a_Simple_Engine
+	// https://shader-slang.org/docs/coming-from-glsl/
 	
 	std::cout << "Root Path: " << ex::ExampleConfig::RootPath << std::endl;
 
