@@ -1,4 +1,6 @@
 SET(MODULE_LIBS
+	"helsinki-system${LIB_EXTENSION_SHARED}"
+	"helsinki-renderer${LIB_EXTENSION_SHARED}"
 	"helsinki-example${LIB_EXTENSION_SHARED}"
 )
 
