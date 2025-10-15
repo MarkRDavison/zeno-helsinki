@@ -6,7 +6,24 @@
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Example/ExampleConfiguration.hpp>
 #include <helsinki/System/Infrastructure/FileManager.hpp>
+
 #include "ExampleConfig.hpp"
+
+#include <glm/glm.hpp>
+#include <GLFW/glfw3.h>
+
+void error_callback(int error, const char* description)
+{
+	fprintf(stderr, "Error: %d - %s\n", error, description);
+}
+
+static void key_callback(GLFWwindow* window, int key, int, int action, int)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	{
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
+	}
+}
 
 int main(int, char**)
 {
@@ -29,6 +46,42 @@ int main(int, char**)
 	// https://github.com/milkru/vulkanizer
 
 	std::cout << "Root Path: " << ex::ExampleConfig::RootPath << std::endl;
+
+	glm::vec2 vec{ 1,2 };
+
+	std::cout << "Vec2: " << vec.x << "," << vec.y << std::endl;
+
+
+	glfwSetErrorCallback(error_callback);
+	if (!glfwInit())
+	{
+		std::cerr << "Failed to initialise glfw" << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	GLFWwindow* window = glfwCreateWindow(640, 480, "My Title", NULL, NULL);
+	if (!window)
+	{
+		std::cerr << "Failed to create glfw window" << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	glfwSetKeyCallback(window, key_callback);
+	
+	glfwMakeContextCurrent(window);
+
+	while (!glfwWindowShouldClose(window))
+	{
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	glfwDestroyWindow(window);
+
+	glfwTerminate();
 
 	return EXIT_SUCCESS;
 }

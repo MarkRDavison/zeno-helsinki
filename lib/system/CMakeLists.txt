@@ -1,5 +1,5 @@
 SET(MODULE_LIBS
-
+	glm::glm
 )
 
 SET(INCLUDE_DIRS
