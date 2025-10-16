@@ -3,6 +3,7 @@ SET(MODULE_LIBS
 	Vulkan::Vulkan
 	glfw
 	stb
+	tinyobjloader
 )
 
 SET(INCLUDE_DIRS
