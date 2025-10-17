@@ -1858,7 +1858,7 @@ int main()
 
     try
     {
-        std::cout << "Up to: https://vulkan-tutorial.com/en/Depth_buffering" << std::endl;
+        std::cout << "Up to: https://vulkan-tutorial.com/Generating_Mipmaps" << std::endl;
         app.run();
     }
     catch (const std::exception& e)
