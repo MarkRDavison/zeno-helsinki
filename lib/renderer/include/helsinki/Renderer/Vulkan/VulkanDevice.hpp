@@ -15,6 +15,7 @@ namespace hl
 			VulkanSurface& surface);
 		void create();
 		void destroy();
+		void waitIdle();
 
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 

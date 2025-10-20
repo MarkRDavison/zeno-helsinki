@@ -24,6 +24,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanRenderpass.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanDescriptorSetLayout.hpp>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -125,7 +126,8 @@ public:
         _texture(_device),
         _swapChain(_device, _surface),
         _renderpass(_device, _swapChain),
-        _commandPool(_device)
+        _commandPool(_device),
+        _descriptorSetLayout(_device)
     {
 
     }
@@ -148,8 +150,7 @@ private:
     hl::VulkanRenderpass _renderpass;
     hl::VulkanCommandPool _commandPool;
     hl::VulkanTexture _texture;
-
-    VkDescriptorSetLayout descriptorSetLayout;
+    hl::VulkanDescriptorSetLayout _descriptorSetLayout;
 
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
@@ -197,6 +198,26 @@ private:
 
     void initVulkan()
     {
+        std::vector< VkDescriptorSetLayoutBinding> layoutBindings = 
+        { 
+            VkDescriptorSetLayoutBinding
+            {
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .pImmutableSamplers = nullptr
+            },
+            VkDescriptorSetLayoutBinding
+            {
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .pImmutableSamplers = nullptr
+            } 
+        };
+
         _instance.create("Hello Triangle.");
         _surface.create(window);
         _device.create();
@@ -204,8 +225,9 @@ private:
         _renderpass.create();
 
         _swapChain.createFramebuffers(_renderpass);
+        _descriptorSetLayout.create(layoutBindings);
+        createDescriptorPool();
 
-        createDescriptorSetLayout();
         createGraphicsPipeline();
         _commandPool.create();
         _texture.create(_commandPool, TEXTURE_PATH);
@@ -213,7 +235,6 @@ private:
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
-        createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
@@ -227,7 +248,7 @@ private:
             drawFrame();
         }
 
-        vkDeviceWaitIdle(_device._device);
+        _device.waitIdle();
     }
 
     void cleanup()
@@ -246,10 +267,9 @@ private:
         }
 
         vkDestroyDescriptorPool(_device._device, descriptorPool, nullptr);
+        _descriptorSetLayout.destroy();
 
         _texture.destroy();
-
-        vkDestroyDescriptorSetLayout(_device._device, descriptorSetLayout, nullptr);
 
         vkDestroyBuffer(_device._device, indexBuffer, nullptr);
         vkFreeMemory(_device._device, indexBufferMemory, nullptr);
@@ -284,40 +304,12 @@ private:
             glfwWaitEvents();
         }
 
-        vkDeviceWaitIdle(_device._device);
+        _device.waitIdle();
 
         _swapChain.destroy();
         _swapChain.create();
 
         _swapChain.createFramebuffers(_renderpass);
-    }
-
-    void createDescriptorSetLayout()
-    {
-        VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayoutBinding.pImmutableSamplers = nullptr;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = 1;
-        samplerLayoutBinding.descriptorCount = 1;
-        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.pImmutableSamplers = nullptr;
-        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-        layoutInfo.pBindings = bindings.data();
-
-        if (vkCreateDescriptorSetLayout(_device._device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
     }
 
     void createGraphicsPipeline()
@@ -414,7 +406,7 @@ private:
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+        pipelineLayoutInfo.pSetLayouts = &_descriptorSetLayout._descriptorSetLayout;
 
         if (vkCreatePipelineLayout(_device._device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
         {
@@ -572,7 +564,7 @@ private:
 
     void createDescriptorSets()
     {
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, _descriptorSetLayout._descriptorSetLayout);
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = descriptorPool;
