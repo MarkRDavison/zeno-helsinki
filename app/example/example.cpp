@@ -225,8 +225,6 @@ private:
         _surface.create(window);
         _device.create();
         _swapChain.create();
-        createColorResources();
-        createDepthResources();
         createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
@@ -321,8 +319,6 @@ private:
 
         
         _swapChain.create();
-        createColorResources();
-        createDepthResources();
         createFramebuffers();
     }
 
@@ -339,7 +335,7 @@ private:
         colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         VkAttachmentDescription depthAttachment{};
-        depthAttachment.format = findDepthFormat();
+        depthAttachment.format = hl::VulkanSwapChain::findDepthFormat(_device._physicalDevice);
         depthAttachment.samples = _device._msaaSamples;
         depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -597,74 +593,6 @@ private:
         {
             throw std::runtime_error("failed to create graphics command pool!");
         }
-    }
-
-    void createColorResources()
-    {
-        _swapChain._colorImage.create(
-            _swapChain._swapChainExtent.width,
-            _swapChain._swapChainExtent.height,
-            1,
-            _device._msaaSamples,
-            _swapChain._swapChainImageFormat,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        );
-
-        _swapChain._colorImage.createImageView(
-            _swapChain._swapChainImageFormat,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            1);
-    }
-
-    void createDepthResources()
-    {
-        VkFormat depthFormat = findDepthFormat();
-
-        _swapChain._depthImage.create(
-            _swapChain._swapChainExtent.width,
-            _swapChain._swapChainExtent.height,
-            1,
-            _device._msaaSamples,
-            depthFormat,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-        _swapChain._depthImage.createImageView(
-            depthFormat,
-            VK_IMAGE_ASPECT_DEPTH_BIT,
-            1);
-    }
-
-    VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-    {
-        for (VkFormat format : candidates)
-        {
-            VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(_device._physicalDevice, format, &props);
-
-            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-            {
-                return format;
-            }
-            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-            {
-                return format;
-            }
-        }
-
-        throw std::runtime_error("failed to find supported format!");
-    }
-
-    VkFormat findDepthFormat()
-    {
-        return findSupportedFormat(
-            { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-        );
     }
 
     bool hasStencilComponent(VkFormat format)

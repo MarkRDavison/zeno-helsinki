@@ -5,6 +5,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChainSupportDetails.hpp>
 #include <vulkan/vulkan.h>
+#include <vector>
 
 namespace hl
 {
@@ -22,6 +23,9 @@ namespace hl
 		static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 		static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 		static VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow *window);
+
+		static VkFormat findSupportedFormat(VkPhysicalDevice p, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+		static VkFormat findDepthFormat(VkPhysicalDevice p);
 
 	public: //private: TODO: TO PRIVATE
 		VulkanDevice& _device;
