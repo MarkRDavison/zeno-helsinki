@@ -20,6 +20,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -144,7 +145,8 @@ public:
     HelloTriangleApplication() :
         _instance(),
         _surface(_instance),
-        _device(_instance, _surface)
+        _device(_instance, _surface),
+        _textureImage(_device)
     {
 
     }
@@ -165,13 +167,6 @@ private:
     hl::VulkanDevice _device;
     hl::VulkanSwapChain _swapChain;
 
-    VkSwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
-    VkFormat swapChainImageFormat;
-    VkExtent2D swapChainExtent;
-    std::vector<VkImageView> swapChainImageViews;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
-
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
@@ -184,9 +179,7 @@ private:
     VkImageView depthImageView;
 
     uint32_t mipLevels;
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
+    hl::VulkanImage _textureImage;
     VkSampler textureSampler;
 
     std::vector<Vertex> vertices;
@@ -249,7 +242,6 @@ private:
         createDepthResources();
         createFramebuffers();
         createTextureImage();
-        createTextureImageView();
         createTextureSampler();
         loadModel();
         createVertexBuffer();
@@ -312,10 +304,7 @@ private:
         vkDestroyDescriptorPool(_device._device, descriptorPool, nullptr);
 
         vkDestroySampler(_device._device, textureSampler, nullptr);
-        vkDestroyImageView(_device._device, textureImageView, nullptr);
-
-        vkDestroyImage(_device._device, textureImage, nullptr);
-        vkFreeMemory(_device._device, textureImageMemory, nullptr);
+        _textureImage.destroy();
 
         vkDestroyDescriptorSetLayout(_device._device, descriptorSetLayout, nullptr);
 
@@ -777,16 +766,29 @@ private:
 
         stbi_image_free(pixels);
 
-        createImage(texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+        _textureImage.create(
+            texWidth,
+            texHeight,
+            mipLevels,
+            VK_SAMPLE_COUNT_1_BIT,
+            VK_FORMAT_R8G8B8A8_SRGB,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
-        copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+        transitionImageLayout(_textureImage._image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+        copyBufferToImage(stagingBuffer, _textureImage._image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
         //transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating mipmaps
 
         vkDestroyBuffer(_device._device, stagingBuffer, nullptr);
         vkFreeMemory(_device._device, stagingBufferMemory, nullptr);
 
-        generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
+        generateMipmaps(_textureImage._image, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
+
+        _textureImage.createImageView(
+            VK_FORMAT_R8G8B8A8_SRGB,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            mipLevels);
     }
 
     void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipMapLevels)
@@ -879,10 +881,6 @@ private:
         endSingleTimeCommands(commandBuffer);
     }
 
-    void createTextureImageView()
-    {
-        textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
-    }
 
     void createTextureSampler()
     {
@@ -973,7 +971,7 @@ private:
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.memoryTypeIndex = _device.findMemoryType(memRequirements.memoryTypeBits, properties);
 
         if (vkAllocateMemory(_device._device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
         {
@@ -1207,7 +1205,7 @@ private:
 
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = textureImageView;
+            imageInfo.imageView = _textureImage._imageView;
             imageInfo.sampler = textureSampler;
 
             std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
@@ -1251,7 +1249,7 @@ private:
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.memoryTypeIndex = _device.findMemoryType(memRequirements.memoryTypeBits, properties);
 
         if (vkAllocateMemory(_device._device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
         {
@@ -1305,22 +1303,6 @@ private:
         vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
         endSingleTimeCommands(commandBuffer);
-    }
-
-    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
-    {
-        VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(_device._physicalDevice, &memProperties);
-
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
-                return i;
-            }
-        }
-
-        throw std::runtime_error("failed to find suitable memory type!");
     }
 
     void createCommandBuffers()
