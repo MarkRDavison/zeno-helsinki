@@ -15,8 +15,6 @@ namespace hl
 	void VulkanBuffer::create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 	{
 		_size = size;
-		_usage = usage;
-		_properties = properties;
 
 		VkBufferCreateInfo bufferInfo{};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -43,7 +41,6 @@ namespace hl
 		}
 
 		vkBindBufferMemory(_device._device, _buffer, _memory, 0);
-
 	}
 
 	void VulkanBuffer::mapMemory(void* data)
@@ -56,6 +53,8 @@ namespace hl
 
 	void VulkanBuffer::destroy()
 	{
+		vkDestroyBuffer(_device._device, _buffer, nullptr);
+		vkFreeMemory(_device._device, _memory, nullptr);
 		_size = 0;
 	}
 }

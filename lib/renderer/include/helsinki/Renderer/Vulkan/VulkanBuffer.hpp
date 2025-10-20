@@ -18,8 +18,6 @@ namespace hl
 	public: //private: TODO: TO PRIVATE
 		VulkanDevice& _device;
 		VkDeviceSize _size{ 0 };
-		VkBufferUsageFlags _usage{ 0 };
-		VkMemoryPropertyFlags _properties{ 0 };
 
 		VkBuffer _buffer{ VK_NULL_HANDLE };
 		VkDeviceMemory _memory{ VK_NULL_HANDLE };
