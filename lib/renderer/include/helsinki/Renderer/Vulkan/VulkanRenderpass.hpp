@@ -1,10 +1,10 @@
 #pragma once
 
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
-#include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
 
 namespace hl
 {
+	class VulkanSwapChain;
 	class VulkanRenderpass
 	{
 	public:

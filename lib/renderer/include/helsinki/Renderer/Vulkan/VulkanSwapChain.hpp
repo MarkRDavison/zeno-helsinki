@@ -3,6 +3,8 @@
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanFramebuffer.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanRenderpass.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChainSupportDetails.hpp>
 #include <vulkan/vulkan.h>
 #include <vector>
@@ -18,6 +20,8 @@ namespace hl
 		);
 		void create();
 		void destroy();
+
+		void createFramebuffers(VulkanRenderpass& renderpass);
 
 		static VulkanSwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice p, VkSurfaceKHR s);
 		static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
@@ -39,7 +43,7 @@ namespace hl
 		VkFormat _swapChainImageFormat;
 		VkExtent2D _swapChainExtent;
 		std::vector<VkImageView> _swapChainImageViews;
-		std::vector<VkFramebuffer> _swapChainFramebuffers;
+		std::vector<VulkanFramebuffer> _swapChainFramebuffers;
 
 	};
 }

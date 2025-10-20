@@ -137,6 +137,7 @@ namespace hl
                 1);
         }
     }
+
     void VulkanSwapChain::destroy()
     {
         _colorImage.destroy();
@@ -144,7 +145,7 @@ namespace hl
 
         for (auto framebuffer : _swapChainFramebuffers)
         {
-            vkDestroyFramebuffer(_device._device, framebuffer, nullptr);
+            framebuffer.destroy();
         }
 
         for (auto imageView : _swapChainImageViews)
@@ -153,6 +154,29 @@ namespace hl
         }
 
         vkDestroySwapchainKHR(_device._device, _swapChain, nullptr);
+    }
+
+    void VulkanSwapChain::createFramebuffers(VulkanRenderpass& renderpass)
+    {
+        // TODO: cant resize cos no default constructor
+        // _swapChain._swapChainFramebuffers.resize(_swapChain._swapChainImageViews.size());
+
+        for (size_t i = 0; i < _swapChainImageViews.size(); i++)
+        {
+            _swapChainFramebuffers.emplace_back(_device);
+
+            std::vector<VkImageView> attachments = {
+                _colorImage._imageView,
+                _depthImage._imageView,
+                _swapChainImageViews[i]
+            };
+
+            _swapChainFramebuffers[i].create(
+                renderpass,
+                attachments,
+                _swapChainExtent.width,
+                _swapChainExtent.height);
+        }
     }
 
 	VulkanSwapChainSupportDetails VulkanSwapChain::querySwapChainSupport(VkPhysicalDevice p, VkSurfaceKHR s)
