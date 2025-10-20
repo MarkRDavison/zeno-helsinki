@@ -27,6 +27,10 @@ namespace hl
 	{
         vkDestroyDevice(_device, nullptr);
 	}
+    void VulkanDevice::waitIdle()
+    {
+        vkDeviceWaitIdle(_device);
+    }
 
     uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
     {
