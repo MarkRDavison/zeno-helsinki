@@ -59,7 +59,7 @@ namespace hl
 
         for (const auto& d : devices)
         {
-            if (isDeviceSuitable(d, _surface.surface))
+            if (isDeviceSuitable(d, _surface._surface))
             {
                 _physicalDevice = d;
                 _msaaSamples = getMaxUsableSampleCount(_physicalDevice);
@@ -75,7 +75,7 @@ namespace hl
 
 	void VulkanDevice::createLogicalDevice()
 	{
-        auto queueIndices = VulkanQueue::findQueueFamilies(_physicalDevice, _surface.surface);
+        auto queueIndices = VulkanQueue::findQueueFamilies(_physicalDevice, _surface._surface);
 
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = { queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value() };

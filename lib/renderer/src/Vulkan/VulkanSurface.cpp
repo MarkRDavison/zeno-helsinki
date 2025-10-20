@@ -7,11 +7,13 @@
 
 namespace hl
 {
-	VulkanSurface::VulkanSurface(VulkanInstance& instance) : instance(instance){}
+	VulkanSurface::VulkanSurface(VulkanInstance& instance) : _instance(instance){}
 
 	void VulkanSurface::create(GLFWwindow* window)
 	{
-		if (glfwCreateWindowSurface(instance._instance, window, nullptr, &surface) != VK_SUCCESS)
+		_window = window;
+
+		if (glfwCreateWindowSurface(_instance._instance, window, nullptr, &_surface) != VK_SUCCESS)
 		{
 			throw std::runtime_error("failed to create window surface!");
 		}
@@ -19,7 +21,7 @@ namespace hl
 
 	void VulkanSurface::destroy()
 	{
-		vkDestroySurfaceKHR(instance._instance, surface, nullptr);
+		vkDestroySurfaceKHR(_instance._instance, _surface, nullptr);
 	}
 
 }
