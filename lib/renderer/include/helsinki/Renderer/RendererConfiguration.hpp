@@ -4,6 +4,9 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
+
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
 #ifdef HELSINKI_DEBUG
 const bool enableValidationLayers = true;
 #else

@@ -25,6 +25,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSetLayout.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanDescriptorPool.hpp>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -48,8 +49,6 @@ constexpr uint32_t HEIGHT = 600;
 
 const std::string MODEL_PATH = ROOT_PATHED("/data/models/viking_room.obj");
 const std::string TEXTURE_PATH = ROOT_PATHED("/data/textures/viking_room.png");
-
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 struct Vertex
 {
@@ -127,7 +126,8 @@ public:
         _swapChain(_device, _surface),
         _renderpass(_device, _swapChain),
         _commandPool(_device),
-        _descriptorSetLayout(_device)
+        _descriptorSetLayout(_device),
+        _descriptorPool(_device)
     {
 
     }
@@ -151,10 +151,10 @@ private:
     hl::VulkanCommandPool _commandPool;
     hl::VulkanTexture _texture;
     hl::VulkanDescriptorSetLayout _descriptorSetLayout;
+    hl::VulkanDescriptorPool _descriptorPool;
 
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
-
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -167,7 +167,6 @@ private:
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
 
-    VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
@@ -198,8 +197,7 @@ private:
 
     void initVulkan()
     {
-        std::vector< VkDescriptorSetLayoutBinding> layoutBindings = 
-        { 
+        std::vector<VkDescriptorSetLayoutBinding> layoutBindings = { 
             VkDescriptorSetLayoutBinding
             {
                 .binding = 0,
@@ -226,7 +224,7 @@ private:
 
         _swapChain.createFramebuffers(_renderpass);
         _descriptorSetLayout.create(layoutBindings);
-        createDescriptorPool();
+        _descriptorPool.create(layoutBindings);
 
         createGraphicsPipeline();
         _commandPool.create();
@@ -266,7 +264,7 @@ private:
             vkFreeMemory(_device._device, uniformBuffersMemory[i], nullptr);
         }
 
-        vkDestroyDescriptorPool(_device._device, descriptorPool, nullptr);
+        _descriptorPool.destroy();
         _descriptorSetLayout.destroy();
 
         _texture.destroy();
@@ -542,32 +540,12 @@ private:
         }
     }
 
-    void createDescriptorPool()
-    {
-        std::array<VkDescriptorPoolSize, 2> poolSizes{};
-        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-        VkDescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-        poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-        if (vkCreateDescriptorPool(_device._device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create descriptor pool!");
-        }
-    }
-
     void createDescriptorSets()
     {
         std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, _descriptorSetLayout._descriptorSetLayout);
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorPool = _descriptorPool._descriptorPool;
         allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
         allocInfo.pSetLayouts = layouts.data();
 
