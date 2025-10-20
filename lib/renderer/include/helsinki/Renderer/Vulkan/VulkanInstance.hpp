@@ -18,8 +18,7 @@ namespace hl
 		static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 		static void setupDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT& debugMessenger);
 
-	public:
-	//private:
+	public: // TODO: MAKE PRIVATE
 		VkInstance _instance{ VK_NULL_HANDLE };
 		VkDebugUtilsMessengerEXT _debugMessenger{ VK_NULL_HANDLE };
 	};

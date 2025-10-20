@@ -1,19 +1,10 @@
 #include <helsinki/Renderer/Vulkan/VulkanInstance.hpp>
+#include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <stdexcept>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <iostream>
-
-const std::vector<const char*> validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
-};
-
-#ifdef HELSINKI_DEBUG
-const bool enableValidationLayers = true;
-#else
-const bool enableValidationLayers = false;
-#endif
 
 const char* EngineName = "No Engine";
 
