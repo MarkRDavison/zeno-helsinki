@@ -12,7 +12,9 @@ namespace hl
         VulkanSurface& surface
     ) : 
         _device(device),
-        _surface(surface)
+        _surface(surface),
+        _colorImage(device),
+        _depthImage(device)
     {
 
     }
@@ -100,6 +102,8 @@ namespace hl
     }
     void VulkanSwapChain::destroy()
     {
+        _colorImage.destroy();
+        _depthImage.destroy();
 
         for (auto framebuffer : _swapChainFramebuffers)
         {
