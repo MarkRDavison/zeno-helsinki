@@ -10,11 +10,12 @@ namespace hl
 	{
 	public:
 		VulkanSurface(VulkanInstance& instance);
-		void create(GLFWwindow*window);
+		void create(GLFWwindow *window);
 		void destroy();
 
 	public: // TODO: MAKE PRIVATE
-		VulkanInstance& instance;
-		VkSurfaceKHR surface{ VK_NULL_HANDLE };
+		VulkanInstance& _instance;
+		VkSurfaceKHR _surface{ VK_NULL_HANDLE };
+		GLFWwindow* _window{ nullptr };
 	};
 }
