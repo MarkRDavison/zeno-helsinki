@@ -175,10 +175,6 @@ private:
 
     VkCommandPool commandPool;
 
-    VkImage depthImage;
-    VkDeviceMemory depthImageMemory;
-    VkImageView depthImageView;
-
     uint32_t mipLevels;
     hl::VulkanImage _textureImage;
     VkSampler textureSampler;
@@ -206,10 +202,6 @@ private:
 
     bool framebufferResized = false;
 
-    VkImage colorImage;
-    VkDeviceMemory colorImageMemory;
-    VkImageView colorImageView;
-
     void initWindow()
     {
         glfwInit();
@@ -233,12 +225,12 @@ private:
         _surface.create(window);
         _device.create();
         _swapChain.create();
+        createColorResources();
+        createDepthResources();
         createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
         createCommandPool();
-        createColorResources();
-        createDepthResources();
         createFramebuffers();
         createTextureImage();
         createTextureSampler();
@@ -265,14 +257,6 @@ private:
 
     void cleanupSwapChain()
     {
-        vkDestroyImageView(_device._device, colorImageView, nullptr);
-        vkDestroyImage(_device._device, colorImage, nullptr);
-        vkFreeMemory(_device._device, colorImageMemory, nullptr);
-
-        vkDestroyImageView(_device._device, depthImageView, nullptr);
-        vkDestroyImage(_device._device, depthImage, nullptr);
-        vkFreeMemory(_device._device, depthImageMemory, nullptr);
-
         _swapChain.destroy();
     }
 
@@ -579,8 +563,8 @@ private:
         for (size_t i = 0; i < _swapChain._swapChainImageViews.size(); i++)
         {
             std::array<VkImageView, 3> attachments = {
-                colorImageView,
-                depthImageView,
+                _swapChain._colorImage._imageView,
+                _swapChain._depthImage._imageView,
                 _swapChain._swapChainImageViews[i]
             };
 
@@ -617,18 +601,41 @@ private:
 
     void createColorResources()
     {
-        VkFormat colorFormat = _swapChain._swapChainImageFormat;
+        _swapChain._colorImage.create(
+            _swapChain._swapChainExtent.width,
+            _swapChain._swapChainExtent.height,
+            1,
+            _device._msaaSamples,
+            _swapChain._swapChainImageFormat,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        );
 
-        createImage(_swapChain._swapChainExtent.width, _swapChain._swapChainExtent.height, 1, _device._msaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemory);
-        colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+        _swapChain._colorImage.createImageView(
+            _swapChain._swapChainImageFormat,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            1);
     }
 
     void createDepthResources()
     {
         VkFormat depthFormat = findDepthFormat();
 
-        createImage(_swapChain._swapChainExtent.width, _swapChain._swapChainExtent.height, 1, _device._msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-        depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+        _swapChain._depthImage.create(
+            _swapChain._swapChainExtent.width,
+            _swapChain._swapChainExtent.height,
+            1,
+            _device._msaaSamples,
+            depthFormat,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        _swapChain._depthImage.createImageView(
+            depthFormat,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
+            1);
     }
 
     VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)

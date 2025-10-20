@@ -1,6 +1,7 @@
 #pragma once
 
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChainSupportDetails.hpp>
 #include <vulkan/vulkan.h>
@@ -25,6 +26,9 @@ namespace hl
 	public: //private: TODO: TO PRIVATE
 		VulkanDevice& _device;
 		VulkanSurface& _surface;
+
+		VulkanImage _colorImage;
+		VulkanImage _depthImage;
 
 		VkSwapchainKHR _swapChain;
 		std::vector<VkImage> _swapChainImages;
