@@ -16,6 +16,8 @@ namespace hl
 		void create();
 		void destroy();
 
+		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+
 	private:
 		void pickPhysicalDevice();
 		void createLogicalDevice();
