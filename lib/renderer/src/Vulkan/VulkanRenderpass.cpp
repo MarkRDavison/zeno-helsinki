@@ -1,4 +1,5 @@
 #include <helsinki/Renderer/Vulkan/VulkanRenderpass.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
 #include <stdexcept>
 #include <iostream>
 #include <array>

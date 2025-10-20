@@ -147,13 +147,13 @@ private:
     hl::VulkanSwapChain _swapChain;
     hl::VulkanRenderpass _renderpass;
     hl::VulkanCommandPool _commandPool;
+    hl::VulkanTexture _texture;
 
     VkDescriptorSetLayout descriptorSetLayout;
 
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
 
-    hl::VulkanTexture _texture;
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -202,7 +202,9 @@ private:
         _device.create();
         _swapChain.create();
         _renderpass.create();
-        createFramebuffers();
+
+        _swapChain.createFramebuffers(_renderpass);
+
         createDescriptorSetLayout();
         createGraphicsPipeline();
         _commandPool.create();
@@ -287,7 +289,7 @@ private:
         _swapChain.destroy();
         _swapChain.create();
 
-        createFramebuffers();
+        _swapChain.createFramebuffers(_renderpass);
     }
 
     void createDescriptorSetLayout()
@@ -443,34 +445,6 @@ private:
 
         vkDestroyShaderModule(_device._device, fragShaderModule, nullptr);
         vkDestroyShaderModule(_device._device, vertShaderModule, nullptr);
-    }
-
-    void createFramebuffers()
-    {
-        _swapChain._swapChainFramebuffers.resize(_swapChain._swapChainImageViews.size());
-
-        for (size_t i = 0; i < _swapChain._swapChainImageViews.size(); i++)
-        {
-            std::array<VkImageView, 3> attachments = {
-                _swapChain._colorImage._imageView,
-                _swapChain._depthImage._imageView,
-                _swapChain._swapChainImageViews[i]
-            };
-
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = _renderpass._renderPass;
-            framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-            framebufferInfo.pAttachments = attachments.data();
-            framebufferInfo.width = _swapChain._swapChainExtent.width;
-            framebufferInfo.height = _swapChain._swapChainExtent.height;
-            framebufferInfo.layers = 1;
-
-            if (vkCreateFramebuffer(_device._device, &framebufferInfo, nullptr, &_swapChain._swapChainFramebuffers[i]) != VK_SUCCESS)
-            {
-                throw std::runtime_error("failed to create framebuffer!");
-            }
-        }
     }
 
     void loadModel()
@@ -714,7 +688,7 @@ private:
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = _renderpass._renderPass;
-        renderPassInfo.framebuffer = _swapChain._swapChainFramebuffers[imageIndex];
+        renderPassInfo.framebuffer = _swapChain._swapChainFramebuffers[imageIndex]._framebuffer;
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = _swapChain._swapChainExtent;
 
