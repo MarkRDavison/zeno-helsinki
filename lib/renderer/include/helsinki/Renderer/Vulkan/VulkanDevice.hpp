@@ -1,5 +1,6 @@
 #pragma once
 
+#include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanInstance.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChainSupportDetails.hpp>
