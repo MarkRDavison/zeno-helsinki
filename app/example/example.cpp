@@ -27,6 +27,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSetLayout.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorPool.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanDescriptorSet.hpp>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -130,7 +131,8 @@ public:
         _descriptorSetLayout(_device),
         _descriptorPool(_device),
         _vertexBuffer(_device),
-        _indexBuffer(_device)
+        _indexBuffer(_device),
+        _descriptorSet(_device)
     {
 
     }
@@ -155,6 +157,7 @@ private:
     hl::VulkanTexture _texture;
     hl::VulkanDescriptorSetLayout _descriptorSetLayout;
     hl::VulkanDescriptorPool _descriptorPool;
+    hl::VulkanDescriptorSet _descriptorSet;
 
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
@@ -164,10 +167,7 @@ private:
 
     std::vector<hl::VulkanUniformBuffer> _uniformBuffers;
 
-    std::vector<VkDescriptorSet> descriptorSets;
-
     std::vector<VkCommandBuffer> commandBuffers;
-
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
@@ -545,61 +545,19 @@ private:
         {
             _uniformBuffers.emplace_back(_device);
 
-            _uniformBuffers.back().create(bufferSize);
+            _uniformBuffers.back().create(bufferSize, sizeof(UniformBufferObject));
         }
     }
 
     void createDescriptorSets()
     {
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, _descriptorSetLayout._descriptorSetLayout);
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = _descriptorPool._descriptorPool;
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        allocInfo.pSetLayouts = layouts.data();
+        _descriptorSet.create(_descriptorPool, _descriptorSetLayout);
 
-        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-        if (vkAllocateDescriptorSets(_device._device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }
+         // SEPARATE creating them and updating them
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = _uniformBuffers[i]._buffer._buffer;
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = _texture._image._imageView;
-            imageInfo.sampler = _texture._sampler;
-
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-
-            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = descriptorSets[i];
-            descriptorWrites[0].dstBinding = 0;
-            descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = descriptorSets[i];
-            descriptorWrites[1].dstBinding = 1;
-            descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
-
-            vkUpdateDescriptorSets(
-                _device._device, 
-                static_cast<uint32_t>(descriptorWrites.size()),
-                descriptorWrites.data(), 
-                0, 
-                nullptr);
+            _descriptorSet.update(i, _uniformBuffers[i], _texture);
         }
     }
 
@@ -667,7 +625,7 @@ private:
 
         vkCmdBindIndexBuffer(commandBuffer, _indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &_descriptorSet._descriptorSets[currentFrame], 0, nullptr);
 
         vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
 
@@ -716,7 +674,7 @@ private:
         ubo.proj = glm::perspective(glm::radians(45.0f), _swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
 
-        _uniformBuffers[currentImage].writeToBuffer(&ubo, sizeof(ubo));
+        _uniformBuffers[currentImage].writeToBuffer(&ubo);
     }
 
     void drawFrame()
