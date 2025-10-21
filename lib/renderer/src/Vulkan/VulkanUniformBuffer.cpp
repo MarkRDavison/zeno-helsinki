@@ -11,8 +11,10 @@ namespace hl
 
 	}
 
-	void VulkanUniformBuffer::create(VkDeviceSize size)
+	// TODO: Duplicated size....
+	void VulkanUniformBuffer::create(VkDeviceSize size, size_t uboSize)
 	{
+		_uboSize = uboSize;
 		_buffer.create(
 			size,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
@@ -32,8 +34,8 @@ namespace hl
 		_buffer.destroy();
 	}
 
-	void VulkanUniformBuffer::writeToBuffer(void* data, size_t size)
+	void VulkanUniformBuffer::writeToBuffer(void* data)
 	{
-		memcpy(_mappedMemory, data, size);
+		memcpy(_mappedMemory, data, _uboSize);
 	}
 }

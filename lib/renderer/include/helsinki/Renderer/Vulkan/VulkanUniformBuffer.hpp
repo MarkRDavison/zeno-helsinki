@@ -10,15 +10,16 @@ namespace hl
 	public:
 		VulkanUniformBuffer(VulkanDevice& device);
 
-		void create(VkDeviceSize size);
+		void create(VkDeviceSize size, size_t uboSize);
 		void destroy();
 
-		void writeToBuffer(void* data, size_t size);
+		void writeToBuffer(void* data);
 
 	public: // private TODO: to private
 		VulkanDevice& _device;
 		VulkanBuffer _buffer;
 		void* _mappedMemory{ nullptr };
+		size_t _uboSize;
 	};
 
 }
