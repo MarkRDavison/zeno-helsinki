@@ -197,7 +197,14 @@ private:
 
     void initVulkan()
     {
-        std::vector<VkDescriptorSetLayoutBinding> layoutBindings = { 
+        _instance.create("Hello Triangle.");
+        _surface.create(window);
+        _device.create();
+        _swapChain.create();
+        _renderpass.create();
+
+        _swapChain.createFramebuffers(_renderpass);
+        _descriptorSetLayout.create({
             VkDescriptorSetLayoutBinding
             {
                 .binding = 0,
@@ -213,18 +220,9 @@ private:
                 .descriptorCount = 1,
                 .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
                 .pImmutableSamplers = nullptr
-            } 
-        };
-
-        _instance.create("Hello Triangle.");
-        _surface.create(window);
-        _device.create();
-        _swapChain.create();
-        _renderpass.create();
-
-        _swapChain.createFramebuffers(_renderpass);
-        _descriptorSetLayout.create(layoutBindings);
-        _descriptorPool.create(layoutBindings);
+            }
+            });
+        _descriptorPool.create();
 
         createGraphicsPipeline();
         _commandPool.create();

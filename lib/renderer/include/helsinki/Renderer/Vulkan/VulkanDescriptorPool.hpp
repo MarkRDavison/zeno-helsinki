@@ -10,7 +10,7 @@ namespace hl
 	public:
 		VulkanDescriptorPool(VulkanDevice& device);
 
-		void create(std::vector<VkDescriptorSetLayoutBinding> bindings);
+		void create();
 		void destroy();
 
 	public: // private: TODO: to private
