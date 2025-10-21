@@ -26,6 +26,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSetLayout.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorPool.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -161,9 +162,7 @@ private:
     hl::VulkanBuffer _vertexBuffer;
     hl::VulkanBuffer _indexBuffer;
 
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VkDeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
+    std::vector<hl::VulkanUniformBuffer> _uniformBuffers;
 
     std::vector<VkDescriptorSet> descriptorSets;
 
@@ -256,10 +255,9 @@ private:
 
         _renderpass.destroy();        
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        for (size_t i = 0; i < _uniformBuffers.size(); i++)
         {
-            vkDestroyBuffer(_device._device, uniformBuffers[i], nullptr);
-            vkFreeMemory(_device._device, uniformBuffersMemory[i], nullptr);
+            _uniformBuffers[i].destroy();
         }
 
         _descriptorPool.destroy();
@@ -539,21 +537,15 @@ private:
         }
     }
 
-    
-
     void createUniformBuffers()
     {
         VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
-
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
-            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+            _uniformBuffers.emplace_back(_device);
 
-            vkMapMemory(_device._device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+            _uniformBuffers.back().create(bufferSize);
         }
     }
 
@@ -575,7 +567,7 @@ private:
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
             VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[i];
+            bufferInfo.buffer = _uniformBuffers[i]._buffer._buffer;
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -602,48 +594,13 @@ private:
             descriptorWrites[1].descriptorCount = 1;
             descriptorWrites[1].pImageInfo = &imageInfo;
 
-            vkUpdateDescriptorSets(_device._device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+            vkUpdateDescriptorSets(
+                _device._device, 
+                static_cast<uint32_t>(descriptorWrites.size()),
+                descriptorWrites.data(), 
+                0, 
+                nullptr);
         }
-    }
-
-    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-    {
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateBuffer(_device._device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create buffer!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(_device._device, buffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = _device.findMemoryType(memRequirements.memoryTypeBits, properties);
-
-        if (vkAllocateMemory(_device._device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to allocate buffer memory!");
-        }
-
-        vkBindBufferMemory(_device._device, buffer, bufferMemory, 0);
-    }
-
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-    {
-        auto commandBuffer = _commandPool.createSingleTimeCommands();
-
-        VkBufferCopy copyRegion{};
-        copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer._commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        _commandPool.endSingleTimeCommands(commandBuffer);
     }
 
     void createCommandBuffers()
@@ -759,7 +716,7 @@ private:
         ubo.proj = glm::perspective(glm::radians(45.0f), _swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
 
-        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+        _uniformBuffers[currentImage].writeToBuffer(&ubo, sizeof(ubo));
     }
 
     void drawFrame()
