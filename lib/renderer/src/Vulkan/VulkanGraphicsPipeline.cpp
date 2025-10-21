@@ -3,55 +3,125 @@
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <string>
 
 #include <glslang/Public/ShaderLang.h>
+#include <SPIRV/GlslangToSpv.h>
 
 namespace hl
 {
-	VulkanGraphicsPipeline::VulkanGraphicsPipeline(
-		VulkanDevice& device
-	) :
-		_device(device),
-		_pipelineLayout(device)
-	{
+    VulkanGraphicsPipeline::VulkanGraphicsPipeline(
+        VulkanDevice& device
+    ) :
+        _device(device),
+        _pipelineLayout(device)
+    {
 
-	}
+    }
 
-	static std::vector<char> readFile(const std::string& filename)
-	{
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    static std::string readFile(const std::string& filename)
+    {
+        std::ifstream file(filename, std::ios::in | std::ios::binary);
+        if (!file)
+        {
+            throw std::runtime_error("Failed to open file: " + filename);
+        }
 
-		if (!file.is_open())
-		{
-			throw std::runtime_error("failed to open file!");
-		}
+        std::ostringstream contents;
+        contents << file.rdbuf();
+        return contents.str();
+    }
 
-		size_t fileSize = (size_t)file.tellg();
-		std::vector<char> buffer(fileSize);
+    static VkShaderModule createShaderModule(VulkanDevice& device, const std::vector<uint32_t>& code)
+    {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size() * sizeof(uint32_t);
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
-		file.seekg(0);
-		file.read(buffer.data(), fileSize);
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device._device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create shader module!");
+        }
 
-		file.close();
+        return shaderModule;
+    }
 
-		return buffer;
-	}
+    static std::vector<uint32_t> readParseCompileShader(
+        const std::string& shaderSource, 
+        EShLanguage stage)
+    {
+        glslang::TShader shader(stage);
+        const char* sources[] = { shaderSource.c_str() };
+        shader.setStrings(sources, 1);
+        shader.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientVulkan, 450);
+        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+        shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_0);
 
-	static VkShaderModule createShaderModule(VulkanDevice& device, const std::vector<char>& code)
-	{
-		VkShaderModuleCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		createInfo.codeSize = code.size();
-		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        TBuiltInResource DefaultTBuiltInResource = {};
+        {
+            // Maximum counts
+            DefaultTBuiltInResource.maxLights = 32;
+            DefaultTBuiltInResource.maxClipPlanes = 6;
+            DefaultTBuiltInResource.maxTextureUnits = 32;
+            DefaultTBuiltInResource.maxTextureCoords = 32;
+            DefaultTBuiltInResource.maxVertexAttribs = 64;
+            DefaultTBuiltInResource.maxVertexUniformComponents = 4096;
+            DefaultTBuiltInResource.maxVaryingFloats = 64;
+            DefaultTBuiltInResource.maxVertexTextureImageUnits = 32;
+            DefaultTBuiltInResource.maxCombinedTextureImageUnits = 80;
+            DefaultTBuiltInResource.maxTextureImageUnits = 32;
+            DefaultTBuiltInResource.maxFragmentUniformComponents = 4096;
+            DefaultTBuiltInResource.maxDrawBuffers = 32;
 
-		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(device._device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create shader module!");
-		}
+            // Compute shader limits (if needed)
+            DefaultTBuiltInResource.maxComputeWorkGroupCountX = 65535;
+            DefaultTBuiltInResource.maxComputeWorkGroupCountY = 65535;
+            DefaultTBuiltInResource.maxComputeWorkGroupCountZ = 65535;
+            DefaultTBuiltInResource.maxComputeWorkGroupSizeX = 1024;
+            DefaultTBuiltInResource.maxComputeWorkGroupSizeY = 1024;
+            DefaultTBuiltInResource.maxComputeWorkGroupSizeZ = 64;
+            DefaultTBuiltInResource.maxComputeUniformComponents = 1024;
+            DefaultTBuiltInResource.maxComputeTextureImageUnits = 16;
+            DefaultTBuiltInResource.maxComputeImageUniforms = 8;
+            DefaultTBuiltInResource.maxComputeAtomicCounters = 8;
+            DefaultTBuiltInResource.maxComputeAtomicCounterBuffers = 1;
 
-		return shaderModule;
-	}
+            // General limits
+            DefaultTBuiltInResource.maxLights = 32;
+            DefaultTBuiltInResource.maxClipPlanes = 6;
+            DefaultTBuiltInResource.maxTextureUnits = 32;
+            DefaultTBuiltInResource.maxVertexAttribs = 64;
+
+            // Boolean flags
+            DefaultTBuiltInResource.limits.nonInductiveForLoops = 1;
+            DefaultTBuiltInResource.limits.whileLoops = 1;
+            DefaultTBuiltInResource.limits.doWhileLoops = 1;
+            DefaultTBuiltInResource.limits.generalUniformIndexing = 1;
+            DefaultTBuiltInResource.limits.generalAttributeMatrixVectorIndexing = 1;
+            DefaultTBuiltInResource.limits.generalVaryingIndexing = 1;
+            DefaultTBuiltInResource.limits.generalSamplerIndexing = 1;
+            DefaultTBuiltInResource.limits.generalVariableIndexing = 1;
+            DefaultTBuiltInResource.limits.generalConstantMatrixVectorIndexing = 1;
+        }
+
+        shader.parse(&DefaultTBuiltInResource, 0, false, EShMsgDefault);
+
+        glslang::TProgram program;
+        program.addShader(&shader);
+        if (!program.link(EShMsgDefault))
+        {
+            printf("GLSL link failed:\n%s\n", program.getInfoLog());
+            return {};
+        }
+
+        std::vector<uint32_t> spirv;
+        glslang::GlslangToSpv(*program.getIntermediate(stage), spirv);
+
+        return spirv;
+    }
 
 	void VulkanGraphicsPipeline::create(
 		const std::string& vertexPath, 
@@ -64,16 +134,12 @@ namespace hl
 		auto vertShaderCode = readFile(vertexPath);
 		auto fragShaderCode = readFile(fragmentPath);
 
-        glslang::InitializeProcess();
 
-        const auto ver = glslang::GetGlslVersionString();
+        auto vertexSpirv = readParseCompileShader(vertShaderCode, EShLangVertex);
+        auto fragmentSpirv = readParseCompileShader(fragShaderCode, EShLangFragment);
 
-        std::cout << "glslang ver: " << ver << std::endl;
-
-        glslang::FinalizeProcess();
-
-		VkShaderModule vertShaderModule = createShaderModule(_device, vertShaderCode);
-		VkShaderModule fragShaderModule = createShaderModule(_device, fragShaderCode);
+		VkShaderModule vertShaderModule = createShaderModule(_device, vertexSpirv);
+		VkShaderModule fragShaderModule = createShaderModule(_device, fragmentSpirv);
 
         VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
         vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

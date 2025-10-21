@@ -1,5 +1,6 @@
 #include <helsinki/Renderer/Vulkan/VulkanInstance.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
+#include <glslang/Public/ShaderLang.h>
 #include <stdexcept>
 
 #define GLFW_INCLUDE_VULKAN
@@ -87,10 +88,14 @@ namespace hl
         }
 
         setupDebugMessenger(_instance, _debugMessenger);
+
+        glslang::InitializeProcess();
 	}
 
     void VulkanInstance::destroy()
     {
+        glslang::FinalizeProcess();
+
         if (enableValidationLayers)
         {
             DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);

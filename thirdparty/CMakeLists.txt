@@ -41,17 +41,6 @@ set(SPIRV_TOOLS_SOURCE_DIR "${spirvtools_SOURCE_DIR}" CACHE PATH "" FORCE)
 set(SPIRV_TOOLS_BINARY_DIR "${spirvtools_BINARY_DIR}" CACHE PATH "" FORCE)
 FetchContent_MakeAvailable(glslang)
 
-# -------------------- Wrap glslang in an interface target --------------------
-add_library(MyGlslang INTERFACE)
-target_include_directories(MyGlslang SYSTEM INTERFACE
-    "${glslang_SOURCE_DIR}/glslang/Public"
-)
-target_link_libraries(MyGlslang INTERFACE glslang ThirdParty_SPIRV_Tools)
-
-# Create alias only if it does not already exist
-if(NOT TARGET glslang::glslang)
-    add_library(glslang::glslang ALIAS MyGlslang)
-endif()
 
 # -------------------- Vulkan --------------------
 find_package(Vulkan REQUIRED)

@@ -159,8 +159,8 @@ private:
         _descriptorPool.create();
 
         _graphicsPipeline.create(
-            std::string(ROOT_PATHED("/data/shaders/vert.spv")),
-            std::string(ROOT_PATHED("/data/shaders/frag.spv")),
+            std::string(ROOT_PATHED("/data/shaders/triangle.vert")),
+            std::string(ROOT_PATHED("/data/shaders/triangle.frag")),
             _renderpass,
             _descriptorSetLayout);
         _commandPool.create();
