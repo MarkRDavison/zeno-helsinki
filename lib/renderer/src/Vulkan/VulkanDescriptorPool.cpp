@@ -12,15 +12,13 @@ namespace hl
 
 	}
 
-	void VulkanDescriptorPool::create(std::vector<VkDescriptorSetLayoutBinding> bindings)
+	void VulkanDescriptorPool::create()
 	{
-		std::vector<VkDescriptorPoolSize> poolSizes{};
-		for (const auto& b : bindings)
-		{
-			poolSizes.emplace_back();
-			poolSizes.back().type = b.descriptorType;
-			poolSizes.back().descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-		}
+		// TODO: Maybe just guesstimate these sizes, not an exact calculation
+		std::vector<VkDescriptorPoolSize> poolSizes {
+		   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
+		   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 20 },
+		};
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
