@@ -127,7 +127,8 @@ public:
         _renderpass(_device, _swapChain),
         _commandPool(_device),
         _descriptorSetLayout(_device),
-        _descriptorPool(_device)
+        _descriptorPool(_device),
+        _vertexBuffer(_device)
     {
 
     }
@@ -156,10 +157,9 @@ private:
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
 
-    std::vector<Vertex> vertices;
+    hl::VulkanBuffer _vertexBuffer;
+
     std::vector<uint32_t> indices;
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
 
@@ -204,6 +204,7 @@ private:
         _renderpass.create();
 
         _swapChain.createFramebuffers(_renderpass);
+        // TODO: Need to read this in from shader adjacent files?
         _descriptorSetLayout.create({
             VkDescriptorSetLayoutBinding
             {
@@ -227,7 +228,7 @@ private:
         createGraphicsPipeline();
         _commandPool.create();
         _texture.create(_commandPool, TEXTURE_PATH);
-        loadModel();
+        
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
@@ -270,8 +271,7 @@ private:
         vkDestroyBuffer(_device._device, indexBuffer, nullptr);
         vkFreeMemory(_device._device, indexBufferMemory, nullptr);
 
-        vkDestroyBuffer(_device._device, vertexBuffer, nullptr);
-        vkFreeMemory(_device._device, vertexBufferMemory, nullptr);
+        _vertexBuffer.destroy();
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
@@ -435,8 +435,9 @@ private:
         vkDestroyShaderModule(_device._device, vertShaderModule, nullptr);
     }
 
-    void loadModel()
+    std::vector<Vertex> loadModel()
     {
+        std::vector<Vertex> vertices;
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
         std::vector<tinyobj::material_t> materials;
@@ -478,27 +479,35 @@ private:
                 indices.push_back(uniqueVertices[vertex]);
             }
         }
+
+        return vertices;
     }
 
     void createVertexBuffer()
     {
+        auto vertices = loadModel();
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+        hl::VulkanBuffer stagingBuffer(_device);
+        stagingBuffer.create(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-        void* data;
-        vkMapMemory(_device._device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, vertices.data(), (size_t)bufferSize);
-        vkUnmapMemory(_device._device, stagingBufferMemory);
+        stagingBuffer.mapMemory(
+            vertices.data());
 
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+        _vertexBuffer.create(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        
+        stagingBuffer.copyToBuffer(
+            _commandPool, 
+            bufferSize, 
+            _vertexBuffer);
 
-        copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-        vkDestroyBuffer(_device._device, stagingBuffer, nullptr);
-        vkFreeMemory(_device._device, stagingBufferMemory, nullptr);
+        stagingBuffer.destroy();
     }
 
     void createIndexBuffer()
@@ -685,7 +694,7 @@ private:
         scissor.extent = _swapChain._swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = { vertexBuffer };
+        VkBuffer vertexBuffers[] = { _vertexBuffer._buffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 

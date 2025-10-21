@@ -51,6 +51,18 @@ namespace hl
 		vkUnmapMemory(_device._device, _memory);
 	}
 
+	void VulkanBuffer::copyToBuffer(VulkanCommandPool& commandPool, VkDeviceSize size, VulkanBuffer& target)
+	{
+		auto commandBuffer = commandPool.createSingleTimeCommands();
+
+		// TODO: Validate buffer size
+		VkBufferCopy copyRegion{};
+		copyRegion.size = size;
+		vkCmdCopyBuffer(commandBuffer._commandBuffer, _buffer, target._buffer, 1, &copyRegion);
+
+		commandPool.endSingleTimeCommands(commandBuffer);
+	}
+
 	void VulkanBuffer::destroy()
 	{
 		vkDestroyBuffer(_device._device, _buffer, nullptr);
