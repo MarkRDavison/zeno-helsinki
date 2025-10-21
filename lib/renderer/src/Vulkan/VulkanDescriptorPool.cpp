@@ -16,8 +16,8 @@ namespace hl
 	{
 		// TODO: Maybe just guesstimate these sizes, not an exact calculation
 		std::vector<VkDescriptorPoolSize> poolSizes {
-		   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
-		   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 20 },
+		   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 * MAX_FRAMES_IN_FLIGHT },
+		   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 20 * MAX_FRAMES_IN_FLIGHT },
 		};
 
 		VkDescriptorPoolCreateInfo poolInfo{};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 
 namespace hl
 {
@@ -12,6 +13,8 @@ namespace hl
 		void create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 
 		void mapMemory(void* data);
+
+		void copyToBuffer(VulkanCommandPool& commandPool, VkDeviceSize size, VulkanBuffer& target);
 
 		void destroy();
 
