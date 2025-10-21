@@ -1,6 +1,7 @@
 SET(MODULE_LIBS
 	"helsinki-system${LIB_EXTENSION_SHARED}"
 	Vulkan::Vulkan
+	glslang::glslang
 	glfw
 	stb
 	tinyobjloader

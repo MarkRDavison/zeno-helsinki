@@ -1,6 +1,65 @@
 INCLUDE(FetchContent)
 
-find_package (Vulkan REQUIRED)
+cmake_minimum_required(VERSION 3.21)
+project(MyVulkanProject LANGUAGES CXX)
+
+include(FetchContent)
+
+# -------------------- SPIRV-Headers --------------------
+FetchContent_Declare(
+    SPIRV-Headers
+    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Headers.git
+    GIT_TAG vulkan-sdk-1.4.309.0
+)
+FetchContent_MakeAvailable(SPIRV-Headers)
+
+add_library(ThirdParty_SPIRV_Headers INTERFACE)
+target_include_directories(ThirdParty_SPIRV_Headers SYSTEM INTERFACE
+    "${spirv-headers_SOURCE_DIR}/include"
+)
+
+# -------------------- SPIRV-Tools --------------------
+FetchContent_Declare(
+    SPIRVTools
+    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Tools.git
+    GIT_TAG vulkan-sdk-1.4.309.0
+)
+set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
+set(SPIRV-Headers_DIR "${spirv-headers_SOURCE_DIR}" CACHE PATH "" FORCE)
+FetchContent_MakeAvailable(SPIRVTools)
+
+add_library(ThirdParty_SPIRV_Tools INTERFACE)
+target_include_directories(ThirdParty_SPIRV_Tools SYSTEM INTERFACE
+    "${spirvtools_SOURCE_DIR}/include"
+)
+target_link_libraries(ThirdParty_SPIRV_Tools INTERFACE ThirdParty_SPIRV_Headers)
+
+# -------------------- glslang --------------------
+FetchContent_Declare(
+    glslang
+    GIT_REPOSITORY https://github.com/KhronosGroup/glslang.git
+    GIT_TAG vulkan-sdk-1.4.309.0
+)
+set(ENABLE_OPT ON CACHE BOOL "" FORCE)
+set(ALLOW_EXTERNAL_SPIRV_TOOLS OFF CACHE BOOL "" FORCE)
+set(SPIRV_TOOLS_SOURCE_DIR "${spirvtools_SOURCE_DIR}" CACHE PATH "" FORCE)
+set(SPIRV_TOOLS_BINARY_DIR "${spirvtools_BINARY_DIR}" CACHE PATH "" FORCE)
+FetchContent_MakeAvailable(glslang)
+
+# -------------------- Wrap glslang in an interface target --------------------
+add_library(MyGlslang INTERFACE)
+target_include_directories(MyGlslang SYSTEM INTERFACE
+    "${glslang_SOURCE_DIR}/glslang/Public"
+)
+target_link_libraries(MyGlslang INTERFACE glslang ThirdParty_SPIRV_Tools)
+
+# Create alias only if it does not already exist
+if(NOT TARGET glslang::glslang)
+    add_library(glslang::glslang ALIAS MyGlslang)
+endif()
+
+# -------------------- Vulkan --------------------
+find_package(Vulkan REQUIRED)
 
 FetchContent_Declare(
   Catch2
@@ -8,6 +67,7 @@ FetchContent_Declare(
   GIT_TAG        v3.10.0)
 
 FetchContent_MakeAvailable(Catch2)
+
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(CTest)
 include(Catch)

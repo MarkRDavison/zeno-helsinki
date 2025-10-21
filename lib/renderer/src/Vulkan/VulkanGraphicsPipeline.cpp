@@ -4,6 +4,8 @@
 #include <iostream>
 #include <fstream>
 
+#include <glslang/Public/ShaderLang.h>
+
 namespace hl
 {
 	VulkanGraphicsPipeline::VulkanGraphicsPipeline(
@@ -62,9 +64,16 @@ namespace hl
 		auto vertShaderCode = readFile(vertexPath);
 		auto fragShaderCode = readFile(fragmentPath);
 
+        glslang::InitializeProcess();
+
+        const auto ver = glslang::GetGlslVersionString();
+
+        std::cout << "glslang ver: " << ver << std::endl;
+
+        glslang::FinalizeProcess();
+
 		VkShaderModule vertShaderModule = createShaderModule(_device, vertShaderCode);
 		VkShaderModule fragShaderModule = createShaderModule(_device, fragShaderCode);
-
 
         VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
         vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
