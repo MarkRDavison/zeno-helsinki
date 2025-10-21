@@ -5,6 +5,11 @@ SET(HELSINKI_CXX_STANDARD 23)
 
 SET(CMAKE_CXX_STANDARD ${HELSINKI_CXX_STANDARD})
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(MSVC)
+    add_compile_options(/Zc:__cplusplus)  # Make __cplusplus reflect the real standard
+endif()
+
 OPTION(CMAKE_COMPILE_WARNING_AS_ERROR "Compile warnings as errors" ON)
 OPTION(HELSINKI_STRICT "Enable strict compile options" ON)
 

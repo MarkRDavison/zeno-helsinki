@@ -1,10 +1,5 @@
 INCLUDE(FetchContent)
 
-cmake_minimum_required(VERSION 3.21)
-project(MyVulkanProject LANGUAGES CXX)
-
-include(FetchContent)
-
 # -------------------- SPIRV-Headers --------------------
 FetchContent_Declare(
     SPIRV-Headers
