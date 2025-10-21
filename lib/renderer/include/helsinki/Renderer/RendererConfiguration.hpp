@@ -3,7 +3,7 @@
 // TODO: TO CONST ARRAY NOT VECTOR
 #include <vector>
 #include <vulkan/vulkan.h>
-
+#include <cstdint>
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
