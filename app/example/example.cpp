@@ -29,8 +29,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSet.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanGraphicsPipeline.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
-#include <helsinki/Renderer/Vulkan/VulkanFence.hpp>
-#include <helsinki/Renderer/Vulkan/VulkanSemaphore.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanSynchronisationContext.hpp>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
@@ -39,13 +38,13 @@
 
 #include "ExampleConfig.hpp"
 
-#define ROOT_PATHED(x) (std::string(ex::ExampleConfig::RootPath) + std::string(x))
+#define ROOT_PATH(x) (std::string(ex::ExampleConfig::RootPath) + std::string(x))
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600; 
 
-const std::string MODEL_PATH = ROOT_PATHED("/data/models/viking_room.obj");
-const std::string TEXTURE_PATH = ROOT_PATHED("/data/textures/viking_room.png");
+const std::string MODEL_PATH = ROOT_PATH("/data/models/viking_room.obj");
+const std::string TEXTURE_PATH = ROOT_PATH("/data/textures/viking_room.png");
 
 struct UniformBufferObject
 {
@@ -70,7 +69,8 @@ public:
         _vertexBuffer(_device),
         _indexBuffer(_device),
         _descriptorSet(_device),
-        _graphicsPipeline(_device)
+        _graphicsPipeline(_device),
+        _syncContext(_device)
     {
 
     }
@@ -101,10 +101,9 @@ private:
     hl::VulkanBuffer _vertexBuffer;
     hl::VulkanBuffer _indexBuffer;
 
+    hl::VulkanSynchronisationContext _syncContext;
+
     std::vector<hl::VulkanUniformBuffer> _uniformBuffers;
-    std::vector<hl::VulkanFence> _fences;
-    std::vector<hl::VulkanSemaphore> _imageAvailableSemaphores;
-    std::vector<hl::VulkanSemaphore> _renderFinishedSemaphores;
 
     std::vector<VkCommandBuffer> commandBuffers;
     uint32_t currentFrame = 0;
@@ -137,7 +136,6 @@ private:
         _device.create();
         _swapChain.create();
         _renderpass.create();
-
         _swapChain.createFramebuffers(_renderpass);
         // TODO: Need to read this in from shader adjacent files?
         _descriptorSetLayout.create({
@@ -161,8 +159,8 @@ private:
         _descriptorPool.create();
 
         _graphicsPipeline.create(
-            std::string(ROOT_PATHED("/data/shaders/triangle.vert")),
-            std::string(ROOT_PATHED("/data/shaders/triangle.frag")),
+            std::string(ROOT_PATH("/data/shaders/triangle.vert")),
+            std::string(ROOT_PATH("/data/shaders/triangle.frag")),
             _renderpass,
             _descriptorSetLayout);
         _commandPool.create();
@@ -172,7 +170,7 @@ private:
         createUniformBuffers();
         createDescriptorSets();
         createCommandBuffers();
-        createSyncObjects();
+        _syncContext.create();
     }
 
     void mainLoop()
@@ -206,17 +204,7 @@ private:
 
         _indexBuffer.destroy();
         _vertexBuffer.destroy();
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            _renderFinishedSemaphores[i].destroy();
-            _imageAvailableSemaphores[i].destroy();
-            _fences[i].destroy();
-        }
-
-        // TODO: Fence set??? or maybe a generic std::array<VulkanXXXXX, MAX_FRAMES_IN_FLIGHT> ???
-        _fences.clear();
-
+        _syncContext.destroy();
         _commandPool.destroy();
         _device.destroy();
         _surface.destroy();
@@ -452,21 +440,6 @@ private:
         }
     }
 
-    void createSyncObjects()
-    {
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            _imageAvailableSemaphores.emplace_back(_device);
-            _imageAvailableSemaphores.back().create();
-
-            _renderFinishedSemaphores.emplace_back(_device);
-            _renderFinishedSemaphores.back().create();
-
-            _fences.emplace_back(_device);
-            _fences.back().create();
-        }
-    }
-
     void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
     {
         static auto startTime = std::chrono::high_resolution_clock::now();
@@ -485,14 +458,14 @@ private:
 
     void drawFrame()
     {
-        _fences[currentFrame].wait();
+        _syncContext.getFence(currentFrame).wait();
 
         uint32_t imageIndex;
         VkResult result = vkAcquireNextImageKHR(
             _device._device, 
             _swapChain._swapChain, 
             UINT64_MAX, 
-            _imageAvailableSemaphores[currentFrame]._semaphore, 
+            _syncContext.getImageAvailableSemaphore(currentFrame)._semaphore,
             VK_NULL_HANDLE, 
             &imageIndex);
 
@@ -508,7 +481,7 @@ private:
 
         updateUniformBuffer(_uniformBuffers[currentFrame]);
 
-        _fences[currentFrame].reset();
+        _syncContext.getFence(currentFrame).reset();
 
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -516,7 +489,7 @@ private:
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        VkSemaphore waitSemaphores[] = { _imageAvailableSemaphores[currentFrame]._semaphore };
+        VkSemaphore waitSemaphores[] = { _syncContext.getImageAvailableSemaphore(currentFrame)._semaphore };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
@@ -525,11 +498,11 @@ private:
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
 
-        VkSemaphore signalSemaphores[] = { _renderFinishedSemaphores[currentFrame]._semaphore };
+        VkSemaphore signalSemaphores[] = { _syncContext.getRenderFinishedSemaphore(currentFrame)._semaphore };
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        if (vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, _fences[currentFrame]._fence) != VK_SUCCESS)
+        if (vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, _syncContext.getFence(currentFrame)._fence) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
@@ -559,22 +532,6 @@ private:
         }
 
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-    }
-
-    VkShaderModule createShaderModule(const std::vector<char>& code)
-    {
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(_device._device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create shader module!");
-        }
-
-        return shaderModule;
     }
 };
 
