@@ -13,6 +13,7 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vk_mem_alloc.h>
+#include "DeletionQueue.hpp"
 
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
@@ -26,6 +27,16 @@
         }                                                               \
     } while (0)
 
+struct FrameData
+{
+    VkSemaphore _swapchainSemaphore;
+    VkSemaphore _renderSemaphore;
+    VkFence _renderFence;
+    VkCommandPool _commandPool;
+    VkCommandBuffer _mainCommandBuffer;
+
+    DeletionQueue _deletionQueue;
+};
 
 struct AllocatedImage
 {
