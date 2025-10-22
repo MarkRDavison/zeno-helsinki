@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -19,7 +20,7 @@
     do {                                                                \
         VkResult err = x;                                               \
         if (err) {                                                      \
-             fmt::print("Detected Vulkan error: {}", string_VkResult(err)); \
+            std::cerr << "Detected Vulkan error: " << string_VkResult(err) << std::endl; \
             abort();                                                    \
         }                                                               \
     } while (0)
