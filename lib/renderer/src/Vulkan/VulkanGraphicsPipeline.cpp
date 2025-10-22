@@ -134,7 +134,6 @@ namespace hl
 		auto vertShaderCode = readFile(vertexPath);
 		auto fragShaderCode = readFile(fragmentPath);
 
-
         auto vertexSpirv = readParseCompileShader(vertShaderCode, EShLangVertex);
         auto fragmentSpirv = readParseCompileShader(fragShaderCode, EShLangFragment);
 
