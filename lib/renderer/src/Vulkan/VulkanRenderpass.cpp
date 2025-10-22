@@ -16,7 +16,7 @@ namespace hl
 
 	}
 
-	void VulkanRenderpass::create()
+	void VulkanRenderpass::createBasicRenderpass()
 	{
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = _swapChain._swapChainImageFormat;

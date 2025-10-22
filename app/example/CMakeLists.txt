@@ -5,8 +5,15 @@ SET(MODULE_LIBS
 	"helsinki-example${LIB_EXTENSION_SHARED}"
 )
 
-FILE(GLOB_RECURSE CPP_FILES "*.cpp")
+SET(MODULE_LIBS_POST
+	"helsinki-system${LIB_EXTENSION_SHARED}"
+	"helsinki-renderer${LIB_EXTENSION_SHARED}"
+	"helsinki-engine${LIB_EXTENSION_SHARED}"
+	"helsinki-example${LIB_EXTENSION_SHARED}"
+	vk-bootstrap::vk-bootstrap
+)
 
 CONFIGURE_FILE( ExampleConfig.hpp.in "${CMAKE_CURRENT_LIST_DIR}/ExampleConfig.hpp")
 
-helsinkiApplication("HelsinkiExample" "${CPP_FILES}" "${MODULE_LIBS}")
+helsinkiApplication("HelsinkiExample" "example.cpp" "${MODULE_LIBS}")
+helsinkiApplication("PostProcessingExample" "PostProcessing.cpp" "${MODULE_LIBS_POST}")

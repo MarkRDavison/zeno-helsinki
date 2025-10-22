@@ -128,7 +128,7 @@ private:
         _surface.create(window);
         _device.create();
         _swapChain.create();
-        _renderpass.create();
+        _renderpass.createBasicRenderpass();
         _swapChain.createFramebuffers(_renderpass);
         // TODO: Need to read this in from shader adjacent files?
         _descriptorSetLayout.create({

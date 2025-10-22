@@ -94,3 +94,10 @@ FetchContent_Declare(
     GIT_TAG v2.0.0rc13)
     
 FetchContent_MakeAvailable(tinyobjloader)
+
+FetchContent_Declare(
+    vk-bootstrap
+    GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap.git
+    GIT_TAG v1.4.329)
+    
+FetchContent_MakeAvailable(vk-bootstrap)
