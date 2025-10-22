@@ -1,4 +1,5 @@
 #include "PostProcess/vk_types.hpp"
+#include "PostProcess/vkinit.hpp"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -28,6 +29,15 @@
 #define ROOT_PATH(x) (std::string(ex::ExampleConfig::RootPath) + std::string(x))
 
 constexpr bool bUseValidationLayers = true;
+
+constexpr unsigned int FRAME_OVERLAP = 2;
+
+struct FrameData
+{
+
+    VkCommandPool _commandPool;
+    VkCommandBuffer _mainCommandBuffer;
+};
 
 class PostProcessingExampleApplication
 {
@@ -128,6 +138,9 @@ public:
         // Get the VkDevice handle used in the rest of a vulkan application
         _device = vkbDevice.device;
         _chosenGPU = physicalDevice.physical_device;
+
+        _graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
+        _graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
     }
 
     void init_swapchain()
@@ -137,7 +150,17 @@ public:
 
     void init_commands()
     {
+        VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(_graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
+        for (int i = 0; i < FRAME_OVERLAP; i++)
+        {
+            VK_CHECK(vkCreateCommandPool(_device, &commandPoolInfo, nullptr, &_frames[i]._commandPool));
+
+            // allocate the default command buffer that we will use for rendering
+            VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(_frames[i]._commandPool, 1);
+
+            VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &_frames[i]._mainCommandBuffer));
+        }
     }
 
     void init_sync_structures()
@@ -166,6 +189,13 @@ public:
 
         if (_isInitialized)
         {
+            vkDeviceWaitIdle(_device);
+
+            for (int i = 0; i < FRAME_OVERLAP; i++)
+            {
+                vkDestroyCommandPool(_device, _frames[i]._commandPool, nullptr);
+            }
+
             destroy_swapchain();
 
             vkDestroySurfaceKHR(_instance, _surface, nullptr);
@@ -237,6 +267,14 @@ private:
     std::vector<VkImage> _swapchainImages;
     std::vector<VkImageView> _swapchainImageViews;
     VkExtent2D _swapchainExtent;
+
+
+    FrameData _frames[FRAME_OVERLAP];
+
+    FrameData& get_current_frame() { return _frames[_frameNumber % FRAME_OVERLAP]; };
+
+    VkQueue _graphicsQueue;
+    uint32_t _graphicsQueueFamily;
 };
 
 int main()
