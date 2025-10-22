@@ -57,6 +57,13 @@ public:
 
     void destroy_swapchain();
 
+    void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+
+private:
+
+    void init_imgui();
+    void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
+
 private:
     GLFWwindow* window{ nullptr };
     bool framebufferResized = false;
