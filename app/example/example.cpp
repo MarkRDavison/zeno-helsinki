@@ -28,11 +28,9 @@
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSet.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanGraphicsPipeline.hpp>
-#include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSynchronisationContext.hpp>
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
+#include <helsinki/Renderer/TempModel.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 
 #include <chrono>
 
@@ -60,17 +58,16 @@ public:
         _instance(),
         _surface(_instance),
         _device(_instance, _surface),
-        _texture(_device),
         _swapChain(_device, _surface),
         _renderpass(_device, _swapChain),
         _commandPool(_device),
+        _oneTimeCommandPool(_device),
         _descriptorSetLayout(_device),
         _descriptorPool(_device),
-        _vertexBuffer(_device),
-        _indexBuffer(_device),
         _descriptorSet(_device),
         _graphicsPipeline(_device),
-        _syncContext(_device)
+        _syncContext(_device),
+        _model(_device)
     {
 
     }
@@ -92,14 +89,13 @@ private:
     hl::VulkanSwapChain _swapChain;
     hl::VulkanRenderpass _renderpass;
     hl::VulkanCommandPool _commandPool;
-    hl::VulkanTexture _texture;
+    hl::VulkanCommandPool _oneTimeCommandPool;
     hl::VulkanDescriptorSetLayout _descriptorSetLayout;
     hl::VulkanDescriptorPool _descriptorPool;
     hl::VulkanDescriptorSet _descriptorSet;
     hl::VulkanGraphicsPipeline _graphicsPipeline;
 
-    hl::VulkanBuffer _vertexBuffer;
-    hl::VulkanBuffer _indexBuffer;
+    hl::TempModel _model;
 
     hl::VulkanSynchronisationContext _syncContext;
 
@@ -107,8 +103,6 @@ private:
 
     std::vector<VkCommandBuffer> commandBuffers;
     uint32_t currentFrame = 0;
-
-    uint32_t indexCount = 0;
 
     bool framebufferResized = false;
 
@@ -164,9 +158,10 @@ private:
             _renderpass,
             _descriptorSetLayout);
         _commandPool.create();
-        _texture.create(_commandPool, TEXTURE_PATH);
+        _oneTimeCommandPool.create();
         
-        createModelBuffers();
+        // TODO: Replace with single time command pool
+        _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
         createUniformBuffers();
         createDescriptorSets();
         createCommandBuffers();
@@ -200,12 +195,11 @@ private:
         _descriptorPool.destroy();
         _descriptorSetLayout.destroy();
 
-        _texture.destroy();
+        _model.destroy();
 
-        _indexBuffer.destroy();
-        _vertexBuffer.destroy();
         _syncContext.destroy();
         _commandPool.destroy();
+        _oneTimeCommandPool.destroy();
         _device.destroy();
         _surface.destroy();
         _instance.destroy();
@@ -233,113 +227,6 @@ private:
         _swapChain.createFramebuffers(_renderpass);
     }
 
-    std::pair<std::vector<hl::Vertex>, std::vector<uint32_t>> loadModel()
-    {
-        std::vector<hl::Vertex> vertices;
-        std::vector<uint32_t> indices;
-
-        tinyobj::attrib_t attrib;
-        std::vector<tinyobj::shape_t> shapes;
-        std::vector<tinyobj::material_t> materials;
-        std::string err;
-        std::string warn;
-
-        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str()))
-        {
-            throw std::runtime_error(err);
-        }
-
-        std::unordered_map<hl::Vertex, uint32_t> uniqueVertices{};
-
-        for (const auto& shape : shapes)
-        {
-            for (const auto& index : shape.mesh.indices)
-            {
-                hl::Vertex vertex{};
-
-                vertex.pos = {
-                    attrib.vertices[3 * index.vertex_index + 0],
-                    attrib.vertices[3 * index.vertex_index + 1],
-                    attrib.vertices[3 * index.vertex_index + 2]
-                };
-
-                vertex.texCoord = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-                };
-
-                vertex.color = { 1.0f, 1.0f, 1.0f };
-
-                if (uniqueVertices.count(vertex) == 0)
-                {
-                    uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-                    vertices.push_back(vertex);
-                }
-
-                indices.push_back(uniqueVertices[vertex]);
-            }
-        }
-
-        return { vertices, indices };
-    }
-
-    void createModelBuffers()
-    {
-        auto [vertices, indices] = loadModel();
-
-        indexCount =(uint32_t) indices.size();
-
-        {
-            VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-            hl::VulkanBuffer stagingBuffer(_device);
-            stagingBuffer.create(
-                bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-            stagingBuffer.mapMemory(
-                vertices.data());
-
-            _vertexBuffer.create(
-                bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-            stagingBuffer.copyToBuffer(
-                _commandPool,
-                bufferSize,
-                _vertexBuffer);
-
-            stagingBuffer.destroy();
-        }
-        {
-            VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-            hl::VulkanBuffer stagingBuffer(_device);
-
-            stagingBuffer.create(
-                bufferSize, 
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-            stagingBuffer.mapMemory(
-                indices.data());
-
-            _indexBuffer.create(
-                bufferSize, 
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-            stagingBuffer.copyToBuffer(
-                _commandPool,
-                bufferSize,
-                _indexBuffer);
-
-            stagingBuffer.destroy();
-        }
-    }
-
     void createUniformBuffers()
     {
         VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -360,7 +247,7 @@ private:
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
-            _descriptorSet.update(i, _uniformBuffers[i], _texture);
+            _descriptorSet.update(i, _uniformBuffers[i], _model._texture);
         }
     }
 
@@ -422,15 +309,10 @@ private:
         scissor.extent = _swapChain._swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = { _vertexBuffer._buffer };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-        vkCmdBindIndexBuffer(commandBuffer, _indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT32);
-
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline._pipelineLayout._pipelineLayout, 0, 1, &_descriptorSet._descriptorSets[currentFrame], 0, nullptr);
-
-        vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+        _model.draw(
+            commandBuffer,
+            _graphicsPipeline,
+            _descriptorSet._descriptorSets[currentFrame]);
 
         vkCmdEndRenderPass(commandBuffer);
 
