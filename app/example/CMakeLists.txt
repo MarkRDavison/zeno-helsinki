@@ -20,7 +20,7 @@ helsinkiApplication("HelsinkiExample" "example.cpp" "${MODULE_LIBS}")
 
 
 SET(AppMain "PostProcessingExample" )
-ADD_EXECUTABLE(${AppMain} "PostProcessing.cpp")
+ADD_EXECUTABLE(${AppMain} "PostProcessing.cpp" "PostProcess/vk_descriptors.cpp" "PostProcess/vkInit.cpp" "PostProcess/vk_pipelines.cpp")
 SET_PROPERTY(TARGET ${AppMain} PROPERTY CXX_STANDARD ${HELSINKI_CXX_STANDARD})
 SET_PROPERTY(TARGET ${AppMain} PROPERTY CXX_STANDARD_REQUIRED ON)
 	
