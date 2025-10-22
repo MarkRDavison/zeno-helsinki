@@ -108,5 +108,12 @@ FetchContent_Declare(
     GIT_TAG v3.3.0)
     
 FetchContent_MakeAvailable(GPUOpen)
-
-
+    
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.5)
+    
+FetchContent_MakeAvailable(imgui)
+add_library(imgui INTERFACE)
+target_include_directories(imgui INTERFACE ${imgui_SOURCE_DIR})

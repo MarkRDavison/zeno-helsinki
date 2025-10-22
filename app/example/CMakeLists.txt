@@ -12,6 +12,7 @@ SET(MODULE_LIBS_POST
 	"helsinki-example${LIB_EXTENSION_SHARED}"
 	vk-bootstrap::vk-bootstrap
 	GPUOpen::VulkanMemoryAllocator
+	imgui
 )
 
 CONFIGURE_FILE( ExampleConfig.hpp.in "${CMAKE_CURRENT_LIST_DIR}/ExampleConfig.hpp")
@@ -26,7 +27,14 @@ ADD_EXECUTABLE(${AppMain}
 	"PostProcess/vkInit.cpp" 
 	"PostProcess/vk_images.cpp"
 	"PostProcess/vk_pipelines.cpp"
-	"PostProcess/VulkanEngine.cpp")
+	"PostProcess/VulkanEngine.cpp"
+	"${imgui_SOURCE_DIR}/imgui.cpp"
+	"${imgui_SOURCE_DIR}/imgui_draw.cpp"
+    "${imgui_SOURCE_DIR}/imgui_demo.cpp"
+    "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+    "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+	"${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+	"${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp")
 SET_PROPERTY(TARGET ${AppMain} PROPERTY CXX_STANDARD ${HELSINKI_CXX_STANDARD})
 SET_PROPERTY(TARGET ${AppMain} PROPERTY CXX_STANDARD_REQUIRED ON)
 	
