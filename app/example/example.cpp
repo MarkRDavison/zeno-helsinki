@@ -29,6 +29,8 @@
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSet.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanGraphicsPipeline.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanFence.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanSemaphore.hpp>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
@@ -100,11 +102,11 @@ private:
     hl::VulkanBuffer _indexBuffer;
 
     std::vector<hl::VulkanUniformBuffer> _uniformBuffers;
+    std::vector<hl::VulkanFence> _fences;
+    std::vector<hl::VulkanSemaphore> _imageAvailableSemaphores;
+    std::vector<hl::VulkanSemaphore> _renderFinishedSemaphores;
 
     std::vector<VkCommandBuffer> commandBuffers;
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
-    std::vector<VkFence> inFlightFences;
     uint32_t currentFrame = 0;
 
     uint32_t indexCount = 0;
@@ -207,10 +209,13 @@ private:
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
-            vkDestroySemaphore(_device._device, renderFinishedSemaphores[i], nullptr);
-            vkDestroySemaphore(_device._device, imageAvailableSemaphores[i], nullptr);
-            vkDestroyFence(_device._device, inFlightFences[i], nullptr);
+            _renderFinishedSemaphores[i].destroy();
+            _imageAvailableSemaphores[i].destroy();
+            _fences[i].destroy();
         }
+
+        // TODO: Fence set??? or maybe a generic std::array<VulkanXXXXX, MAX_FRAMES_IN_FLIGHT> ???
+        _fences.clear();
 
         _commandPool.destroy();
         _device.destroy();
@@ -449,29 +454,20 @@ private:
 
     void createSyncObjects()
     {
-        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
-            if (vkCreateSemaphore(_device._device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-                vkCreateSemaphore(_device._device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-                vkCreateFence(_device._device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
-            {
-                throw std::runtime_error("failed to create synchronization objects for a frame!");
-            }
+            _imageAvailableSemaphores.emplace_back(_device);
+            _imageAvailableSemaphores.back().create();
+
+            _renderFinishedSemaphores.emplace_back(_device);
+            _renderFinishedSemaphores.back().create();
+
+            _fences.emplace_back(_device);
+            _fences.back().create();
         }
     }
 
-    void updateUniformBuffer(uint32_t currentImage)
+    void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
     {
         static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -484,15 +480,21 @@ private:
         ubo.proj = glm::perspective(glm::radians(45.0f), _swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
 
-        _uniformBuffers[currentImage].writeToBuffer(&ubo);
+        uniformBuffer.writeToBuffer(&ubo);
     }
 
     void drawFrame()
     {
-        vkWaitForFences(_device._device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+        _fences[currentFrame].wait();
 
         uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(_device._device, _swapChain._swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+        VkResult result = vkAcquireNextImageKHR(
+            _device._device, 
+            _swapChain._swapChain, 
+            UINT64_MAX, 
+            _imageAvailableSemaphores[currentFrame]._semaphore, 
+            VK_NULL_HANDLE, 
+            &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
@@ -504,9 +506,9 @@ private:
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        updateUniformBuffer(currentFrame);
+        updateUniformBuffer(_uniformBuffers[currentFrame]);
 
-        vkResetFences(_device._device, 1, &inFlightFences[currentFrame]);
+        _fences[currentFrame].reset();
 
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -514,7 +516,7 @@ private:
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+        VkSemaphore waitSemaphores[] = { _imageAvailableSemaphores[currentFrame]._semaphore };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
@@ -523,11 +525,11 @@ private:
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
 
-        VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+        VkSemaphore signalSemaphores[] = { _renderFinishedSemaphores[currentFrame]._semaphore };
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        if (vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+        if (vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, _fences[currentFrame]._fence) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
