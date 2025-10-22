@@ -113,7 +113,7 @@ namespace hl
         program.addShader(&shader);
         if (!program.link(EShMsgDefault))
         {
-            printf("GLSL link failed:\n%s\n", program.getInfoLog());
+            std::cerr << "GLSL link failed: " << program.getInfoLog() << std::endl;
             return {};
         }
 
