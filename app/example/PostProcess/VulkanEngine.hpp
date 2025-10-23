@@ -61,11 +61,14 @@ public:
 
     void init_commands();
 
+    void init_triangle_pipeline();
+
     void init_sync_structures();
 
     void mainLoop();
 
     void draw_background(VkCommandBuffer cmd);
+    void draw_geometry(VkCommandBuffer cmd);
 
 
     void drawFrame();
@@ -134,5 +137,7 @@ private:
 
     std::vector<ComputeEffect> backgroundEffects;
     int currentBackgroundEffect{ 0 };
+    VkPipelineLayout _trianglePipelineLayout;
+    VkPipeline _trianglePipeline;
 
 };
