@@ -9,15 +9,17 @@ namespace hl
 	{
 	public:
 		VulkanRenderpass(
-			VulkanDevice& device,
-			VulkanSwapChain& swapChain);
+			VulkanDevice& device);
 
-		void createBasicRenderpass(bool multiSample);
+		void createBasicRenderpass(bool multiSample, VkFormat imageFormat);
+		void createBasicRenderpassWithFollowingRenderpass(bool multiSample, VkFormat imageFormat);
 		void destroy();
+
+	private:
+		void createBasicRenderpassInternal(bool multiSample, bool writeToSwapchain, VkFormat imageFormat);
 
 	public: // private: TODO: PRIVATE
 		VulkanDevice& _device;
-		VulkanSwapChain& _swapChain;
-		VkRenderPass _renderPass;
+		VkRenderPass _renderPass{ VK_NULL_HANDLE };
 	};
 }

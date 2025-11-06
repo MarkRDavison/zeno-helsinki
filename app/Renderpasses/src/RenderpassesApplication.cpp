@@ -1,6 +1,8 @@
 #include <RenderpassesApplication.hpp>
 #include <stdexcept>
 
+#include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
+
 #include <vulkan/vulkan.h>
 
 #define GLFW_INCLUDE_VULKAN
@@ -36,13 +38,9 @@ namespace rp
         _surface(_instance),
         _device(_instance, _surface),
         _swapChain(_device, _surface),
-        _renderpass(_device, _swapChain),
+        _renderpassResources(_device),
         _commandPool(_device),
         _oneTimeCommandPool(_device),
-        _descriptorSetLayout(_device),
-        _descriptorPool(_device),
-        _descriptorSet(_device),
-        _graphicsPipeline(_device),
         _syncContext(_device),
         _model(_device)
     {
@@ -73,17 +71,12 @@ namespace rp
     {
         _swapChain.destroy();
 
-        _graphicsPipeline.destroy();
-
-        _renderpass.destroy();
+        _renderpassResources.destroy();
 
         for (size_t i = 0; i < _uniformBuffers.size(); i++)
         {
             _uniformBuffers[i].destroy();
         }
-
-        _descriptorPool.destroy();
-        _descriptorSetLayout.destroy();
 
         _model.destroy();
 
@@ -189,35 +182,28 @@ namespace rp
         _surface.create(_window);
         _device.create();
         _swapChain.create(_useMultiSampling);
-        _renderpass.createBasicRenderpass(_useMultiSampling);
-        _swapChain.createFramebuffers(_renderpass, _useMultiSampling);
-        // TODO: Need to read this in from shader adjacent files?
-        _descriptorSetLayout.create({
-            VkDescriptorSetLayoutBinding
-            {
-                .binding = 0,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .descriptorCount = 1,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .pImmutableSamplers = nullptr
-            },
-            VkDescriptorSetLayoutBinding
-            {
-                .binding = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .descriptorCount = 1,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .pImmutableSamplers = nullptr
-            }
-            });
-        _descriptorPool.create();
 
-        _graphicsPipeline.create(
-            std::string(ROOT_PATH("/data/shaders/triangle.vert")),
-            std::string(ROOT_PATH("/data/shaders/triangle.frag")),
-            _renderpass,
-            _descriptorSetLayout,
-            _useMultiSampling);
+        /*
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            _offscreenImages.emplace_back(_device);
+            _offscreenImages[i].create(
+                _swapChain._swapChainExtent.width,
+                _swapChain._swapChainExtent.height,
+                1,
+                _useMultiSampling ? _device._msaaSamples : VK_SAMPLE_COUNT_1_BIT,
+                _swapChain._swapChainImageFormat,
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            _offscreenImages[i].createImageView(
+                _swapChain._swapChainImageFormat,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                1);
+        }
+        */
+
+        _renderpassResources.create(_swapChain, _useMultiSampling);
 
         _commandPool.create();
         _oneTimeCommandPool.create();
@@ -225,9 +211,14 @@ namespace rp
         // TODO: Replace with single time command pool
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
         createUniformBuffers();
-        createDescriptorSets();
         createCommandBuffers();
         _syncContext.create();
+
+        // TODO: Update if needed???
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {            
+            _renderpassResources._descriptorSet.update(i, _uniformBuffers[i], _model._texture);
+        }
     }
 
     void RenderpassesApplication::createUniformBuffers()
@@ -239,18 +230,6 @@ namespace rp
             _uniformBuffers.emplace_back(_device);
 
             _uniformBuffers.back().create(bufferSize, sizeof(UniformBufferObject));
-        }
-    }
-
-    void RenderpassesApplication::createDescriptorSets()
-    {
-        _descriptorSet.create(_descriptorPool, _descriptorSetLayout);
-
-        // SEPARATE creating them and updating them
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            _descriptorSet.update(i, _uniformBuffers[i], _model._texture);
         }
     }
 
@@ -283,10 +262,7 @@ namespace rp
 
         _device.waitIdle();
 
-        _swapChain.destroy();
-        _swapChain.create(_useMultiSampling);
-
-        _swapChain.createFramebuffers(_renderpass, _useMultiSampling);
+        _renderpassResources.recreate(VkExtent2D{.width = (uint32_t)width, .height = (uint32_t)height}); // TODO: Move this to within?
     }
 
     void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
@@ -301,74 +277,34 @@ namespace rp
 
     void RenderpassesApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        _renderpassResources.recordCommandBuffer(
+            commandBuffer, 
+            imageIndex, 
+            [&]() -> void 
+            {
+                {
+                    static auto startTime = std::chrono::high_resolution_clock::now();
 
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to begin recording command buffer!");
-        }
+                    auto currentTime = std::chrono::high_resolution_clock::now();
+                    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = _renderpass._renderPass;
-        renderPassInfo.framebuffer = _swapChain._swapChainFramebuffers[imageIndex]._framebuffer;
-        renderPassInfo.renderArea.offset = { 0, 0 };
-        renderPassInfo.renderArea.extent = _swapChain._swapChainExtent;
+                    auto model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-        std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-        clearValues[1].depthStencil = { 1.0f, 0 };
+                    vkCmdPushConstants(
+                        commandBuffer,
+                        _renderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(glm::mat4),
+                        &model
+                    );
+                }
 
-        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-        renderPassInfo.pClearValues = clearValues.data();
+                _model.draw(
+                    commandBuffer,
+                    _renderpassResources._graphicsPipeline,
+                    _renderpassResources._descriptorSet._descriptorSets[currentFrame]);
+            });
 
-        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline._graphicsPipeline);
-
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = (float)_swapChain._swapChainExtent.width;
-        viewport.height = (float)_swapChain._swapChainExtent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor{};
-        scissor.offset = { 0, 0 };
-        scissor.extent = _swapChain._swapChainExtent;
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        {
-            static auto startTime = std::chrono::high_resolution_clock::now();
-
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-            auto model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-            vkCmdPushConstants(
-                commandBuffer,
-                _graphicsPipeline._pipelineLayout._pipelineLayout,
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0,
-                sizeof(glm::mat4),
-                &model
-            );
-        }
-
-        _model.draw(
-            commandBuffer,
-            _graphicsPipeline,
-            _descriptorSet._descriptorSets[currentFrame]);
-
-        vkCmdEndRenderPass(commandBuffer);
-
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to record command buffer!");
-        }
     }
 }

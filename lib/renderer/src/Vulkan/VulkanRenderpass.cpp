@@ -7,30 +7,39 @@
 namespace hl
 {
 	VulkanRenderpass::VulkanRenderpass(
-		VulkanDevice& device,
-		VulkanSwapChain& swapChain
+		VulkanDevice& device
 	) : 
-		_device(device),
-		_swapChain(swapChain)
+		_device(device)
 	{
 
 	}
-
-	void VulkanRenderpass::createBasicRenderpass(bool multiSample)
+	void VulkanRenderpass::createBasicRenderpass(bool multiSample, VkFormat imageFormat)
 	{
+        createBasicRenderpassInternal(multiSample, true, imageFormat);
+	}
+
+    void VulkanRenderpass::createBasicRenderpassWithFollowingRenderpass(bool multiSample, VkFormat imageFormat)
+    {
+        createBasicRenderpassInternal(multiSample, false, imageFormat);
+    }
+
+    void VulkanRenderpass::createBasicRenderpassInternal(bool multiSample, bool writeToSwapchain, VkFormat imageFormat)
+    {
         VkAttachmentDescription colorAttachment{};
-        colorAttachment.format = _swapChain._swapChainImageFormat;
-        colorAttachment.samples = multiSample 
-            ? _device._msaaSamples 
+        colorAttachment.format = imageFormat;
+        colorAttachment.samples = multiSample
+            ? _device._msaaSamples
             : VK_SAMPLE_COUNT_1_BIT;
         colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = multiSample 
-            ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL 
-            : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        colorAttachment.finalLayout = multiSample
+            ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            : (writeToSwapchain 
+                ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR 
+                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         VkAttachmentDescription depthAttachment{};
         depthAttachment.format = hl::VulkanSwapChain::findDepthFormat(_device._physicalDevice);
@@ -45,14 +54,16 @@ namespace hl
         depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
         VkAttachmentDescription colorAttachmentResolve{};
-        colorAttachmentResolve.format = _swapChain._swapChainImageFormat;
+        colorAttachmentResolve.format = imageFormat;
         colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
         colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        colorAttachmentResolve.finalLayout = writeToSwapchain
+            ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+            : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkAttachmentReference colorAttachmentRef{};
         colorAttachmentRef.attachment = 0;
@@ -111,7 +122,7 @@ namespace hl
         {
             throw std::runtime_error("failed to create render pass!");
         }
-	}
+    }
 
 	void VulkanRenderpass::destroy()
 	{
