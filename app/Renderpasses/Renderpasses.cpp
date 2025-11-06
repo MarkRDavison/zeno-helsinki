@@ -1,0 +1,29 @@
+#include <string>
+#include <iostream>
+
+#include "RenderpassesConfig.hpp"
+
+#include <RenderpassesApplication.hpp>
+
+#define ROOT_PATH(x) (std::string(ex::ExampleConfig::RootPath) + std::string(x))
+
+constexpr uint32_t WIDTH = 800;
+constexpr uint32_t HEIGHT = 600; 
+
+int main()
+{
+    rp::RenderpassesApplication app;
+
+    try
+    {
+        app.init(WIDTH, HEIGHT, "Vulkan Helsinki Renderpasses");
+        app.run();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}

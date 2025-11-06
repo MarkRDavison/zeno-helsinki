@@ -20,3 +20,4 @@ FUNCTION(helsinkiApplication AppMain CPP_NAME MODULE_LIBS)
 ENDFUNCTION()
 
 ADD_SUBDIRECTORY(example)
+ADD_SUBDIRECTORY(Renderpasses)
