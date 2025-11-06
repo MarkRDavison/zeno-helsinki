@@ -17,6 +17,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanSynchronisationContext.hpp>
 #include <helsinki/Renderer/TempModel.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 
 struct GLFWwindow;
 
@@ -39,7 +40,6 @@ namespace rp
 		void initWindow(uint32_t width, uint32_t height, const char* title);
 		void initVulkan(const char* title);
 		void createUniformBuffers();
-		void createDescriptorSets();
 		void createCommandBuffers();
 		void recreateSwapChain();
 		void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
@@ -53,17 +53,15 @@ namespace rp
 		hl::VulkanCommandPool _commandPool;
 		hl::VulkanCommandPool _oneTimeCommandPool;
 		hl::VulkanSwapChain _swapChain;
-		hl::VulkanRenderpass _renderpass;
-		hl::VulkanDescriptorSetLayout _descriptorSetLayout;
-		hl::VulkanDescriptorPool _descriptorPool;
-		hl::VulkanDescriptorSet _descriptorSet;
-		hl::VulkanGraphicsPipeline _graphicsPipeline;
+
+		hl::VulkanRenderpassResources _renderpassResources;
 
 		hl::TempModel _model;
 
 		hl::VulkanSynchronisationContext _syncContext;
 
 		std::vector<hl::VulkanUniformBuffer> _uniformBuffers;
+		std::vector<hl::VulkanImage> _offscreenImages;
 
 		std::vector<VkCommandBuffer> commandBuffers;
 

@@ -109,8 +109,8 @@ namespace hl
                     _swapChainExtent.height,
                     1,
                     multiSampling
-                    ? _device._msaaSamples
-                    : VK_SAMPLE_COUNT_1_BIT,
+                        ? _device._msaaSamples
+                        : VK_SAMPLE_COUNT_1_BIT,
                     _swapChainImageFormat,
                     VK_IMAGE_TILING_OPTIMAL,
                     VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,

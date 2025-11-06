@@ -58,7 +58,7 @@ public:
         _surface(_instance),
         _device(_instance, _surface),
         _swapChain(_device, _surface),
-        _renderpass(_device, _swapChain),
+        _renderpass(_device),
         _commandPool(_device),
         _oneTimeCommandPool(_device),
         _descriptorSetLayout(_device),
@@ -128,7 +128,7 @@ private:
         _surface.create(window);
         _device.create();
         _swapChain.create(true);
-        _renderpass.createBasicRenderpass(true);
+        _renderpass.createBasicRenderpass(true, _swapChain._swapChainImageFormat);
         _swapChain.createFramebuffers(_renderpass, true);
         // TODO: Need to read this in from shader adjacent files?
         _descriptorSetLayout.create({
