@@ -18,10 +18,10 @@ namespace hl
 			VulkanDevice& device,
 			VulkanSurface& surface
 		);
-		void create();
+		void create(bool multiSampling);
 		void destroy();
 
-		void createFramebuffers(VulkanRenderpass& renderpass);
+		void createFramebuffers(VulkanRenderpass& renderpass, bool multiSampling);
 
 		static VulkanSwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice p, VkSurfaceKHR s);
 		static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);

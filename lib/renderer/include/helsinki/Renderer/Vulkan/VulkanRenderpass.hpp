@@ -12,7 +12,7 @@ namespace hl
 			VulkanDevice& device,
 			VulkanSwapChain& swapChain);
 
-		void createBasicRenderpass();
+		void createBasicRenderpass(bool multiSample);
 		void destroy();
 
 	public: // private: TODO: PRIVATE

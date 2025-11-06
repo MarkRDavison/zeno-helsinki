@@ -19,7 +19,7 @@ namespace hl
 
     }
 
-    void VulkanSwapChain::create()
+    void VulkanSwapChain::create(bool multiSampling)
     {
         {
             auto swapChainSupport = hl::VulkanSwapChain::querySwapChainSupport(_device._physicalDevice, _surface._surface);
@@ -102,22 +102,26 @@ namespace hl
 
         {
 
-            _colorImage.create(
-                _swapChainExtent.width,
-                _swapChainExtent.height,
-                1,
-                _device._msaaSamples,
-                _swapChainImageFormat,
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-            );
+            if (multiSampling)
+            {
+                _colorImage.create(
+                    _swapChainExtent.width,
+                    _swapChainExtent.height,
+                    1,
+                    multiSampling
+                    ? _device._msaaSamples
+                    : VK_SAMPLE_COUNT_1_BIT,
+                    _swapChainImageFormat,
+                    VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                );
 
-            _colorImage.createImageView(
-                _swapChainImageFormat,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                1);
-
+                _colorImage.createImageView(
+                    _swapChainImageFormat,
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    1);
+            }
 
             VkFormat depthFormat = findDepthFormat(_device._physicalDevice);
 
@@ -125,7 +129,9 @@ namespace hl
                 _swapChainExtent.width,
                 _swapChainExtent.height,
                 1,
-                _device._msaaSamples,
+                multiSampling
+                    ? _device._msaaSamples
+                    : VK_SAMPLE_COUNT_1_BIT,
                 depthFormat,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -156,7 +162,7 @@ namespace hl
         vkDestroySwapchainKHR(_device._device, _swapChain, nullptr);
     }
 
-    void VulkanSwapChain::createFramebuffers(VulkanRenderpass& renderpass)
+    void VulkanSwapChain::createFramebuffers(VulkanRenderpass& renderpass, bool multiSampling)
     {
         // TODO: cant resize cos no default constructor
         // _swapChain._swapChainFramebuffers.resize(_swapChain._swapChainImageViews.size());
@@ -165,11 +171,22 @@ namespace hl
         {
             _swapChainFramebuffers.emplace_back(_device);
 
-            std::vector<VkImageView> attachments = {
-                _colorImage._imageView,
-                _depthImage._imageView,
-                _swapChainImageViews[i]
-            };
+            std::vector<VkImageView> attachments;
+            if (multiSampling)
+            {
+                attachments = {
+                    _colorImage._imageView,
+                    _depthImage._imageView,
+                    _swapChainImageViews[i]
+                };
+            }
+            else
+            {
+                attachments = {
+                    _swapChainImageViews[i],
+                    _depthImage._imageView
+                };
+            }
 
             _swapChainFramebuffers[i].create(
                 renderpass,

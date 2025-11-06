@@ -188,9 +188,9 @@ namespace rp
         _instance.create(title);
         _surface.create(_window);
         _device.create();
-        _swapChain.create();
-        _renderpass.createBasicRenderpass();
-        _swapChain.createFramebuffers(_renderpass);
+        _swapChain.create(_useMultiSampling);
+        _renderpass.createBasicRenderpass(_useMultiSampling);
+        _swapChain.createFramebuffers(_renderpass, _useMultiSampling);
         // TODO: Need to read this in from shader adjacent files?
         _descriptorSetLayout.create({
             VkDescriptorSetLayoutBinding
@@ -216,7 +216,9 @@ namespace rp
             std::string(ROOT_PATH("/data/shaders/triangle.vert")),
             std::string(ROOT_PATH("/data/shaders/triangle.frag")),
             _renderpass,
-            _descriptorSetLayout);
+            _descriptorSetLayout,
+            _useMultiSampling);
+
         _commandPool.create();
         _oneTimeCommandPool.create();
 
@@ -282,9 +284,9 @@ namespace rp
         _device.waitIdle();
 
         _swapChain.destroy();
-        _swapChain.create();
+        _swapChain.create(_useMultiSampling);
 
-        _swapChain.createFramebuffers(_renderpass);
+        _swapChain.createFramebuffers(_renderpass, _useMultiSampling);
     }
 
     void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)

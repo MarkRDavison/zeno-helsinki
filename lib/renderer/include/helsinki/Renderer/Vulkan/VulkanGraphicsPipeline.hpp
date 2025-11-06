@@ -16,7 +16,8 @@ namespace hl
 			const std::string& vertexPath, 
 			const std::string& fragmentPath, 
 			VulkanRenderpass& renderpass,
-			VulkanDescriptorSetLayout& descriptorSetLayout);
+			VulkanDescriptorSetLayout& descriptorSetLayout,
+			bool multiSampling);
 		void destroy();
 
 	public: // private: TODO: to private

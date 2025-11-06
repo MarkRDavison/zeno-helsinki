@@ -69,5 +69,6 @@ namespace rp
 
 		uint32_t currentFrame = 0;
 		bool framebufferResized = false;
+		bool _useMultiSampling = true; // TODO: Global (ish) variable for this rather than passing it around?
 	};
 }
