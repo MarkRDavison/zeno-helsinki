@@ -56,5 +56,7 @@ namespace hl
 
 		uint32_t _width;
 		uint32_t _height;
+
+		bool _created{ false };
 	};
 }

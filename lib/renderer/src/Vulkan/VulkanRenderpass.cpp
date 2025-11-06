@@ -16,21 +16,27 @@ namespace hl
 
 	}
 
-	void VulkanRenderpass::createBasicRenderpass()
+	void VulkanRenderpass::createBasicRenderpass(bool multiSample)
 	{
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = _swapChain._swapChainImageFormat;
-        colorAttachment.samples = _device._msaaSamples;
+        colorAttachment.samples = multiSample 
+            ? _device._msaaSamples 
+            : VK_SAMPLE_COUNT_1_BIT;
         colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttachment.finalLayout = multiSample 
+            ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL 
+            : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         VkAttachmentDescription depthAttachment{};
         depthAttachment.format = hl::VulkanSwapChain::findDepthFormat(_device._physicalDevice);
-        depthAttachment.samples = _device._msaaSamples;
+        depthAttachment.samples = multiSample
+            ? _device._msaaSamples
+            : VK_SAMPLE_COUNT_1_BIT;
         depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -65,7 +71,14 @@ namespace hl
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
         subpass.pDepthStencilAttachment = &depthAttachmentRef;
-        subpass.pResolveAttachments = &colorAttachmentResolveRef;
+        if (multiSample)
+        {
+            subpass.pResolveAttachments = &colorAttachmentResolveRef;
+        }
+        else
+        {
+            subpass.pResolveAttachments = nullptr;
+        }
 
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -75,7 +88,16 @@ namespace hl
         dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-        std::array<VkAttachmentDescription, 3> attachments = { colorAttachment, depthAttachment, colorAttachmentResolve };
+        std::vector<VkAttachmentDescription> attachments;
+        if (multiSample)
+        {
+            attachments = { colorAttachment, depthAttachment, colorAttachmentResolve };
+        }
+        else
+        {
+            attachments = { colorAttachment, depthAttachment };
+        }
+
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());

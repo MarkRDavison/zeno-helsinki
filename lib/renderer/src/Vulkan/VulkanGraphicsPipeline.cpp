@@ -127,7 +127,8 @@ namespace hl
 		const std::string& vertexPath, 
 		const std::string& fragmentPath,
         VulkanRenderpass& renderpass,
-		VulkanDescriptorSetLayout& descriptorSetLayout)
+		VulkanDescriptorSetLayout& descriptorSetLayout,
+        bool multiSampling)
 	{
         _pipelineLayout.create(descriptorSetLayout);
 
@@ -188,7 +189,9 @@ namespace hl
         VkPipelineMultisampleStateCreateInfo multisampling{};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.sampleShadingEnable = VK_TRUE;
-        multisampling.rasterizationSamples = _device._msaaSamples;
+        multisampling.rasterizationSamples = multiSampling
+            ? _device._msaaSamples
+            : VK_SAMPLE_COUNT_1_BIT;
         multisampling.minSampleShading = .2f; // min fraction for sample shading; closer to one is smoother
 
         VkPipelineDepthStencilStateCreateInfo depthStencil{};

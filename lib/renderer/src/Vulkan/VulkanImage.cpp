@@ -62,6 +62,8 @@ namespace hl
         }
 
         vkBindImageMemory(_device._device, _image, _imageMemory, 0);
+
+        _created = true;
     }
 
     // TODO: Make private?
@@ -89,16 +91,19 @@ namespace hl
 
     void VulkanImage::destroy()
     {
-        _width = 0;
-        _height = 0;
-
-        if (_imageView != VK_NULL_HANDLE)
+        if (_created)
         {
-            vkDestroyImageView(_device._device, _imageView, nullptr);
-        }
+            _width = 0;
+            _height = 0;
 
-        vkDestroyImage(_device._device, _image, nullptr);
-        vkFreeMemory(_device._device, _imageMemory, nullptr);
+            if (_imageView != VK_NULL_HANDLE)
+            {
+                vkDestroyImageView(_device._device, _imageView, nullptr);
+            }
+
+            vkDestroyImage(_device._device, _image, nullptr);
+            vkFreeMemory(_device._device, _imageMemory, nullptr);
+        }
     }
 
     void VulkanImage::generateMipmaps(
