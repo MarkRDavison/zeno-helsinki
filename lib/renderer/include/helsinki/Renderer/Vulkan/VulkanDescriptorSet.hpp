@@ -17,6 +17,8 @@ namespace hl
 
 		void update(size_t index, VulkanUniformBuffer& uniform, VulkanTexture& texture);
 
+		void updatePostProcess(size_t index, VulkanImage& offscreenImage, VkSampler& offscreenSampler);
+
 	public: // private: TODO: To private
 		VulkanDevice& _device;
 		std::vector<VkDescriptorSet> _descriptorSets;
