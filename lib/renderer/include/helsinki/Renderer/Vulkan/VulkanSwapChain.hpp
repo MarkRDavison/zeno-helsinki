@@ -18,10 +18,8 @@ namespace hl
 			VulkanDevice& device,
 			VulkanSurface& surface
 		);
-		void create(bool multiSampling);
+		void create();
 		void destroy();
-
-		void createFramebuffers(VulkanRenderpass& renderpass, bool multiSampling);
 
 		static VulkanSwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice p, VkSurfaceKHR s);
 		static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
@@ -35,15 +33,11 @@ namespace hl
 		VulkanDevice& _device;
 		VulkanSurface& _surface;
 
-		VulkanImage _colorImage;
-		VulkanImage _depthImage;
-
 		VkSwapchainKHR _swapChain;
 		std::vector<VkImage> _swapChainImages;
 		VkFormat _swapChainImageFormat;
 		VkExtent2D _swapChainExtent;
 		std::vector<VkImageView> _swapChainImageViews;
-		std::vector<VulkanFramebuffer> _swapChainFramebuffers;
 
 	};
 }

@@ -20,6 +20,21 @@ namespace hl
 
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
+		inline void setDebugName(uint64_t handle, VkObjectType type, const char* name)
+		{
+			VkDebugUtilsObjectNameInfoEXT nameInfo{};
+			nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			nameInfo.objectType = type;
+			nameInfo.objectHandle = handle;
+			nameInfo.pObjectName = name;
+
+			auto func = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(_device, "vkSetDebugUtilsObjectNameEXT");
+			if (func)
+			{
+				func(_device, &nameInfo);
+			}
+		}
+
 	private:
 		void pickPhysicalDevice();
 		void createLogicalDevice();

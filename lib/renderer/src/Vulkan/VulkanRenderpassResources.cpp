@@ -84,10 +84,6 @@ namespace hl
 			_descriptorSet.create(_descriptorPool, _descriptorSetLayout);
 
 			// TODO: Update at some point, but baby scene only needs it done once... so we do it in the main.cpp
-			//for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-			//{
-			//	_descriptorSet.update(i, _uniformBuffers[i], _model._texture);
-			//}
 		}
 
 		// Graphics Pipeline
@@ -170,42 +166,13 @@ namespace hl
 				   .pImmutableSamplers = nullptr
 			   }
 			});
-
-			//_descriptorSetLayout.create({
-			//	VkDescriptorSetLayoutBinding
-			//	{
-			//		.binding = 0,
-			//		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			//		.descriptorCount = 1,
-			//		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-			//		.pImmutableSamplers = nullptr
-			//	},
-			//	VkDescriptorSetLayoutBinding
-			//	{
-			//		.binding = 1,
-			//		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			//		.descriptorCount = 1,
-			//		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-			//		.pImmutableSamplers = nullptr
-			//	}
-			//});
 		}
 
 		// Descriptor Sets
 		{
 			_descriptorSet.create(_descriptorPool, _descriptorSetLayout);
 
-			for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-			{
-				if (multisSampling)
-				{
-					_descriptorSet.updatePostProcess(i, _colorResolveImages[i], _outputSampler);
-				}
-				else
-				{
-					_descriptorSet.updatePostProcess(i, _colorImages[i], _outputSampler);
-				}
-			}
+			// Need to 'update' these, actually for static app need to initialize, but it requires the previous render pass to do so
 		}
 			
 		// Graphics Pipeline
@@ -226,7 +193,7 @@ namespace hl
 		if (_swapChain != nullptr)
 		{
 			_swapChain->destroy();
-			_swapChain->create(_multiSampling);
+			_swapChain->create();
 		}
 
 		{	// Destroy resources
