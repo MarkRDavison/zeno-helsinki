@@ -1,4 +1,4 @@
-#include <RenderpassesApplication.hpp>
+﻿#include <RenderpassesApplication.hpp>
 #include <stdexcept>
 
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
@@ -32,13 +32,14 @@ namespace rp
     }
 
     RenderpassesApplication::RenderpassesApplication(
-        ) :
+    ) :
         _window(nullptr),
         _instance(),
         _surface(_instance),
         _device(_instance, _surface),
         _swapChain(_device, _surface),
-        _renderpassResources(_device),
+        _defaultRenderpassResources(_device),
+        _postProcessRenderpassResources(_device),
         _commandPool(_device),
         _oneTimeCommandPool(_device),
         _syncContext(_device),
@@ -71,7 +72,8 @@ namespace rp
     {
         _swapChain.destroy();
 
-        _renderpassResources.destroy();
+        _defaultRenderpassResources.destroy();
+        _postProcessRenderpassResources.destroy();
 
         for (size_t i = 0; i < _uniformBuffers.size(); i++)
         {
@@ -183,32 +185,22 @@ namespace rp
         _device.create();
         _swapChain.create(_useMultiSampling);
 
-        /*
-        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-        {
-            _offscreenImages.emplace_back(_device);
-            _offscreenImages[i].create(
-                _swapChain._swapChainExtent.width,
-                _swapChain._swapChainExtent.height,
-                1,
-                _useMultiSampling ? _device._msaaSamples : VK_SAMPLE_COUNT_1_BIT,
+        _defaultRenderpassResources
+            .create(
                 _swapChain._swapChainImageFormat,
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-            _offscreenImages[i].createImageView(
-                _swapChain._swapChainImageFormat,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                1);
-        }
-        */
+                _swapChain.findDepthFormat(_device._physicalDevice),
+                _swapChain._swapChainExtent,
+                _useMultiSampling);
 
-        _renderpassResources.create(_swapChain, _useMultiSampling);
+
+        _postProcessRenderpassResources
+            .create(
+                _swapChain,
+                false); // No multisampling for post process
 
         _commandPool.create();
         _oneTimeCommandPool.create();
 
-        // TODO: Replace with single time command pool
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
         createUniformBuffers();
         createCommandBuffers();
@@ -217,7 +209,7 @@ namespace rp
         // TODO: Update if needed???
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {            
-            _renderpassResources._descriptorSet.update(i, _uniformBuffers[i], _model._texture);
+            _defaultRenderpassResources._descriptorSet.update(i, _uniformBuffers[i], _model._texture);
         }
     }
 
@@ -262,7 +254,8 @@ namespace rp
 
         _device.waitIdle();
 
-        _renderpassResources.recreate(VkExtent2D{.width = (uint32_t)width, .height = (uint32_t)height}); // TODO: Move this to within?
+        _defaultRenderpassResources.recreate(VkExtent2D{.width = (uint32_t)width, .height = (uint32_t)height});
+        _postProcessRenderpassResources.recreate(VkExtent2D{ .width = (uint32_t)width, .height = (uint32_t)height });
     }
 
     void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
@@ -277,7 +270,7 @@ namespace rp
 
     void RenderpassesApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     {
-        _renderpassResources.recordCommandBuffer(
+       /* _defaultRenderpassResources.recordCommandBuffer(
             commandBuffer, 
             imageIndex, 
             [&]() -> void 
@@ -292,7 +285,7 @@ namespace rp
 
                     vkCmdPushConstants(
                         commandBuffer,
-                        _renderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
+                        _defaultRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
                         VK_SHADER_STAGE_VERTEX_BIT,
                         0,
                         sizeof(glm::mat4),
@@ -302,9 +295,133 @@ namespace rp
 
                 _model.draw(
                     commandBuffer,
-                    _renderpassResources._graphicsPipeline,
-                    _renderpassResources._descriptorSet._descriptorSets[currentFrame]);
-            });
+                    _defaultRenderpassResources._graphicsPipeline,
+                    _defaultRenderpassResources._descriptorSet._descriptorSets[currentFrame]);
+            });*/
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        // 1) SCENE PASS -> OFFSCREEN
+        {
+            VkRenderPassBeginInfo rpBegin{};
+            rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rpBegin.renderPass = _defaultRenderpassResources._renderpass._renderPass;
+            rpBegin.framebuffer = _defaultRenderpassResources._framebuffers[currentFrame]._framebuffer;
+            rpBegin.renderArea.offset = { 0, 0 };
+            rpBegin.renderArea.extent = _defaultRenderpassResources._renderpassExtent;
+
+            std::array<VkClearValue, 2> clearValues{};
+            clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+            clearValues[1].depthStencil = { 1.0f, 0 };
+            rpBegin.clearValueCount = (uint32_t)clearValues.size();
+            rpBegin.pClearValues = clearValues.data();
+
+            vkCmdBeginRenderPass(commandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+            vkCmdBindPipeline(
+                commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                _defaultRenderpassResources._graphicsPipeline._graphicsPipeline
+            );
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = (float)_defaultRenderpassResources._renderpassExtent.width;
+            viewport.height = (float)_defaultRenderpassResources._renderpassExtent.height;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+            scissor.extent = _defaultRenderpassResources._renderpassExtent;
+            vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+            static auto startTime = std::chrono::high_resolution_clock::now();
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float time = std::chrono::duration<float>(currentTime - startTime).count();
+            glm::mat4 model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 0, 1));
+
+            vkCmdPushConstants(
+                commandBuffer,
+                _defaultRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0,
+                sizeof(glm::mat4),
+                &model
+            );
+
+            _model.draw(
+                commandBuffer,
+                _defaultRenderpassResources._graphicsPipeline,
+                _defaultRenderpassResources._descriptorSet._descriptorSets[currentFrame]
+            );
+
+            vkCmdEndRenderPass(commandBuffer);
+        }
+
+        // 2) LAYOUT TRANSITION: Offscreen color -> Shader read
+       // {
+       //     VkImageMemoryBarrier barrier{};
+       //     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       //     barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+       //     barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+       //     barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+       //     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+       //     barrier.image = _useMultiSampling
+       //         ? _defaultRenderpassResources._colorResolveImages[currentFrame]._image
+       //         : _defaultRenderpassResources._colorImages[currentFrame]._image;
+       // 
+       //     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+       //     barrier.subresourceRange.levelCount = 1;
+       //     barrier.subresourceRange.layerCount = 1;
+       // 
+       //     vkCmdPipelineBarrier(
+       //         commandBuffer,
+       //         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+       //         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+       //         0,
+       //         0, nullptr,
+       //         0, nullptr,
+       //         1, &barrier
+       //     );
+       // }
+
+        // 3) POST-PROCESS PASS -> SWAPCHAIN
+        {
+            VkRenderPassBeginInfo rpBegin{};
+            rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rpBegin.renderPass = _postProcessRenderpassResources._renderpass._renderPass;
+            rpBegin.framebuffer = _postProcessRenderpassResources._framebuffers[currentFrame]._framebuffer;
+            rpBegin.renderArea.offset = { 0, 0 };
+            rpBegin.renderArea.extent = _postProcessRenderpassResources._renderpassExtent;
+
+            std::array<VkClearValue, 2> clearValues{};
+            clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} }; // color
+            clearValues[1].depthStencil = { 1.0f, 0 };           // depth = 1.0, stencil = 0
+            rpBegin.clearValueCount = clearValues.size();
+            rpBegin.pClearValues = clearValues.data();
+
+            vkCmdBeginRenderPass(commandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _postProcessRenderpassResources._graphicsPipeline._graphicsPipeline);
+            vkCmdBindDescriptorSets(commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                _postProcessRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
+                0,
+                1,
+                &_postProcessRenderpassResources._descriptorSet._descriptorSets[currentFrame],
+                0,
+                nullptr);
+
+            vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+            vkCmdEndRenderPass(commandBuffer);
+        }
+
+        vkEndCommandBuffer(commandBuffer);
 
     }
 }

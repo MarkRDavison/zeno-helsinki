@@ -14,16 +14,8 @@ int main()
 {
     rp::RenderpassesApplication app;
 
-    try
-    {
-        app.init(WIDTH, HEIGHT, "Vulkan Helsinki Renderpasses");
-        app.run();
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
+    app.init(WIDTH, HEIGHT, "Vulkan Helsinki Renderpasses");
+    app.run();
 
     return EXIT_SUCCESS;
 }

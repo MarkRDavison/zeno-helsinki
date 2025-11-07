@@ -13,8 +13,14 @@ namespace hl
 		VulkanGraphicsPipeline(VulkanDevice& device);
 
 		void create(
-			const std::string& vertexPath, 
-			const std::string& fragmentPath, 
+			const std::string& vertexPath,
+			const std::string& fragmentPath,
+			VulkanRenderpass& renderpass,
+			VulkanDescriptorSetLayout& descriptorSetLayout,
+			bool multiSampling);
+		void createPostProcess(
+			const std::string& vertexPath,
+			const std::string& fragmentPath,
 			VulkanRenderpass& renderpass,
 			VulkanDescriptorSetLayout& descriptorSetLayout,
 			bool multiSampling);

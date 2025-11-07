@@ -54,7 +54,8 @@ namespace rp
 		hl::VulkanCommandPool _oneTimeCommandPool;
 		hl::VulkanSwapChain _swapChain;
 
-		hl::VulkanRenderpassResources _renderpassResources;
+		hl::VulkanRenderpassResources _defaultRenderpassResources;
+		hl::VulkanRenderpassResources _postProcessRenderpassResources;
 
 		hl::TempModel _model;
 

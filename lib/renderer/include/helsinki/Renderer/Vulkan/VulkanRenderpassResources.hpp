@@ -35,7 +35,7 @@ namespace hl
 
 	private:
 		void createFramebuffers();
-		void createImages();
+		void createImages(VkFormat imageFormat, VkFormat depthFormat, size_t imageCount, bool createResolveImages);
 
 	public: // private: TODO: TO PRIVATE
 		VulkanDevice& _device;
@@ -48,8 +48,14 @@ namespace hl
 		std::vector<VulkanFramebuffer> _framebuffers;
 		std::vector<VulkanImage> _colorImages;
 		std::vector<VulkanImage> _depthImages;
+		std::vector<VulkanImage> _colorResolveImages;
 
-		VkExtent2D _renderpassExtent;
+		VkSampler _outputSampler { VK_NULL_HANDLE };
+
+		VkFormat _colorFormat{ VK_FORMAT_UNDEFINED };
+		VkFormat _depthFormat{ VK_FORMAT_UNDEFINED };
+
+		VkExtent2D _renderpassExtent{ 0,0 };
 
 		VulkanSwapChain* _swapChain{ nullptr };
 		bool _multiSampling{ false };

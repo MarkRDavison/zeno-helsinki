@@ -31,7 +31,6 @@ namespace hl
 
 	void VulkanDescriptorSet::update(size_t index, VulkanUniformBuffer& uniform, VulkanTexture& texture)
 	{
-
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = uniform._buffer._buffer;
         bufferInfo.offset = 0;
@@ -67,4 +66,27 @@ namespace hl
             0,
             nullptr);
 	}
+
+    void VulkanDescriptorSet::updatePostProcess(size_t index, VulkanImage& offscreenImage, VkSampler& offscreenSampler)
+    {
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = offscreenImage._imageView;
+        imageInfo.sampler = offscreenSampler;
+
+        VkWriteDescriptorSet write{};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = _descriptorSets[index];
+        write.dstBinding = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write.descriptorCount = 1;
+        write.pImageInfo = &imageInfo;
+
+        vkUpdateDescriptorSets(
+            _device._device, 
+            1, 
+            &write, 
+            0, 
+            nullptr);
+    }
 }
