@@ -127,9 +127,9 @@ private:
         _instance.create("Hello Triangle.");
         _surface.create(window);
         _device.create();
-        _swapChain.create(true);
+        _swapChain.create();
         _renderpass.createBasicRenderpass(true, _swapChain._swapChainImageFormat);
-        _swapChain.createFramebuffers(_renderpass, true);
+        //_swapChain.createFramebuffers(_renderpass, true);
         // TODO: Need to read this in from shader adjacent files?
         _descriptorSetLayout.create({
             VkDescriptorSetLayoutBinding
@@ -222,9 +222,9 @@ private:
         _device.waitIdle();
 
         _swapChain.destroy();
-        _swapChain.create(true);
+        _swapChain.create();
 
-        _swapChain.createFramebuffers(_renderpass, true);
+        // _swapChain.createFramebuffers(_renderpass, true);
     }
 
     void createUniformBuffers()
@@ -280,7 +280,7 @@ private:
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = _renderpass._renderPass;
-        renderPassInfo.framebuffer = _swapChain._swapChainFramebuffers[imageIndex]._framebuffer;
+        renderPassInfo.framebuffer = nullptr;// TODO _swapChain._swapChainFramebuffers[imageIndex]._framebuffer;
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = _swapChain._swapChainExtent;
 

@@ -121,6 +121,7 @@ namespace rp
         _syncContext.getFence(currentFrame).reset();
 
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
         VkSubmitInfo submitInfo{};
@@ -183,7 +184,7 @@ namespace rp
         _instance.create(title);
         _surface.create(_window);
         _device.create();
-        _swapChain.create(_useMultiSampling);
+        _swapChain.create();
 
         _defaultRenderpassResources
             .create(
@@ -192,16 +193,29 @@ namespace rp
                 _swapChain._swapChainExtent,
                 _useMultiSampling);
 
-
         _postProcessRenderpassResources
             .create(
                 _swapChain,
                 false); // No multisampling for post process
 
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            if (_useMultiSampling)
+            {
+                _postProcessRenderpassResources._descriptorSet.updatePostProcess(i, _defaultRenderpassResources._colorResolveImages[i], _postProcessRenderpassResources._outputSampler);
+            }
+            else
+            {
+                _postProcessRenderpassResources._descriptorSet.updatePostProcess(i, _defaultRenderpassResources._colorImages[i], _postProcessRenderpassResources._outputSampler);
+            }
+        }
+
         _commandPool.create();
         _oneTimeCommandPool.create();
 
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
+
+
         createUniformBuffers();
         createCommandBuffers();
         _syncContext.create();
@@ -241,7 +255,6 @@ namespace rp
         }
     }
 
-
     void RenderpassesApplication::recreateSwapChain()
     {
         int width = 0, height = 0;
@@ -256,6 +269,18 @@ namespace rp
 
         _defaultRenderpassResources.recreate(VkExtent2D{.width = (uint32_t)width, .height = (uint32_t)height});
         _postProcessRenderpassResources.recreate(VkExtent2D{ .width = (uint32_t)width, .height = (uint32_t)height });
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            if (_useMultiSampling)
+            {
+                _postProcessRenderpassResources._descriptorSet.updatePostProcess(i, _defaultRenderpassResources._colorResolveImages[i], _postProcessRenderpassResources._outputSampler);
+            }
+            else
+            {
+                _postProcessRenderpassResources._descriptorSet.updatePostProcess(i, _defaultRenderpassResources._colorImages[i], _postProcessRenderpassResources._outputSampler);
+            }
+        }
     }
 
     void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
@@ -270,35 +295,6 @@ namespace rp
 
     void RenderpassesApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     {
-       /* _defaultRenderpassResources.recordCommandBuffer(
-            commandBuffer, 
-            imageIndex, 
-            [&]() -> void 
-            {
-                {
-                    static auto startTime = std::chrono::high_resolution_clock::now();
-
-                    auto currentTime = std::chrono::high_resolution_clock::now();
-                    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-                    auto model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-                    vkCmdPushConstants(
-                        commandBuffer,
-                        _defaultRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
-                        VK_SHADER_STAGE_VERTEX_BIT,
-                        0,
-                        sizeof(glm::mat4),
-                        &model
-                    );
-                }
-
-                _model.draw(
-                    commandBuffer,
-                    _defaultRenderpassResources._graphicsPipeline,
-                    _defaultRenderpassResources._descriptorSet._descriptorSets[currentFrame]);
-            });*/
-
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
@@ -363,39 +359,12 @@ namespace rp
             vkCmdEndRenderPass(commandBuffer);
         }
 
-        // 2) LAYOUT TRANSITION: Offscreen color -> Shader read
-       // {
-       //     VkImageMemoryBarrier barrier{};
-       //     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-       //     barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-       //     barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-       //     barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-       //     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-       //     barrier.image = _useMultiSampling
-       //         ? _defaultRenderpassResources._colorResolveImages[currentFrame]._image
-       //         : _defaultRenderpassResources._colorImages[currentFrame]._image;
-       // 
-       //     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-       //     barrier.subresourceRange.levelCount = 1;
-       //     barrier.subresourceRange.layerCount = 1;
-       // 
-       //     vkCmdPipelineBarrier(
-       //         commandBuffer,
-       //         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-       //         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-       //         0,
-       //         0, nullptr,
-       //         0, nullptr,
-       //         1, &barrier
-       //     );
-       // }
-
         // 3) POST-PROCESS PASS -> SWAPCHAIN
         {
             VkRenderPassBeginInfo rpBegin{};
             rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             rpBegin.renderPass = _postProcessRenderpassResources._renderpass._renderPass;
-            rpBegin.framebuffer = _postProcessRenderpassResources._framebuffers[currentFrame]._framebuffer;
+            rpBegin.framebuffer = _postProcessRenderpassResources._framebuffers[imageIndex]._framebuffer;
             rpBegin.renderArea.offset = { 0, 0 };
             rpBegin.renderArea.extent = _postProcessRenderpassResources._renderpassExtent;
 
