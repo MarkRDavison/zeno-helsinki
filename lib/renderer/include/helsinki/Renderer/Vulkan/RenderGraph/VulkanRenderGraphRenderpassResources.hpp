@@ -18,6 +18,7 @@ namespace hl
 		void addRenderpass(VkRenderPass renderpass);
 		void addFramebuffer(VkFramebuffer framebuffer);
 		VulkanRenderGraphPipelineResources& addPipeline(const std::string& name);
+		void addDescriptorPool(VkDescriptorPool descriptorPool);
 		void destroy();
 
 		const std::vector<RenderpassAttachment>& getAttachments() const;
@@ -32,7 +33,8 @@ namespace hl
 		std::vector<RenderpassAttachment> _attachments;
 		VkRenderPass _renderpass{ VK_NULL_HANDLE };
 		std::vector<VkFramebuffer> _framebuffers;
-		std::vector< VulkanRenderGraphPipelineResources*> _pipelines;
+		std::vector<VulkanRenderGraphPipelineResources*> _pipelines;
+		VkDescriptorPool _descriptorPool{ VK_NULL_HANDLE };
 	};
 
 }

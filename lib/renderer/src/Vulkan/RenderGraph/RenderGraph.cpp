@@ -47,6 +47,7 @@ namespace hl
 			renderpasses.push_back(r);
 
 			{
+				// images/outputs
 				for (const auto& res : ri.outputs)
 				{
 					// TODO: Foreach N where N is MAX_FRAMES_IN_FLIGHT or swapchain image count
@@ -762,6 +763,36 @@ namespace hl
 							vkDestroyShaderModule(device._device, fragmentShaderModule, nullptr);
 						}
 					}
+				}
+
+				VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+
+				//	Descriptor pool
+				{
+					// TODO: Need better than this
+					std::vector<VkDescriptorPoolSize> poolSizes
+					{
+					   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 * imageCount },
+					   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 20 * imageCount },
+					};
+
+					VkDescriptorPoolCreateInfo poolCreateInfo{};
+					poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+					poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+					poolCreateInfo.pPoolSizes = poolSizes.data();
+					poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount);
+
+					if (vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+					{
+						throw std::runtime_error("failed to create descriptor pool!");
+					}
+
+					device.setDebugName(
+						reinterpret_cast<uint64_t>(descriptorPool),
+						VK_OBJECT_TYPE_DESCRIPTOR_POOL,
+						(r->Name + "_DescriptorPool").c_str());
+
+					r->addDescriptorPool(descriptorPool);
 				}
 			}
 		}
