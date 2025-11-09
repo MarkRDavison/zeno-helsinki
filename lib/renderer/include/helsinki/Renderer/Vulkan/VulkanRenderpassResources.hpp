@@ -8,6 +8,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSetLayout.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSet.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorPool.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanGraphicsPipelineResources.hpp>
 #include <functional>
 
 namespace hl
@@ -31,11 +32,6 @@ namespace hl
 		void recreate(VkExtent2D extent);
 		void destroy();
 
-		void recordCommandBuffer(
-			VkCommandBuffer commandBuffer, 
-			uint32_t imageIndex,
-			std::function<void()> operation);
-
 	private:
 		void createFramebuffers();
 		void createImages(VkFormat imageFormat, VkFormat depthFormat, size_t imageCount, bool createResolveImages);
@@ -45,9 +41,8 @@ namespace hl
 		VulkanDevice& _device;
 		VulkanRenderpass _renderpass;
 		VulkanDescriptorPool _descriptorPool;
-		VulkanDescriptorSetLayout _descriptorSetLayout;
-		VulkanDescriptorSet _descriptorSet;
-		VulkanGraphicsPipeline _graphicsPipeline;
+
+		std::vector<VulkanGraphicsPipelineResources> _graphicPipelines;
 
 		std::vector<VulkanFramebuffer> _framebuffers;
 		std::vector<VulkanImage> _colorImages;

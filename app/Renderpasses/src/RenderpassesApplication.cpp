@@ -212,7 +212,7 @@ namespace rp
         {
             if (_useMultiSampling)
             {
-                _postProcessRenderpassResources._descriptorSet
+                _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
                     .updatePostProcess(
                         i, 
                         _defaultRenderpassResources._colorResolveImages[i], 
@@ -220,7 +220,7 @@ namespace rp
             }
             else
             {
-                _postProcessRenderpassResources._descriptorSet
+                _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
                     .updatePostProcess(
                         i, 
                         _defaultRenderpassResources._colorImages[i], 
@@ -228,7 +228,7 @@ namespace rp
             }
 
             // no multisampling in post process, so we always know where we sample from
-            _uiRenderpassResources._descriptorSet
+            _uiRenderpassResources._graphicPipelines[0]._descriptorSet
                 .updatePostProcess(
                     i,
                     _postProcessRenderpassResources._colorImages[i],
@@ -247,7 +247,7 @@ namespace rp
         // TODO: Update if needed???
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {            
-            _defaultRenderpassResources._descriptorSet.update(i, _uniformBuffers[i], _model._texture);
+            _defaultRenderpassResources._graphicPipelines[0]._descriptorSet.update(i, _uniformBuffers[i], _model._texture);
         }
     }
 
@@ -299,7 +299,7 @@ namespace rp
         {
             if (_useMultiSampling)
             {
-                _postProcessRenderpassResources._descriptorSet
+                _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
                     .updatePostProcess(
                         i, 
                         _defaultRenderpassResources._colorResolveImages[i],
@@ -307,14 +307,15 @@ namespace rp
             }
             else
             {
-                _postProcessRenderpassResources._descriptorSet
+                _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
                     .updatePostProcess(
                         i, 
                         _defaultRenderpassResources._colorImages[i], 
                         _postProcessRenderpassResources._outputSampler);
             }
 
-            _uiRenderpassResources._descriptorSet
+            // Dont need to update descriptor set for second pipeline, has no ubo or samplers
+            _uiRenderpassResources._graphicPipelines[0]._descriptorSet
                 .updatePostProcess(
                     i, 
                     _postProcessRenderpassResources._colorImages[i],
@@ -358,7 +359,7 @@ namespace rp
             vkCmdBindPipeline(
                 commandBuffer,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _defaultRenderpassResources._graphicsPipeline._graphicsPipeline
+                _defaultRenderpassResources._graphicPipelines[0]._graphicsPipeline._graphicsPipeline
             );
 
             VkViewport viewport{};
@@ -382,7 +383,7 @@ namespace rp
 
             vkCmdPushConstants(
                 commandBuffer,
-                _defaultRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
+                _defaultRenderpassResources._graphicPipelines[0]._graphicsPipeline._pipelineLayout._pipelineLayout,
                 VK_SHADER_STAGE_VERTEX_BIT,
                 0,
                 sizeof(glm::mat4),
@@ -391,8 +392,8 @@ namespace rp
 
             _model.draw(
                 commandBuffer,
-                _defaultRenderpassResources._graphicsPipeline,
-                _defaultRenderpassResources._descriptorSet._descriptorSets[currentFrame]
+                _defaultRenderpassResources._graphicPipelines[0]._graphicsPipeline,
+                _defaultRenderpassResources._graphicPipelines[0]._descriptorSet._descriptorSets[currentFrame]
             );
 
             vkCmdEndRenderPass(commandBuffer);
@@ -417,13 +418,13 @@ namespace rp
 
             vkCmdBindPipeline(commandBuffer, 
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _postProcessRenderpassResources._graphicsPipeline._graphicsPipeline);
+                _postProcessRenderpassResources._graphicPipelines[0]._graphicsPipeline._graphicsPipeline);
             vkCmdBindDescriptorSets(commandBuffer,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _postProcessRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
+                _postProcessRenderpassResources._graphicPipelines[0]._graphicsPipeline._pipelineLayout._pipelineLayout,
                 0,
                 1,
-                &_postProcessRenderpassResources._descriptorSet._descriptorSets[currentFrame],
+                &_postProcessRenderpassResources._graphicPipelines[0]._descriptorSet._descriptorSets[currentFrame],
                 0,
                 nullptr);
 
@@ -449,19 +450,30 @@ namespace rp
 
             vkCmdBeginRenderPass(commandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
 
-            vkCmdBindPipeline(commandBuffer, 
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _uiRenderpassResources._graphicsPipeline._graphicsPipeline);
-            vkCmdBindDescriptorSets(commandBuffer,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _uiRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
-                0,
-                1,
-                &_uiRenderpassResources._descriptorSet._descriptorSets[currentFrame],
-                0,
-                nullptr);
+            {
+                vkCmdBindPipeline(commandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    _uiRenderpassResources._graphicPipelines[0]._graphicsPipeline._graphicsPipeline);
+                vkCmdBindDescriptorSets(commandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    _uiRenderpassResources._graphicPipelines[0]._graphicsPipeline._pipelineLayout._pipelineLayout,
+                    0,
+                    1,
+                    &_uiRenderpassResources._graphicPipelines[0]._descriptorSet._descriptorSets[currentFrame],
+                    0,
+                    nullptr);
 
-            vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+                vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+            }
+
+            {
+                vkCmdBindPipeline(commandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    _uiRenderpassResources._graphicPipelines[1]._graphicsPipeline._graphicsPipeline);
+
+                vkCmdDraw(commandBuffer, 3, 1, 0, 0); // halfscreen triangle
+            }
+
             vkCmdEndRenderPass(commandBuffer);
         }
 
