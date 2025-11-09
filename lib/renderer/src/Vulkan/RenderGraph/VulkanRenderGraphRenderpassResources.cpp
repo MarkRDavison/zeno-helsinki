@@ -42,9 +42,15 @@ namespace hl
 
 		return *pipeline;
 	}
+	void VulkanRenderGraphRenderpassResources::addDescriptorPool(VkDescriptorPool descriptorPool)
+	{
+		_descriptorPool = descriptorPool;
+	}
 
 	void VulkanRenderGraphRenderpassResources::destroy()
 	{
+		vkDestroyDescriptorPool(_device._device, _descriptorPool, nullptr);
+
 		for (auto& p : _pipelines)
 		{
 			p->destroy();
