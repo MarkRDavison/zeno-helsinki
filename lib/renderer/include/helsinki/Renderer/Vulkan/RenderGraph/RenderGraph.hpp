@@ -1,0 +1,84 @@
+#pragma once
+
+#include <helsinki/Renderer/RendererConfiguration.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
+#include <string>
+#include <vector>
+#include <optional>
+
+namespace hl
+{
+    class VulkanRenderGraphRenderpassResources;
+
+    enum class ResourceType
+    {
+        Color,
+        Depth
+    };
+
+    struct ResourceInfo
+    {
+        std::string name;
+        ResourceType type;
+        std::string format; // e.g., "VK_FORMAT_R8G8B8A8_UNORM"
+        std::optional<std::string> source; // optional, used if this resource comes from a previous pass
+    };
+
+    struct DescriptorBinding
+    {
+        uint32_t binding;
+        std::string type;           // e.g., "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER", "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER"
+        std::string stage;          // "VERTEX", "FRAGMENT"
+        std::optional<std::string> resource; // name of the resource bound to this descriptor
+    };
+
+    struct DescriptorSetInfo
+    {
+        std::string name;
+        std::vector<DescriptorBinding> bindings;
+    };
+
+    struct PipelineInfo
+    {
+        std::string name;
+        std::string shaderVert;
+        std::string shaderFrag;
+        std::vector<DescriptorSetInfo> descriptorSets;
+        bool enableBlending = false;
+    };
+
+    struct RenderpassInfo
+    {
+        std::string name;
+        bool useMultiSampling;// TODO: Move this to the outputs ResourceInfo type
+        std::vector<std::string> inputs;           // names of input resources
+        std::vector<ResourceInfo> outputs;         // resources this pass writes
+        std::vector<PipelineInfo> pipelines;       // pipelines in this pass
+    };
+
+    struct RenderpassAttachment
+    {
+        std::string name;
+        ResourceType type{ ResourceType::Color };  // TODO: DEFAULT VALUE?
+        VkFormat format{ VK_FORMAT_UNDEFINED };
+        std::vector<VulkanImage*> images;
+        std::vector<VulkanImage*> resolveImages; // TODO: This might be the swapchain image somehow
+    };
+
+    class RenderGraph
+    {
+        RenderGraph() = delete;
+    public:
+        static std::vector<VulkanRenderGraphRenderpassResources*> create(
+            const std::vector<hl::RenderpassInfo>& renderpassInfo, 
+            VulkanDevice& device,
+            uint32_t width,
+            uint32_t height,
+            uint32_t swapChainImageCount);
+
+        static void destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources);
+
+        static VkFormat extractFormat(const std::string& formatString);
+    };
+
+}
