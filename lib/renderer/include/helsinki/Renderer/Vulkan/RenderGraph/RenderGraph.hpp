@@ -16,6 +16,14 @@ namespace hl
         Depth
     };
 
+    enum class VertexAttributeFormat
+    {
+        Float,
+        Vec2,
+        Vec3,
+        Vec4
+    };
+
     struct ResourceInfo
     {
         std::string name;
@@ -38,12 +46,27 @@ namespace hl
         std::vector<DescriptorBinding> bindings;
     };
 
+    struct VertexAttributeInfo
+    {
+        std::string name;
+        VertexAttributeFormat format;
+        uint32_t location;
+        uint32_t offset;
+    };
+
+    struct VertexInputInfo
+    {
+        std::vector<VertexAttributeInfo> attributes;
+        uint32_t stride;
+    };
+
     struct PipelineInfo
     {
         std::string name;
         std::string shaderVert;
         std::string shaderFrag;
         std::vector<DescriptorSetInfo> descriptorSets;
+        std::optional<VertexInputInfo> vertexInputInfo;
         bool enableBlending = false;
     };
 
@@ -74,11 +97,13 @@ namespace hl
             VulkanDevice& device,
             uint32_t width,
             uint32_t height,
-            uint32_t swapChainImageCount);
+            const std::vector<VkImageView>& swapChainImageViews);
 
         static void destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources);
 
         static VkFormat extractFormat(const std::string& formatString);
+        static VkDescriptorType extractDescriptorType(const std::string& descriptorTypeString);
+        static VkFormat extractVertexAttributeFormat(VertexAttributeFormat format);
     };
 
 }

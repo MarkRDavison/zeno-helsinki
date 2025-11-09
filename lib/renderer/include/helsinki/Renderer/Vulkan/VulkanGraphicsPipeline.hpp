@@ -36,6 +36,10 @@ namespace hl
 
 		void destroy();
 
+		static std::vector<uint32_t> readParseCompileShader(
+			const std::string& shaderSource,
+			bool vertex);
+
 	public: // private: TODO: to private
 		VulkanDevice& _device;
 		VulkanPipelineLayout _pipelineLayout;
