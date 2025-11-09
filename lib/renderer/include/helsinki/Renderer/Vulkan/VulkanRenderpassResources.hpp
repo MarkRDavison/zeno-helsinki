@@ -15,16 +15,19 @@ namespace hl
 	class VulkanRenderpassResources
 	{
 	public:
-		VulkanRenderpassResources(VulkanDevice& device);
+		VulkanRenderpassResources(const std::string& name, VulkanDevice& device);
 
 		void create(
 			VkFormat colorFormat,
 			VkFormat depthFormat,
 			VkExtent2D extent,
 			bool multisSampling);
-		void create(
-			VulkanSwapChain& swapChain,
+		void createPostProcess(
+			VkFormat colorFormat,
+			VkFormat depthFormat,
+			VkExtent2D extent,
 			bool multisSampling);
+		void createUi(VulkanSwapChain& swapChain, bool multisSampling);
 		void recreate(VkExtent2D extent);
 		void destroy();
 
@@ -38,6 +41,7 @@ namespace hl
 		void createImages(VkFormat imageFormat, VkFormat depthFormat, size_t imageCount, bool createResolveImages);
 
 	public: // private: TODO: TO PRIVATE
+		const std::string _name;
 		VulkanDevice& _device;
 		VulkanRenderpass _renderpass;
 		VulkanDescriptorPool _descriptorPool;

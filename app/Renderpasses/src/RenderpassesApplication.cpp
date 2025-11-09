@@ -1,5 +1,6 @@
 ﻿#include <RenderpassesApplication.hpp>
 #include <stdexcept>
+#include <iostream>
 
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 
@@ -38,8 +39,9 @@ namespace rp
         _surface(_instance),
         _device(_instance, _surface),
         _swapChain(_device, _surface),
-        _defaultRenderpassResources(_device),
-        _postProcessRenderpassResources(_device),
+        _defaultRenderpassResources("SCENE", _device),
+        _postProcessRenderpassResources("POST", _device),
+        _uiRenderpassResources("UI", _device),
         _commandPool(_device),
         _oneTimeCommandPool(_device),
         _syncContext(_device),
@@ -72,8 +74,9 @@ namespace rp
     {
         _swapChain.destroy();
 
-        _defaultRenderpassResources.destroy();
+        _uiRenderpassResources.destroy();
         _postProcessRenderpassResources.destroy();
+        _defaultRenderpassResources.destroy();
 
         for (size_t i = 0; i < _uniformBuffers.size(); i++)
         {
@@ -194,27 +197,48 @@ namespace rp
                 _useMultiSampling);
 
         _postProcessRenderpassResources
-            .create(
-                _swapChain,
+            .createPostProcess(
+                _swapChain._swapChainImageFormat,
+                _swapChain.findDepthFormat(_device._physicalDevice),
+                _swapChain._swapChainExtent,
                 false); // No multisampling for post process
+
+        _uiRenderpassResources
+            .createUi(
+                _swapChain,
+                false); // No multisampling for ui
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
             if (_useMultiSampling)
             {
-                _postProcessRenderpassResources._descriptorSet.updatePostProcess(i, _defaultRenderpassResources._colorResolveImages[i], _postProcessRenderpassResources._outputSampler);
+                _postProcessRenderpassResources._descriptorSet
+                    .updatePostProcess(
+                        i, 
+                        _defaultRenderpassResources._colorResolveImages[i], 
+                        _postProcessRenderpassResources._outputSampler);
             }
             else
             {
-                _postProcessRenderpassResources._descriptorSet.updatePostProcess(i, _defaultRenderpassResources._colorImages[i], _postProcessRenderpassResources._outputSampler);
+                _postProcessRenderpassResources._descriptorSet
+                    .updatePostProcess(
+                        i, 
+                        _defaultRenderpassResources._colorImages[i], 
+                        _postProcessRenderpassResources._outputSampler);
             }
+
+            // no multisampling in post process, so we always know where we sample from
+            _uiRenderpassResources._descriptorSet
+                .updatePostProcess(
+                    i,
+                    _postProcessRenderpassResources._colorImages[i],
+                    _uiRenderpassResources._outputSampler);
         }
 
         _commandPool.create();
         _oneTimeCommandPool.create();
 
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
-
 
         createUniformBuffers();
         createCommandBuffers();
@@ -269,17 +293,32 @@ namespace rp
 
         _defaultRenderpassResources.recreate(VkExtent2D{.width = (uint32_t)width, .height = (uint32_t)height});
         _postProcessRenderpassResources.recreate(VkExtent2D{ .width = (uint32_t)width, .height = (uint32_t)height });
+        _uiRenderpassResources.recreate(VkExtent2D{ .width = (uint32_t)width, .height = (uint32_t)height });
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
             if (_useMultiSampling)
             {
-                _postProcessRenderpassResources._descriptorSet.updatePostProcess(i, _defaultRenderpassResources._colorResolveImages[i], _postProcessRenderpassResources._outputSampler);
+                _postProcessRenderpassResources._descriptorSet
+                    .updatePostProcess(
+                        i, 
+                        _defaultRenderpassResources._colorResolveImages[i],
+                        _postProcessRenderpassResources._outputSampler);
             }
             else
             {
-                _postProcessRenderpassResources._descriptorSet.updatePostProcess(i, _defaultRenderpassResources._colorImages[i], _postProcessRenderpassResources._outputSampler);
+                _postProcessRenderpassResources._descriptorSet
+                    .updatePostProcess(
+                        i, 
+                        _defaultRenderpassResources._colorImages[i], 
+                        _postProcessRenderpassResources._outputSampler);
             }
+
+            _uiRenderpassResources._descriptorSet
+                .updatePostProcess(
+                    i, 
+                    _postProcessRenderpassResources._colorImages[i],
+                    _uiRenderpassResources._outputSampler);
         }
     }
 
@@ -359,12 +398,12 @@ namespace rp
             vkCmdEndRenderPass(commandBuffer);
         }
 
-        // 3) POST-PROCESS PASS -> SWAPCHAIN
+        // 2) POST-PROCESS PASS -> OFFSCREEN 2
         {
             VkRenderPassBeginInfo rpBegin{};
             rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             rpBegin.renderPass = _postProcessRenderpassResources._renderpass._renderPass;
-            rpBegin.framebuffer = _postProcessRenderpassResources._framebuffers[imageIndex]._framebuffer;
+            rpBegin.framebuffer = _postProcessRenderpassResources._framebuffers[currentFrame]._framebuffer;
             rpBegin.renderArea.offset = { 0, 0 };
             rpBegin.renderArea.extent = _postProcessRenderpassResources._renderpassExtent;
 
@@ -376,13 +415,49 @@ namespace rp
 
             vkCmdBeginRenderPass(commandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
 
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _postProcessRenderpassResources._graphicsPipeline._graphicsPipeline);
+            vkCmdBindPipeline(commandBuffer, 
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                _postProcessRenderpassResources._graphicsPipeline._graphicsPipeline);
             vkCmdBindDescriptorSets(commandBuffer,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 _postProcessRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
                 0,
                 1,
                 &_postProcessRenderpassResources._descriptorSet._descriptorSets[currentFrame],
+                0,
+                nullptr);
+
+            vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+            vkCmdEndRenderPass(commandBuffer);
+        } 
+
+        // 3) UI PASS -> SWAPCHAIN
+        {
+            VkRenderPassBeginInfo rpBegin{};
+            rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rpBegin.renderPass = _uiRenderpassResources._renderpass._renderPass;
+            // TODO: imageIndex vs currentFrame, this depends on whether it is writing to the swapchain or not....
+            rpBegin.framebuffer = _uiRenderpassResources._framebuffers[imageIndex]._framebuffer; 
+            rpBegin.renderArea.offset = { 0, 0 };
+            rpBegin.renderArea.extent = _uiRenderpassResources._renderpassExtent;
+
+            std::array<VkClearValue, 2> clearValues{};
+            clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} }; // color
+            clearValues[1].depthStencil = { 1.0f, 0 };           // depth = 1.0, stencil = 0
+            rpBegin.clearValueCount = clearValues.size();
+            rpBegin.pClearValues = clearValues.data();
+
+            vkCmdBeginRenderPass(commandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+            vkCmdBindPipeline(commandBuffer, 
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                _uiRenderpassResources._graphicsPipeline._graphicsPipeline);
+            vkCmdBindDescriptorSets(commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                _uiRenderpassResources._graphicsPipeline._pipelineLayout._pipelineLayout,
+                0,
+                1,
+                &_uiRenderpassResources._descriptorSet._descriptorSets[currentFrame],
                 0,
                 nullptr);
 

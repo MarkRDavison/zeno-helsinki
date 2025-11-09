@@ -11,8 +11,10 @@ namespace hl
 
 
 	VulkanRenderpassResources::VulkanRenderpassResources(
+		const std::string& name,
 		VulkanDevice& device
 	) :
+		_name(name),
 		_device(device),
 		_renderpass(device),
 		_descriptorPool(device),
@@ -96,12 +98,102 @@ namespace hl
 				multisSampling);
 		}
 	}
-	void VulkanRenderpassResources::create(
-		VulkanSwapChain& swapChain,
+	void VulkanRenderpassResources::createPostProcess(
+		VkFormat colorFormat,
+		VkFormat depthFormat,
+		VkExtent2D extent,
 		bool multisSampling)
 	{
-		_swapChain = &swapChain; _multiSampling = multisSampling;
+		_multiSampling = multisSampling;
+		_renderpassExtent = extent;
+
+		// Color/Depth/resolve images
+		{
+			_colorFormat = colorFormat;
+			_depthFormat = depthFormat;
+
+			createImages(_colorFormat, _depthFormat, MAX_FRAMES_IN_FLIGHT, false);
+
+			{
+				VkSamplerCreateInfo samplerInfo{};
+				samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+				samplerInfo.magFilter = VK_FILTER_LINEAR;
+				samplerInfo.minFilter = VK_FILTER_LINEAR;
+				samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+				samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+				samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+				samplerInfo.anisotropyEnable = VK_FALSE;
+				samplerInfo.maxAnisotropy = 1.0f;
+				samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+				samplerInfo.unnormalizedCoordinates = VK_FALSE;
+				samplerInfo.compareEnable = VK_FALSE;
+				samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+				samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+				samplerInfo.mipLodBias = 0.0f;
+				samplerInfo.minLod = 0.0f;
+				samplerInfo.maxLod = 0.0f;
+
+				if (vkCreateSampler(_device._device, &samplerInfo, nullptr, &_outputSampler) != VK_SUCCESS)
+				{
+					throw std::runtime_error("failed to create sampler!");
+				}
+			}
+		}
+
+		// Renderpass
+		{
+			_renderpass.createBasicRenderpassWithFollowingRenderpass(
+				multisSampling,
+				_colorFormat);
+		}
+
+		// Framebuffer
+		{
+			createFramebuffers();
+		}
+
+		// Descriptor Pool
+		{
+			_descriptorPool.create();
+		}
+
+		// Descriptor Set Layout
+		{
+			_descriptorSetLayout.create({
+			   VkDescriptorSetLayoutBinding
+			   {
+				   .binding = 0,
+				   .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				   .descriptorCount = 1,
+				   .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+				   .pImmutableSamplers = nullptr
+			   }
+			});
+		}
+
+		// Descriptor Sets
+		{
+			_descriptorSet.create(_descriptorPool, _descriptorSetLayout);
+
+			// Need to 'update' these, actually for static app need to initialize, but it requires the previous render pass to do so
+		}
+			
+		// Graphics Pipeline
+		{
+			_graphicsPipeline.createPostProcess(
+				std::string(ROOT_PATH("/data/shaders/post_process.vert")),
+				std::string(ROOT_PATH("/data/shaders/post_process.frag")),
+				_renderpass,
+				_descriptorSetLayout,
+				multisSampling);
+		}
+	}
+
+	void VulkanRenderpassResources::createUi(VulkanSwapChain& swapChain, bool multisSampling)
+	{
+		_swapChain = &swapChain;
 		_renderpassExtent = _swapChain->_swapChainExtent;
+
 
 		// Color/Depth/resolve images
 		{
@@ -165,7 +257,7 @@ namespace hl
 				   .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
 				   .pImmutableSamplers = nullptr
 			   }
-			});
+				});
 		}
 
 		// Descriptor Sets
@@ -174,12 +266,12 @@ namespace hl
 
 			// Need to 'update' these, actually for static app need to initialize, but it requires the previous render pass to do so
 		}
-			
+
 		// Graphics Pipeline
 		{
 			_graphicsPipeline.createPostProcess(
-				std::string(ROOT_PATH("/data/shaders/post_process.vert")),
-				std::string(ROOT_PATH("/data/shaders/post_process.frag")),
+				std::string(ROOT_PATH("/data/shaders/ui.vert")),
+				std::string(ROOT_PATH("/data/shaders/ui.frag")),
 				_renderpass,
 				_descriptorSetLayout,
 				multisSampling);
@@ -411,7 +503,6 @@ namespace hl
 
 	void VulkanRenderpassResources::createImages(VkFormat imageFormat, VkFormat depthFormat, size_t imageCount, bool createResolveImages)
 	{
-
 		for (uint32_t i = 0; i < imageCount; ++i)
 		{
 			{
@@ -442,10 +533,15 @@ namespace hl
 					usage,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+				_device.setDebugName(reinterpret_cast<uint64_t>(color._image), VK_OBJECT_TYPE_IMAGE, (_name + std::string("_ColorImage_") + std::to_string(i)).c_str());
+
 				color.createImageView(
 					imageFormat,
 					VK_IMAGE_ASPECT_COLOR_BIT,
 					1);
+
+				_device.setDebugName(reinterpret_cast<uint64_t>(color._imageView), VK_OBJECT_TYPE_IMAGE_VIEW, (_name + std::string("_ColorImageView_") + std::to_string(i)).c_str());
+
 			}
 
 			if (createResolveImages)
@@ -463,10 +559,14 @@ namespace hl
 					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+				_device.setDebugName(reinterpret_cast<uint64_t>(colorResolve._image), VK_OBJECT_TYPE_IMAGE, (_name + std::string("_ColorResolveImage_") + std::to_string(i)).c_str());
+
 				colorResolve.createImageView(
 					imageFormat,
 					VK_IMAGE_ASPECT_COLOR_BIT,
 					1);
+
+				_device.setDebugName(reinterpret_cast<uint64_t>(colorResolve._imageView), VK_OBJECT_TYPE_IMAGE_VIEW, (_name + std::string("_ColorResolveImageView_") + std::to_string(i)).c_str());
 			}
 
 			{
@@ -485,10 +585,15 @@ namespace hl
 					VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+				_device.setDebugName(reinterpret_cast<uint64_t>(depth._image), VK_OBJECT_TYPE_IMAGE, (_name + std::string("_DepthImage_") + std::to_string(i)).c_str());
+
 				depth.createImageView(
 					depthFormat,
 					VK_IMAGE_ASPECT_DEPTH_BIT,
 					1);
+
+				_device.setDebugName(reinterpret_cast<uint64_t>(depth._imageView), VK_OBJECT_TYPE_IMAGE_VIEW, (_name + std::string("_DepthImageView_") + std::to_string(i)).c_str());
+
 			}
 		}
 	}
