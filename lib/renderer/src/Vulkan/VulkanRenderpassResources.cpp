@@ -17,10 +17,7 @@ namespace hl
 		_name(name),
 		_device(device),
 		_renderpass(device),
-		_descriptorPool(device),
-		_descriptorSetLayout(device),
-		_descriptorSet(device),
-		_graphicsPipeline(device)
+		_descriptorPool(device)
 	{
 
 	}
@@ -59,9 +56,12 @@ namespace hl
 			_descriptorPool.create();
 		}
 
+		_graphicPipelines.emplace_back(_device);
+		auto& pipeline = _graphicPipelines.back();
+
 		// Descriptor Set Layout
 		{
-			_descriptorSetLayout.create({
+			pipeline._descriptorSetLayout.create({
 				VkDescriptorSetLayoutBinding
 				{
 					.binding = 0,
@@ -83,18 +83,18 @@ namespace hl
 
 		// Descriptor Sets
 		{
-			_descriptorSet.create(_descriptorPool, _descriptorSetLayout);
+			pipeline._descriptorSet.create(_descriptorPool, pipeline._descriptorSetLayout);
 
 			// TODO: Update at some point, but baby scene only needs it done once... so we do it in the main.cpp
 		}
 
 		// Graphics Pipeline
 		{
-			_graphicsPipeline.create(
+			pipeline._graphicsPipeline.create(
 				std::string(ROOT_PATH("/data/shaders/triangle.vert")),
 				std::string(ROOT_PATH("/data/shaders/triangle.frag")),
 				_renderpass,
-				_descriptorSetLayout,
+				pipeline._descriptorSetLayout,
 				multisSampling);
 		}
 	}
@@ -157,9 +157,12 @@ namespace hl
 			_descriptorPool.create();
 		}
 
+		_graphicPipelines.emplace_back(_device);
+		auto& pipeline = _graphicPipelines.back();
+
 		// Descriptor Set Layout
 		{
-			_descriptorSetLayout.create({
+			pipeline._descriptorSetLayout.create({
 			   VkDescriptorSetLayoutBinding
 			   {
 				   .binding = 0,
@@ -173,18 +176,18 @@ namespace hl
 
 		// Descriptor Sets
 		{
-			_descriptorSet.create(_descriptorPool, _descriptorSetLayout);
+			pipeline._descriptorSet.create(_descriptorPool, pipeline._descriptorSetLayout);
 
 			// Need to 'update' these, actually for static app need to initialize, but it requires the previous render pass to do so
 		}
 			
 		// Graphics Pipeline
 		{
-			_graphicsPipeline.createPostProcess(
+			pipeline._graphicsPipeline.createPostProcess(
 				std::string(ROOT_PATH("/data/shaders/post_process.vert")),
 				std::string(ROOT_PATH("/data/shaders/post_process.frag")),
 				_renderpass,
-				_descriptorSetLayout,
+				pipeline._descriptorSetLayout,
 				multisSampling);
 		}
 	}
@@ -246,35 +249,64 @@ namespace hl
 			_descriptorPool.create();
 		}
 
-		// Descriptor Set Layout
 		{
-			_descriptorSetLayout.create({
-			   VkDescriptorSetLayoutBinding
-			   {
-				   .binding = 0,
-				   .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				   .descriptorCount = 1,
-				   .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-				   .pImmutableSamplers = nullptr
-			   }
-				});
+			_graphicPipelines.emplace_back(_device);
+			auto& pipeline = _graphicPipelines.back();
+
+			// Descriptor Set Layout
+			{
+				pipeline._descriptorSetLayout.create({
+				   VkDescriptorSetLayoutBinding
+				   {
+					   .binding = 0,
+					   .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+					   .descriptorCount = 1,
+					   .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+					   .pImmutableSamplers = nullptr
+				   }
+					});
+			}
+
+			// Descriptor Sets
+			{
+				pipeline._descriptorSet.create(_descriptorPool, pipeline._descriptorSetLayout);
+
+				// Need to 'update' these, actually for static app need to initialize, but it requires the previous render pass to do so
+			}
+
+			// Graphics Pipeline
+			{
+				pipeline._graphicsPipeline.createUi(
+					std::string(ROOT_PATH("/data/shaders/fullscreen_sample.vert")),
+					std::string(ROOT_PATH("/data/shaders/fullscreen_sample.frag")),
+					_renderpass,
+					pipeline._descriptorSetLayout,
+					multisSampling,
+					false);
+			}
 		}
-
-		// Descriptor Sets
 		{
-			_descriptorSet.create(_descriptorPool, _descriptorSetLayout);
+			_graphicPipelines.emplace_back(_device);
+			auto& pipeline = _graphicPipelines.back();
 
-			// Need to 'update' these, actually for static app need to initialize, but it requires the previous render pass to do so
-		}
+			// Descriptor Set Layout
+			{
+			}
 
-		// Graphics Pipeline
-		{
-			_graphicsPipeline.createPostProcess(
-				std::string(ROOT_PATH("/data/shaders/ui.vert")),
-				std::string(ROOT_PATH("/data/shaders/ui.frag")),
-				_renderpass,
-				_descriptorSetLayout,
-				multisSampling);
+			// Descriptor Sets
+			{
+			}
+
+			// Graphics Pipeline
+			{
+				pipeline._graphicsPipeline.createUi(
+					std::string(ROOT_PATH("/data/shaders/ui.vert")),
+					std::string(ROOT_PATH("/data/shaders/ui.frag")),
+					_renderpass,
+					pipeline._descriptorSetLayout,
+					multisSampling,
+					true);
+			}
 		}
 	}
 
@@ -343,10 +375,10 @@ namespace hl
 
 	void VulkanRenderpassResources::destroy()
 	{
-		_graphicsPipeline.destroy();
-
-
-		_descriptorSetLayout.destroy();
+		for (auto& pipeline : _graphicPipelines)
+		{
+			pipeline.destroy();
+		}
 
 		_descriptorPool.destroy();
 
@@ -375,64 +407,6 @@ namespace hl
 		for (auto& depthImage : _depthImages)
 		{
 			depthImage.destroy();
-		}
-	}
-
-	void VulkanRenderpassResources::recordCommandBuffer(
-		VkCommandBuffer commandBuffer, 
-		uint32_t imageIndex,
-		std::function<void()> operation)
-	{
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to begin recording command buffer!");
-		}
-
-		VkRenderPassBeginInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = _renderpass._renderPass;
-		renderPassInfo.framebuffer = _framebuffers[imageIndex]._framebuffer;
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = _renderpassExtent;
-
-		std::array<VkClearValue, 2> clearValues{};
-		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-		clearValues[1].depthStencil = { 1.0f, 0 };
-
-		// TODO: Do I need to always clear?
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
-		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline._graphicsPipeline);
-
-		VkViewport viewport{};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)_renderpassExtent.width;
-		viewport.height = (float)_renderpassExtent.height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-		VkRect2D scissor{};
-		scissor.offset = { 0, 0 };
-		scissor.extent = _renderpassExtent;
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-		{
-			operation();
-		}
-
-		vkCmdEndRenderPass(commandBuffer);
-
-		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to record command buffer!");
 		}
 	}
 
