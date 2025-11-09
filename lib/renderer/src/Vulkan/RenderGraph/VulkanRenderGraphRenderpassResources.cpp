@@ -8,7 +8,7 @@ namespace hl
 		VulkanDevice& device, 
 		uint32_t imageCount
 	) :
-		_name(name),
+		Name(name),
 		_imageCount(imageCount),
 		_device(device)
 	{
@@ -29,8 +29,37 @@ namespace hl
 	{
 		_renderpass = renderpass;
 	}
+
+	void VulkanRenderGraphRenderpassResources::addFramebuffer(VkFramebuffer framebuffer)
+	{
+		_framebuffers.push_back(framebuffer);
+	}
+	VulkanRenderGraphPipelineResources& VulkanRenderGraphRenderpassResources::addPipeline(const std::string& name)
+	{
+		auto pipeline = new VulkanRenderGraphPipelineResources(name, _device);
+
+		_pipelines.push_back(pipeline);
+
+		return *pipeline;
+	}
+
 	void VulkanRenderGraphRenderpassResources::destroy()
 	{
+		for (auto& p : _pipelines)
+		{
+			p->destroy();
+			delete p;
+		}
+
+		_pipelines.clear();
+
+		for (auto& fb : _framebuffers)
+		{
+			vkDestroyFramebuffer(_device._device, fb, nullptr);
+		}
+
+		_framebuffers.clear();
+
 		vkDestroyRenderPass(_device._device, _renderpass, nullptr);
 		_renderpass = VK_NULL_HANDLE;
 
@@ -53,4 +82,8 @@ namespace hl
 		return _attachments;
 	}
 
+	const VkRenderPass VulkanRenderGraphRenderpassResources::getRenderPass() const
+	{
+		return _renderpass;
+	}
 }

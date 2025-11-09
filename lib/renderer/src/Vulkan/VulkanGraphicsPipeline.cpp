@@ -49,10 +49,13 @@ namespace hl
         return shaderModule;
     }
 
-    static std::vector<uint32_t> readParseCompileShader(
+    std::vector<uint32_t> VulkanGraphicsPipeline::readParseCompileShader(
         const std::string& shaderSource, 
-        EShLanguage stage)
+        bool vertex)
     {
+        // TODO: Compute etc
+        EShLanguage stage = vertex ? EShLanguage::EShLangVertex : EShLanguage::EShLangFragment;
+
         glslang::TShader shader(stage);
         const char* sources[] = { shaderSource.c_str() };
         shader.setStrings(sources, 1);
@@ -135,8 +138,8 @@ namespace hl
 		auto vertShaderCode = readFile(vertexPath);
 		auto fragShaderCode = readFile(fragmentPath);
 
-        auto vertexSpirv = readParseCompileShader(vertShaderCode, EShLangVertex);
-        auto fragmentSpirv = readParseCompileShader(fragShaderCode, EShLangFragment);
+        auto vertexSpirv = readParseCompileShader(vertShaderCode, true);
+        auto fragmentSpirv = readParseCompileShader(fragShaderCode, false);
 
 		VkShaderModule vertShaderModule = createShaderModule(_device, vertexSpirv);
 		VkShaderModule fragShaderModule = createShaderModule(_device, fragmentSpirv);
@@ -264,8 +267,8 @@ namespace hl
         auto vertShaderCode = readFile(vertexPath);
         auto fragShaderCode = readFile(fragmentPath);
 
-        auto vertexSpirv = readParseCompileShader(vertShaderCode, EShLangVertex);
-        auto fragmentSpirv = readParseCompileShader(fragShaderCode, EShLangFragment);
+        auto vertexSpirv = readParseCompileShader(vertShaderCode, true);
+        auto fragmentSpirv = readParseCompileShader(fragShaderCode, false);
 
         VkShaderModule vertShaderModule = createShaderModule(_device, vertexSpirv);
         VkShaderModule fragShaderModule = createShaderModule(_device, fragmentSpirv);
@@ -408,8 +411,8 @@ namespace hl
         auto vertShaderCode = readFile(vertexPath);
         auto fragShaderCode = readFile(fragmentPath);
 
-        auto vertexSpirv = readParseCompileShader(vertShaderCode, EShLangVertex);
-        auto fragmentSpirv = readParseCompileShader(fragShaderCode, EShLangFragment);
+        auto vertexSpirv = readParseCompileShader(vertShaderCode, true);
+        auto fragmentSpirv = readParseCompileShader(fragShaderCode, false);
 
         VkShaderModule vertShaderModule = createShaderModule(_device, vertexSpirv);
         VkShaderModule fragShaderModule = createShaderModule(_device, fragmentSpirv);

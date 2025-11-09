@@ -190,14 +190,14 @@ namespace rp
         _device.create();
         _swapChain.create();
 
-        std::vector<hl::RenderpassInfo> renderpasses = 
+        std::vector<hl::RenderpassInfo> renderpasses =
         {
             hl::RenderpassInfo
             {
                 .name = "scene_pass",
                 .useMultiSampling = true,
                 .inputs = {},
-                .outputs = 
+                .outputs =
                 {
                     hl::ResourceInfo
                     {
@@ -212,7 +212,7 @@ namespace rp
                         .format = "VK_FORMAT_D32_SFLOAT"
                     }
                 },
-                .pipelines = 
+                .pipelines =
                 {
                     hl::PipelineInfo
                     {
@@ -224,7 +224,7 @@ namespace rp
                             hl::DescriptorSetInfo
                             {
                                 .name = "model_uniforms",
-                                .bindings = 
+                                .bindings =
                                 {
                                     hl::DescriptorBinding
                                     {
@@ -243,6 +243,31 @@ namespace rp
                                 }
                             }
                         },
+                        .vertexInputInfo = hl::VertexInputInfo
+                        {
+                            .attributes =
+                            {
+                                {
+                                    .name = "inPosition",
+                                    .format = hl::VertexAttributeFormat::Vec3,
+                                    .location = 0,
+                                    .offset = offsetof(hl::Vertex, pos)
+                                },
+                                {
+                                    .name = "inColor",
+                                    .format = hl::VertexAttributeFormat::Vec3,
+                                    .location = 1,
+                                    .offset = offsetof(hl::Vertex, color)
+                                },
+                                {
+                                    .name = "inTexCoord",
+                                    .format = hl::VertexAttributeFormat::Vec2,
+                                    .location = 2,
+                                    .offset = offsetof(hl::Vertex, texCoord)
+                                },
+                            },
+                            .stride = sizeof(float) * (3 + 3 + 2)
+                        },
                         .enableBlending = false
                     }
                 }
@@ -258,7 +283,7 @@ namespace rp
                     {
                         .name = "post_color",
                         .type = hl::ResourceType::Color,
-                        .format = "VK_FORMAT_R8G8B8A8_UNORM"
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
                     },
                     hl::ResourceInfo
                     {
@@ -306,7 +331,7 @@ namespace rp
                     {
                         .name = "swapchain_color",
                         .type = hl::ResourceType::Color,
-                        .format = "VK_FORMAT_B8G8R8A8_UNORM"
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
                     },
                     hl::ResourceInfo
                     {
@@ -381,7 +406,7 @@ namespace rp
                 _device,
                 _swapChain._swapChainExtent.width,
                 _swapChain._swapChainExtent.height,
-                (uint32_t)_swapChain._swapChainImages.size());
+                _swapChain._swapChainImageViews);
 
             hl::RenderGraph::destroy(generatedRenderpassResources);
         }
