@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 
 #include <vulkan/vulkan.h>
 
@@ -189,6 +190,171 @@ namespace rp
         _device.create();
         _swapChain.create();
 
+        std::vector<hl::RenderpassInfo> renderpasses = 
+        {
+            hl::RenderpassInfo
+            {
+                .name = "scene_pass",
+                .useMultiSampling = true,
+                .inputs = {},
+                .outputs = 
+                {
+                    hl::ResourceInfo
+                    {
+                        .name = "scene_color",
+                        .type = hl::ResourceType::Color,
+                        .format = "VK_FORMAT_R8G8B8A8_UNORM"
+                    },
+                    hl::ResourceInfo
+                    {
+                        .name = "scene_depth",
+                        .type = hl::ResourceType::Depth,
+                        .format = "VK_FORMAT_D32_SFLOAT"
+                    }
+                },
+                .pipelines = 
+                {
+                    hl::PipelineInfo
+                    {
+                        .name = "model_pipeline",
+                        .shaderVert = ROOT_PATH("/data/shaders/triangle.vert"),
+                        .shaderFrag = ROOT_PATH("/data/shaders/triangle.frag"),
+                        .descriptorSets =
+                        {
+                            hl::DescriptorSetInfo
+                            {
+                                .name = "model_uniforms",
+                                .bindings = 
+                                {
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 0,
+                                        .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                        .stage = "VERTEX",
+                                        .resource = "model_matrix_ubo"
+                                    },
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 1,
+                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                        .stage = "FRAGMENT",
+                                        .resource = "viking_texture"
+                                    }
+                                }
+                            }
+                        },
+                        .enableBlending = false
+                    }
+                }
+            },
+            hl::RenderpassInfo
+            {
+                .name = "postprocess_pass",
+                .useMultiSampling = false,
+                .inputs = { "scene_color" },
+                .outputs = 
+                {
+                    hl::ResourceInfo
+                    {
+                        .name = "post_color",
+                        .type = hl::ResourceType::Color,
+                        .format = "VK_FORMAT_R8G8B8A8_UNORM"
+                    },
+                    hl::ResourceInfo
+                    {
+                        .name = "post_depth",
+                        .type = hl::ResourceType::Depth,
+                        .format = "VK_FORMAT_D32_SFLOAT"
+                    }
+                },
+                .pipelines =
+                {
+                    hl::PipelineInfo
+                    {
+                        .name = "postprocess_pipeline",
+                        .shaderVert = ROOT_PATH("/data/shaders/post_process.vert"),
+                        .shaderFrag = ROOT_PATH("/data/shaders/post_process.frag"),
+                        .descriptorSets =
+                        {
+                            hl::DescriptorSetInfo
+                            {
+                                .name = "input_sampler",
+                                .bindings =
+                                {
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 0,
+                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                        .stage = "FRAGMENT",
+                                        .resource = "scene_color"
+                                    }
+                                }
+                            }
+                        },
+                        .enableBlending = false
+                    }
+                }
+            },
+            hl::RenderpassInfo
+            {
+                .name = "ui_pass",
+                .useMultiSampling = false,
+                .inputs = { "post_color" },
+                .outputs =
+                {
+                    hl::ResourceInfo
+                    {
+                        .name = "swapchain_color",
+                        .type = hl::ResourceType::Color,
+                        .format = "VK_FORMAT_B8G8R8A8_UNORM"
+                    },
+                    hl::ResourceInfo
+                    {
+                        .name = "post_depth",
+                        .type = hl::ResourceType::Depth,
+                        .format = "VK_FORMAT_D32_SFLOAT"
+                    }
+                },
+                .pipelines =
+                {
+                    hl::PipelineInfo
+                    {
+                        .name = "fullscreen_sample",
+                        .shaderVert = ROOT_PATH("/data/shaders/fullscreen_sample.vert"),
+                        .shaderFrag = ROOT_PATH("/data/shaders/fullscreen_sample.frag"),
+                        .descriptorSets =
+                        {
+                            hl::DescriptorSetInfo
+                            {
+                                .name = "fullscreen_sample_input",
+                                .bindings =
+                                {
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 0,
+                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                        .stage = "FRAGMENT",
+                                        .resource = "post_color"
+                                    }
+                                }
+                            }
+                        },
+                        .enableBlending = false
+                    },
+                    hl::PipelineInfo
+                    {
+                        .name = "ui",
+                        .shaderVert = ROOT_PATH("/data/shaders/ui.vert"),
+                        .shaderFrag = ROOT_PATH("/data/shaders/ui.frag"),
+                        .descriptorSets = {},
+                        .enableBlending = true
+                    }
+                }
+            }
+        };
+
+
+
         _defaultRenderpassResources
             .create(
                 _swapChain._swapChainImageFormat,
@@ -207,6 +373,20 @@ namespace rp
             .createUi(
                 _swapChain,
                 false); // No multisampling for ui
+
+
+        {
+            auto generatedRenderpassResources = hl::RenderGraph::create(
+                renderpasses, 
+                _device,
+                _swapChain._swapChainExtent.width,
+                _swapChain._swapChainExtent.height,
+                (uint32_t)_swapChain._swapChainImages.size());
+
+            hl::RenderGraph::destroy(generatedRenderpassResources);
+        }
+
+
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
