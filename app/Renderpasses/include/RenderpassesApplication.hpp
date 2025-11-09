@@ -56,6 +56,7 @@ namespace rp
 
 		hl::VulkanRenderpassResources _defaultRenderpassResources;
 		hl::VulkanRenderpassResources _postProcessRenderpassResources;
+		hl::VulkanRenderpassResources _uiRenderpassResources;
 
 		hl::TempModel _model;
 
