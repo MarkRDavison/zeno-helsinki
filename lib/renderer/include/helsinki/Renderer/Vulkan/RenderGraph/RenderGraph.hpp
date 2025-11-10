@@ -2,6 +2,7 @@
 
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderResourcesSystem.hpp>
 #include <string>
 #include <vector>
 #include <optional>
@@ -86,6 +87,7 @@ namespace hl
         VkFormat format{ VK_FORMAT_UNDEFINED };
         std::vector<VulkanImage*> images;
         std::vector<VulkanImage*> resolveImages; // TODO: This might be the swapchain image somehow
+        VkSampler sampler{ VK_NULL_HANDLE }; // TODO: This is populated when a subsequent renderpass needs it
     };
 
     class RenderGraph
@@ -93,6 +95,7 @@ namespace hl
         RenderGraph() = delete;
     public:
         static std::vector<VulkanRenderGraphRenderpassResources*> create(
+            RenderResourcesSystem& renderResourcesSystem,
             const std::vector<hl::RenderpassInfo>& renderpassInfo, 
             VulkanDevice& device,
             uint32_t width,

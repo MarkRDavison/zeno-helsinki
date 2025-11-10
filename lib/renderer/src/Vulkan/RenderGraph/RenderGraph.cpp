@@ -21,12 +21,28 @@ namespace hl
 	}
 
 	std::vector<VulkanRenderGraphRenderpassResources*> RenderGraph::create(
+		RenderResourcesSystem& /*renderResourcesSystem*/,
 		const std::vector<hl::RenderpassInfo>& renderpassInfo, 
 		VulkanDevice& device,
 		uint32_t width,
 		uint32_t height,
 		const std::vector<VkImageView>& swapChainImageViews)
 	{
+		
+		/*
+			TODO: Need to accumulate info about attachments in here
+			It will be useful to have a list of output attachment names,
+			so we can lookup in a set to see if it should be an output->input attachment
+			or if not in that set then it should probably be a static resource (texture)
+
+			UBO's are more complicated (for me) but they need
+			 - buffer handle
+			 - buffer ubo size
+
+			texture just needs 
+			 - sampler
+			 - underlying image view
+		*/
 		std::vector<VulkanRenderGraphRenderpassResources*> renderpasses;
 
 		const auto lastName = renderpassInfo.back().name;
@@ -477,6 +493,36 @@ namespace hl
 					}
 				}
 
+				VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+
+				//	Descriptor pool
+				{
+					// TODO: Need better than this maybe can calculate it from renderpass description
+					std::vector<VkDescriptorPoolSize> poolSizes
+					{
+					   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 * imageCount },
+					   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 20 * imageCount },
+					};
+
+					VkDescriptorPoolCreateInfo poolCreateInfo{};
+					poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+					poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+					poolCreateInfo.pPoolSizes = poolSizes.data();
+					poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount);
+
+					if (vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+					{
+						throw std::runtime_error("failed to create descriptor pool!");
+					}
+
+					device.setDebugName(
+						reinterpret_cast<uint64_t>(descriptorPool),
+						VK_OBJECT_TYPE_DESCRIPTOR_POOL,
+						(r->Name + "_DescriptorPool").c_str());
+
+					r->addDescriptorPool(descriptorPool);
+				}
+
 				//	Graphics pipelines
 				{
 					for (const auto& g : ri.pipelines)
@@ -762,37 +808,34 @@ namespace hl
 							vkDestroyShaderModule(device._device, vertexShaderModule, nullptr);
 							vkDestroyShaderModule(device._device, fragmentShaderModule, nullptr);
 						}
+
+						// Descriptor sets
+						{
+							if (descriptorSetLayout != VK_NULL_HANDLE)
+							{
+								std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+								VkDescriptorSetAllocateInfo allocInfo{};
+								allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+								allocInfo.descriptorPool = descriptorPool;
+								allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+								allocInfo.pSetLayouts = layouts.data();
+
+								auto descriptorSets = std::vector<VkDescriptorSet>(MAX_FRAMES_IN_FLIGHT);
+								if (vkAllocateDescriptorSets(device._device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
+								{
+									throw std::runtime_error("Failed to allocate descriptor sets!");
+								}
+
+								for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+								{
+									device.setDebugName(
+										reinterpret_cast<uint64_t>(descriptorSets[i]),
+										VK_OBJECT_TYPE_DESCRIPTOR_SET,
+										(r->Name + "_" + g.name + "_DescriptorSet_" + std::to_string(i)).c_str());
+								}
+							}
+						}
 					}
-				}
-
-				VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-
-				//	Descriptor pool
-				{
-					// TODO: Need better than this
-					std::vector<VkDescriptorPoolSize> poolSizes
-					{
-					   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 * imageCount },
-					   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 20 * imageCount },
-					};
-
-					VkDescriptorPoolCreateInfo poolCreateInfo{};
-					poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-					poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-					poolCreateInfo.pPoolSizes = poolSizes.data();
-					poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount);
-
-					if (vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool) != VK_SUCCESS)
-					{
-						throw std::runtime_error("failed to create descriptor pool!");
-					}
-
-					device.setDebugName(
-						reinterpret_cast<uint64_t>(descriptorPool),
-						VK_OBJECT_TYPE_DESCRIPTOR_POOL,
-						(r->Name + "_DescriptorPool").c_str());
-
-					r->addDescriptorPool(descriptorPool);
 				}
 			}
 		}

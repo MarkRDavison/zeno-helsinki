@@ -87,6 +87,14 @@ namespace hl
 	{
 		return _attachments;
 	}
+	std::vector<RenderpassAttachment>& VulkanRenderGraphRenderpassResources::getAttachments()
+	{
+		return _attachments;
+	}
+	const std::vector<VulkanRenderGraphPipelineResources*>& VulkanRenderGraphRenderpassResources::getPipelines() const
+	{
+		return _pipelines;
+	}
 
 	const VkRenderPass VulkanRenderGraphRenderpassResources::getRenderPass() const
 	{

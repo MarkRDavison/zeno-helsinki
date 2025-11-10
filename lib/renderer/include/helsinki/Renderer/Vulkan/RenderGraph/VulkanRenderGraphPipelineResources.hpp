@@ -20,6 +20,7 @@ namespace hl
 		void addDescriptorSetLayout(VkDescriptorSetLayout descriptorSetLayout);
 		void addPipelineLayout(VkPipelineLayout pipelineLayout);
 		void addPipeline(VkPipeline pipeline);
+		void addDescriptorSets(std::vector<VkDescriptorSet> descriptorSets);
 
 		void destroy();
 

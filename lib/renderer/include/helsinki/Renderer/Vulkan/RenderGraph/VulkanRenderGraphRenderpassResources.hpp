@@ -22,6 +22,8 @@ namespace hl
 		void destroy();
 
 		const std::vector<RenderpassAttachment>& getAttachments() const;
+		std::vector<RenderpassAttachment>& getAttachments();
+		const std::vector<VulkanRenderGraphPipelineResources*>& getPipelines() const;
 
 		const VkRenderPass getRenderPass() const;
 
