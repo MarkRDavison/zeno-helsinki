@@ -4,6 +4,8 @@
 
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphPipelineResources.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 
 #include <vulkan/vulkan.h>
 
@@ -46,7 +48,8 @@ namespace rp
         _commandPool(_device),
         _oneTimeCommandPool(_device),
         _syncContext(_device),
-        _model(_device)
+        _model(_device),
+        _renderResourcesSystem()
     {
 
     }
@@ -378,8 +381,6 @@ namespace rp
             }
         };
 
-
-
         _defaultRenderpassResources
             .create(
                 _swapChain._swapChainImageFormat,
@@ -399,36 +400,138 @@ namespace rp
                 _swapChain,
                 false); // No multisampling for ui
 
+        _commandPool.create();
+        _oneTimeCommandPool.create();
 
+        _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
+
+
+        createUniformBuffers();
+        createCommandBuffers();
+        _syncContext.create();
+
+        // TODO: BAD!
+        std::vector<hl::VulkanUniformBuffer*> ubs = {
+            &_uniformBuffers[0],
+            &_uniformBuffers[1]
+        };
+
+        _renderResourcesSystem.addUniformBuffers("model_matrix_ubo", ubs);
+        _renderResourcesSystem.addTexture("viking_texture", &_model._texture);
+
+        auto generatedRenderpassResources = hl::RenderGraph::create(
+            _renderResourcesSystem,
+            renderpasses,
+            _device,
+            _swapChain._swapChainExtent.width,
+            _swapChain._swapChainExtent.height,
+            _swapChain._swapChainImageViews);
+
+        for (const auto& r : renderpasses)
         {
-            auto generatedRenderpassResources = hl::RenderGraph::create(
-                renderpasses, 
-                _device,
-                _swapChain._swapChainExtent.width,
-                _swapChain._swapChainExtent.height,
-                _swapChain._swapChainImageViews);
+            for (const auto& p : r.pipelines)
+            {
+                for (const auto& ds : p.descriptorSets)
+                {
+                    // Will be grouping at this level
+                    for (const auto& b : ds.bindings)
+                    {
+                        // TODO: Look at inputs...
+                        if (b.resource.has_value())
+                        {
+                            // std::cout << "Renderpass '" << r.name << "' - pipeline '" << p.name << "' - descriptor set '" << ds.name << "' - binding '" << b.resource.value() << "'" << std::endl;
 
-            hl::RenderGraph::destroy(generatedRenderpassResources);
+                            for (const auto& grpr : generatedRenderpassResources)
+                            {
+                                // Dont try and get an output from yourself as an input???
+                                if (grpr->Name != r.name)
+                                {
+                                    for (auto& grpra : grpr->getAttachments())
+                                    {
+                                        if (grpra.name == b.resource.value())
+                                        {
+                                            // std::cout << " - Found it! Its the output from '" << grpr->Name << "'.'" << grpra.name << "'" << std::endl;
+
+                                            std::vector<hl::VulkanImage*> offscreenImages;
+
+                                            if (!grpra.resolveImages.empty())
+                                            {
+                                                for (auto i : grpra.resolveImages)
+                                                {
+                                                    offscreenImages.push_back(i);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                for (auto i : grpra.images)
+                                                {
+                                                    offscreenImages.push_back(i);
+                                                }
+                                            }
+
+                                            if (grpra.sampler == VK_NULL_HANDLE)
+                                            {
+                                                // TODO: config
+                                                VkSamplerCreateInfo samplerInfo{};
+                                                samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+                                                samplerInfo.magFilter = VK_FILTER_LINEAR;
+                                                samplerInfo.minFilter = VK_FILTER_LINEAR;
+                                                samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.anisotropyEnable = VK_FALSE;
+                                                samplerInfo.maxAnisotropy = 1.0f;
+                                                samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+                                                samplerInfo.unnormalizedCoordinates = VK_FALSE;
+                                                samplerInfo.compareEnable = VK_FALSE;
+                                                samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+                                                samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+                                                samplerInfo.mipLodBias = 0.0f;
+                                                samplerInfo.minLod = 0.0f;
+                                                samplerInfo.maxLod = 0.0f;
+
+                                                if (vkCreateSampler(_device._device, &samplerInfo, nullptr, &grpra.sampler) != VK_SUCCESS)
+                                                {
+                                                    throw std::runtime_error("failed to create sampler!");
+                                                }
+
+                                                _device.setDebugName(
+                                                    reinterpret_cast<uint64_t>(grpra.sampler),
+                                                    VK_OBJECT_TYPE_SAMPLER,
+                                                    (r.name + "_" + grpra.name + "_Sampler").c_str());
+                                            }
+
+                                            _renderResourcesSystem.registerOffscreenImage(
+                                                b.resource.value(),
+                                                offscreenImages,
+                                                grpra.sampler);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-
-
+        // TODO: Update if needed???
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
             if (_useMultiSampling)
             {
                 _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
                     .updatePostProcess(
-                        i, 
-                        _defaultRenderpassResources._colorResolveImages[i], 
+                        i,
+                        _defaultRenderpassResources._colorResolveImages[i],
                         _postProcessRenderpassResources._outputSampler);
             }
             else
             {
                 _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
                     .updatePostProcess(
-                        i, 
-                        _defaultRenderpassResources._colorImages[i], 
+                        i,
+                        _defaultRenderpassResources._colorImages[i],
                         _postProcessRenderpassResources._outputSampler);
             }
 
@@ -438,22 +541,14 @@ namespace rp
                     i,
                     _postProcessRenderpassResources._colorImages[i],
                     _uiRenderpassResources._outputSampler);
+
+            _defaultRenderpassResources._graphicPipelines[0]._descriptorSet.update(
+                i, 
+                _renderResourcesSystem.getUniformBuffer("model_matrix_ubo", i),
+                _renderResourcesSystem.getTexture("viking_texture"));
         }
 
-        _commandPool.create();
-        _oneTimeCommandPool.create();
-
-        _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
-
-        createUniformBuffers();
-        createCommandBuffers();
-        _syncContext.create();
-
-        // TODO: Update if needed???
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {            
-            _defaultRenderpassResources._graphicPipelines[0]._descriptorSet.update(i, _uniformBuffers[i], _model._texture);
-        }
+        hl::RenderGraph::destroy(generatedRenderpassResources);
     }
 
     void RenderpassesApplication::createUniformBuffers()

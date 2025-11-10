@@ -25,9 +25,14 @@ namespace hl
 	{
 		_pipeline = pipeline;
 	}
+	void VulkanRenderGraphPipelineResources::addDescriptorSets(std::vector<VkDescriptorSet> descriptorSets)
+	{
+		_descriptorSets = descriptorSets;
+	}
 
 	void VulkanRenderGraphPipelineResources::destroy()
 	{
+		_descriptorSets.clear();
 		vkDestroyPipeline(_device._device, _pipeline, nullptr);
 		vkDestroyPipelineLayout(_device._device, _pipelineLayout, nullptr);
 		vkDestroyDescriptorSetLayout(_device._device, _descriptorSetLayout, nullptr);
