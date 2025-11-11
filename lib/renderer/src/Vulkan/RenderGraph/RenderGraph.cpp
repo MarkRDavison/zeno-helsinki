@@ -1,6 +1,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <stdexcept>
+#include <iostream>
 #include <fstream>
 #include <sstream>
 
@@ -28,21 +29,6 @@ namespace hl
 		uint32_t height,
 		const std::vector<VkImageView>& swapChainImageViews)
 	{
-		
-		/*
-			TODO: Need to accumulate info about attachments in here
-			It will be useful to have a list of output attachment names,
-			so we can lookup in a set to see if it should be an output->input attachment
-			or if not in that set then it should probably be a static resource (texture)
-
-			UBO's are more complicated (for me) but they need
-			 - buffer handle
-			 - buffer ubo size
-
-			texture just needs 
-			 - sampler
-			 - underlying image view
-		*/
 		std::vector<VulkanRenderGraphRenderpassResources*> renderpasses;
 
 		const auto lastName = renderpassInfo.back().name;
@@ -64,12 +50,42 @@ namespace hl
 
 			{
 				// images/outputs
+
+				std::vector<VkClearValue> clearValues;
+
 				for (const auto& res : ri.outputs)
 				{
 					// TODO: Foreach N where N is MAX_FRAMES_IN_FLIGHT or swapchain image count
 					auto& attachment = r->addAttachment(res.name);
 					attachment.type = res.type;
 					attachment.format = extractFormat(res.format);
+
+					if (res.type == ResourceType::Color)
+					{
+						clearValues.emplace_back(VkClearValue
+							{
+								.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
+							});
+
+						if (ri.useMultiSampling)
+						{
+							clearValues.emplace_back(VkClearValue
+								{
+									.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
+								});
+						}
+					}
+					else if (res.type == ResourceType::Depth)
+					{
+						clearValues.emplace_back(VkClearValue
+							{
+								.depthStencil = { 1.0f, 0 }
+							});
+					}
+					else
+					{
+						throw std::runtime_error("TODO NOT IMPLEMENTED - CLEAR VALUES GENERATION");
+					}
 
 					VkImageUsageFlags usage = res.type == ResourceType::Color
 						? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
@@ -96,8 +112,8 @@ namespace hl
 								height,
 								1, // TODO
 								ri.useMultiSampling
-								? device._msaaSamples
-								: VK_SAMPLE_COUNT_1_BIT,
+									? device._msaaSamples
+									: VK_SAMPLE_COUNT_1_BIT,
 								attachment.format,
 								VK_IMAGE_TILING_OPTIMAL,
 								usage,
@@ -144,7 +160,6 @@ namespace hl
 									VK_IMAGE_ASPECT_COLOR_BIT,
 									1);
 
-								// TODO: FOR EACH INDEX
 								device.setDebugName(
 									reinterpret_cast<uint64_t>(resolveImage->_image),
 									VK_OBJECT_TYPE_IMAGE,
@@ -207,6 +222,8 @@ namespace hl
 					}
 				}
 
+				r->setClearValues(clearValues);
+
 				// Renderpass
 				{
 					std::vector<VkAttachmentDescription> allAttachments;
@@ -246,6 +263,9 @@ namespace hl
 									? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 									: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+							std::cout << "[DEBUG] RenderPass '" << ri.name << "' attachment '" << ra.name
+								<< "' finalLayout: " << description.finalLayout << " (as uint)\n";
+
 									reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 									colorAttachments.push_back(description);
@@ -273,6 +293,9 @@ namespace hl
 
 										colorResolveAttachments.push_back(resolveDescription);
 										colorResolveReferences.push_back(resolveReference);
+
+										std::cout << "[DEBUG] RenderPass '" << ri.name << "' resolve attachment '" << ra.name
+											<< "' finalLayout: " << resolveDescription.finalLayout << " (as uint)\n";
 
 										allAttachments.push_back(resolveDescription);
 									}
@@ -379,7 +402,8 @@ namespace hl
 										attachments.push_back(a.images[i]->_imageView);
 									}
 
-									if (a.resolveImages.size() == imageCount)
+									if (a.resolveImages.size() == imageCount ||
+										a.type == ResourceType::Color)
 									{
 										if (a.type == ResourceType::Color)
 										{
@@ -481,6 +505,12 @@ namespace hl
 						if (vkCreateFramebuffer(device._device, &framebufferInfo, nullptr, &f) != VK_SUCCESS)
 						{
 							throw std::runtime_error("failed to create framebuffer!");
+						}
+
+						std::cout << "[DEBUG] Renderpass " << ri.name << " - framebuffer " << i << " attachments:\n";
+						for (size_t ji = 0; ji < attachments.size(); ji++)
+						{
+							std::cout << "  Attachment " << ji << ": " << reinterpret_cast<uint64_t>(attachments[ji]) << "\n";
 						}
 
 						device.setDebugName(
@@ -674,6 +704,11 @@ namespace hl
 								vertexInputInfo.vertexAttributeDescriptionCount = 0;
 
 								std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
+								vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+								vertexInputInfo.vertexBindingDescriptionCount = 0;
+								vertexInputInfo.vertexAttributeDescriptionCount = 0;
+								vertexInputInfo.pVertexBindingDescriptions = nullptr;
+								vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
 								if (g.vertexInputInfo.has_value())
 								{
@@ -715,7 +750,15 @@ namespace hl
 								rasterizer.rasterizerDiscardEnable = VK_FALSE;
 								rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 								rasterizer.lineWidth = 1.0f;
-								rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+								// TODO: CullMode can lead to really frustrating experiences where nothing renders.
+								if (g.enableCulling)
+								{
+									rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+								}
+								else
+								{
+									rasterizer.cullMode = VK_CULL_MODE_NONE;
+								}
 								rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 								rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -729,15 +772,21 @@ namespace hl
 
 								VkPipelineDepthStencilStateCreateInfo depthStencil{};
 								depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-								depthStencil.depthTestEnable = VK_TRUE;
-								depthStencil.depthWriteEnable = VK_TRUE;
-								depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-								depthStencil.depthBoundsTestEnable = VK_FALSE;
-								depthStencil.stencilTestEnable = VK_FALSE;
+								depthStencil.depthTestEnable = VK_FALSE;
+								depthStencil.depthWriteEnable = VK_FALSE;
+
+								if (g.enableDepthTest)
+								{
+									depthStencil.depthTestEnable = VK_TRUE;
+									depthStencil.depthWriteEnable = VK_TRUE;
+									depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+									depthStencil.depthBoundsTestEnable = VK_FALSE;
+									depthStencil.stencilTestEnable = VK_FALSE;
+								}
 
 								VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 								colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
+								
 								if (g.enableBlending)
 								{
 									colorBlendAttachment.blendEnable = VK_TRUE;
@@ -833,6 +882,8 @@ namespace hl
 										VK_OBJECT_TYPE_DESCRIPTOR_SET,
 										(r->Name + "_" + g.name + "_DescriptorSet_" + std::to_string(i)).c_str());
 								}
+
+								pipeline.addDescriptorSets(descriptorSets);
 							}
 						}
 					}

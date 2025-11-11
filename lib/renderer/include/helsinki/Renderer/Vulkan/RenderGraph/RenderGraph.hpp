@@ -69,6 +69,8 @@ namespace hl
         std::vector<DescriptorSetInfo> descriptorSets;
         std::optional<VertexInputInfo> vertexInputInfo;
         bool enableBlending = false;
+        bool enableCulling = true;
+        bool enableDepthTest = true;
     };
 
     struct RenderpassInfo

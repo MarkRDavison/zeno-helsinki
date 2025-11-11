@@ -34,6 +34,7 @@ namespace hl
 	{
 		_framebuffers.push_back(framebuffer);
 	}
+
 	VulkanRenderGraphPipelineResources& VulkanRenderGraphRenderpassResources::addPipeline(const std::string& name)
 	{
 		auto pipeline = new VulkanRenderGraphPipelineResources(name, _device);
@@ -42,6 +43,7 @@ namespace hl
 
 		return *pipeline;
 	}
+
 	void VulkanRenderGraphRenderpassResources::addDescriptorPool(VkDescriptorPool descriptorPool)
 	{
 		_descriptorPool = descriptorPool;
@@ -69,8 +71,14 @@ namespace hl
 		vkDestroyRenderPass(_device._device, _renderpass, nullptr);
 		_renderpass = VK_NULL_HANDLE;
 
-		for (const auto& a : getAttachments())
+		for (auto& a : getAttachments())
 		{
+			if (a.sampler != VK_NULL_HANDLE)
+			{
+				vkDestroySampler(_device._device, a.sampler, nullptr);
+				a.sampler = VK_NULL_HANDLE;
+			}
+
 			for (auto& i : a.resolveImages)
 			{
 				i->destroy();
@@ -99,5 +107,19 @@ namespace hl
 	const VkRenderPass VulkanRenderGraphRenderpassResources::getRenderPass() const
 	{
 		return _renderpass;
+	}
+
+	const VkFramebuffer VulkanRenderGraphRenderpassResources::getFramebuffer(uint32_t imageIndex)
+	{
+		return _framebuffers[imageIndex];
+	}
+
+	std::vector<VkClearValue> VulkanRenderGraphRenderpassResources::getClearValues() const
+	{
+		return _clearValues;
+	}
+	void VulkanRenderGraphRenderpassResources::setClearValues(const std::vector<VkClearValue>& clearValues)
+	{
+		_clearValues = std::vector<VkClearValue>(clearValues);
 	}
 }
