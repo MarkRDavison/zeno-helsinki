@@ -267,7 +267,8 @@ namespace rp
                             },
                             .stride = sizeof(hl::Vertex)
                         },
-                        .enableBlending = false
+                        .enableBlending = false,
+                        .enableCulling = false
                     }
                 }
             },
@@ -283,12 +284,6 @@ namespace rp
                         .name = "post_color",
                         .type = hl::ResourceType::Color,
                         .format = "VK_FORMAT_B8G8R8A8_SRGB"
-                    },
-                    hl::ResourceInfo
-                    {
-                        .name = "post_depth",
-                        .type = hl::ResourceType::Depth,
-                        .format = "VK_FORMAT_D32_SFLOAT"
                     }
                 },
                 .pipelines =
@@ -333,12 +328,6 @@ namespace rp
                         .name = "swapchain_color",
                         .type = hl::ResourceType::Color,
                         .format = "VK_FORMAT_B8G8R8A8_SRGB"
-                    },
-                    hl::ResourceInfo
-                    {
-                        .name = "ui_depth",
-                        .type = hl::ResourceType::Depth,
-                        .format = "VK_FORMAT_D32_SFLOAT"
                     }
                 },
                 .pipelines =
