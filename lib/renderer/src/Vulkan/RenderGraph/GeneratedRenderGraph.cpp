@@ -25,93 +25,7 @@ namespace hl
 			swapChain._swapChainExtent.height,
 			swapChain._swapChainImageViews);
 
-        for (const auto& r : renderpasses)
-        {
-            for (const auto& p : r.pipelines)
-            {
-                for (const auto& ds : p.descriptorSets)
-                {
-                    // Will be grouping at this level
-                    for (const auto& b : ds.bindings)
-                    {
-                        // TODO: Look at inputs...
-                        if (b.resource.has_value())
-                        {
-                            // std::cout << "Renderpass '" << r.name << "' - pipeline '" << p.name << "' - descriptor set '" << ds.name << "' - binding '" << b.resource.value() << "'" << std::endl;
-
-                            for (const auto& grpr : _resources)
-                            {
-                                // Dont try and get an output from yourself as an input???
-                                if (grpr->Name != r.name)
-                                {
-                                    for (auto& grpra : grpr->getAttachments())
-                                    {
-                                        if (grpra.name == b.resource.value())
-                                        {
-                                            // std::cout << " - Found it! Its the output from '" << grpr->Name << "'.'" << grpra.name << "'" << std::endl;
-
-                                            std::vector<hl::VulkanImage*> offscreenImages;
-
-                                            if (!grpra.resolveImages.empty())
-                                            {
-                                                for (auto i : grpra.resolveImages)
-                                                {
-                                                    offscreenImages.push_back(i);
-                                                }
-                                            }
-                                            else
-                                            {
-                                                for (auto i : grpra.images)
-                                                {
-                                                    offscreenImages.push_back(i);
-                                                }
-                                            }
-
-                                            if (grpra.sampler == VK_NULL_HANDLE)
-                                            {
-                                                // TODO: config
-                                                VkSamplerCreateInfo samplerInfo{};
-                                                samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-                                                samplerInfo.magFilter = VK_FILTER_LINEAR;
-                                                samplerInfo.minFilter = VK_FILTER_LINEAR;
-                                                samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                samplerInfo.anisotropyEnable = VK_FALSE;
-                                                samplerInfo.maxAnisotropy = 1.0f;
-                                                samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-                                                samplerInfo.unnormalizedCoordinates = VK_FALSE;
-                                                samplerInfo.compareEnable = VK_FALSE;
-                                                samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-                                                samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                                                samplerInfo.mipLodBias = 0.0f;
-                                                samplerInfo.minLod = 0.0f;
-                                                samplerInfo.maxLod = 0.0f;
-
-                                                if (vkCreateSampler(device._device, &samplerInfo, nullptr, &grpra.sampler) != VK_SUCCESS)
-                                                {
-                                                    throw std::runtime_error("failed to create sampler!");
-                                                }
-
-                                                device.setDebugName(
-                                                    reinterpret_cast<uint64_t>(grpra.sampler),
-                                                    VK_OBJECT_TYPE_SAMPLER,
-                                                    (r.name + "_" + grpra.name + "_Sampler").c_str());
-                                            }
-
-                                            renderResourcesSystem.registerOffscreenImage(
-                                                b.resource.value(),
-                                                offscreenImages,
-                                                grpra.sampler);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        updateAllOutputResources();
 	}
 
     VkDescriptorSet GeneratedRenderGraph::getDescriptorSet(const std::string& renderpassName, const std::string& pipelineName, uint32_t frameNumber)
@@ -146,7 +60,24 @@ namespace hl
 
 	void GeneratedRenderGraph::recreate(uint32_t width, uint32_t height)
 	{
-        std::cout << "TODO: RECREATE RENDER GRAPH: " << width << ", " << height << std::endl;
+        size_t i = 0;
+        for (auto& r : getResources())
+        {
+            const auto& info = _renderGraph[i];
+            i++;
+
+            auto isLastRenderpass = i == getResources().size();
+
+            r->recreate(
+                info,
+                width,
+                height,
+                _swapChain._swapChainImageViews,
+                (uint32_t)(isLastRenderpass ? _swapChain._swapChainImageViews.size() : MAX_FRAMES_IN_FLIGHT),
+                isLastRenderpass);
+
+            updateAllOutputResources();
+        }
 	}
 
 	void GeneratedRenderGraph::updateAllDescriptorSets()
@@ -251,5 +182,96 @@ namespace hl
             }
         }
 	}
+
+    void GeneratedRenderGraph::updateAllOutputResources()
+    {
+        for (const auto& r : _renderGraph)
+        {
+            for (const auto& p : r.pipelines)
+            {
+                for (const auto& ds : p.descriptorSets)
+                {
+                    // Will be grouping at this level
+                    for (const auto& b : ds.bindings)
+                    {
+                        // TODO: Look at inputs...
+                        if (b.resource.has_value())
+                        {
+                            // std::cout << "Renderpass '" << r.name << "' - pipeline '" << p.name << "' - descriptor set '" << ds.name << "' - binding '" << b.resource.value() << "'" << std::endl;
+
+                            for (const auto& grpr : _resources)
+                            {
+                                // Dont try and get an output from yourself as an input???
+                                if (grpr->Name != r.name)
+                                {
+                                    for (auto& grpra : grpr->getAttachments())
+                                    {
+                                        if (grpra.name == b.resource.value())
+                                        {
+                                            // std::cout << " - Found it! Its the output from '" << grpr->Name << "'.'" << grpra.name << "'" << std::endl;
+
+                                            std::vector<hl::VulkanImage*> offscreenImages;
+
+                                            if (!grpra.resolveImages.empty())
+                                            {
+                                                for (auto i : grpra.resolveImages)
+                                                {
+                                                    offscreenImages.push_back(i);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                for (auto i : grpra.images)
+                                                {
+                                                    offscreenImages.push_back(i);
+                                                }
+                                            }
+
+                                            if (grpra.sampler == VK_NULL_HANDLE)
+                                            {
+                                                // TODO: config
+                                                VkSamplerCreateInfo samplerInfo{};
+                                                samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+                                                samplerInfo.magFilter = VK_FILTER_LINEAR;
+                                                samplerInfo.minFilter = VK_FILTER_LINEAR;
+                                                samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.anisotropyEnable = VK_FALSE;
+                                                samplerInfo.maxAnisotropy = 1.0f;
+                                                samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+                                                samplerInfo.unnormalizedCoordinates = VK_FALSE;
+                                                samplerInfo.compareEnable = VK_FALSE;
+                                                samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+                                                samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+                                                samplerInfo.mipLodBias = 0.0f;
+                                                samplerInfo.minLod = 0.0f;
+                                                samplerInfo.maxLod = 0.0f;
+
+                                                if (vkCreateSampler(_device._device, &samplerInfo, nullptr, &grpra.sampler) != VK_SUCCESS)
+                                                {
+                                                    throw std::runtime_error("failed to create sampler!");
+                                                }
+
+                                                _device.setDebugName(
+                                                    reinterpret_cast<uint64_t>(grpra.sampler),
+                                                    VK_OBJECT_TYPE_SAMPLER,
+                                                    (r.name + "_" + grpra.name + "_Sampler").c_str());
+                                            }
+
+                                            _renderResourcesSystem.registerOffscreenImage(
+                                                b.resource.value(),
+                                                offscreenImages,
+                                                grpra.sampler);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 }

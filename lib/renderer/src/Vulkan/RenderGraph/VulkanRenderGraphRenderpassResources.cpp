@@ -91,6 +91,66 @@ namespace hl
 		}
 	}
 
+	void VulkanRenderGraphRenderpassResources::recreate(
+		const RenderpassInfo& info,
+		uint32_t width, 
+		uint32_t height,
+		const std::vector<VkImageView>& swapChainImageViews,
+		uint32_t imageCount,
+		bool isLastRenderpass)
+	{
+		// Destroy
+		for (auto& fb : _framebuffers)
+		{
+			vkDestroyFramebuffer(_device._device, fb, nullptr);
+		}
+
+		_framebuffers.clear();
+
+		for (auto& a : getAttachments())
+		{
+			if (a.sampler != VK_NULL_HANDLE)
+			{
+				vkDestroySampler(_device._device, a.sampler, nullptr);
+				a.sampler = VK_NULL_HANDLE;
+			}
+
+			for (auto& i : a.resolveImages)
+			{
+				i->destroy();
+				delete i;
+			}
+
+			for (auto& i : a.images)
+			{
+				i->destroy();
+				delete i;
+			}
+		}
+
+		_attachments.clear();
+
+		// Create
+		RenderGraph::createImages(
+			_device,
+			this,
+			info,
+			width,
+			height,
+			imageCount, 
+			isLastRenderpass);
+
+		RenderGraph::createFrameBuffers(
+			_device,
+			this,
+			info,
+			width,
+			height,
+			swapChainImageViews,
+			imageCount,
+			isLastRenderpass);
+	}
+
 	const std::vector<RenderpassAttachment>& VulkanRenderGraphRenderpassResources::getAttachments() const
 	{
 		return _attachments;

@@ -74,7 +74,8 @@ namespace hl
 	{
 		if (_resources.find({ name, RenderResourceType::RenderpassOutputImage }) != _resources.end())
 		{
-			throw std::runtime_error("Cannot add duplicate resource");
+			// Nuke these
+			_resources.erase({ name, RenderResourceType::RenderpassOutputImage });
 		}
 
 		auto res = new RenderResource();
