@@ -1,7 +1,9 @@
+
 #include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
 #include <algorithm>
 #include <stdexcept>
 #include <iostream>
+#include <string>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -96,6 +98,11 @@ namespace hl
                 {
                     throw std::runtime_error("failed to create image view!");
                 }
+
+                _device.setDebugName(
+                    reinterpret_cast<uint64_t>(_swapChainImageViews[i]),
+                    VK_OBJECT_TYPE_IMAGE_VIEW,
+                    (std::string("SwapChain_ImageView_") + std::to_string(i)).c_str());
             }
         }
     }

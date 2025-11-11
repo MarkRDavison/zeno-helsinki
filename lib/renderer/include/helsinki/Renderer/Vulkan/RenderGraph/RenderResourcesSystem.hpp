@@ -63,7 +63,9 @@ namespace hl
 
 		VulkanTexture& getTexture(const std::string& name) const;
 		VulkanUniformBuffer& getUniformBuffer(const std::string& name, uint32_t frame) const;
-		std::pair<VkImageView, VkSampler> getOffscreenImageWithSampler(const std::string& name, uint32_t frame) const;
+		std::pair<VkImageView, VkSampler> getOffscreenImageWithSampler(const std::string& name, uint32_t frame);
+
+		std::pair<VkImageView, VkSampler> getOffscreenImageOrTexture(const std::string& name, uint32_t frame);
 
 	private:
 		std::unordered_map<

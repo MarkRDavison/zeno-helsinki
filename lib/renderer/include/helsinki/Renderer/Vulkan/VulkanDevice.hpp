@@ -5,6 +5,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChainSupportDetails.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanQueue.hpp>
+#include <iostream>
 
 namespace hl
 {
@@ -32,6 +33,7 @@ namespace hl
 			if (func)
 			{
 				func(_device, &nameInfo);
+				std::cout << "Added vulkan handle called " << name << " for '" << handle << "'" << std::endl;
 			}
 		}
 

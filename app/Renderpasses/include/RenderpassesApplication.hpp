@@ -19,6 +19,8 @@
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderResourcesSystem.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
 
 struct GLFWwindow;
 
@@ -56,10 +58,6 @@ namespace rp
 		hl::VulkanSwapChain _swapChain;
 		hl::RenderResourcesSystem _renderResourcesSystem;
 
-		hl::VulkanRenderpassResources _defaultRenderpassResources;
-		hl::VulkanRenderpassResources _postProcessRenderpassResources;
-		hl::VulkanRenderpassResources _uiRenderpassResources;
-
 		hl::TempModel _model;
 
 		hl::VulkanSynchronisationContext _syncContext;
@@ -67,6 +65,8 @@ namespace rp
 		std::vector<hl::VulkanUniformBuffer> _uniformBuffers;
 
 		std::vector<VkCommandBuffer> commandBuffers;
+
+		hl::GeneratedRenderGraph* _renderGraph{ nullptr };
 
 		uint32_t currentFrame = 0;
 		bool framebufferResized = false;

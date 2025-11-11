@@ -30,6 +30,19 @@ namespace hl
 		_descriptorSets = descriptorSets;
 	}
 
+	VkDescriptorSet VulkanRenderGraphPipelineResources::getDescriptorSet(uint32_t index)
+	{
+		return _descriptorSets[index];
+	}
+	VkPipeline VulkanRenderGraphPipelineResources::getPipeline() const
+	{
+		return _pipeline;
+	}
+	VkPipelineLayout VulkanRenderGraphPipelineResources::getPipelineLayout() const
+	{
+		return _pipelineLayout;
+	}
+
 	void VulkanRenderGraphPipelineResources::destroy()
 	{
 		_descriptorSets.clear();

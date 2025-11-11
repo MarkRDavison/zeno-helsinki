@@ -26,6 +26,10 @@ namespace hl
 		const std::vector<VulkanRenderGraphPipelineResources*>& getPipelines() const;
 
 		const VkRenderPass getRenderPass() const;
+		const VkFramebuffer getFramebuffer(uint32_t imageIndex);
+
+		std::vector<VkClearValue> getClearValues() const;
+		void setClearValues(const std::vector<VkClearValue>& clearValues);
 
 		const std::string Name;
 
@@ -37,6 +41,7 @@ namespace hl
 		std::vector<VkFramebuffer> _framebuffers;
 		std::vector<VulkanRenderGraphPipelineResources*> _pipelines;
 		VkDescriptorPool _descriptorPool{ VK_NULL_HANDLE };
+		std::vector<VkClearValue> _clearValues;
 	};
 
 }

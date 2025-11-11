@@ -22,6 +22,10 @@ namespace hl
 		void addPipeline(VkPipeline pipeline);
 		void addDescriptorSets(std::vector<VkDescriptorSet> descriptorSets);
 
+		VkDescriptorSet getDescriptorSet(uint32_t index);
+		VkPipeline getPipeline() const;
+		VkPipelineLayout getPipelineLayout() const;
+
 		void destroy();
 
 	private:

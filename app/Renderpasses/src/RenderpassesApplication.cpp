@@ -42,9 +42,6 @@ namespace rp
         _surface(_instance),
         _device(_instance, _surface),
         _swapChain(_device, _surface),
-        _defaultRenderpassResources("SCENE", _device),
-        _postProcessRenderpassResources("POST", _device),
-        _uiRenderpassResources("UI", _device),
         _commandPool(_device),
         _oneTimeCommandPool(_device),
         _syncContext(_device),
@@ -78,9 +75,8 @@ namespace rp
     {
         _swapChain.destroy();
 
-        _uiRenderpassResources.destroy();
-        _postProcessRenderpassResources.destroy();
-        _defaultRenderpassResources.destroy();
+        _renderGraph->destroy();
+        delete _renderGraph;
 
         for (size_t i = 0; i < _uniformBuffers.size(); i++)
         {
@@ -206,7 +202,7 @@ namespace rp
                     {
                         .name = "scene_color",
                         .type = hl::ResourceType::Color,
-                        .format = "VK_FORMAT_R8G8B8A8_UNORM"
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
                     },
                     hl::ResourceInfo
                     {
@@ -269,7 +265,7 @@ namespace rp
                                     .offset = offsetof(hl::Vertex, texCoord)
                                 },
                             },
-                            .stride = sizeof(float) * (3 + 3 + 2)
+                            .stride = sizeof(hl::Vertex)
                         },
                         .enableBlending = false
                     }
@@ -280,7 +276,7 @@ namespace rp
                 .name = "postprocess_pass",
                 .useMultiSampling = false,
                 .inputs = { "scene_color" },
-                .outputs = 
+                .outputs =
                 {
                     hl::ResourceInfo
                     {
@@ -319,7 +315,9 @@ namespace rp
                                 }
                             }
                         },
-                        .enableBlending = false
+                        .enableBlending = false,
+                        .enableCulling = false,
+                        .enableDepthTest = false
                     }
                 }
             },
@@ -338,7 +336,7 @@ namespace rp
                     },
                     hl::ResourceInfo
                     {
-                        .name = "post_depth",
+                        .name = "ui_depth",
                         .type = hl::ResourceType::Depth,
                         .format = "VK_FORMAT_D32_SFLOAT"
                     }
@@ -367,7 +365,9 @@ namespace rp
                                 }
                             }
                         },
-                        .enableBlending = false
+                        .enableBlending = false,
+                        .enableCulling = false,
+                        .enableDepthTest = false
                     },
                     hl::PipelineInfo
                     {
@@ -375,36 +375,18 @@ namespace rp
                         .shaderVert = ROOT_PATH("/data/shaders/ui.vert"),
                         .shaderFrag = ROOT_PATH("/data/shaders/ui.frag"),
                         .descriptorSets = {},
-                        .enableBlending = true
+                        .enableBlending = true,
+                        .enableCulling = false,
+                        .enableDepthTest = false
                     }
                 }
             }
         };
 
-        _defaultRenderpassResources
-            .create(
-                _swapChain._swapChainImageFormat,
-                _swapChain.findDepthFormat(_device._physicalDevice),
-                _swapChain._swapChainExtent,
-                _useMultiSampling);
-
-        _postProcessRenderpassResources
-            .createPostProcess(
-                _swapChain._swapChainImageFormat,
-                _swapChain.findDepthFormat(_device._physicalDevice),
-                _swapChain._swapChainExtent,
-                false); // No multisampling for post process
-
-        _uiRenderpassResources
-            .createUi(
-                _swapChain,
-                false); // No multisampling for ui
-
         _commandPool.create();
         _oneTimeCommandPool.create();
 
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
-
 
         createUniformBuffers();
         createCommandBuffers();
@@ -419,136 +401,13 @@ namespace rp
         _renderResourcesSystem.addUniformBuffers("model_matrix_ubo", ubs);
         _renderResourcesSystem.addTexture("viking_texture", &_model._texture);
 
-        auto generatedRenderpassResources = hl::RenderGraph::create(
-            _renderResourcesSystem,
-            renderpasses,
+        _renderGraph = new hl::GeneratedRenderGraph(
             _device,
-            _swapChain._swapChainExtent.width,
-            _swapChain._swapChainExtent.height,
-            _swapChain._swapChainImageViews);
+            _swapChain,
+            renderpasses,
+            _renderResourcesSystem);
 
-        for (const auto& r : renderpasses)
-        {
-            for (const auto& p : r.pipelines)
-            {
-                for (const auto& ds : p.descriptorSets)
-                {
-                    // Will be grouping at this level
-                    for (const auto& b : ds.bindings)
-                    {
-                        // TODO: Look at inputs...
-                        if (b.resource.has_value())
-                        {
-                            // std::cout << "Renderpass '" << r.name << "' - pipeline '" << p.name << "' - descriptor set '" << ds.name << "' - binding '" << b.resource.value() << "'" << std::endl;
-
-                            for (const auto& grpr : generatedRenderpassResources)
-                            {
-                                // Dont try and get an output from yourself as an input???
-                                if (grpr->Name != r.name)
-                                {
-                                    for (auto& grpra : grpr->getAttachments())
-                                    {
-                                        if (grpra.name == b.resource.value())
-                                        {
-                                            // std::cout << " - Found it! Its the output from '" << grpr->Name << "'.'" << grpra.name << "'" << std::endl;
-
-                                            std::vector<hl::VulkanImage*> offscreenImages;
-
-                                            if (!grpra.resolveImages.empty())
-                                            {
-                                                for (auto i : grpra.resolveImages)
-                                                {
-                                                    offscreenImages.push_back(i);
-                                                }
-                                            }
-                                            else
-                                            {
-                                                for (auto i : grpra.images)
-                                                {
-                                                    offscreenImages.push_back(i);
-                                                }
-                                            }
-
-                                            if (grpra.sampler == VK_NULL_HANDLE)
-                                            {
-                                                // TODO: config
-                                                VkSamplerCreateInfo samplerInfo{};
-                                                samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-                                                samplerInfo.magFilter = VK_FILTER_LINEAR;
-                                                samplerInfo.minFilter = VK_FILTER_LINEAR;
-                                                samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                samplerInfo.anisotropyEnable = VK_FALSE;
-                                                samplerInfo.maxAnisotropy = 1.0f;
-                                                samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-                                                samplerInfo.unnormalizedCoordinates = VK_FALSE;
-                                                samplerInfo.compareEnable = VK_FALSE;
-                                                samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-                                                samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                                                samplerInfo.mipLodBias = 0.0f;
-                                                samplerInfo.minLod = 0.0f;
-                                                samplerInfo.maxLod = 0.0f;
-
-                                                if (vkCreateSampler(_device._device, &samplerInfo, nullptr, &grpra.sampler) != VK_SUCCESS)
-                                                {
-                                                    throw std::runtime_error("failed to create sampler!");
-                                                }
-
-                                                _device.setDebugName(
-                                                    reinterpret_cast<uint64_t>(grpra.sampler),
-                                                    VK_OBJECT_TYPE_SAMPLER,
-                                                    (r.name + "_" + grpra.name + "_Sampler").c_str());
-                                            }
-
-                                            _renderResourcesSystem.registerOffscreenImage(
-                                                b.resource.value(),
-                                                offscreenImages,
-                                                grpra.sampler);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // TODO: Update if needed???
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            if (_useMultiSampling)
-            {
-                _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
-                    .updatePostProcess(
-                        i,
-                        _defaultRenderpassResources._colorResolveImages[i],
-                        _postProcessRenderpassResources._outputSampler);
-            }
-            else
-            {
-                _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
-                    .updatePostProcess(
-                        i,
-                        _defaultRenderpassResources._colorImages[i],
-                        _postProcessRenderpassResources._outputSampler);
-            }
-
-            // no multisampling in post process, so we always know where we sample from
-            _uiRenderpassResources._graphicPipelines[0]._descriptorSet
-                .updatePostProcess(
-                    i,
-                    _postProcessRenderpassResources._colorImages[i],
-                    _uiRenderpassResources._outputSampler);
-
-            _defaultRenderpassResources._graphicPipelines[0]._descriptorSet.update(
-                i, 
-                _renderResourcesSystem.getUniformBuffer("model_matrix_ubo", i),
-                _renderResourcesSystem.getTexture("viking_texture"));
-        }
-
-        hl::RenderGraph::destroy(generatedRenderpassResources);
+        _renderGraph->updateAllDescriptorSets();
     }
 
     void RenderpassesApplication::createUniformBuffers()
@@ -590,37 +449,9 @@ namespace rp
         }
 
         _device.waitIdle();
-
-        _defaultRenderpassResources.recreate(VkExtent2D{.width = (uint32_t)width, .height = (uint32_t)height});
-        _postProcessRenderpassResources.recreate(VkExtent2D{ .width = (uint32_t)width, .height = (uint32_t)height });
-        _uiRenderpassResources.recreate(VkExtent2D{ .width = (uint32_t)width, .height = (uint32_t)height });
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            if (_useMultiSampling)
-            {
-                _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
-                    .updatePostProcess(
-                        i, 
-                        _defaultRenderpassResources._colorResolveImages[i],
-                        _postProcessRenderpassResources._outputSampler);
-            }
-            else
-            {
-                _postProcessRenderpassResources._graphicPipelines[0]._descriptorSet
-                    .updatePostProcess(
-                        i, 
-                        _defaultRenderpassResources._colorImages[i], 
-                        _postProcessRenderpassResources._outputSampler);
-            }
-
-            // Dont need to update descriptor set for second pipeline, has no ubo or samplers
-            _uiRenderpassResources._graphicPipelines[0]._descriptorSet
-                .updatePostProcess(
-                    i, 
-                    _postProcessRenderpassResources._colorImages[i],
-                    _uiRenderpassResources._outputSampler);
-        }
+        
+        _renderGraph->recreate((uint32_t)width, (uint32_t)height);
+        _renderGraph->updateAllDescriptorSets();
     }
 
     void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
@@ -639,145 +470,151 @@ namespace rp
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        // 1) SCENE PASS -> OFFSCREEN
+        const auto lastRenderpassName = _renderGraph->getResources().back()->Name;
+
+
+        for (auto& renderpass : _renderGraph->getResources())
         {
-            VkRenderPassBeginInfo rpBegin{};
-            rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rpBegin.renderPass = _defaultRenderpassResources._renderpass._renderPass;
-            rpBegin.framebuffer = _defaultRenderpassResources._framebuffers[currentFrame]._framebuffer;
-            rpBegin.renderArea.offset = { 0, 0 };
-            rpBegin.renderArea.extent = _defaultRenderpassResources._renderpassExtent;
+            VkRenderPassBeginInfo renderpassBegin{};
+            renderpassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderpassBegin.renderPass = renderpass->getRenderPass();
+            renderpassBegin.framebuffer = renderpass->getFramebuffer(
+                lastRenderpassName == renderpass->Name
+                    ? imageIndex
+                    : currentFrame);
+            renderpassBegin.renderArea.offset = { 0,0 };
+            renderpassBegin.renderArea.extent = _swapChain._swapChainExtent; //TODO: FROM FRAMEBUFFER/RENDERPASS
 
-            std::array<VkClearValue, 2> clearValues{};
-            clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-            clearValues[1].depthStencil = { 1.0f, 0 };
-            rpBegin.clearValueCount = (uint32_t)clearValues.size();
-            rpBegin.pClearValues = clearValues.data();
+            const auto& clearValues = renderpass->getClearValues();
 
-            vkCmdBeginRenderPass(commandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+            // TEMP CLEAR TO GREEN
+            std::vector<VkClearValue>clearValues2;
+            clearValues2.emplace_back(VkClearValue
+                {
+                    .color = { {0.0f, 1.0f, 0.0f, 1.0f} }
+                });
+            clearValues2.emplace_back(VkClearValue
+                {
+                    .depthStencil = { 1.0f, 0 }
+                });
 
-            vkCmdBindPipeline(
-                commandBuffer,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _defaultRenderpassResources._graphicPipelines[0]._graphicsPipeline._graphicsPipeline
-            );
-
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = (float)_defaultRenderpassResources._renderpassExtent.width;
-            viewport.height = (float)_defaultRenderpassResources._renderpassExtent.height;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = _defaultRenderpassResources._renderpassExtent;
-            vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-            static auto startTime = std::chrono::high_resolution_clock::now();
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            float time = std::chrono::duration<float>(currentTime - startTime).count();
-            glm::mat4 model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 0, 1));
-
-            vkCmdPushConstants(
-                commandBuffer,
-                _defaultRenderpassResources._graphicPipelines[0]._graphicsPipeline._pipelineLayout._pipelineLayout,
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0,
-                sizeof(glm::mat4),
-                &model
-            );
-
-            _model.draw(
-                commandBuffer,
-                _defaultRenderpassResources._graphicPipelines[0]._graphicsPipeline,
-                _defaultRenderpassResources._graphicPipelines[0]._descriptorSet._descriptorSets[currentFrame]
-            );
-
-            vkCmdEndRenderPass(commandBuffer);
-        }
-
-        // 2) POST-PROCESS PASS -> OFFSCREEN 2
-        {
-            VkRenderPassBeginInfo rpBegin{};
-            rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rpBegin.renderPass = _postProcessRenderpassResources._renderpass._renderPass;
-            rpBegin.framebuffer = _postProcessRenderpassResources._framebuffers[currentFrame]._framebuffer;
-            rpBegin.renderArea.offset = { 0, 0 };
-            rpBegin.renderArea.extent = _postProcessRenderpassResources._renderpassExtent;
-
-            std::array<VkClearValue, 2> clearValues{};
-            clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} }; // color
-            clearValues[1].depthStencil = { 1.0f, 0 };           // depth = 1.0, stencil = 0
-            rpBegin.clearValueCount = clearValues.size();
-            rpBegin.pClearValues = clearValues.data();
-
-            vkCmdBeginRenderPass(commandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
-
-            vkCmdBindPipeline(commandBuffer, 
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _postProcessRenderpassResources._graphicPipelines[0]._graphicsPipeline._graphicsPipeline);
-            vkCmdBindDescriptorSets(commandBuffer,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _postProcessRenderpassResources._graphicPipelines[0]._graphicsPipeline._pipelineLayout._pipelineLayout,
-                0,
-                1,
-                &_postProcessRenderpassResources._graphicPipelines[0]._descriptorSet._descriptorSets[currentFrame],
-                0,
-                nullptr);
-
-            vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
-            vkCmdEndRenderPass(commandBuffer);
-        } 
-
-        // 3) UI PASS -> SWAPCHAIN
-        {
-            VkRenderPassBeginInfo rpBegin{};
-            rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            rpBegin.renderPass = _uiRenderpassResources._renderpass._renderPass;
-            // TODO: imageIndex vs currentFrame, this depends on whether it is writing to the swapchain or not....
-            rpBegin.framebuffer = _uiRenderpassResources._framebuffers[imageIndex]._framebuffer; 
-            rpBegin.renderArea.offset = { 0, 0 };
-            rpBegin.renderArea.extent = _uiRenderpassResources._renderpassExtent;
-
-            std::array<VkClearValue, 2> clearValues{};
-            clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} }; // color
-            clearValues[1].depthStencil = { 1.0f, 0 };           // depth = 1.0, stencil = 0
-            rpBegin.clearValueCount = clearValues.size();
-            rpBegin.pClearValues = clearValues.data();
-
-            vkCmdBeginRenderPass(commandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
-
+            if (lastRenderpassName == renderpass->Name)
             {
-                vkCmdBindPipeline(commandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    _uiRenderpassResources._graphicPipelines[0]._graphicsPipeline._graphicsPipeline);
-                vkCmdBindDescriptorSets(commandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    _uiRenderpassResources._graphicPipelines[0]._graphicsPipeline._pipelineLayout._pipelineLayout,
-                    0,
-                    1,
-                    &_uiRenderpassResources._graphicPipelines[0]._descriptorSet._descriptorSets[currentFrame],
-                    0,
-                    nullptr);
-
-                vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+                renderpassBegin.clearValueCount = (uint32_t)clearValues2.size();
+                renderpassBegin.pClearValues = clearValues2.data();
+            }
+            else
+            {
+                renderpassBegin.clearValueCount = (uint32_t)clearValues.size();
+                renderpassBegin.pClearValues = clearValues.data();
             }
 
-            {
-                vkCmdBindPipeline(commandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    _uiRenderpassResources._graphicPipelines[1]._graphicsPipeline._graphicsPipeline);
+            vkCmdBeginRenderPass(commandBuffer, &renderpassBegin, VK_SUBPASS_CONTENTS_INLINE);
 
-                vkCmdDraw(commandBuffer, 3, 1, 0, 0); // halfscreen triangle
+            for (auto& pipeline : renderpass->getPipelines())
+            {
+                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
+
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = (float)_swapChain._swapChainExtent.width; //TODO: FROM FRAMEBUFFER/RENDERPASS
+                viewport.height = (float)_swapChain._swapChainExtent.height; //TODO: FROM FRAMEBUFFER/RENDERPASS
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = _swapChain._swapChainExtent;//TODO: FROM FRAMEBUFFER/RENDERPASS
+                vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+
+                if (pipeline->Name == "model_pipeline")
+                {
+                    static auto startTime = std::chrono::high_resolution_clock::now();
+                    auto currentTime = std::chrono::high_resolution_clock::now();
+                    float time = std::chrono::duration<float>(currentTime - startTime).count();
+                    glm::mat4 model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 0, 1));
+
+                    vkCmdPushConstants(
+                        commandBuffer,
+                        pipeline->getPipelineLayout(),
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(glm::mat4),
+                        &model
+                    );
+
+                    VkBuffer vertexBuffers[] = { _model._vertexBuffer._buffer };
+                    VkDeviceSize offsets[] = { 0 };
+                    vkCmdBindVertexBuffers(
+                        commandBuffer,
+                        0,
+                        1,
+                        vertexBuffers,
+                        offsets);
+
+                    vkCmdBindIndexBuffer(
+                        commandBuffer,
+                        _model._indexBuffer._buffer,
+                        0,
+                        VK_INDEX_TYPE_UINT32);
+
+                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                    vkCmdBindDescriptorSets(
+                        commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        0,
+                        nullptr);
+
+                    vkCmdDrawIndexed(commandBuffer, _model.indexCount, 1, 0, 0, 0); // viking model
+                }
+                else if (pipeline->Name == "postprocess_pipeline")
+                {
+                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                    vkCmdBindDescriptorSets(commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        0,
+                        nullptr);
+
+                    vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+                }
+                else if (pipeline->Name == "fullscreen_sample")
+                {
+                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                    vkCmdBindDescriptorSets(commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        0,
+                        nullptr);
+
+                    vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+                }
+                else if (pipeline->Name == "ui")
+                {
+                    vkCmdDraw(commandBuffer, 3, 1, 0, 0); // halfscreen triangle
+                }
+                else
+                {
+                    throw std::runtime_error("TODO: HARD CODED DRAW FUNCTIONS");
+                }
             }
 
             vkCmdEndRenderPass(commandBuffer);
         }
 
         vkEndCommandBuffer(commandBuffer);
-
     }
 }

@@ -108,7 +108,7 @@ namespace hl
 
 		return (*iter).second->getUniformBuffer(frame);
 	}
-	std::pair<VkImageView, VkSampler> RenderResourcesSystem::getOffscreenImageWithSampler(const std::string& name, uint32_t frame) const
+	std::pair<VkImageView, VkSampler> RenderResourcesSystem::getOffscreenImageWithSampler(const std::string& name, uint32_t frame)
 	{
 		auto iter = _resources.find({ name, RenderResourceType::RenderpassOutputImage });
 
@@ -118,6 +118,20 @@ namespace hl
 		}
 
 		return (*iter).second->getOffscreenImageWithSampler(frame);
+	}
+
+	std::pair<VkImageView, VkSampler> RenderResourcesSystem::getOffscreenImageOrTexture(const std::string& name, uint32_t frame)
+	{
+		auto iter = _resources.find({ name, RenderResourceType::RenderpassOutputImage });
+
+		if (iter != _resources.end())
+		{
+			return (*iter).second->getOffscreenImageWithSampler(frame);
+		}
+
+		auto texture = getTexture(name);
+
+		return { texture._image._imageView, texture._sampler };
 	}
 
 }
