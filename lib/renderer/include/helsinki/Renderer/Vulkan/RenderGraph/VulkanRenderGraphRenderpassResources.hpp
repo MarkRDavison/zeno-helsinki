@@ -20,6 +20,13 @@ namespace hl
 		VulkanRenderGraphPipelineResources& addPipeline(const std::string& name);
 		void addDescriptorPool(VkDescriptorPool descriptorPool);
 		void destroy();
+		void recreate(
+			const RenderpassInfo& info,
+			uint32_t width,
+			uint32_t height,
+			const std::vector<VkImageView>& swapChainImageViews,
+			uint32_t imageCount,
+			bool isLastRenderpass);
 
 		const std::vector<RenderpassAttachment>& getAttachments() const;
 		std::vector<RenderpassAttachment>& getAttachments();

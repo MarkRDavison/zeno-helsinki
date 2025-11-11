@@ -450,7 +450,11 @@ namespace rp
 
         _device.waitIdle();
         
+        _swapChain.destroy();
+        _swapChain.create();
+
         _renderGraph->recreate((uint32_t)width, (uint32_t)height);
+
         _renderGraph->updateAllDescriptorSets();
     }
 
@@ -487,27 +491,8 @@ namespace rp
 
             const auto& clearValues = renderpass->getClearValues();
 
-            // TEMP CLEAR TO GREEN
-            std::vector<VkClearValue>clearValues2;
-            clearValues2.emplace_back(VkClearValue
-                {
-                    .color = { {0.0f, 1.0f, 0.0f, 1.0f} }
-                });
-            clearValues2.emplace_back(VkClearValue
-                {
-                    .depthStencil = { 1.0f, 0 }
-                });
-
-            if (lastRenderpassName == renderpass->Name)
-            {
-                renderpassBegin.clearValueCount = (uint32_t)clearValues2.size();
-                renderpassBegin.pClearValues = clearValues2.data();
-            }
-            else
-            {
-                renderpassBegin.clearValueCount = (uint32_t)clearValues.size();
-                renderpassBegin.pClearValues = clearValues.data();
-            }
+            renderpassBegin.clearValueCount = (uint32_t)clearValues.size();
+            renderpassBegin.pClearValues = clearValues.data();
 
             vkCmdBeginRenderPass(commandBuffer, &renderpassBegin, VK_SUBPASS_CONTENTS_INLINE);
 

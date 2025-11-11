@@ -26,6 +26,7 @@ namespace hl
 		void recreate(uint32_t width, uint32_t height);
 
 		void updateAllDescriptorSets();
+		void updateAllOutputResources();
 
 	private:
 		VulkanDevice& _device;

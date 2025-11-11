@@ -51,178 +51,14 @@ namespace hl
 			{
 				// images/outputs
 
-				std::vector<VkClearValue> clearValues;
-
-				for (const auto& res : ri.outputs)
-				{
-					// TODO: Foreach N where N is MAX_FRAMES_IN_FLIGHT or swapchain image count
-					auto& attachment = r->addAttachment(res.name);
-					attachment.type = res.type;
-					attachment.format = extractFormat(res.format);
-
-					if (res.type == ResourceType::Color)
-					{
-						clearValues.emplace_back(VkClearValue
-							{
-								.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
-							});
-
-						if (ri.useMultiSampling)
-						{
-							clearValues.emplace_back(VkClearValue
-								{
-									.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
-								});
-						}
-					}
-					else if (res.type == ResourceType::Depth)
-					{
-						clearValues.emplace_back(VkClearValue
-							{
-								.depthStencil = { 1.0f, 0 }
-							});
-					}
-					else
-					{
-						throw std::runtime_error("TODO NOT IMPLEMENTED - CLEAR VALUES GENERATION");
-					}
-
-					VkImageUsageFlags usage = res.type == ResourceType::Color
-						? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-						: VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-					if (ri.useMultiSampling)
-					{
-						usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
-					}
-					else
-					{
-						usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-					}
-
-					for (uint32_t i = 0; i < imageCount; ++i)
-					{
-						if (res.type == ResourceType::Color)
-						{
-							auto image = new VulkanImage(device);
-							attachment.images.push_back(image);
-
-							image->create(
-								width,
-								height,
-								1, // TODO
-								ri.useMultiSampling
-									? device._msaaSamples
-									: VK_SAMPLE_COUNT_1_BIT,
-								attachment.format,
-								VK_IMAGE_TILING_OPTIMAL,
-								usage,
-								VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-							image->createImageView(
-								attachment.format,
-								VK_IMAGE_ASPECT_COLOR_BIT,
-								1);
-
-							device.setDebugName(
-								reinterpret_cast<uint64_t>(image->_image),
-								VK_OBJECT_TYPE_IMAGE,
-								(ri.name + "_" + res.name + std::string("_Image_") + std::to_string(0)).c_str());
-
-							device.setDebugName(
-								reinterpret_cast<uint64_t>(image->_imageMemory),
-								VK_OBJECT_TYPE_DEVICE_MEMORY,
-								(ri.name + "_" + res.name + std::string("_ImageMemory_") + std::to_string(i)).c_str());
-
-							device.setDebugName(
-								reinterpret_cast<uint64_t>(image->_imageView),
-								VK_OBJECT_TYPE_IMAGE_VIEW,
-								(ri.name + "_" + res.name + std::string("_ImageView_") + std::to_string(i)).c_str());
-
-							// Dont create resolve images for the last one.  Needs to do swap chain magic
-							if (ri.useMultiSampling && !isLastRenderpass) 
-							{
-								auto resolveImage = new VulkanImage(device);
-								attachment.resolveImages.push_back(resolveImage);
-
-								resolveImage->create(
-									width,
-									height,
-									1,
-									VK_SAMPLE_COUNT_1_BIT,
-									attachment.format,
-									VK_IMAGE_TILING_OPTIMAL,
-									VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-									VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-								resolveImage->createImageView(
-									attachment.format,
-									VK_IMAGE_ASPECT_COLOR_BIT,
-									1);
-
-								device.setDebugName(
-									reinterpret_cast<uint64_t>(resolveImage->_image),
-									VK_OBJECT_TYPE_IMAGE,
-									(ri.name + "_" + res.name + std::string("_ResolveImage_") + std::to_string(i)).c_str());
-
-								device.setDebugName(
-									reinterpret_cast<uint64_t>(resolveImage->_imageMemory),
-									VK_OBJECT_TYPE_DEVICE_MEMORY,
-									(ri.name + "_" + res.name + std::string("_ResolveImageMemory_") + std::to_string(i)).c_str());
-
-								device.setDebugName(
-									reinterpret_cast<uint64_t>(resolveImage->_imageView),
-									VK_OBJECT_TYPE_IMAGE_VIEW,
-									(ri.name + "_" + res.name + std::string("_ResolveImageView_") + std::to_string(i)).c_str());
-
-							}
-						}
-						else if (res.type == ResourceType::Depth)
-						{
-							auto image = new VulkanImage(device);
-							attachment.images.push_back(image);
-
-							image->create(
-								width,
-								height,
-								1,
-								ri.useMultiSampling
-									? device._msaaSamples
-									: VK_SAMPLE_COUNT_1_BIT,
-								attachment.format,
-								VK_IMAGE_TILING_OPTIMAL,
-								usage,
-								VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-							image->createImageView(
-								attachment.format,
-								VK_IMAGE_ASPECT_DEPTH_BIT,
-								1);
-
-							device.setDebugName(
-								reinterpret_cast<uint64_t>(image->_image),
-								VK_OBJECT_TYPE_IMAGE,
-								(ri.name + "_" + res.name + std::string("_Depth_") + std::to_string(i)).c_str());
-
-							device.setDebugName(
-								reinterpret_cast<uint64_t>(image->_imageMemory),
-								VK_OBJECT_TYPE_DEVICE_MEMORY,
-								(ri.name + "_" + res.name + std::string("_DepthMemory_") + std::to_string(i)).c_str());
-
-							device.setDebugName(
-								reinterpret_cast<uint64_t>(image->_imageView),
-								VK_OBJECT_TYPE_IMAGE_VIEW,
-								(ri.name + "_" + res.name + std::string("_DepthView_") + std::to_string(i)).c_str());
-
-						}
-						else
-						{
-							throw std::runtime_error("TODO NOT IMPLEMENTED");
-						}
-					}
-				}
-
-				r->setClearValues(clearValues);
+				createImages(
+					device,
+					r,
+					ri,
+					width,
+					height,
+					imageCount,
+					isLastRenderpass);
 
 				// Renderpass
 				{
@@ -371,156 +207,15 @@ namespace hl
 
 				// Framebuffers
 				{
-					for (uint32_t i = 0; i < imageCount; ++i)
-					{
-						VkFramebuffer f = VK_NULL_HANDLE;
-						std::vector<VkImageView> attachments;
-
-						if (isLastRenderpass)
-						{
-							auto foundColorAttachment = false;
-
-							if (ri.useMultiSampling)
-							{
-								for (auto& a : r->getAttachments())
-								{
-									if (a.type == ResourceType::Color)
-									{
-										if (foundColorAttachment)
-										{
-											throw std::runtime_error("Cannot have multiple color attachments in renderpass that writes to the swapchain.");
-										}
-										else
-										{
-											foundColorAttachment = true;
-										}
-									}
-
-									// these size to i comparisons, probably should be size vs image count
-									if (a.images.size() == imageCount)
-									{
-										attachments.push_back(a.images[i]->_imageView);
-									}
-
-									if (a.resolveImages.size() == imageCount ||
-										a.type == ResourceType::Color)
-									{
-										if (a.type == ResourceType::Color)
-										{
-											// TODO: Assert that swapchain image format matches a.format
-											attachments.push_back(swapChainImageViews[i]);
-										}
-										else
-										{
-											attachments.push_back(a.resolveImages[i]->_imageView);
-										}
-									}
-								}
-
-							}
-							else
-							{
-								for (auto& a : r->getAttachments())
-								{
-									if (a.type == ResourceType::Color)
-									{
-										if (foundColorAttachment)
-										{
-											throw std::runtime_error("Cannot have multiple color attachments in renderpass that writes to the swapchain.");
-										}
-										else
-										{
-											foundColorAttachment = true;
-										}
-									}
-
-									// these size to i comparisons, probably should be size vs image count
-									if (a.images.size() == imageCount)
-									{
-										if (a.type == ResourceType::Color)
-										{
-											// TODO: Assert that swapchain image format matches a.format
-											attachments.push_back(swapChainImageViews[i]);
-										}
-										else
-										{
-											attachments.push_back(a.images[i]->_imageView);
-										}
-									}
-
-									if (a.resolveImages.size() > 0)
-									{
-										throw std::runtime_error("Should not have resolve images when not using multi sampling");
-									}
-								}
-							}
-						}
-						else
-						{
-							if (ri.useMultiSampling)
-							{
-								for (auto& a : r->getAttachments())
-								{
-									// these size to i comparisons, probably should be size vs image count
-									if (a.images.size() == imageCount)
-									{
-										attachments.push_back(a.images[i]->_imageView);
-									}
-
-									if (a.resolveImages.size() == imageCount)
-									{
-										attachments.push_back(a.resolveImages[i]->_imageView);
-									}
-								}
-							}
-							else
-							{
-								for (auto& a : r->getAttachments())
-								{
-									// these size to i comparisons, probably should be size vs image count
-									if (a.images.size() == imageCount)
-									{
-										attachments.push_back(a.images[i]->_imageView);
-									}
-
-									if (a.resolveImages.size() > 0)
-									{
-										throw std::runtime_error("Should not have resolve images when not using multi sampling");
-									}
-								}
-							}
-						}
-
-
-
-						VkFramebufferCreateInfo framebufferInfo{};
-						framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-						framebufferInfo.renderPass = r->getRenderPass();
-						framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-						framebufferInfo.pAttachments = attachments.data();
-						framebufferInfo.width = width;
-						framebufferInfo.height = height;
-						framebufferInfo.layers = 1;
-
-						if (vkCreateFramebuffer(device._device, &framebufferInfo, nullptr, &f) != VK_SUCCESS)
-						{
-							throw std::runtime_error("failed to create framebuffer!");
-						}
-
-						std::cout << "[DEBUG] Renderpass " << ri.name << " - framebuffer " << i << " attachments:\n";
-						for (size_t ji = 0; ji < attachments.size(); ji++)
-						{
-							std::cout << "  Attachment " << ji << ": " << reinterpret_cast<uint64_t>(attachments[ji]) << "\n";
-						}
-
-						device.setDebugName(
-							reinterpret_cast<uint64_t>(f),
-							VK_OBJECT_TYPE_FRAMEBUFFER,
-							(r->Name + std::string("_Framebuffer_") + std::to_string(i)).c_str()
-						);
-
-						r->addFramebuffer(f);
-					}
+					createFrameBuffers(
+						device,
+						r, 
+						ri,
+						width,
+						height,
+						swapChainImageViews,
+						imageCount,
+						isLastRenderpass);
 				}
 
 				VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
@@ -750,7 +445,6 @@ namespace hl
 								rasterizer.rasterizerDiscardEnable = VK_FALSE;
 								rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 								rasterizer.lineWidth = 1.0f;
-								// TODO: CullMode can lead to really frustrating experiences where nothing renders.
 								if (g.enableCulling)
 								{
 									rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
@@ -899,6 +593,348 @@ namespace hl
 		for (auto& r : generatedRenderpassResources)
 		{
 			r->destroy();
+		}
+	}
+
+	void RenderGraph::createImages(
+		VulkanDevice& device,
+		VulkanRenderGraphRenderpassResources* resources,
+		const RenderpassInfo& info,
+		uint32_t width,
+		uint32_t height,
+		uint32_t imageCount,
+		bool isLastRenderpass)
+	{
+		std::vector<VkClearValue> clearValues;
+
+		for (const auto& res : info.outputs)
+		{
+			// TODO: Foreach N where N is MAX_FRAMES_IN_FLIGHT or swapchain image count
+			auto& attachment = resources->addAttachment(res.name);
+			attachment.type = res.type;
+			attachment.format = extractFormat(res.format);
+
+			if (res.type == ResourceType::Color)
+			{
+				clearValues.emplace_back(VkClearValue
+					{
+						.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
+					});
+
+				if (info.useMultiSampling)
+				{
+					clearValues.emplace_back(VkClearValue
+						{
+							.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
+						});
+				}
+			}
+			else if (res.type == ResourceType::Depth)
+			{
+				clearValues.emplace_back(VkClearValue
+					{
+						.depthStencil = { 1.0f, 0 }
+					});
+			}
+			else
+			{
+				throw std::runtime_error("TODO NOT IMPLEMENTED - CLEAR VALUES GENERATION");
+			}
+
+			VkImageUsageFlags usage = res.type == ResourceType::Color
+				? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+				: VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+			if (info.useMultiSampling)
+			{
+				usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+			}
+			else
+			{
+				usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+			}
+
+			for (uint32_t i = 0; i < imageCount; ++i)
+			{
+				if (res.type == ResourceType::Color)
+				{
+					auto image = new VulkanImage(device);
+					attachment.images.push_back(image);
+
+					image->create(
+						width,
+						height,
+						1, // TODO
+						info.useMultiSampling
+							? device._msaaSamples
+							: VK_SAMPLE_COUNT_1_BIT,
+						attachment.format,
+						VK_IMAGE_TILING_OPTIMAL,
+						usage,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+					image->createImageView(
+						attachment.format,
+						VK_IMAGE_ASPECT_COLOR_BIT,
+						1);
+
+					device.setDebugName(
+						reinterpret_cast<uint64_t>(image->_image),
+						VK_OBJECT_TYPE_IMAGE,
+						(info.name + "_" + res.name + std::string("_Image_") + std::to_string(0)).c_str());
+
+					device.setDebugName(
+						reinterpret_cast<uint64_t>(image->_imageMemory),
+						VK_OBJECT_TYPE_DEVICE_MEMORY,
+						(info.name + "_" + res.name + std::string("_ImageMemory_") + std::to_string(i)).c_str());
+
+					device.setDebugName(
+						reinterpret_cast<uint64_t>(image->_imageView),
+						VK_OBJECT_TYPE_IMAGE_VIEW,
+						(info.name + "_" + res.name + std::string("_ImageView_") + std::to_string(i)).c_str());
+
+					// Dont create resolve images for the last one.  Needs to do swap chain magic
+					if (info.useMultiSampling && !isLastRenderpass)
+					{
+						auto resolveImage = new VulkanImage(device);
+						attachment.resolveImages.push_back(resolveImage);
+
+						resolveImage->create(
+							width,
+							height,
+							1,
+							VK_SAMPLE_COUNT_1_BIT,
+							attachment.format,
+							VK_IMAGE_TILING_OPTIMAL,
+							VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+							VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+						resolveImage->createImageView(
+							attachment.format,
+							VK_IMAGE_ASPECT_COLOR_BIT,
+							1);
+
+						device.setDebugName(
+							reinterpret_cast<uint64_t>(resolveImage->_image),
+							VK_OBJECT_TYPE_IMAGE,
+							(info.name + "_" + res.name + std::string("_ResolveImage_") + std::to_string(i)).c_str());
+
+						device.setDebugName(
+							reinterpret_cast<uint64_t>(resolveImage->_imageMemory),
+							VK_OBJECT_TYPE_DEVICE_MEMORY,
+							(info.name + "_" + res.name + std::string("_ResolveImageMemory_") + std::to_string(i)).c_str());
+
+						device.setDebugName(
+							reinterpret_cast<uint64_t>(resolveImage->_imageView),
+							VK_OBJECT_TYPE_IMAGE_VIEW,
+							(info.name + "_" + res.name + std::string("_ResolveImageView_") + std::to_string(i)).c_str());
+
+					}
+				}
+				else if (res.type == ResourceType::Depth)
+				{
+					auto image = new VulkanImage(device);
+					attachment.images.push_back(image);
+
+					image->create(
+						width,
+						height,
+						1,
+						info.useMultiSampling
+							? device._msaaSamples
+							: VK_SAMPLE_COUNT_1_BIT,
+						attachment.format,
+						VK_IMAGE_TILING_OPTIMAL,
+						usage,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+					image->createImageView(
+						attachment.format,
+						VK_IMAGE_ASPECT_DEPTH_BIT,
+						1);
+
+					device.setDebugName(
+						reinterpret_cast<uint64_t>(image->_image),
+						VK_OBJECT_TYPE_IMAGE,
+						(info.name + "_" + res.name + std::string("_Depth_") + std::to_string(i)).c_str());
+
+					device.setDebugName(
+						reinterpret_cast<uint64_t>(image->_imageMemory),
+						VK_OBJECT_TYPE_DEVICE_MEMORY,
+						(info.name + "_" + res.name + std::string("_DepthMemory_") + std::to_string(i)).c_str());
+
+					device.setDebugName(
+						reinterpret_cast<uint64_t>(image->_imageView),
+						VK_OBJECT_TYPE_IMAGE_VIEW,
+						(info.name + "_" + res.name + std::string("_DepthView_") + std::to_string(i)).c_str());
+
+				}
+				else
+				{
+					throw std::runtime_error("TODO NOT IMPLEMENTED");
+				}
+			}
+		}
+
+		resources->setClearValues(clearValues);
+	}
+	void RenderGraph::createFrameBuffers(
+		VulkanDevice& device,
+		VulkanRenderGraphRenderpassResources* resources, 
+		const RenderpassInfo& info,
+		uint32_t width,
+		uint32_t height,
+		const std::vector<VkImageView>& swapChainImageViews,
+		uint32_t imageCount,
+		bool isLastRenderpass)
+	{
+		for (uint32_t i = 0; i < imageCount; ++i)
+		{
+			VkFramebuffer f = VK_NULL_HANDLE;
+			std::vector<VkImageView> attachments;
+
+			if (isLastRenderpass)
+			{
+				auto foundColorAttachment = false;
+
+				if (info.useMultiSampling)
+				{
+					for (auto& a : resources->getAttachments())
+					{
+						if (a.type == ResourceType::Color)
+						{
+							if (foundColorAttachment)
+							{
+								throw std::runtime_error("Cannot have multiple color attachments in renderpass that writes to the swapchain.");
+							}
+							else
+							{
+								foundColorAttachment = true;
+							}
+						}
+
+						// these size to i comparisons, probably should be size vs image count
+						if (a.images.size() == imageCount)
+						{
+							attachments.push_back(a.images[i]->_imageView);
+						}
+
+						if (a.resolveImages.size() == imageCount ||
+							a.type == ResourceType::Color)
+						{
+							if (a.type == ResourceType::Color)
+							{
+								// TODO: Assert that swapchain image format matches a.format
+								attachments.push_back(swapChainImageViews[i]);
+							}
+							else
+							{
+								attachments.push_back(a.resolveImages[i]->_imageView);
+							}
+						}
+					}
+
+				}
+				else
+				{
+					for (auto& a : resources->getAttachments())
+					{
+						if (a.type == ResourceType::Color)
+						{
+							if (foundColorAttachment)
+							{
+								throw std::runtime_error("Cannot have multiple color attachments in renderpass that writes to the swapchain.");
+							}
+							else
+							{
+								foundColorAttachment = true;
+							}
+						}
+
+						// these size to i comparisons, probably should be size vs image count
+						if (a.images.size() == imageCount)
+						{
+							if (a.type == ResourceType::Color)
+							{
+								// TODO: Assert that swapchain image format matches a.format
+								attachments.push_back(swapChainImageViews[i]);
+							}
+							else
+							{
+								attachments.push_back(a.images[i]->_imageView);
+							}
+						}
+
+						if (a.resolveImages.size() > 0)
+						{
+							throw std::runtime_error("Should not have resolve images when not using multi sampling");
+						}
+					}
+				}
+			}
+			else
+			{
+				if (info.useMultiSampling)
+				{
+					for (auto& a : resources->getAttachments())
+					{
+						// these size to i comparisons, probably should be size vs image count
+						if (a.images.size() == imageCount)
+						{
+							attachments.push_back(a.images[i]->_imageView);
+						}
+
+						if (a.resolveImages.size() == imageCount)
+						{
+							attachments.push_back(a.resolveImages[i]->_imageView);
+						}
+					}
+				}
+				else
+				{
+					for (auto& a : resources->getAttachments())
+					{
+						// these size to i comparisons, probably should be size vs image count
+						if (a.images.size() == imageCount)
+						{
+							attachments.push_back(a.images[i]->_imageView);
+						}
+
+						if (a.resolveImages.size() > 0)
+						{
+							throw std::runtime_error("Should not have resolve images when not using multi sampling");
+						}
+					}
+				}
+			}
+
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = resources->getRenderPass();
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
+			framebufferInfo.width = width;
+			framebufferInfo.height = height;
+			framebufferInfo.layers = 1;
+
+			if (vkCreateFramebuffer(device._device, &framebufferInfo, nullptr, &f) != VK_SUCCESS)
+			{
+				throw std::runtime_error("failed to create framebuffer!");
+			}
+
+			std::cout << "[DEBUG] Renderpass " << info.name << " - framebuffer " << i << " attachments:\n";
+			for (size_t ji = 0; ji < attachments.size(); ji++)
+			{
+				std::cout << "  Attachment " << ji << ": " << reinterpret_cast<uint64_t>(attachments[ji]) << "\n";
+			}
+
+			device.setDebugName(
+				reinterpret_cast<uint64_t>(f),
+				VK_OBJECT_TYPE_FRAMEBUFFER,
+				(resources->Name + std::string("_Framebuffer_") + std::to_string(i)).c_str()
+			);
+
+			resources->addFramebuffer(f);
 		}
 	}
 

@@ -106,6 +106,24 @@ namespace hl
 
         static void destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources);
 
+        static void createImages(
+            VulkanDevice& device,
+            VulkanRenderGraphRenderpassResources* resources,
+            const RenderpassInfo& info,
+            uint32_t width,
+            uint32_t height,
+            uint32_t imageCount,
+            bool isLastRenderpass);
+        static void createFrameBuffers(
+            VulkanDevice& device,
+            VulkanRenderGraphRenderpassResources *resources, 
+            const RenderpassInfo& info,
+            uint32_t width,
+            uint32_t height,
+            const std::vector<VkImageView>& swapChainImageViews,
+            uint32_t imageCount,
+            bool isLastRenderpass);
+
         static VkFormat extractFormat(const std::string& formatString);
         static VkDescriptorType extractDescriptorType(const std::string& descriptorTypeString);
         static VkFormat extractVertexAttributeFormat(VertexAttributeFormat format);
