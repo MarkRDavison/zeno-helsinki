@@ -19,7 +19,8 @@ namespace hl
 			VkFormat format,
 			VkImageTiling tiling,
 			VkImageUsageFlags usage,
-			VkMemoryPropertyFlags properties);
+			VkMemoryPropertyFlags properties,
+			uint32_t layers);
 		void createImageView(
 			VkFormat format,
 			VkImageAspectFlags aspectFlags,
@@ -44,7 +45,8 @@ namespace hl
 			VulkanCommandPool& commandPool,
 			VulkanBuffer& buffer,
 			uint32_t width,
-			uint32_t height);
+			uint32_t height,
+			uint32_t layer);
 
 	private:
 		VulkanDevice& _device;
@@ -56,6 +58,8 @@ namespace hl
 
 		uint32_t _width;
 		uint32_t _height;
+
+		uint32_t _layers;
 
 		bool _created{ false };
 	};

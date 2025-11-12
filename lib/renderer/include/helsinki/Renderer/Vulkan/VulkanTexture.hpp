@@ -3,6 +3,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
+#include <vector>
 #include <string>
 
 namespace hl
@@ -13,6 +14,7 @@ namespace hl
 		VulkanTexture(VulkanDevice& device);
 
 		void create(VulkanCommandPool& commandPool, const std::string& filepath);
+		void create(VulkanCommandPool& commandPool, const std::vector<std::string>& filepaths);
 		void destroy();
 
 	public: // private: TODO: to private

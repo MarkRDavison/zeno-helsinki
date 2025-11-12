@@ -68,6 +68,8 @@ namespace rp
 
 		hl::GeneratedRenderGraph* _renderGraph{ nullptr };
 
+		hl::VulkanTexture _skyBoxTexture;
+
 		uint32_t currentFrame = 0;
 		bool framebufferResized = false;
 		bool _useMultiSampling = true; // TODO: Global (ish) variable for this rather than passing it around?

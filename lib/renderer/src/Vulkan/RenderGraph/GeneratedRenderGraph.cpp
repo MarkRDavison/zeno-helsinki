@@ -109,16 +109,6 @@ namespace hl
                         {
                             if (b.resource.has_value())
                             {
-                                if (b.resource.value() == "scene_color")
-                                {
-                                    const auto& res = _renderResourcesSystem.getOffscreenImageOrTexture(b.resource.value(), i);
-                                    std::cout << "[DEBUG] updateAllDescriptorSets Frame " << i
-                                        << " pipeline '" << p.name
-                                        << "' binding '" << b.binding
-                                        << "' imageView: " << reinterpret_cast<uint64_t>(res.first)
-                                        << " sampler: " << reinterpret_cast<uint64_t>(res.second) << std::endl;
-                                }
-
                                 if (b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER")
                                 {
                                     auto& ub = _renderResourcesSystem.getUniformBuffer(b.resource.value(), i);

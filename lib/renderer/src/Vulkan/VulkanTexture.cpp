@@ -5,6 +5,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <cmath>
+#include <cassert>
 
 namespace hl
 {
@@ -12,59 +13,74 @@ namespace hl
 		VulkanDevice& device
 	) :
 		_device(device),
-		_image(device)
+		_image(_device)
 	{
 
 	}
 
 	void VulkanTexture::create(VulkanCommandPool& commandPool, const std::string& filepath)
 	{
-		int texWidth, texHeight, texChannels;
-		stbi_uc* pixels = stbi_load(filepath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		VkDeviceSize imageSize = texWidth * texHeight * 4;
-		_mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+		create(commandPool, std::vector<std::string>{ filepath });
+	}
+	void VulkanTexture::create(VulkanCommandPool& commandPool, const std::vector<std::string>& filepaths)
+	{
+		assert(filepaths.size() == 1 || filepaths.size() == 6);
 
-		if (!pixels)
+		int texWidth = 0, texHeight = 0, texChannels = 0;
+
+		for (size_t i = 0; i < filepaths.size(); ++i)
 		{
-			throw std::runtime_error("failed to load texture image!");
+			stbi_uc* pixels = stbi_load(filepaths[i].c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+			VkDeviceSize imageSize = texWidth * texHeight * 4;
+			_mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+
+			if (!pixels)
+			{
+				throw std::runtime_error("failed to load texture image!");
+			}
+
+			VulkanBuffer stagingBuffer(_device);
+
+			stagingBuffer.create(
+				imageSize,
+				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+			stagingBuffer.mapMemory(pixels);
+
+			stbi_image_free(pixels);
+
+			if (i == 0)
+			{
+				_image.create(
+					texWidth,
+					texHeight,
+					_mipLevels,
+					VK_SAMPLE_COUNT_1_BIT,
+					VK_FORMAT_R8G8B8A8_SRGB,
+					VK_IMAGE_TILING_OPTIMAL,
+					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+					(uint32_t)filepaths.size());
+
+				_image.transitionImageLayout(
+					commandPool,
+					VK_FORMAT_R8G8B8A8_SRGB,
+					VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					_mipLevels);
+			}
+
+			_image.copyBufferToImage(
+				commandPool,
+				stagingBuffer,
+				static_cast<uint32_t>(texWidth),
+				static_cast<uint32_t>(texHeight),
+				(uint32_t)i);
+			//transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating mipmaps
+
+			stagingBuffer.destroy();
 		}
-
-		VulkanBuffer stagingBuffer(_device);
-
-		stagingBuffer.create(
-			imageSize, 
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-		stagingBuffer.mapMemory(pixels);
-
-		stbi_image_free(pixels);
-
-		_image.create(
-			texWidth,
-			texHeight,
-			_mipLevels,
-			VK_SAMPLE_COUNT_1_BIT,
-			VK_FORMAT_R8G8B8A8_SRGB,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-				
-		_image.transitionImageLayout(
-			commandPool,
-			VK_FORMAT_R8G8B8A8_SRGB,
-			VK_IMAGE_LAYOUT_UNDEFINED,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			_mipLevels);
-
-		_image.copyBufferToImage(
-			commandPool, 
-			stagingBuffer, 
-			static_cast<uint32_t>(texWidth), 
-			static_cast<uint32_t>(texHeight));
-		//transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating mipmaps
-
-		stagingBuffer.destroy();
 
 		_image.generateMipmaps(
 			commandPool,
@@ -81,7 +97,7 @@ namespace hl
 		{
 
 			VkPhysicalDeviceProperties properties{};
-			vkGetPhysicalDeviceProperties(_device._physicalDevice, &properties);
+			vkGetPhysicalDeviceProperties(_device._physicalDevice, &properties); // TODO: CACHE
 
 			VkSamplerCreateInfo samplerInfo{};
 			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

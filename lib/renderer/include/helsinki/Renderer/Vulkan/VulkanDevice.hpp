@@ -33,7 +33,6 @@ namespace hl
 			if (func)
 			{
 				func(_device, &nameInfo);
-				std::cout << "Added vulkan handle called " << name << " for '" << handle << "'" << std::endl;
 			}
 		}
 
