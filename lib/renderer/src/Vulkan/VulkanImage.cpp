@@ -22,10 +22,12 @@ namespace hl
         VkFormat format,
         VkImageTiling tiling,
         VkImageUsageFlags usage,
-        VkMemoryPropertyFlags properties)
+        VkMemoryPropertyFlags properties,
+        uint32_t layers)
     {
         _width = width;
         _height = height;
+        _layers = layers;
 
         VkImageCreateInfo imageInfo{};
 
@@ -35,13 +37,19 @@ namespace hl
         imageInfo.extent.height = height;
         imageInfo.extent.depth = 1;
         imageInfo.mipLevels = mipMapLevels;
-        imageInfo.arrayLayers = 1;
+        imageInfo.arrayLayers = layers;
         imageInfo.format = format;
         imageInfo.tiling = tiling;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.usage = usage;
         imageInfo.samples = numSamples;
+        imageInfo.flags = 0;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (layers == 6)
+        {
+            imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        }
 
         if (vkCreateImage(_device._device, &imageInfo, nullptr, &_image) != VK_SUCCESS)
         {
@@ -81,7 +89,12 @@ namespace hl
         viewInfo.subresourceRange.baseMipLevel = 0;
         viewInfo.subresourceRange.levelCount = mipMapLevels;
         viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = 1;
+        viewInfo.subresourceRange.layerCount = _layers;
+
+        if (_layers == 6)
+        {
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+        }
 
         if (vkCreateImageView(_device._device, &viewInfo, nullptr, &_imageView) != VK_SUCCESS)
         {
@@ -114,6 +127,7 @@ namespace hl
         uint32_t mipMapLevels)
     {
         // Check if image format supports linear blitting
+        // TODO: Cache
         VkFormatProperties formatProperties;
         vkGetPhysicalDeviceFormatProperties(_device._physicalDevice, imageFormat, &formatProperties);
 
@@ -132,12 +146,11 @@ namespace hl
             barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
+            barrier.subresourceRange.layerCount = _layers;
             barrier.subresourceRange.levelCount = 1;
 
             int32_t mipWidth = width;
             int32_t mipHeight = height;
-
 
             for (uint32_t i = 1; i < mipMapLevels; i++)
             {
@@ -159,13 +172,13 @@ namespace hl
                 blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
                 blit.srcSubresource.mipLevel = i - 1;
                 blit.srcSubresource.baseArrayLayer = 0;
-                blit.srcSubresource.layerCount = 1;
+                blit.srcSubresource.layerCount = _layers;
                 blit.dstOffsets[0] = { 0, 0, 0 };
                 blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
                 blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
                 blit.dstSubresource.mipLevel = i;
                 blit.dstSubresource.baseArrayLayer = 0;
-                blit.dstSubresource.layerCount = 1;
+                blit.dstSubresource.layerCount = _layers;
 
                 vkCmdBlitImage(commandBuffer._commandBuffer,
                     _image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -224,7 +237,7 @@ namespace hl
         barrier.subresourceRange.baseMipLevel = 0;
         barrier.subresourceRange.levelCount = mipMapLevels;
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
+        barrier.subresourceRange.layerCount = _layers;
 
         VkPipelineStageFlags sourceStage;
         VkPipelineStageFlags destinationStage;
@@ -266,7 +279,8 @@ namespace hl
         VulkanCommandPool& commandPool,
         VulkanBuffer& buffer,
         uint32_t width,
-        uint32_t height)
+        uint32_t height,
+        uint32_t layer)
     {
         auto commandBuffer = commandPool.createSingleTimeCommands();
 
@@ -276,7 +290,7 @@ namespace hl
         region.bufferImageHeight = 0;
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel = 0;
-        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.baseArrayLayer = layer;
         region.imageSubresource.layerCount = 1;
         region.imageOffset = { 0, 0, 0 };
         region.imageExtent = {

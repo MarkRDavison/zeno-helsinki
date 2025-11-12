@@ -505,7 +505,8 @@ namespace hl
 					imageFormat,
 					VK_IMAGE_TILING_OPTIMAL,
 					usage,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+					1);
 
 				_device.setDebugName(reinterpret_cast<uint64_t>(color._image), VK_OBJECT_TYPE_IMAGE, (_name + std::string("_ColorImage_") + std::to_string(i)).c_str());
 
@@ -531,7 +532,8 @@ namespace hl
 					imageFormat,
 					VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+					1);
 
 				_device.setDebugName(reinterpret_cast<uint64_t>(colorResolve._image), VK_OBJECT_TYPE_IMAGE, (_name + std::string("_ColorResolveImage_") + std::to_string(i)).c_str());
 
@@ -557,7 +559,8 @@ namespace hl
 					depthFormat,
 					VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+					1);
 
 				_device.setDebugName(reinterpret_cast<uint64_t>(depth._image), VK_OBJECT_TYPE_IMAGE, (_name + std::string("_DepthImage_") + std::to_string(i)).c_str());
 

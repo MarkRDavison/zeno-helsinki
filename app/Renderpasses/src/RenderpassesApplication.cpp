@@ -46,7 +46,8 @@ namespace rp
         _oneTimeCommandPool(_device),
         _syncContext(_device),
         _model(_device),
-        _renderResourcesSystem()
+        _renderResourcesSystem(),
+        _skyBoxTexture(_device)
     {
 
     }
@@ -84,6 +85,7 @@ namespace rp
         }
 
         _model.destroy();
+        _skyBoxTexture.destroy();
 
         _syncContext.destroy();
         _commandPool.destroy();
@@ -215,6 +217,46 @@ namespace rp
                 {
                     hl::PipelineInfo
                     {
+                        .name = "skybox_pipeline",
+                        .shaderVert = ROOT_PATH("/data/shaders/skybox.vert"),
+                        .shaderFrag = ROOT_PATH("/data/shaders/skybox.frag"),
+                        .descriptorSets =
+                        {
+                            hl::DescriptorSetInfo
+                            {
+                                .name = "",
+                                .bindings = 
+                                {
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 0,
+                                        .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                        .stage = "VERTEX",
+                                        .resource = "model_matrix_ubo"
+                                    },
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 1,
+                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                        .stage = "FRAGMENT",
+                                        .resource = "skybox_texture"
+                                    }
+                                }
+                            }
+                        },
+                        .depthState =
+                        {
+                            .writeEnable = false,
+                            .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
+                        },
+                        .rasterState = 
+                        {
+                            .cullMode = VK_CULL_MODE_NONE
+                        },
+                        .enableBlending = false
+                    },
+                    hl::PipelineInfo
+                    {
                         .name = "model_pipeline",
                         .shaderVert = ROOT_PATH("/data/shaders/triangle.vert"),
                         .shaderFrag = ROOT_PATH("/data/shaders/triangle.frag"),
@@ -267,8 +309,11 @@ namespace rp
                             },
                             .stride = sizeof(hl::Vertex)
                         },
-                        .enableBlending = false,
-                        .enableCulling = false
+                        .rasterState =
+                        {
+                            .cullMode = VK_CULL_MODE_BACK_BIT
+                        },
+                        .enableBlending = false
                     }
                 }
             },
@@ -310,9 +355,16 @@ namespace rp
                                 }
                             }
                         },
-                        .enableBlending = false,
-                        .enableCulling = false,
-                        .enableDepthTest = false
+                        .depthState =
+                        {
+                            .testEnable = false,
+                            .writeEnable = false
+                        },
+                        .rasterState =
+                        {
+                            .cullMode = VK_CULL_MODE_NONE
+                        },
+                        .enableBlending = false
                     }
                 }
             },
@@ -354,9 +406,16 @@ namespace rp
                                 }
                             }
                         },
-                        .enableBlending = false,
-                        .enableCulling = false,
-                        .enableDepthTest = false
+                        .depthState =
+                        {
+                            .testEnable = false,
+                            .writeEnable = false
+                        },
+                        .rasterState =
+                        {
+                            .cullMode = VK_CULL_MODE_NONE
+                        },
+                        .enableBlending = false
                     },
                     hl::PipelineInfo
                     {
@@ -364,9 +423,16 @@ namespace rp
                         .shaderVert = ROOT_PATH("/data/shaders/ui.vert"),
                         .shaderFrag = ROOT_PATH("/data/shaders/ui.frag"),
                         .descriptorSets = {},
-                        .enableBlending = true,
-                        .enableCulling = false,
-                        .enableDepthTest = false
+                        .depthState =
+                        {
+                            .testEnable = false,
+                            .writeEnable = false
+                        },
+                        .rasterState =
+                        {
+                            .cullMode = VK_CULL_MODE_NONE
+                        },
+                        .enableBlending = true
                     }
                 }
             }
@@ -376,6 +442,21 @@ namespace rp
         _oneTimeCommandPool.create();
 
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
+        _skyBoxTexture.create(_oneTimeCommandPool, 
+            {
+                //ROOT_PATH("/data/textures/cratered-01-right.png"),
+                //ROOT_PATH("/data/textures/cratered-01-left.png"),
+                //ROOT_PATH("/data/textures/cratered-01-top.png"),
+                //ROOT_PATH("/data/textures/cratered-01-bottom.png"),
+                //ROOT_PATH("/data/textures/cratered-01-front.png"),
+                //ROOT_PATH("/data/textures/cratered-01-back.png")
+                ROOT_PATH("/data/textures/right.png"),
+                ROOT_PATH("/data/textures/left.png"),
+                ROOT_PATH("/data/textures/top.png"),
+                ROOT_PATH("/data/textures/bottom.png"),
+                ROOT_PATH("/data/textures/front.png"),
+                ROOT_PATH("/data/textures/back.png")
+            });
 
         createUniformBuffers();
         createCommandBuffers();
@@ -389,6 +470,7 @@ namespace rp
 
         _renderResourcesSystem.addUniformBuffers("model_matrix_ubo", ubs);
         _renderResourcesSystem.addTexture("viking_texture", &_model._texture);
+        _renderResourcesSystem.addTexture("skybox_texture", &_skyBoxTexture);
 
         _renderGraph = new hl::GeneratedRenderGraph(
             _device,
@@ -450,8 +532,17 @@ namespace rp
     void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
     {
         UniformBufferObject ubo{};
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), _swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height, 0.1f, 10.0f);
+        ubo.view = glm::lookAt(
+            glm::vec3(2.0f, 2.0f, 2.0f), 
+            glm::vec3(0.0f, 0.0f, 0.0f), 
+            glm::vec3(0.0f, 0.0f, 1.0f));
+
+        ubo.proj = glm::perspective(
+            glm::radians(45.0f), 
+            _swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height, 
+            0.1f, 
+            10.0f);
+
         ubo.proj[1][1] *= -1;
 
         uniformBuffer.writeToBuffer(&ubo);
@@ -504,12 +595,23 @@ namespace rp
                 vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 
-                if (pipeline->Name == "model_pipeline")
+                if (pipeline->Name == "skybox_pipeline")
                 {
-                    static auto startTime = std::chrono::high_resolution_clock::now();
-                    auto currentTime = std::chrono::high_resolution_clock::now();
-                    float time = std::chrono::duration<float>(currentTime - startTime).count();
-                    glm::mat4 model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(0, 0, 1));
+                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                    vkCmdBindDescriptorSets(commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        0,
+                        nullptr);
+
+                    vkCmdDraw(commandBuffer, 36, 1, 0, 0); // quad from 12 triangles
+                }
+                else if (pipeline->Name == "model_pipeline")
+                {
+                    glm::mat4 model = glm::mat4(1.0f);
 
                     vkCmdPushConstants(
                         commandBuffer,

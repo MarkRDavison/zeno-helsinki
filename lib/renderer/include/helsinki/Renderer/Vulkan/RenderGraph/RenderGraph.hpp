@@ -61,6 +61,19 @@ namespace hl
         uint32_t stride;
     };
 
+    struct DepthState
+    {
+        bool testEnable = true;
+        bool writeEnable = true;
+        VkCompareOp compareOp = VK_COMPARE_OP_LESS;
+    };
+
+    struct RasterState
+    {
+        VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
+        VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    };
+
     struct PipelineInfo
     {
         std::string name;
@@ -68,9 +81,9 @@ namespace hl
         std::string shaderFrag;
         std::vector<DescriptorSetInfo> descriptorSets;
         std::optional<VertexInputInfo> vertexInputInfo;
+        DepthState depthState;
+        RasterState rasterState;
         bool enableBlending = false;
-        bool enableCulling = true;
-        bool enableDepthTest = true;
     };
 
     struct RenderpassInfo

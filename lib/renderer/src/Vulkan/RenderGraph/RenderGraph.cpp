@@ -99,9 +99,6 @@ namespace hl
 									? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 									: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-							std::cout << "[DEBUG] RenderPass '" << ri.name << "' attachment '" << ra.name
-								<< "' finalLayout: " << description.finalLayout << " (as uint)\n";
-
 									reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 									colorAttachments.push_back(description);
@@ -129,9 +126,6 @@ namespace hl
 
 										colorResolveAttachments.push_back(resolveDescription);
 										colorResolveReferences.push_back(resolveReference);
-
-										std::cout << "[DEBUG] RenderPass '" << ri.name << "' resolve attachment '" << ra.name
-											<< "' finalLayout: " << resolveDescription.finalLayout << " (as uint)\n";
 
 										allAttachments.push_back(resolveDescription);
 									}
@@ -225,15 +219,16 @@ namespace hl
 					// TODO: Need better than this maybe can calculate it from renderpass description
 					std::vector<VkDescriptorPoolSize> poolSizes
 					{
-					   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 * imageCount },
-					   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 20 * imageCount },
+					   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 40 * imageCount },
+					   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 80 * imageCount },
 					};
 
 					VkDescriptorPoolCreateInfo poolCreateInfo{};
 					poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 					poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 					poolCreateInfo.pPoolSizes = poolSizes.data();
-					poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount);
+					poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount) * 20;
+					std::cerr << "TODO: calculate the max sets" << std::endl;
 
 					if (vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 					{
@@ -445,15 +440,8 @@ namespace hl
 								rasterizer.rasterizerDiscardEnable = VK_FALSE;
 								rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 								rasterizer.lineWidth = 1.0f;
-								if (g.enableCulling)
-								{
-									rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-								}
-								else
-								{
-									rasterizer.cullMode = VK_CULL_MODE_NONE;
-								}
-								rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+								rasterizer.cullMode = g.rasterState.cullMode,
+								rasterizer.frontFace = g.rasterState.frontFace;
 								rasterizer.depthBiasEnable = VK_FALSE;
 
 								VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -466,17 +454,11 @@ namespace hl
 
 								VkPipelineDepthStencilStateCreateInfo depthStencil{};
 								depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-								depthStencil.depthTestEnable = VK_FALSE;
-								depthStencil.depthWriteEnable = VK_FALSE;
-
-								if (g.enableDepthTest)
-								{
-									depthStencil.depthTestEnable = VK_TRUE;
-									depthStencil.depthWriteEnable = VK_TRUE;
-									depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-									depthStencil.depthBoundsTestEnable = VK_FALSE;
-									depthStencil.stencilTestEnable = VK_FALSE;
-								}
+								depthStencil.depthTestEnable = g.depthState.testEnable ? VK_TRUE : VK_FALSE;
+								depthStencil.depthWriteEnable = g.depthState.writeEnable ? VK_TRUE : VK_FALSE;
+								depthStencil.depthCompareOp = g.depthState.compareOp;
+								depthStencil.depthBoundsTestEnable = VK_FALSE;
+								depthStencil.stencilTestEnable = VK_FALSE;
 
 								VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 								colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -564,6 +546,9 @@ namespace hl
 								allocInfo.pSetLayouts = layouts.data();
 
 								auto descriptorSets = std::vector<VkDescriptorSet>(MAX_FRAMES_IN_FLIGHT);
+								
+								std::cout << "TODO: create CHECK_RESULT macro that prints the actual error when not success" << std::endl;
+
 								if (vkAllocateDescriptorSets(device._device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
 								{
 									throw std::runtime_error("Failed to allocate descriptor sets!");
@@ -671,7 +656,8 @@ namespace hl
 						attachment.format,
 						VK_IMAGE_TILING_OPTIMAL,
 						usage,
-						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+						1);
 
 					image->createImageView(
 						attachment.format,
@@ -707,7 +693,8 @@ namespace hl
 							attachment.format,
 							VK_IMAGE_TILING_OPTIMAL,
 							VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-							VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+							VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							1);
 
 						resolveImage->createImageView(
 							attachment.format,
@@ -746,7 +733,8 @@ namespace hl
 						attachment.format,
 						VK_IMAGE_TILING_OPTIMAL,
 						usage,
-						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+						1);
 
 					image->createImageView(
 						attachment.format,
@@ -922,12 +910,6 @@ namespace hl
 				throw std::runtime_error("failed to create framebuffer!");
 			}
 
-			std::cout << "[DEBUG] Renderpass " << info.name << " - framebuffer " << i << " attachments:\n";
-			for (size_t ji = 0; ji < attachments.size(); ji++)
-			{
-				std::cout << "  Attachment " << ji << ": " << reinterpret_cast<uint64_t>(attachments[ji]) << "\n";
-			}
-
 			device.setDebugName(
 				reinterpret_cast<uint64_t>(f),
 				VK_OBJECT_TYPE_FRAMEBUFFER,
@@ -946,7 +928,6 @@ namespace hl
 		}
 		else if (formatString == "VK_FORMAT_D32_SFLOAT")
 		{
-		
 			return VK_FORMAT_D32_SFLOAT;
 		}
 		else if (formatString == "VK_FORMAT_B8G8R8A8_UNORM")
