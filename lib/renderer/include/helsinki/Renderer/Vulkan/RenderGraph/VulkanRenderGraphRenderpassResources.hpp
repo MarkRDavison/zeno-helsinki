@@ -37,6 +37,8 @@ namespace hl
 
 		std::vector<VkClearValue> getClearValues() const;
 		void setClearValues(const std::vector<VkClearValue>& clearValues);
+		VkExtent2D getExtent() const;
+		void setExtent(VkExtent2D extent);
 
 		const std::string Name;
 
@@ -49,6 +51,7 @@ namespace hl
 		std::vector<VulkanRenderGraphPipelineResources*> _pipelines;
 		VkDescriptorPool _descriptorPool{ VK_NULL_HANDLE };
 		std::vector<VkClearValue> _clearValues;
+		VkExtent2D _extent{};
 	};
 
 }

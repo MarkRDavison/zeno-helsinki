@@ -364,7 +364,43 @@ namespace rp
             {
                 .name = "ui_pass",
                 .useMultiSampling = false,
-                .inputs = { "post_color" }, // TODO: need to validate that this exists as an output somewhere...
+                .inputs = {},
+                .outputs =
+                {
+                    hl::ResourceInfo
+                    {
+                        .name = "ui_color",
+                        .type = hl::ResourceType::Color,
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB",
+                        .clear = VkClearValue{.color = {{ 0.0f, 0.0f, 0.0f, 0.0f }}}
+                    }
+                },
+                .pipelines =
+                {
+                    hl::PipelineInfo
+                    {
+                        .name = "ui",
+                        .shaderVert = ROOT_PATH("/data/shaders/ui.vert"),
+                        .shaderFrag = ROOT_PATH("/data/shaders/ui.frag"),
+                        .descriptorSets = {},
+                        .depthState =
+                        {
+                            .testEnable = false,
+                            .writeEnable = false
+                        },
+                        .rasterState =
+                        {
+                            .cullMode = VK_CULL_MODE_NONE
+                        },
+                        .enableBlending = true // keep blending for UI elements
+                    }
+                }
+            },
+            hl::RenderpassInfo
+            {
+                .name = "composite_pass",
+                .useMultiSampling = false,
+                .inputs = { "post_color", "ui_color" },
                 .outputs =
                 {
                     hl::ResourceInfo
@@ -378,14 +414,14 @@ namespace rp
                 {
                     hl::PipelineInfo
                     {
-                        .name = "fullscreen_sample",
+                        .name = "composite_pipeline",
                         .shaderVert = ROOT_PATH("/data/shaders/fullscreen_sample.vert"),
-                        .shaderFrag = ROOT_PATH("/data/shaders/fullscreen_sample.frag"),
+                        .shaderFrag = ROOT_PATH("/data/shaders/composite.frag"),
                         .descriptorSets =
                         {
                             hl::DescriptorSetInfo
                             {
-                                .name = "fullscreen_sample_input",
+                                .name = "composite_inputs",
                                 .bindings =
                                 {
                                     hl::DescriptorBinding
@@ -394,27 +430,17 @@ namespace rp
                                         .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                         .stage = "FRAGMENT",
                                         .resource = "post_color"
+                                    },
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 1,
+                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                        .stage = "FRAGMENT",
+                                        .resource = "ui_color"
                                     }
                                 }
                             }
                         },
-                        .depthState =
-                        {
-                            .testEnable = false,
-                            .writeEnable = false
-                        },
-                        .rasterState =
-                        {
-                            .cullMode = VK_CULL_MODE_NONE
-                        },
-                        .enableBlending = false
-                    },
-                    hl::PipelineInfo
-                    {
-                        .name = "ui",
-                        .shaderVert = ROOT_PATH("/data/shaders/ui.vert"),
-                        .shaderFrag = ROOT_PATH("/data/shaders/ui.frag"),
-                        .descriptorSets = {},
                         .depthState =
                         {
                             .testEnable = false,
@@ -534,150 +560,180 @@ namespace rp
         uniformBuffer.writeToBuffer(&ubo);
     }
 
+    VkExtent2D getExtent(VkExtent2D framebufferExtent, VkExtent2D swapchainExtent)
+    {
+        if (framebufferExtent.width == 0 || framebufferExtent.height == 0)
+        {
+            return swapchainExtent;
+        }
+
+        return framebufferExtent;
+    }
+
     void RenderpassesApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        const auto lastRenderpassName = _renderGraph->getResources().back()->Name;
+        const auto& lastRenderpassName = _renderGraph->getResources().back().back()->Name;
 
-
-        for (auto& renderpass : _renderGraph->getResources())
+        for (auto& layer : _renderGraph->getResources())
         {
-            VkRenderPassBeginInfo renderpassBegin{};
-            renderpassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderpassBegin.renderPass = renderpass->getRenderPass();
-            renderpassBegin.framebuffer = renderpass->getFramebuffer(
-                lastRenderpassName == renderpass->Name
+            for (auto& renderpass : layer)
+            {
+                VkRenderPassBeginInfo renderpassBegin{};
+                renderpassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                renderpassBegin.renderPass = renderpass->getRenderPass();
+                renderpassBegin.framebuffer = renderpass->getFramebuffer(
+                    lastRenderpassName == renderpass->Name
                     ? imageIndex
                     : currentFrame);
-            renderpassBegin.renderArea.offset = { 0,0 };
-            renderpassBegin.renderArea.extent = _swapChain._swapChainExtent; //TODO: FROM FRAMEBUFFER/RENDERPASS
+                renderpassBegin.renderArea.offset = { 0,0 };
+                renderpassBegin.renderArea.extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent);
 
-            const auto& clearValues = renderpass->getClearValues();
+                const auto& clearValues = renderpass->getClearValues();
 
-            renderpassBegin.clearValueCount = (uint32_t)clearValues.size();
-            renderpassBegin.pClearValues = clearValues.data();
+                renderpassBegin.clearValueCount = (uint32_t)clearValues.size();
+                renderpassBegin.pClearValues = clearValues.data();
 
-            vkCmdBeginRenderPass(commandBuffer, &renderpassBegin, VK_SUBPASS_CONTENTS_INLINE);
+                vkCmdBeginRenderPass(commandBuffer, &renderpassBegin, VK_SUBPASS_CONTENTS_INLINE);
 
-            for (auto& pipeline : renderpass->getPipelines())
-            {
-                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
-
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = (float)_swapChain._swapChainExtent.width; //TODO: FROM FRAMEBUFFER/RENDERPASS
-                viewport.height = (float)_swapChain._swapChainExtent.height; //TODO: FROM FRAMEBUFFER/RENDERPASS
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = _swapChain._swapChainExtent;//TODO: FROM FRAMEBUFFER/RENDERPASS
-                vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-
-                if (pipeline->Name == "skybox_pipeline")
+                for (auto& pipeline : renderpass->getPipelines())
                 {
-                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
-                    vkCmdBindDescriptorSets(commandBuffer,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        pipeline->getPipelineLayout(),
-                        0,
-                        1,
-                        &descriptorSet,
-                        0,
-                        nullptr);
+                    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
 
-                    vkCmdDraw(commandBuffer, 36, 1, 0, 0); // quad from 12 triangles
+                    VkViewport viewport{};
+                    viewport.x = 0.0f;
+                    viewport.y = 0.0f;
+                    viewport.width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width;
+                    viewport.height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height;
+                    viewport.minDepth = 0.0f;
+                    viewport.maxDepth = 1.0f;
+                    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+                    VkRect2D scissor{};
+                    scissor.offset = { 0, 0 };
+                    scissor.extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent);
+                    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+                    renderPipelineDraw(commandBuffer, pipeline);
                 }
-                else if (pipeline->Name == "model_pipeline")
-                {
-                    glm::mat4 model = glm::mat4(1.0f);
-                    model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-                    vkCmdPushConstants(
-                        commandBuffer,
-                        pipeline->getPipelineLayout(),
-                        VK_SHADER_STAGE_VERTEX_BIT,
-                        0,
-                        sizeof(glm::mat4),
-                        &model
-                    );
-
-                    VkBuffer vertexBuffers[] = { _model._vertexBuffer._buffer };
-                    VkDeviceSize offsets[] = { 0 };
-                    vkCmdBindVertexBuffers(
-                        commandBuffer,
-                        0,
-                        1,
-                        vertexBuffers,
-                        offsets);
-
-                    vkCmdBindIndexBuffer(
-                        commandBuffer,
-                        _model._indexBuffer._buffer,
-                        0,
-                        VK_INDEX_TYPE_UINT32);
-
-                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
-                    vkCmdBindDescriptorSets(
-                        commandBuffer,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        pipeline->getPipelineLayout(),
-                        0,
-                        1,
-                        &descriptorSet,
-                        0,
-                        nullptr);
-
-                    vkCmdDrawIndexed(commandBuffer, _model.indexCount, 1, 0, 0, 0); // viking model
-                }
-                else if (pipeline->Name == "postprocess_pipeline")
-                {
-                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
-                    vkCmdBindDescriptorSets(commandBuffer,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        pipeline->getPipelineLayout(),
-                        0,
-                        1,
-                        &descriptorSet,
-                        0,
-                        nullptr);
-
-                    vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
-                }
-                else if (pipeline->Name == "fullscreen_sample")
-                {
-                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
-                    vkCmdBindDescriptorSets(commandBuffer,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        pipeline->getPipelineLayout(),
-                        0,
-                        1,
-                        &descriptorSet,
-                        0,
-                        nullptr);
-
-                    vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
-                }
-                else if (pipeline->Name == "ui")
-                {
-                    vkCmdDraw(commandBuffer, 3, 1, 0, 0); // halfscreen triangle
-                }
-                else
-                {
-                    throw std::runtime_error("TODO: HARD CODED DRAW FUNCTIONS");
-                }
+                vkCmdEndRenderPass(commandBuffer);
             }
-
-            vkCmdEndRenderPass(commandBuffer);
         }
 
         vkEndCommandBuffer(commandBuffer);
+    }
+
+
+    void RenderpassesApplication::renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline)
+    {
+        if (pipeline->Name == "skybox_pipeline")
+        {
+            auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+            vkCmdBindDescriptorSets(commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipeline->getPipelineLayout(),
+                0,
+                1,
+                &descriptorSet,
+                0,
+                nullptr);
+
+            vkCmdDraw(commandBuffer, 36, 1, 0, 0); // quad from 12 triangles
+        }
+        else if (pipeline->Name == "model_pipeline")
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+            vkCmdPushConstants(
+                commandBuffer,
+                pipeline->getPipelineLayout(),
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0,
+                sizeof(glm::mat4),
+                &model
+            );
+
+            VkBuffer vertexBuffers[] = { _model._vertexBuffer._buffer };
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(
+                commandBuffer,
+                0,
+                1,
+                vertexBuffers,
+                offsets);
+
+            vkCmdBindIndexBuffer(
+                commandBuffer,
+                _model._indexBuffer._buffer,
+                0,
+                VK_INDEX_TYPE_UINT32);
+
+            auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+            vkCmdBindDescriptorSets(
+                commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipeline->getPipelineLayout(),
+                0,
+                1,
+                &descriptorSet,
+                0,
+                nullptr);
+
+            vkCmdDrawIndexed(commandBuffer, _model.indexCount, 1, 0, 0, 0); // viking model
+        }
+        else if (pipeline->Name == "postprocess_pipeline")
+        {
+            auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+            vkCmdBindDescriptorSets(commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipeline->getPipelineLayout(),
+                0,
+                1,
+                &descriptorSet,
+                0,
+                nullptr);
+
+            vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+        }
+        else if (pipeline->Name == "fullscreen_sample")
+        {
+            auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+            vkCmdBindDescriptorSets(commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipeline->getPipelineLayout(),
+                0,
+                1,
+                &descriptorSet,
+                0,
+                nullptr);
+
+            vkCmdDraw(commandBuffer, 3, 1, 0, 0); // fullscreen triangle
+        }
+        else if (pipeline->Name == "ui")
+        {
+            vkCmdDraw(commandBuffer, 3, 1, 0, 0); // halfscreen triangle
+        }
+        else if (pipeline->Name == "composite_pipeline")
+        {
+            auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+            vkCmdBindDescriptorSets(commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipeline->getPipelineLayout(),
+                0,
+                1,
+                &descriptorSet,
+                0,
+                nullptr);
+            vkCmdDraw(commandBuffer, 3, 1, 0, 0); // halfscreen triangle
+        }
+        else
+        {
+            throw std::runtime_error("TODO: HARD CODED DRAW FUNCTIONS");
+        }
     }
 }

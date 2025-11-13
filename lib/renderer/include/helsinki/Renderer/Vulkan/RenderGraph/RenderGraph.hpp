@@ -31,6 +31,7 @@ namespace hl
         ResourceType type;
         std::string format; // e.g., "VK_FORMAT_R8G8B8A8_UNORM"
         std::optional<std::string> source; // optional, used if this resource comes from a previous pass
+        std::optional<VkClearValue> clear;
     };
 
     struct DescriptorBinding
@@ -93,6 +94,7 @@ namespace hl
         std::vector<std::string> inputs;           // names of input resources
         std::vector<ResourceInfo> outputs;         // resources this pass writes
         std::vector<PipelineInfo> pipelines;       // pipelines in this pass
+        VkExtent2D extent{};
     };
 
     struct RenderpassAttachment
@@ -109,7 +111,7 @@ namespace hl
     {
         RenderGraph() = delete;
     public:
-        static std::vector<VulkanRenderGraphRenderpassResources*> create(
+        static std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> create(
             RenderResourcesSystem& renderResourcesSystem,
             const std::vector<hl::RenderpassInfo>& renderpassInfo, 
             VulkanDevice& device,
@@ -117,7 +119,7 @@ namespace hl
             uint32_t height,
             const std::vector<VkImageView>& swapChainImageViews);
 
-        static void destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources);
+        static void destroy(std::vector<std::vector<VulkanRenderGraphRenderpassResources*>>& generatedRenderpassResources);
 
         static void createImages(
             VulkanDevice& device,

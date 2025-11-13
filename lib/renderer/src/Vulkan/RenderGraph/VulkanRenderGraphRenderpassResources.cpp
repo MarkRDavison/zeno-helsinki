@@ -182,4 +182,12 @@ namespace hl
 	{
 		_clearValues = std::vector<VkClearValue>(clearValues);
 	}
+	VkExtent2D VulkanRenderGraphRenderpassResources::getExtent() const
+	{
+		return _extent;
+	}
+	void VulkanRenderGraphRenderpassResources::setExtent(VkExtent2D extent)
+	{
+		_extent = extent;
+	}
 }
