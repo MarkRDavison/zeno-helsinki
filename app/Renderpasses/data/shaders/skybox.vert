@@ -33,7 +33,7 @@ vec3 skyboxVertices[36] = vec3[](
 
 void main() {
     vec3 pos = skyboxVertices[gl_VertexIndex];
-    outUVW = pos;
+    outUVW = vec3(-pos.x, pos.y, pos.z);
 
     // Remove translation from the view matrix
     mat4 rotView = mat4(mat3(ubo.view));
