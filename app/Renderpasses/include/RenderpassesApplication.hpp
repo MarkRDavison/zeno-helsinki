@@ -47,6 +47,7 @@ namespace rp
 		void recreateSwapChain();
 		void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
 		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline);
 
 	private:
 		GLFWwindow* _window;

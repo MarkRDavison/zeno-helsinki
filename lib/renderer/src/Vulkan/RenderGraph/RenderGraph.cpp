@@ -21,7 +21,7 @@ namespace hl
 		return contents.str();
 	}
 
-	std::vector<VulkanRenderGraphRenderpassResources*> RenderGraph::create(
+	std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> RenderGraph::create(
 		RenderResourcesSystem& /*renderResourcesSystem*/,
 		const std::vector<hl::RenderpassInfo>& renderpassInfo, 
 		VulkanDevice& device,
@@ -544,14 +544,24 @@ namespace hl
 			}
 		}
 
-		return renderpasses;
+		std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> layers = {};
+
+		for (auto& r : renderpasses)
+		{
+			layers.push_back({ r });
+		}
+
+		return layers;
 	}
 
-	void RenderGraph::destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources)
+	void RenderGraph::destroy(std::vector<std::vector<VulkanRenderGraphRenderpassResources*>>& generatedRenderpassResources)
 	{
-		for (auto& r : generatedRenderpassResources)
+		for (auto& layer : generatedRenderpassResources)
 		{
-			r->destroy();
+			for (auto& r : layer)
+			{
+				r->destroy();
+			}
 		}
 	}
 
@@ -565,35 +575,56 @@ namespace hl
 		bool isLastRenderpass)
 	{
 		std::vector<VkClearValue> clearValues;
+		resources->setExtent({.width = width, .height = height});
 
 		for (const auto& res : info.outputs)
 		{
-			// TODO: Foreach N where N is MAX_FRAMES_IN_FLIGHT or swapchain image count
 			auto& attachment = resources->addAttachment(res.name);
 			attachment.type = res.type;
 			attachment.format = extractFormat(res.format);
 
 			if (res.type == ResourceType::Color)
 			{
-				clearValues.emplace_back(VkClearValue
-					{
-						.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
-					});
-
-				if (info.useMultiSampling)
+				if (res.clear.has_value())
+				{
+					clearValues.emplace_back(res.clear.value());
+				}
+				else
 				{
 					clearValues.emplace_back(VkClearValue
 						{
 							.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
 						});
 				}
+
+				if (info.useMultiSampling)
+				{
+					if (res.clear.has_value())
+					{
+						clearValues.emplace_back(res.clear.value());
+					}
+					else
+					{
+						clearValues.emplace_back(VkClearValue
+							{
+								.color = { {0.0f, 0.0f, 0.0f, 1.0f} }
+							});
+					}
+				}
 			}
 			else if (res.type == ResourceType::Depth)
 			{
-				clearValues.emplace_back(VkClearValue
-					{
-						.depthStencil = { 1.0f, 0 }
-					});
+				if (res.clear.has_value())
+				{
+					clearValues.emplace_back(res.clear.value());
+				}
+				else
+				{
+					clearValues.emplace_back(VkClearValue
+						{
+							.depthStencil = { 1.0f, 0 }
+						});
+				}
 			}
 			else
 			{
