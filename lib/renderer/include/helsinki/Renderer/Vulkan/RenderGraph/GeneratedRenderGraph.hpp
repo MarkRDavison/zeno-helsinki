@@ -20,7 +20,7 @@ namespace hl
 
 		VkDescriptorSet getDescriptorSet(const std::string& renderpassName, const std::string& pipelineName, uint32_t frameNumber);
 
-		std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> getResources();
+		std::vector<VulkanRenderGraphRenderpassResources*> getResources();
 
 		void destroy();
 		void recreate(uint32_t width, uint32_t height);
@@ -33,7 +33,7 @@ namespace hl
 		VulkanSwapChain& _swapChain;
 		const std::vector<hl::RenderpassInfo> _renderGraph;
 		RenderResourcesSystem& _renderResourcesSystem;
-		std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> _resources;
+		std::vector<VulkanRenderGraphRenderpassResources*> _resources;
 	};
 
 }

@@ -111,7 +111,7 @@ namespace hl
     {
         RenderGraph() = delete;
     public:
-        static std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> create(
+        static std::vector<VulkanRenderGraphRenderpassResources*> create(
             RenderResourcesSystem& renderResourcesSystem,
             const std::vector<hl::RenderpassInfo>& renderpassInfo, 
             VulkanDevice& device,
@@ -119,7 +119,7 @@ namespace hl
             uint32_t height,
             const std::vector<VkImageView>& swapChainImageViews);
 
-        static void destroy(std::vector<std::vector<VulkanRenderGraphRenderpassResources*>>& generatedRenderpassResources);
+        static void destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources);
 
         static void createImages(
             VulkanDevice& device,

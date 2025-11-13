@@ -30,18 +30,15 @@ namespace hl
 
     VkDescriptorSet GeneratedRenderGraph::getDescriptorSet(const std::string& renderpassName, const std::string& pipelineName, uint32_t frameNumber)
     {
-        for (auto& layer : _resources)
+        for (auto& r : _resources)
         {
-            for (auto& r : layer)
+            if (r->Name == renderpassName)
             {
-                if (r->Name == renderpassName)
+                for (auto& p : r->getPipelines())
                 {
-                    for (auto& p : r->getPipelines())
+                    if (p->Name == pipelineName)
                     {
-                        if (p->Name == pipelineName)
-                        {
-                            return p->getDescriptorSet(frameNumber);
-                        }
+                        return p->getDescriptorSet(frameNumber);
                     }
                 }
             }
@@ -50,8 +47,7 @@ namespace hl
         throw std::runtime_error("failed to find descriptor set");
     }
 
-
-    std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> GeneratedRenderGraph::getResources()
+    std::vector<VulkanRenderGraphRenderpassResources*> GeneratedRenderGraph::getResources()
 	{
 		return _resources;
 	}
@@ -64,25 +60,22 @@ namespace hl
 	void GeneratedRenderGraph::recreate(uint32_t width, uint32_t height)
 	{
         size_t i = 0;
-        for (auto& layer : getResources())
+        for (auto& r : getResources())
         {
-            for (auto& r : layer)
-            {
-                const auto& info = _renderGraph[i];
-                i++;
+            const auto& info = _renderGraph[i];
+            i++;
 
-                auto isLastRenderpass = i == getResources().size();
+            auto isLastRenderpass = i == getResources().size();
 
-                r->recreate(
-                    info,
-                    width,
-                    height,
-                    _swapChain._swapChainImageViews,
-                    (uint32_t)(isLastRenderpass ? _swapChain._swapChainImageViews.size() : MAX_FRAMES_IN_FLIGHT),
-                    isLastRenderpass);
+            r->recreate(
+                info,
+                width,
+                height,
+                _swapChain._swapChainImageViews,
+                (uint32_t)(isLastRenderpass ? _swapChain._swapChainImageViews.size() : MAX_FRAMES_IN_FLIGHT),
+                isLastRenderpass);
 
-                updateAllOutputResources();
-            }
+            updateAllOutputResources();
         }
 	}
 
@@ -195,70 +188,67 @@ namespace hl
                         {
                             // std::cout << "Renderpass '" << r.name << "' - pipeline '" << p.name << "' - descriptor set '" << ds.name << "' - binding '" << b.resource.value() << "'" << std::endl;
 
-                            for (const auto& layer : _resources)
+                            for (const auto& grpr : _resources)
                             {
-                                for (const auto& grpr : layer)
+                                // Dont try and get an output from yourself as an input???
+                                if (grpr->Name != r.name)
                                 {
-                                    // Dont try and get an output from yourself as an input???
-                                    if (grpr->Name != r.name)
+                                    for (auto& grpra : grpr->getAttachments())
                                     {
-                                        for (auto& grpra : grpr->getAttachments())
+                                        if (grpra.name == b.resource.value())
                                         {
-                                            if (grpra.name == b.resource.value())
+                                            // std::cout << " - Found it! Its the output from '" << grpr->Name << "'.'" << grpra.name << "'" << std::endl;
+
+                                            std::vector<hl::VulkanImage*> offscreenImages;
+
+                                            if (!grpra.resolveImages.empty())
                                             {
-                                                // std::cout << " - Found it! Its the output from '" << grpr->Name << "'.'" << grpra.name << "'" << std::endl;
-
-                                                std::vector<hl::VulkanImage*> offscreenImages;
-
-                                                if (!grpra.resolveImages.empty())
+                                                for (auto i : grpra.resolveImages)
                                                 {
-                                                    for (auto i : grpra.resolveImages)
-                                                    {
-                                                        offscreenImages.push_back(i);
-                                                    }
+                                                    offscreenImages.push_back(i);
                                                 }
-                                                else
-                                                {
-                                                    for (auto i : grpra.images)
-                                                    {
-                                                        offscreenImages.push_back(i);
-                                                    }
-                                                }
-
-                                                if (grpra.sampler == VK_NULL_HANDLE)
-                                                {
-                                                    // TODO: config
-                                                    VkSamplerCreateInfo samplerInfo{};
-                                                    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-                                                    samplerInfo.magFilter = VK_FILTER_LINEAR;
-                                                    samplerInfo.minFilter = VK_FILTER_LINEAR;
-                                                    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                                                    samplerInfo.anisotropyEnable = VK_FALSE;
-                                                    samplerInfo.maxAnisotropy = 1.0f;
-                                                    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-                                                    samplerInfo.unnormalizedCoordinates = VK_FALSE;
-                                                    samplerInfo.compareEnable = VK_FALSE;
-                                                    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-                                                    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                                                    samplerInfo.mipLodBias = 0.0f;
-                                                    samplerInfo.minLod = 0.0f;
-                                                    samplerInfo.maxLod = 0.0f;
-
-                                                    CHECK_VK_RESULT(vkCreateSampler(_device._device, &samplerInfo, nullptr, &grpra.sampler));
-
-                                                    _device.setDebugName(
-                                                        reinterpret_cast<uint64_t>(grpra.sampler),
-                                                        VK_OBJECT_TYPE_SAMPLER,
-                                                        (r.name + "_" + grpra.name + "_Sampler").c_str());
-                                                }
-
-                                                _renderResourcesSystem.registerOffscreenImage(
-                                                    b.resource.value(),
-                                                    offscreenImages,
-                                                    grpra.sampler);
                                             }
+                                            else
+                                            {
+                                                for (auto i : grpra.images)
+                                                {
+                                                    offscreenImages.push_back(i);
+                                                }
+                                            }
+
+                                            if (grpra.sampler == VK_NULL_HANDLE)
+                                            {
+                                                // TODO: config
+                                                VkSamplerCreateInfo samplerInfo{};
+                                                samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+                                                samplerInfo.magFilter = VK_FILTER_LINEAR;
+                                                samplerInfo.minFilter = VK_FILTER_LINEAR;
+                                                samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                                                samplerInfo.anisotropyEnable = VK_FALSE;
+                                                samplerInfo.maxAnisotropy = 1.0f;
+                                                samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+                                                samplerInfo.unnormalizedCoordinates = VK_FALSE;
+                                                samplerInfo.compareEnable = VK_FALSE;
+                                                samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+                                                samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+                                                samplerInfo.mipLodBias = 0.0f;
+                                                samplerInfo.minLod = 0.0f;
+                                                samplerInfo.maxLod = 0.0f;
+
+                                                CHECK_VK_RESULT(vkCreateSampler(_device._device, &samplerInfo, nullptr, &grpra.sampler));
+
+                                                _device.setDebugName(
+                                                    reinterpret_cast<uint64_t>(grpra.sampler),
+                                                    VK_OBJECT_TYPE_SAMPLER,
+                                                    (r.name + "_" + grpra.name + "_Sampler").c_str());
+                                            }
+
+                                            _renderResourcesSystem.registerOffscreenImage(
+                                                b.resource.value(),
+                                                offscreenImages,
+                                                grpra.sampler);
                                         }
                                     }
                                 }

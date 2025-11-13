@@ -21,7 +21,7 @@ namespace hl
 		return contents.str();
 	}
 
-	std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> RenderGraph::create(
+	std::vector<VulkanRenderGraphRenderpassResources*> RenderGraph::create(
 		RenderResourcesSystem& /*renderResourcesSystem*/,
 		const std::vector<hl::RenderpassInfo>& renderpassInfo, 
 		VulkanDevice& device,
@@ -355,7 +355,6 @@ namespace hl
 							}
 
 							{
-
 								VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 								vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 								vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -382,9 +381,9 @@ namespace hl
 								vertexInputInfo.pVertexBindingDescriptions = nullptr;
 								vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
+								VkVertexInputBindingDescription bindingDescription{};
 								if (g.vertexInputInfo.has_value())
 								{
-									VkVertexInputBindingDescription bindingDescription{};
 									bindingDescription.binding = 0;
 									bindingDescription.stride = g.vertexInputInfo.value().stride;
 									bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -544,24 +543,14 @@ namespace hl
 			}
 		}
 
-		std::vector<std::vector<VulkanRenderGraphRenderpassResources*>> layers = {};
-
-		for (auto& r : renderpasses)
-		{
-			layers.push_back({ r });
-		}
-
-		return layers;
+		return renderpasses;
 	}
 
-	void RenderGraph::destroy(std::vector<std::vector<VulkanRenderGraphRenderpassResources*>>& generatedRenderpassResources)
+	void RenderGraph::destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources)
 	{
-		for (auto& layer : generatedRenderpassResources)
+		for (auto& r : generatedRenderpassResources)
 		{
-			for (auto& r : layer)
-			{
-				r->destroy();
-			}
+			r->destroy();
 		}
 	}
 
