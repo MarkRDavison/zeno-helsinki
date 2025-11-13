@@ -444,18 +444,18 @@ namespace rp
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
         _skyBoxTexture.create(_oneTimeCommandPool, 
             {
-                //ROOT_PATH("/data/textures/cratered-01-right.png"),
-                //ROOT_PATH("/data/textures/cratered-01-left.png"),
-                //ROOT_PATH("/data/textures/cratered-01-top.png"),
-                //ROOT_PATH("/data/textures/cratered-01-bottom.png"),
-                //ROOT_PATH("/data/textures/cratered-01-front.png"),
-                //ROOT_PATH("/data/textures/cratered-01-back.png")
-                ROOT_PATH("/data/textures/right.png"),
-                ROOT_PATH("/data/textures/left.png"),
-                ROOT_PATH("/data/textures/top.png"),
-                ROOT_PATH("/data/textures/bottom.png"),
-                ROOT_PATH("/data/textures/front.png"),
-                ROOT_PATH("/data/textures/back.png")
+                ROOT_PATH("/data/textures/cratered-01-right.png"),
+                ROOT_PATH("/data/textures/cratered-01-left.png"),
+                ROOT_PATH("/data/textures/cratered-01-top.png"),
+                ROOT_PATH("/data/textures/cratered-01-bottom.png"),
+                ROOT_PATH("/data/textures/cratered-01-front.png"),
+                ROOT_PATH("/data/textures/cratered-01-back.png")
+                //ROOT_PATH("/data/textures/right.png"),
+                //ROOT_PATH("/data/textures/left.png"),
+                //ROOT_PATH("/data/textures/top.png"),
+                //ROOT_PATH("/data/textures/bottom.png"),
+                //ROOT_PATH("/data/textures/front.png"),
+                //ROOT_PATH("/data/textures/back.png")
             });
 
         createUniformBuffers();
@@ -533,14 +533,14 @@ namespace rp
     {
         UniformBufferObject ubo{};
         ubo.view = glm::lookAt(
-            glm::vec3(2.0f, 2.0f, 2.0f), 
-            glm::vec3(0.0f, 0.0f, 0.0f), 
-            glm::vec3(0.0f, 0.0f, 1.0f));
+            glm::vec3(2.0f, 0.5f, -2.0f),
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f));
 
         ubo.proj = glm::perspective(
-            glm::radians(45.0f), 
-            _swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height, 
-            0.1f, 
+            glm::radians(45.0f),
+            _swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height,
+            0.1f,
             10.0f);
 
         ubo.proj[1][1] *= -1;
@@ -612,6 +612,7 @@ namespace rp
                 else if (pipeline->Name == "model_pipeline")
                 {
                     glm::mat4 model = glm::mat4(1.0f);
+                    model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
                     vkCmdPushConstants(
                         commandBuffer,
