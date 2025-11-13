@@ -1,4 +1,5 @@
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
+#include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <stdexcept>
 #include <iostream>
 
@@ -13,10 +14,7 @@ namespace hl
 	{
 		_window = window;
 
-		if (glfwCreateWindowSurface(_instance._instance, window, nullptr, &_surface) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create window surface!");
-		}
+		CHECK_VK_RESULT(glfwCreateWindowSurface(_instance._instance, window, nullptr, &_surface));
 	}
 
 	void VulkanSurface::destroy()

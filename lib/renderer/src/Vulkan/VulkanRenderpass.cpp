@@ -118,10 +118,7 @@ namespace hl
         renderPassInfo.dependencyCount = 1;
         renderPassInfo.pDependencies = &dependency;
 
-        if (vkCreateRenderPass(_device._device, &renderPassInfo, nullptr, &_renderPass) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create render pass!");
-        }
+        CHECK_VK_RESULT(vkCreateRenderPass(_device._device, &renderPassInfo, nullptr, &_renderPass));
     }
 
 	void VulkanRenderpass::destroy()

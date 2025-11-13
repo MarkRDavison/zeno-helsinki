@@ -82,10 +82,7 @@ namespace hl
             createInfo.pNext = nullptr;
         }
 
-        if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create instance!");
-        }
+        CHECK_VK_RESULT(vkCreateInstance(&createInfo, nullptr, &_instance));
 
         setupDebugMessenger(_instance, _debugMessenger);
 
@@ -169,9 +166,6 @@ namespace hl
         VkDebugUtilsMessengerCreateInfoEXT createInfo;
         populateDebugMessengerCreateInfo(createInfo);
 
-        if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to set up debug messenger!");
-        }
+        CHECK_VK_RESULT(CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger));
     }
 }

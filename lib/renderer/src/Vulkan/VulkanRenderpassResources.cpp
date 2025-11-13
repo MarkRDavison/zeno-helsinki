@@ -133,10 +133,7 @@ namespace hl
 				samplerInfo.minLod = 0.0f;
 				samplerInfo.maxLod = 0.0f;
 
-				if (vkCreateSampler(_device._device, &samplerInfo, nullptr, &_outputSampler) != VK_SUCCESS)
-				{
-					throw std::runtime_error("failed to create sampler!");
-				}
+				CHECK_VK_RESULT(vkCreateSampler(_device._device, &samplerInfo, nullptr, &_outputSampler));
 			}
 		}
 
@@ -225,10 +222,7 @@ namespace hl
 				samplerInfo.minLod = 0.0f;
 				samplerInfo.maxLod = 0.0f;
 
-				if (vkCreateSampler(_device._device, &samplerInfo, nullptr, &_outputSampler) != VK_SUCCESS)
-				{
-					throw std::runtime_error("failed to create sampler!");
-				}
+				CHECK_VK_RESULT(vkCreateSampler(_device._device, &samplerInfo, nullptr, &_outputSampler));
 			}
 		}
 

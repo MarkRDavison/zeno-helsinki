@@ -117,10 +117,7 @@ namespace hl
 			samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
 			samplerInfo.mipLodBias = 0.0f; // Optional
 
-			if (vkCreateSampler(_device._device, &samplerInfo, nullptr, &_sampler) != VK_SUCCESS)
-			{
-				throw std::runtime_error("failed to create texture sampler!");
-			}
+			CHECK_VK_RESULT(vkCreateSampler(_device._device, &samplerInfo, nullptr, &_sampler));
 		}
 	}
 

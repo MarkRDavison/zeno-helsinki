@@ -20,10 +20,7 @@ namespace hl
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
         layoutInfo.pBindings = bindings.data();
 
-        if (vkCreateDescriptorSetLayout(_device._device, &layoutInfo, nullptr, &_descriptorSetLayout) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
+		CHECK_VK_RESULT(vkCreateDescriptorSetLayout(_device._device, &layoutInfo, nullptr, &_descriptorSetLayout));
 	}
 
 	void VulkanDescriptorSetLayout::destroy()

@@ -36,10 +36,7 @@ namespace hl
 		pipelineLayoutInfo.pushConstantRangeCount = 1;
 		pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
-		if (vkCreatePipelineLayout(_device._device, &pipelineLayoutInfo, nullptr, &_pipelineLayout) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create pipeline layout!");
-		}
+		CHECK_VK_RESULT(vkCreatePipelineLayout(_device._device, &pipelineLayoutInfo, nullptr, &_pipelineLayout));
 	}
 
 	void VulkanPipelineLayout::destroy()

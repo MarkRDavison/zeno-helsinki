@@ -120,10 +120,7 @@ namespace hl
             createInfo.enabledLayerCount = 0;
         }
 
-        if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create logical device!");
-        }
+        CHECK_VK_RESULT(vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device));
 
         vkGetDeviceQueue(_device, queueIndices.graphicsFamily.value(), 0, &_graphicsQueue._queue);
         vkGetDeviceQueue(_device, queueIndices.presentFamily.value(), 0, &_presentQueue._queue);
