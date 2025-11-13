@@ -313,7 +313,7 @@ namespace rp
             {
                 .name = "postprocess_pass",
                 .useMultiSampling = false,
-                .inputs = { "scene_color" }, // TODO: need to validate that this exists as an output somewhere...
+                .inputs = { "scene_color" },
                 .outputs =
                 {
                     hl::ResourceInfo
@@ -576,52 +576,49 @@ namespace rp
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        const auto& lastRenderpassName = _renderGraph->getResources().back().back()->Name;
+        const auto& lastRenderpassName = _renderGraph->getResources().back()->Name;
 
-        for (auto& layer : _renderGraph->getResources())
+        for (auto& renderpass : _renderGraph->getResources())
         {
-            for (auto& renderpass : layer)
+            VkRenderPassBeginInfo renderpassBegin{};
+            renderpassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderpassBegin.renderPass = renderpass->getRenderPass();
+            renderpassBegin.framebuffer = renderpass->getFramebuffer(
+                lastRenderpassName == renderpass->Name
+                ? imageIndex
+                : currentFrame);
+            renderpassBegin.renderArea.offset = { 0,0 };
+            renderpassBegin.renderArea.extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent);
+
+            const auto& clearValues = renderpass->getClearValues();
+
+            renderpassBegin.clearValueCount = (uint32_t)clearValues.size();
+            renderpassBegin.pClearValues = clearValues.data();
+
+            vkCmdBeginRenderPass(commandBuffer, &renderpassBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+            for (auto& pipeline : renderpass->getPipelines())
             {
-                VkRenderPassBeginInfo renderpassBegin{};
-                renderpassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderpassBegin.renderPass = renderpass->getRenderPass();
-                renderpassBegin.framebuffer = renderpass->getFramebuffer(
-                    lastRenderpassName == renderpass->Name
-                    ? imageIndex
-                    : currentFrame);
-                renderpassBegin.renderArea.offset = { 0,0 };
-                renderpassBegin.renderArea.extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent);
+                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
 
-                const auto& clearValues = renderpass->getClearValues();
+                VkViewport viewport{};
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width;
+                viewport.height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height;
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-                renderpassBegin.clearValueCount = (uint32_t)clearValues.size();
-                renderpassBegin.pClearValues = clearValues.data();
+                VkRect2D scissor{};
+                scissor.offset = { 0, 0 };
+                scissor.extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent);
+                vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-                vkCmdBeginRenderPass(commandBuffer, &renderpassBegin, VK_SUBPASS_CONTENTS_INLINE);
-
-                for (auto& pipeline : renderpass->getPipelines())
-                {
-                    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
-
-                    VkViewport viewport{};
-                    viewport.x = 0.0f;
-                    viewport.y = 0.0f;
-                    viewport.width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width;
-                    viewport.height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height;
-                    viewport.minDepth = 0.0f;
-                    viewport.maxDepth = 1.0f;
-                    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-                    VkRect2D scissor{};
-                    scissor.offset = { 0, 0 };
-                    scissor.extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent);
-                    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-                    renderPipelineDraw(commandBuffer, pipeline);
-                }
-
-                vkCmdEndRenderPass(commandBuffer);
+                renderPipelineDraw(commandBuffer, pipeline);
             }
+
+            vkCmdEndRenderPass(commandBuffer);
         }
 
         vkEndCommandBuffer(commandBuffer);
