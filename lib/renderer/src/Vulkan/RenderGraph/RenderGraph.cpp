@@ -525,8 +525,6 @@ namespace hl
 								allocInfo.pSetLayouts = layouts.data();
 
 								auto descriptorSets = std::vector<VkDescriptorSet>(MAX_FRAMES_IN_FLIGHT);
-								
-								std::cout << "TODO: create CHECK_RESULT macro that prints the actual error when not success" << std::endl;
 
 								CHECK_VK_RESULT(vkAllocateDescriptorSets(device._device, &allocInfo, descriptorSets.data()));
 
