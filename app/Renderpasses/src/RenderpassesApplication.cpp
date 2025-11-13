@@ -29,6 +29,7 @@ struct UniformBufferObject
 
 namespace rp
 {
+
     static void framebufferResizeCallback(GLFWwindow* window, int, int)
     {
         auto app = reinterpret_cast<RenderpassesApplication*>(glfwGetWindowUserPointer(window));
@@ -98,8 +99,16 @@ namespace rp
 
         glfwTerminate();
     }
+
     void RenderpassesApplication::draw()
     {
+        auto fenceResult = vkGetFenceStatus(_device._device, _syncContext.getFence(currentFrame)._fence);
+
+        if (fenceResult == VK_NOT_READY)
+        {
+          //  std::cout << "Fence not ready!" << std::endl;
+        }
+
         _syncContext.getFence(currentFrame).wait();
 
         uint32_t imageIndex;
@@ -145,10 +154,8 @@ namespace rp
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        if (vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, _syncContext.getFence(currentFrame)._fence) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to submit draw command buffer!");
-        }
+        
+        CHECK_VK_RESULT(vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, _syncContext.getFence(currentFrame)._fence));
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
