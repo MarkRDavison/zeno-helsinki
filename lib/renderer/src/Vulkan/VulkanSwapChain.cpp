@@ -64,14 +64,11 @@ namespace hl
             createInfo.presentMode = presentMode;
             createInfo.clipped = VK_TRUE;
 
-            if (vkCreateSwapchainKHR(_device._device, &createInfo, nullptr, &_swapChain) != VK_SUCCESS)
-            {
-                throw std::runtime_error("failed to create swap chain!");
-            }
+            CHECK_VK_RESULT(vkCreateSwapchainKHR(_device._device, &createInfo, nullptr, &_swapChain));
 
-            vkGetSwapchainImagesKHR(_device._device, _swapChain, &imageCount, nullptr);
+            CHECK_VK_RESULT(vkGetSwapchainImagesKHR(_device._device, _swapChain, &imageCount, nullptr));
             _swapChainImages.resize(imageCount);
-            vkGetSwapchainImagesKHR(_device._device, _swapChain, &imageCount, _swapChainImages.data());
+            CHECK_VK_RESULT(vkGetSwapchainImagesKHR(_device._device, _swapChain, &imageCount, _swapChainImages.data()));
 
             _swapChainImageFormat = surfaceFormat.format;
             _swapChainExtent = extent;
@@ -94,10 +91,7 @@ namespace hl
                 viewInfo.subresourceRange.baseArrayLayer = 0;
                 viewInfo.subresourceRange.layerCount = 1;
 
-                if (vkCreateImageView(_device._device, &viewInfo, nullptr, &_swapChainImageViews[i]) != VK_SUCCESS)
-                {
-                    throw std::runtime_error("failed to create image view!");
-                }
+                CHECK_VK_RESULT(vkCreateImageView(_device._device, &viewInfo, nullptr, &_swapChainImageViews[i]));
 
                 _device.setDebugName(
                     reinterpret_cast<uint64_t>(_swapChainImageViews[i]),

@@ -23,10 +23,7 @@ namespace hl
 		allocInfo.pSetLayouts = layouts.data();
 
 		_descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-		if (vkAllocateDescriptorSets(_device._device, &allocInfo, _descriptorSets.data()) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to allocate descriptor sets!");
-		}
+        CHECK_VK_RESULT(vkAllocateDescriptorSets(_device._device, &allocInfo, _descriptorSets.data()));
 	}
 
 	void VulkanDescriptorSet::update(size_t index, VulkanUniformBuffer& uniform, VulkanTexture& texture)

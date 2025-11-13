@@ -27,10 +27,7 @@ namespace hl
         framebufferInfo.height = height;
         framebufferInfo.layers = 1;
 
-        if (vkCreateFramebuffer(_device._device, &framebufferInfo, nullptr, &_framebuffer) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create framebuffer!");
-        }
+		CHECK_VK_RESULT(vkCreateFramebuffer(_device._device, &framebufferInfo, nullptr, &_framebuffer));
 	}
 
 	void VulkanFramebuffer::destroy()

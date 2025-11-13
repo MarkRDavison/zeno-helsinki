@@ -22,10 +22,7 @@ namespace hl
 		bufferInfo.usage = usage;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		if (vkCreateBuffer(_device._device, &bufferInfo, nullptr, &_buffer) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create buffer!");
-		}
+		CHECK_VK_RESULT(vkCreateBuffer(_device._device, &bufferInfo, nullptr, &_buffer));
 
 		VkMemoryRequirements memRequirements;
 		vkGetBufferMemoryRequirements(_device._device, _buffer, &memRequirements);
@@ -35,18 +32,15 @@ namespace hl
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex = _device.findMemoryType(memRequirements.memoryTypeBits, properties);
 
-		if (vkAllocateMemory(_device._device, &allocInfo, nullptr, &_memory) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to allocate buffer memory!");
-		}
+		CHECK_VK_RESULT(vkAllocateMemory(_device._device, &allocInfo, nullptr, &_memory));
 
-		vkBindBufferMemory(_device._device, _buffer, _memory, 0);
+		CHECK_VK_RESULT(vkBindBufferMemory(_device._device, _buffer, _memory, 0));
 	}
 
 	void VulkanBuffer::mapMemory(void* data)
 	{
 		void* mappedMemory;
-		vkMapMemory(_device._device, _memory, 0, _size, 0, &mappedMemory);
+		CHECK_VK_RESULT(vkMapMemory(_device._device, _memory, 0, _size, 0, &mappedMemory));
 		memcpy(mappedMemory, data, static_cast<size_t>(_size));
 		vkUnmapMemory(_device._device, _memory);
 	}

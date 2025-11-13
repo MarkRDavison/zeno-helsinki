@@ -41,10 +41,7 @@ namespace hl
         createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
         VkShaderModule shaderModule;
-        if (vkCreateShaderModule(device._device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create shader module!");
-        }
+        CHECK_VK_RESULT(vkCreateShaderModule(device._device, &createInfo, nullptr, &shaderModule));
 
         return shaderModule;
     }
@@ -246,10 +243,7 @@ namespace hl
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-        if (vkCreateGraphicsPipelines(_device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create graphics pipeline!");
-        }
+        CHECK_VK_RESULT(vkCreateGraphicsPipelines(_device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline));
 
         vkDestroyShaderModule(_device._device, fragShaderModule, nullptr);
         vkDestroyShaderModule(_device._device, vertShaderModule, nullptr);
@@ -389,10 +383,7 @@ namespace hl
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-        if (vkCreateGraphicsPipelines(_device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create post-process graphics pipeline!");
-        }
+        CHECK_VK_RESULT(vkCreateGraphicsPipelines(_device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline));
 
         vkDestroyShaderModule(_device._device, fragShaderModule, nullptr);
         vkDestroyShaderModule(_device._device, vertShaderModule, nullptr);
@@ -540,10 +531,7 @@ namespace hl
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-        if (vkCreateGraphicsPipelines(_device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create post-process graphics pipeline!");
-        }
+        CHECK_VK_RESULT(vkCreateGraphicsPipelines(_device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline));
 
         vkDestroyShaderModule(_device._device, fragShaderModule, nullptr);
         vkDestroyShaderModule(_device._device, vertShaderModule, nullptr);

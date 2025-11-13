@@ -321,7 +321,7 @@ namespace rp
             {
                 .name = "postprocess_pass",
                 .useMultiSampling = false,
-                .inputs = { "scene_color" },
+                .inputs = { "scene_color" }, // TODO: need to validate that this exists as an output somewhere...
                 .outputs =
                 {
                     hl::ResourceInfo
@@ -372,7 +372,7 @@ namespace rp
             {
                 .name = "ui_pass",
                 .useMultiSampling = false,
-                .inputs = { "post_color" },
+                .inputs = { "post_color" }, // TODO: need to validate that this exists as an output somewhere...
                 .outputs =
                 {
                     hl::ResourceInfo
@@ -450,12 +450,6 @@ namespace rp
                 ROOT_PATH("/data/textures/cratered-01-bottom.png"),
                 ROOT_PATH("/data/textures/cratered-01-front.png"),
                 ROOT_PATH("/data/textures/cratered-01-back.png")
-                //ROOT_PATH("/data/textures/right.png"),
-                //ROOT_PATH("/data/textures/left.png"),
-                //ROOT_PATH("/data/textures/top.png"),
-                //ROOT_PATH("/data/textures/bottom.png"),
-                //ROOT_PATH("/data/textures/front.png"),
-                //ROOT_PATH("/data/textures/back.png")
             });
 
         createUniformBuffers();

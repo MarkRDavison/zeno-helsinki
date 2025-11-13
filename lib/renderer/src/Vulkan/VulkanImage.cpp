@@ -51,10 +51,7 @@ namespace hl
             imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
 
-        if (vkCreateImage(_device._device, &imageInfo, nullptr, &_image) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create image!");
-        }
+        CHECK_VK_RESULT(vkCreateImage(_device._device, &imageInfo, nullptr, &_image));
 
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(_device._device, _image, &memRequirements);
@@ -64,10 +61,7 @@ namespace hl
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = _device.findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(_device._device, &allocInfo, nullptr, &_imageMemory) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to allocate image memory!");
-        }
+        CHECK_VK_RESULT(vkAllocateMemory(_device._device, &allocInfo, nullptr, &_imageMemory));
 
         vkBindImageMemory(_device._device, _image, _imageMemory, 0);
 
@@ -96,10 +90,7 @@ namespace hl
             viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
         }
 
-        if (vkCreateImageView(_device._device, &viewInfo, nullptr, &_imageView) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create image view!");
-        }
+        CHECK_VK_RESULT(vkCreateImageView(_device._device, &viewInfo, nullptr, &_imageView));
     }
 
     void VulkanImage::destroy()

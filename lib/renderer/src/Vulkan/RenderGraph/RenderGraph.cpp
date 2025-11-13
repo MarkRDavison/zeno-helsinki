@@ -189,10 +189,7 @@ namespace hl
 
 					VkRenderPass vkRenderpass{ VK_NULL_HANDLE };
 
-					if (vkCreateRenderPass(device._device, &renderPassInfo, nullptr, &vkRenderpass) != VK_SUCCESS)
-					{
-						throw std::runtime_error("failed to create render pass!");
-					}
+					CHECK_VK_RESULT(vkCreateRenderPass(device._device, &renderPassInfo, nullptr, &vkRenderpass));
 
 					device.setDebugName(reinterpret_cast<uint64_t>(vkRenderpass), VK_OBJECT_TYPE_RENDER_PASS, r->Name.c_str());
 
@@ -230,10 +227,7 @@ namespace hl
 					poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount) * 20;
 					std::cerr << "TODO: calculate the max sets" << std::endl;
 
-					if (vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool) != VK_SUCCESS)
-					{
-						throw std::runtime_error("failed to create descriptor pool!");
-					}
+					CHECK_VK_RESULT(vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool));
 
 					device.setDebugName(
 						reinterpret_cast<uint64_t>(descriptorPool),
@@ -282,10 +276,7 @@ namespace hl
 							layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
 							layoutInfo.pBindings = layoutBindings.data();
 
-							if (vkCreateDescriptorSetLayout(device._device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
-							{
-								throw std::runtime_error("failed to create descriptor set layout!");
-							}
+							CHECK_VK_RESULT(vkCreateDescriptorSetLayout(device._device, &layoutInfo, nullptr, &descriptorSetLayout));
 
 							device.setDebugName(
 								reinterpret_cast<uint64_t>(descriptorSetLayout),
@@ -322,10 +313,7 @@ namespace hl
 							pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
 
-							if (vkCreatePipelineLayout(device._device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
-							{
-								throw std::runtime_error("failed to create pipeline layout!");
-							}
+							CHECK_VK_RESULT(vkCreatePipelineLayout(device._device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 							device.setDebugName(
 								reinterpret_cast<uint64_t>(pipelineLayout),
@@ -356,20 +344,14 @@ namespace hl
 								vertexCreateInfo.codeSize = vertexSource.size() * sizeof(uint32_t);
 								vertexCreateInfo.pCode = reinterpret_cast<const uint32_t*>(vertexSource.data());
 
-								if (vkCreateShaderModule(device._device, &vertexCreateInfo, nullptr, &vertexShaderModule) != VK_SUCCESS)
-								{
-									throw std::runtime_error("failed to create vertex shader module!");
-								}
+								CHECK_VK_RESULT(vkCreateShaderModule(device._device, &vertexCreateInfo, nullptr, &vertexShaderModule));
 
 								VkShaderModuleCreateInfo fragmentCreateInfo{};
 								fragmentCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 								fragmentCreateInfo.codeSize = fragmentSource.size() * sizeof(uint32_t);
 								fragmentCreateInfo.pCode = reinterpret_cast<const uint32_t*>(fragmentSource.data());
 
-								if (vkCreateShaderModule(device._device, &fragmentCreateInfo, nullptr, &fragmentShaderModule) != VK_SUCCESS)
-								{
-									throw std::runtime_error("failed to create fragment shader module!");
-								}
+								CHECK_VK_RESULT(vkCreateShaderModule(device._device, &fragmentCreateInfo, nullptr, &fragmentShaderModule));
 							}
 
 							{
@@ -517,10 +499,7 @@ namespace hl
 
 								VkPipeline p = VK_NULL_HANDLE;
 
-								if (vkCreateGraphicsPipelines(device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &p) != VK_SUCCESS)
-								{
-									throw std::runtime_error("failed to create graphics pipeline!");
-								}
+								CHECK_VK_RESULT(vkCreateGraphicsPipelines(device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &p));
 
 								device.setDebugName(
 									reinterpret_cast<uint64_t>(p),
@@ -549,10 +528,7 @@ namespace hl
 								
 								std::cout << "TODO: create CHECK_RESULT macro that prints the actual error when not success" << std::endl;
 
-								if (vkAllocateDescriptorSets(device._device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
-								{
-									throw std::runtime_error("Failed to allocate descriptor sets!");
-								}
+								CHECK_VK_RESULT(vkAllocateDescriptorSets(device._device, &allocInfo, descriptorSets.data()));
 
 								for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 								{
@@ -905,10 +881,7 @@ namespace hl
 			framebufferInfo.height = height;
 			framebufferInfo.layers = 1;
 
-			if (vkCreateFramebuffer(device._device, &framebufferInfo, nullptr, &f) != VK_SUCCESS)
-			{
-				throw std::runtime_error("failed to create framebuffer!");
-			}
+			CHECK_VK_RESULT(vkCreateFramebuffer(device._device, &framebufferInfo, nullptr, &f));
 
 			device.setDebugName(
 				reinterpret_cast<uint64_t>(f),

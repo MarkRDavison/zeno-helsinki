@@ -26,10 +26,7 @@ namespace hl
 		poolInfo.pPoolSizes = poolSizes.data();
 		poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-		if (vkCreateDescriptorPool(_device._device, &poolInfo, nullptr, &_descriptorPool) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create descriptor pool!");
-		}
+		CHECK_VK_RESULT(vkCreateDescriptorPool(_device._device, &poolInfo, nullptr, &_descriptorPool));
 	}
 
 	void VulkanDescriptorPool::destroy()

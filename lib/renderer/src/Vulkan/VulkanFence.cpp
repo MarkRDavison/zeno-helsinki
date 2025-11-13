@@ -19,10 +19,7 @@ namespace hl
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		if (vkCreateFence(_device._device, &fenceInfo, nullptr, &_fence) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create synchronization objects for a frame!");
-		}
+		CHECK_VK_RESULT(vkCreateFence(_device._device, &fenceInfo, nullptr, &_fence));
 	}
 
 	void VulkanFence::destroy()

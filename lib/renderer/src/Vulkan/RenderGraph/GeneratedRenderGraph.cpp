@@ -238,10 +238,7 @@ namespace hl
                                                 samplerInfo.minLod = 0.0f;
                                                 samplerInfo.maxLod = 0.0f;
 
-                                                if (vkCreateSampler(_device._device, &samplerInfo, nullptr, &grpra.sampler) != VK_SUCCESS)
-                                                {
-                                                    throw std::runtime_error("failed to create sampler!");
-                                                }
+                                                CHECK_VK_RESULT(vkCreateSampler(_device._device, &samplerInfo, nullptr, &grpra.sampler));
 
                                                 _device.setDebugName(
                                                     reinterpret_cast<uint64_t>(grpra.sampler),

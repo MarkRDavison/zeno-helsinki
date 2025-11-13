@@ -20,10 +20,7 @@ namespace hl
 		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 
-		if (vkCreateCommandPool(_device._device, &poolInfo, nullptr, &_commandPool) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create graphics command pool!");
-		}
+		CHECK_VK_RESULT(vkCreateCommandPool(_device._device, &poolInfo, nullptr, &_commandPool));
 	}
 
 	void VulkanCommandPool::destroy()
