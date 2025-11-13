@@ -102,13 +102,6 @@ namespace rp
 
     void RenderpassesApplication::draw()
     {
-        auto fenceResult = vkGetFenceStatus(_device._device, _syncContext.getFence(currentFrame)._fence);
-
-        if (fenceResult == VK_NOT_READY)
-        {
-          //  std::cout << "Fence not ready!" << std::endl;
-        }
-
         _syncContext.getFence(currentFrame).wait();
 
         uint32_t imageIndex;
@@ -131,42 +124,32 @@ namespace rp
         }
 
         updateUniformBuffer(_uniformBuffers[currentFrame]);
-
         _syncContext.getFence(currentFrame).reset();
-
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
         VkSemaphore waitSemaphores[] = { _syncContext.getImageAvailableSemaphore(currentFrame)._semaphore };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        VkSemaphore signalSemaphores[] = { _syncContext.getRenderFinishedSemaphore(currentFrame)._semaphore };
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
-
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
-
-        VkSemaphore signalSemaphores[] = { _syncContext.getRenderFinishedSemaphore(currentFrame)._semaphore };
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        
         CHECK_VK_RESULT(vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, _syncContext.getFence(currentFrame)._fence));
 
+        VkSwapchainKHR swapChains[] = { _swapChain._swapChain };
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = { _swapChain._swapChain };
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
-
         presentInfo.pImageIndices = &imageIndex;
 
         result = vkQueuePresentKHR(_device._presentQueue._queue, &presentInfo);
@@ -183,6 +166,7 @@ namespace rp
 
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
+
     void RenderpassesApplication::initWindow(uint32_t width, uint32_t height, const char* title)
     {
         glfwInit();
@@ -191,6 +175,7 @@ namespace rp
         glfwSetWindowUserPointer(_window, this);
         glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
     }
+
     void RenderpassesApplication::initVulkan(const char* title)
     {
         _instance.create(title);
