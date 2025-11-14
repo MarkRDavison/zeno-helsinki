@@ -11,31 +11,27 @@ namespace hl
     class ResourceManager
     {
     public:
-        template<typename T/*, typename... Args*/>
-        ResourceHandle<T> Load(const std::string& resourceId/*, Args... args*/)
+        template<typename T, typename... Args>
+        ResourceHandle<T> Load(const std::string& resourceId, Args... args)
         {
             static_assert(std::is_base_of<Resource, T>::value, "T must derive from Resource");
 
-            // Step 3a: Check existing resource cache to avoid redundant loading
             auto& typeResources = resources[std::type_index(typeid(T))];
             auto it = typeResources.find(resourceId);
 
             if (it != typeResources.end())
             {
-                // Resource exists in cache - increment reference count and return handle
                 refCounts[resourceId]++;
                 return ResourceHandle<T>(resourceId, this);
             }
 
-            // Step 3b: Create new resource instance and attempt loading
-            auto resource = std::make_shared<T>(resourceId/*, ...args*/);
+            auto resource = std::make_shared<T>(resourceId, std::forward<Args>(args)...);
+
             if (!resource->Load())
             {
-                // Loading failed - return invalid handle rather than corrupting cache
                 return ResourceHandle<T>();
             }
 
-            // Step 3c: Cache successful resource and initialize reference tracking
             typeResources[resourceId] = resource;
             refCounts[resourceId] = 1;
 
@@ -45,52 +41,44 @@ namespace hl
         template<typename T>
         T* GetResource(const std::string& resourceId)
         {
-            // Access type-specific resource container using compile-time type information
             auto& typeResources = resources[std::type_index(typeid(T))];
             auto it = typeResources.find(resourceId);
 
             if (it != typeResources.end())
             {
-                // Resource found - perform safe downcast and return typed pointer
                 return static_cast<T*>(it->second.get());
             }
 
-            // Resource not found - return null for safe handling by caller
             return nullptr;
         }
 
         template<typename T>
         bool HasResource(const std::string& resourceId)
         {
-            // Efficient existence check without resource access overhead
             auto& typeResources = resources[std::type_index(typeid(T))];
             return typeResources.find(resourceId) != typeResources.end();
         }
 
         void Release(const std::string& resourceId)
         {
-            // Locate reference count entry for this resource
             auto it = refCounts.find(resourceId);
             if (it != refCounts.end())
             {
                 it->second--;
 
-                // Check if resource has no remaining references
                 if (it->second <= 0)
                 {
-                    // Step 5a: Locate and unload the unreferenced resource across all type containers
                     for (auto& [type, typeResources] : resources)
                     {
                         auto resourceIt = typeResources.find(resourceId);
                         if (resourceIt != typeResources.end())
                         {
-                            resourceIt->second->Unload();      // Allow resource to clean up its data
-                            typeResources.erase(resourceIt);   // Remove from cache
+                            resourceIt->second->Unload();
+                            typeResources.erase(resourceIt);
                             break;
                         }
                     }
 
-                    // Step 5b: Clean up reference counting entry
                     refCounts.erase(it);
                 }
             }
@@ -98,26 +86,26 @@ namespace hl
 
         void UnloadAll()
         {
-            // Emergency cleanup method for system shutdown or major state changes
             for (auto& [type, typeResources] : resources)
             {
                 for (auto& [id, resource] : typeResources)
                 {
-                    resource->Unload();     // Ensure all resources clean up properly
+                    resource->Unload();
                 }
-                typeResources.clear();      // Clear type-specific containers
+                typeResources.clear();
             }
-            refCounts.clear();              // Reset all reference counts
+            refCounts.clear();
         }
 
     private:
-        // Two-level storage system: organize by type first, then by unique identifier
-        // This approach enables type-safe resource access while maintaining efficient lookup
-        std::unordered_map<std::type_index,
-            std::unordered_map<std::string, std::shared_ptr<Resource>>> resources;
+        std::unordered_map<
+            std::type_index,
+            std::unordered_map<std::string, std::shared_ptr<Resource>>
+        > resources;
 
-        // Reference counting system for automatic resource lifecycle management
-        // Maps resource IDs to their current usage count for garbage collection
         std::unordered_map<std::string, int> refCounts;
     };
 }
+
+// Include template implementation AFTER class declaration
+#include "F:/Workspace/Github/zeno-helsinki/lib/system/include/helsinki/System/Resource/ResourceHandle.tpp"
