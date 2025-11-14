@@ -11,8 +11,8 @@ namespace hl
     class ResourceManager
     {
     public:
-        template<typename T>
-        ResourceHandle<T> Load(const std::string& resourceId)
+        template<typename T/*, typename... Args*/>
+        ResourceHandle<T> Load(const std::string& resourceId/*, Args... args*/)
         {
             static_assert(std::is_base_of<Resource, T>::value, "T must derive from Resource");
 
@@ -28,7 +28,7 @@ namespace hl
             }
 
             // Step 3b: Create new resource instance and attempt loading
-            auto resource = std::make_shared<T>(resourceId);
+            auto resource = std::make_shared<T>(resourceId/*, ...args*/);
             if (!resource->Load())
             {
                 // Loading failed - return invalid handle rather than corrupting cache

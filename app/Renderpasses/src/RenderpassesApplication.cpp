@@ -525,6 +525,7 @@ namespace rp
         _renderResourcesSystem.addTexture("viking_texture", &_model._texture);
         _renderResourcesSystem.addTexture("skybox_texture", &_skyBoxTexture);
 
+
         _renderGraph = new hl::GeneratedRenderGraph(
             _device,
             _swapChain,

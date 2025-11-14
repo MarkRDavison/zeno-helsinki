@@ -2,7 +2,13 @@
 
 namespace hl
 {
-	TextureResource::TextureResource(const std::string& id) : Resource(id) 
+	TextureResource::TextureResource(
+		const std::string& id, 
+		VulkanDevice& device
+	) : 
+		Resource(id),
+		_device(device),
+		_texture(_device)
 	{
 	}
 }
