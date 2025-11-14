@@ -11,6 +11,7 @@ namespace hl
 		VulkanCommandPool(VulkanDevice& device);
 
 		void create();
+		void createTransferPool();
 		void destroy();
 
 		/*

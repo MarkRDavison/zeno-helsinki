@@ -1,5 +1,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
+#include <helsinki/Renderer/Resource/TextureResource.hpp>
+#include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <stdexcept>
 #include <iostream>
 
@@ -10,12 +12,14 @@ namespace hl
         VulkanDevice& device,
         VulkanSwapChain& swapChain,
 		std::vector<hl::RenderpassInfo> renderpasses,
-		RenderResourcesSystem& renderResourcesSystem
+		RenderResourcesSystem& renderResourcesSystem,
+        ResourceManager& resourceManager
 	) :
         _device(device),
         _swapChain(swapChain),
         _renderResourcesSystem(renderResourcesSystem),
-		_renderGraph(renderpasses)
+		_renderGraph(renderpasses),
+        _resourceManager(resourceManager)
 	{
 		_resources = hl::RenderGraph::create(
 			renderResourcesSystem,
@@ -110,14 +114,30 @@ namespace hl
                             {
                                 if (b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER")
                                 {
-                                    auto& ub = _renderResourcesSystem.getUniformBuffer(b.resource.value(), i);
+                                    auto uniforBufferResource = _resourceManager.GetResource<UniformBufferResource>(b.resource.value());
+                                    
+                                    if (uniforBufferResource != nullptr)
+                                    {
+                                        auto& ub = uniforBufferResource->getUniformBuffer(i);
 
-                                    bufferInfos.push_back(VkDescriptorBufferInfo
-                                        {
-                                            .buffer = ub._buffer._buffer,
-                                            .offset = 0,
-                                            .range = ub._uboSize
-                                        });
+                                        bufferInfos.push_back(VkDescriptorBufferInfo
+                                            {
+                                                .buffer = ub._buffer._buffer,
+                                                .offset = 0,
+                                                .range = ub._size
+                                            });
+                                    }
+                                    else
+                                    {
+                                        auto& ub = _renderResourcesSystem.getUniformBuffer(b.resource.value(), i);
+
+                                        bufferInfos.push_back(VkDescriptorBufferInfo
+                                            {
+                                                .buffer = ub._buffer._buffer,
+                                                .offset = 0,
+                                                .range = ub._size
+                                            });
+                                    }
 
                                     descriptorWrites.emplace_back(VkWriteDescriptorSet
                                         {
@@ -132,15 +152,29 @@ namespace hl
                                 }
                                 else if (b.type == "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER")
                                 {
-                                    const auto& res = _renderResourcesSystem.getOffscreenImageOrTexture(b.resource.value(), i);
+                                    auto textureResource = _resourceManager.GetResource<TextureResource>(b.resource.value());
+                                    
+                                    if (textureResource != nullptr)
+                                    {
+                                        auto info = textureResource->getDescriptorInfo();
+                                        imageInfos.push_back(VkDescriptorImageInfo
+                                            {
+                                                .sampler = info.first,
+                                                .imageView = info.second,
+                                                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                            });
+                                    }
+                                    else
+                                    {
+                                        const auto& res = _renderResourcesSystem.getOffscreenImageOrTexture(b.resource.value(), i);
 
-                                    imageInfos.push_back(VkDescriptorImageInfo
-                                        {
-                                            .sampler = res.second,
-                                            .imageView = res.first,
-                                            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                                        });
-
+                                        imageInfos.push_back(VkDescriptorImageInfo
+                                            {
+                                                .sampler = res.second,
+                                                .imageView = res.first,
+                                                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                            });
+                                    }
 
                                     descriptorWrites.emplace_back(VkWriteDescriptorSet
                                         {

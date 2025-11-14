@@ -23,6 +23,25 @@ namespace hl
 		CHECK_VK_RESULT(vkCreateCommandPool(_device._device, &poolInfo, nullptr, &_commandPool));
 	}
 
+	void VulkanCommandPool::createTransferPool()
+	{
+		auto queueFamilyIndices = hl::VulkanQueue::findQueueFamilies(_device._physicalDevice, _device._surface._surface);
+
+		VkCommandPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		if (queueFamilyIndices.transferFamilies.empty())
+		{
+			poolInfo.queueFamilyIndex = queueFamilyIndices.transferFamilies.front();
+		}
+		else
+		{
+			poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+		}
+
+		CHECK_VK_RESULT(vkCreateCommandPool(_device._device, &poolInfo, nullptr, &_commandPool));
+	}
+
 	void VulkanCommandPool::destroy()
 	{
 		vkDestroyCommandPool(_device._device, _commandPool, nullptr);

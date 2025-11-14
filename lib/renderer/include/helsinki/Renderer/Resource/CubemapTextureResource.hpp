@@ -5,21 +5,15 @@
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
+#include <helsinki/Renderer/Resource/TextureResource.hpp>
 
 namespace hl
 {
-	class TextureResource : public Resource
+	class CubemapTextureResource : public TextureResource
 	{
 	public:
-		explicit TextureResource(const std::string& id, ResourceContext& context);
+		explicit CubemapTextureResource(const std::string& id, ResourceContext& context);
 
 		bool Load() override;
-		void Unload() override;
-
-		std::pair<VkSampler, VkImageView> getDescriptorInfo() const;
-
-	protected:
-		ResourceContext _resourceContext;
-		VulkanTexture _texture;
 	};
 }

@@ -11,6 +11,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphPipelineResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
+#include <helsinki/Renderer/Resource/ResourceContext.hpp>
 
 #include "../RenderpassesConfig.hpp"
 
@@ -116,13 +117,10 @@ namespace rp
         _renderGraph->destroy();
         delete _renderGraph;
 
-        for (size_t i = 0; i < _uniformBuffers.size(); i++)
-        {
-            _uniformBuffers[i].destroy();
-        }
-
         _model.destroy();
         _skyBoxTexture.destroy();
+
+        _resourceManager.UnloadAll();
 
         _syncContext.destroy();
         _commandPool.destroy();
@@ -164,7 +162,7 @@ namespace rp
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        updateUniformBuffer(_uniformBuffers[currentFrame]);
+        updateUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
         _syncContext.getFence(currentFrame).reset();
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -312,7 +310,7 @@ namespace rp
                                         .binding = 1,
                                         .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                         .stage = "FRAGMENT",
-                                        .resource = "viking_texture"
+                                        .resource = "viking_room"
                                     }
                                 }
                             }
@@ -498,53 +496,50 @@ namespace rp
         };
 
         _commandPool.create();
-        _oneTimeCommandPool.create();
+        _oneTimeCommandPool.createTransferPool();
 
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
         _skyBoxTexture.create(_oneTimeCommandPool, 
             {
-                ROOT_PATH("/data/textures/cratered-01-right.png"),
-                ROOT_PATH("/data/textures/cratered-01-left.png"),
-                ROOT_PATH("/data/textures/cratered-01-top.png"),
-                ROOT_PATH("/data/textures/cratered-01-bottom.png"),
-                ROOT_PATH("/data/textures/cratered-01-front.png"),
-                ROOT_PATH("/data/textures/cratered-01-back.png")
+                ROOT_PATH("/data/textures/skybox_texture-right.png"),
+                ROOT_PATH("/data/textures/skybox_texture-left.png"),
+                ROOT_PATH("/data/textures/skybox_texture-top.png"),
+                ROOT_PATH("/data/textures/skybox_texture-bottom.png"),
+                ROOT_PATH("/data/textures/skybox_texture-front.png"),
+                ROOT_PATH("/data/textures/skybox_texture-back.png")
             });
 
-        createUniformBuffers();
         createCommandBuffers();
         _syncContext.create();
 
-        // TODO: BAD!
-        std::vector<hl::VulkanUniformBuffer*> ubs = {
-            &_uniformBuffers[0],
-            &_uniformBuffers[1]
+        hl::ResourceContext resourceContext
+        {
+            .device = &_device,
+            .pool = &_oneTimeCommandPool, 
+            .rootPath = rp::RenderpassesConfig::RootPath
         };
 
-        _renderResourcesSystem.addUniformBuffers("model_matrix_ubo", ubs);
-        _renderResourcesSystem.addTexture("viking_texture", &_model._texture);
-        _renderResourcesSystem.addTexture("skybox_texture", &_skyBoxTexture);
+        _resourceManager.Load<hl::TextureResource>(
+            "viking_room",
+            resourceContext);
+        _resourceManager.LoadAs<hl::CubemapTextureResource, hl::TextureResource>(
+            "skybox_texture",
+            resourceContext);
 
+        _modelMatrixHandle = _resourceManager.Load<hl::UniformBufferResource>(
+            "model_matrix_ubo", 
+            resourceContext, 
+            sizeof(UniformBufferObject), 
+            MAX_FRAMES_IN_FLIGHT);
 
         _renderGraph = new hl::GeneratedRenderGraph(
             _device,
             _swapChain,
             renderpasses,
-            _renderResourcesSystem);
+            _renderResourcesSystem,
+            _resourceManager);
 
         _renderGraph->updateAllDescriptorSets();
-    }
-
-    void RenderpassesApplication::createUniformBuffers()
-    {
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            _uniformBuffers.emplace_back(_device);
-
-            _uniformBuffers.back().create(bufferSize, sizeof(UniformBufferObject));
-        }
     }
 
     void RenderpassesApplication::createCommandBuffers()
