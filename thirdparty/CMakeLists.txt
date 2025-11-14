@@ -117,3 +117,18 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(imgui)
 add_library(imgui INTERFACE)
 target_include_directories(imgui INTERFACE ${imgui_SOURCE_DIR})
+
+FetchContent_Declare(
+    Tracy
+    GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+    GIT_TAG        v0.13.0
+)
+FetchContent_MakeAvailable(Tracy)
+
+add_library(ThirdParty_Tracy STATIC
+    "${tracy_SOURCE_DIR}/public/TracyClient.cpp"
+)
+
+target_include_directories(ThirdParty_Tracy PUBLIC
+    "${tracy_SOURCE_DIR}/public"
+)
