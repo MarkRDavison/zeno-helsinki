@@ -52,8 +52,7 @@ namespace rp
         _commandPool(_device),
         _oneTimeCommandPool(_device),
         _syncContext(_device),
-        _model(_device),
-        _skyBoxTexture(_device)
+        _model(_device)
     {
 
     }
@@ -125,7 +124,6 @@ namespace rp
         delete _renderGraph;
 
         _model.destroy();
-        _skyBoxTexture.destroy();
 
         _resourceManager.UnloadAll();
 
@@ -509,15 +507,6 @@ namespace rp
         _oneTimeCommandPool.createTransferPool();
 
         _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
-        _skyBoxTexture.create(_oneTimeCommandPool, 
-            {
-                ROOT_PATH("/data/textures/skybox_texture-right.png"),
-                ROOT_PATH("/data/textures/skybox_texture-left.png"),
-                ROOT_PATH("/data/textures/skybox_texture-top.png"),
-                ROOT_PATH("/data/textures/skybox_texture-bottom.png"),
-                ROOT_PATH("/data/textures/skybox_texture-front.png"),
-                ROOT_PATH("/data/textures/skybox_texture-back.png")
-            });
 
         createCommandBuffers();
         _syncContext.create();

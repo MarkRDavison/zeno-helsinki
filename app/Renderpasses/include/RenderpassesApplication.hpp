@@ -71,8 +71,6 @@ namespace rp
 
 		hl::GeneratedRenderGraph* _renderGraph{ nullptr };
 
-		hl::VulkanTexture _skyBoxTexture;
-
 		hl::ResourceManager _resourceManager;
 
 		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
