@@ -4,7 +4,7 @@
 
 namespace hl
 {
-    class ResourceManager;
+    class ResourceManager; // forward declaration
 
     template<typename T>
     class ResourceHandle
@@ -21,35 +21,12 @@ namespace hl
         {
         }
 
-        T* Get() const
-        {
-            if (!resourceManager) return nullptr;
-            return resourceManager->GetResource<T>(resourceId);
-        }
+        T* Get() const;
+        bool IsValid() const;
+        const std::string& GetId() const;
 
-        bool IsValid() const
-        {
-            return resourceManager && resourceManager->HasResource<T>(resourceId);
-        }
-
-        const std::string& GetId() const
-        {
-            return resourceId;
-        }
-
-        T* operator->() const
-        {
-            return Get();
-        }
-
-        T& operator*() const
-        {
-            return *Get();
-        }
-
-        operator bool() const
-        {
-            return IsValid();
-        }
+        T* operator->() const { return Get(); }
+        T& operator*() const { return *Get(); }
+        operator bool() const { return IsValid(); }
     };
 }
