@@ -15,7 +15,6 @@
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSet.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanGraphicsPipeline.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSynchronisationContext.hpp>
-#include <helsinki/Renderer/TempModel.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
@@ -24,6 +23,7 @@
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
+#include <helsinki/Renderer/Resource/BasicModelResource.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 
 struct GLFWwindow;
@@ -63,8 +63,6 @@ namespace rp
 		hl::VulkanCommandPool _oneTimeCommandPool;
 		hl::VulkanSwapChain _swapChain;
 
-		hl::TempModel _model;
-
 		hl::VulkanSynchronisationContext _syncContext;
 
 		std::vector<VkCommandBuffer> commandBuffers;
@@ -74,6 +72,7 @@ namespace rp
 		hl::ResourceManager _resourceManager;
 
 		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
+		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
 
 		uint32_t currentFrame = 0;
 		bool framebufferResized = false;

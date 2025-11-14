@@ -1,29 +1,30 @@
-#include <helsinki/Renderer/TempModel.hpp>
+#include <helsinki/Renderer/Resource/BasicModelResource.hpp>
 #include <helsinki/Renderer/ModelLoader.hpp>
+#include <format>
 
 namespace hl
 {
-	TempModel::TempModel(
-		VulkanDevice& device
-	) :
-		_device(device),
-		_vertexBuffer(device),
-		_indexBuffer(device),
-        _texture(device)
+
+	BasicModelResource::BasicModelResource(
+		const std::string& id,
+		ResourceContext& context
+	) : 
+		Resource(id),
+        _device(*context.device),
+        _commandPool(*context.pool),
+        _rootPath(context.rootPath),
+		_vertexBuffer(*context.device),
+		_indexBuffer(*context.device)
 	{
 
 	}
 
-	void TempModel::create(
-        VulkanCommandPool& _commandPool,
-        const std::string& modelPath,
-        const std::string& texturePath)
+	bool BasicModelResource::Load()
 	{
-        _texture.create(_commandPool, texturePath);
+        std::string path = std::format("{}/data/models/{}.obj", _rootPath, GetId());
+        auto [vertices, indices] = hl::ModelLoader::loadModel(path);
 
-		auto [vertices, indices] = hl::ModelLoader::loadModel(modelPath);
-
-		indexCount = (uint32_t)indices.size();
+        _indexCount = (uint32_t)indices.size();
 
         {
             VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
@@ -49,6 +50,7 @@ namespace hl
 
             stagingBuffer.destroy();
         }
+
         {
             VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
@@ -74,45 +76,23 @@ namespace hl
 
             stagingBuffer.destroy();
         }
+
+		return Resource::Load();
 	}
 
-	void TempModel::destroy()
+	void BasicModelResource::Unload()
 	{
-        _texture.destroy();
-        _vertexBuffer.destroy();
-        _indexBuffer.destroy();
+		if (IsLoaded())
+		{
+			_vertexBuffer.destroy();
+			_indexBuffer.destroy();
+            _indexCount = 0;
+			Resource::Unload();
+		}
 	}
 
-    void TempModel::draw(
-        VkCommandBuffer& _buffer,
-        VulkanGraphicsPipeline& _pipeline,
-        VkDescriptorSet& _descriptorSet)
-    {
-        VkBuffer vertexBuffers[] = { _vertexBuffer._buffer };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(
-            _buffer, 
-            0, 
-            1, 
-            vertexBuffers, 
-            offsets);
+    VkBuffer BasicModelResource::getVertexBuffer() const { return _vertexBuffer._buffer; }
+    VkBuffer BasicModelResource::getIndexBuffer() const { return _indexBuffer._buffer; }
+    uint32_t BasicModelResource::getIndexCount() const { return _indexCount; }
 
-        vkCmdBindIndexBuffer(
-            _buffer, 
-            _indexBuffer._buffer, 
-            0, 
-            VK_INDEX_TYPE_UINT32);
-
-        vkCmdBindDescriptorSets(
-            _buffer, 
-            VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            _pipeline._pipelineLayout._pipelineLayout,
-            0, 
-            1, 
-            &_descriptorSet, 
-            0, 
-            nullptr);
-
-        vkCmdDrawIndexed(_buffer, indexCount, 1, 0, 0, 0);
-    }
 }

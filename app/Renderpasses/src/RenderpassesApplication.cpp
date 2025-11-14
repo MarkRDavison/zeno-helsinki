@@ -51,8 +51,7 @@ namespace rp
         _swapChain(_device, _surface),
         _commandPool(_device),
         _oneTimeCommandPool(_device),
-        _syncContext(_device),
-        _model(_device)
+        _syncContext(_device)
     {
 
     }
@@ -122,8 +121,6 @@ namespace rp
 
         _renderGraph->destroy();
         delete _renderGraph;
-
-        _model.destroy();
 
         _resourceManager.UnloadAll();
 
@@ -506,8 +503,6 @@ namespace rp
         _commandPool.create();
         _oneTimeCommandPool.createTransferPool();
 
-        _model.create(_oneTimeCommandPool, MODEL_PATH, TEXTURE_PATH);
-
         createCommandBuffers();
         _syncContext.create();
 
@@ -518,6 +513,9 @@ namespace rp
             .rootPath = rp::RenderpassesConfig::RootPath
         };
 
+        _modelHandle = _resourceManager.Load<hl::BasicModelResource>(
+            "viking_room",
+            resourceContext);
         _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "viking_room",
             resourceContext);
@@ -689,7 +687,9 @@ namespace rp
                 &model
             );
 
-            VkBuffer vertexBuffers[] = { _model._vertexBuffer._buffer };
+            auto modelResource = _modelHandle.Get();
+
+            VkBuffer vertexBuffers[] = { modelResource->getVertexBuffer() };
             VkDeviceSize offsets[] = { 0 };
             vkCmdBindVertexBuffers(
                 commandBuffer,
@@ -700,7 +700,7 @@ namespace rp
 
             vkCmdBindIndexBuffer(
                 commandBuffer,
-                _model._indexBuffer._buffer,
+                modelResource->getIndexBuffer(),
                 0,
                 VK_INDEX_TYPE_UINT32);
 
@@ -715,7 +715,7 @@ namespace rp
                 0,
                 nullptr);
 
-            vkCmdDrawIndexed(commandBuffer, _model.indexCount, 1, 0, 0, 0); // viking model
+            vkCmdDrawIndexed(commandBuffer, modelResource->getIndexCount(), 1, 0, 0, 0); // viking model
         }
         else if (pipeline->Name == "postprocess_pipeline")
         {
