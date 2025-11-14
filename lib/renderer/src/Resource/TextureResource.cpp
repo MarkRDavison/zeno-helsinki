@@ -7,7 +7,7 @@ namespace hl
 		const std::string& id, 
 		ResourceContext& context
 	) : 
-		Resource(id),
+		ImageSamplerResource(id),
 		_resourceContext(context),
 		_texture(*context.device)
 	{
@@ -35,7 +35,7 @@ namespace hl
 		}
 	}
 
-	std::pair<VkSampler, VkImageView> TextureResource::getDescriptorInfo() const
+	std::pair<VkSampler, VkImageView> TextureResource::getDescriptorInfo(uint32_t /*frame*/) const
 	{
 		return { _texture._sampler, _texture._image._imageView };
 	}

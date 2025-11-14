@@ -18,7 +18,6 @@
 #include <helsinki/Renderer/TempModel.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
-#include <helsinki/Renderer/Vulkan/RenderGraph/RenderResourcesSystem.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
@@ -63,7 +62,6 @@ namespace rp
 		hl::VulkanCommandPool _commandPool;
 		hl::VulkanCommandPool _oneTimeCommandPool;
 		hl::VulkanSwapChain _swapChain;
-		hl::RenderResourcesSystem _renderResourcesSystem;
 
 		hl::TempModel _model;
 

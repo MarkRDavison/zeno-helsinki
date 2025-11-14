@@ -22,7 +22,6 @@ namespace hl
 	}
 
 	std::vector<VulkanRenderGraphRenderpassResources*> RenderGraph::create(
-		RenderResourcesSystem& /*renderResourcesSystem*/,
 		const std::vector<hl::RenderpassInfo>& renderpassInfo, 
 		VulkanDevice& device,
 		uint32_t width,

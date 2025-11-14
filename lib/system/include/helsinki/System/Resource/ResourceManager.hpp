@@ -83,6 +83,12 @@ namespace hl
             return nullptr;
         }
 
+        template<typename T, typename TBase>
+        T* GetResourceAs(const std::string& resourceId)
+        {
+            return reinterpret_cast<T*>(GetResource<TBase>(resourceId));
+        }
+
         template<typename T>
         bool HasResource(const std::string& resourceId)
         {
@@ -129,9 +135,7 @@ namespace hl
         }
 
     private:
-        std::unordered_map<std::type_index,
-            std::unordered_map<std::string, std::shared_ptr<Resource>>> resources;
-
+        std::unordered_map<std::type_index, std::unordered_map<std::string, std::shared_ptr<Resource>>> resources;
         std::unordered_map<std::string, int> refCounts;
     };
 }
