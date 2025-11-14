@@ -534,6 +534,7 @@ namespace rp
             renderpasses,
             _resourceManager);
 
+        _renderGraph->updateAllOutputResources();
         _renderGraph->updateAllDescriptorSets();
     }
 
@@ -547,10 +548,7 @@ namespace rp
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
-        if (vkAllocateCommandBuffers(_device._device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to allocate command buffers!");
-        }
+        CHECK_VK_RESULT(vkAllocateCommandBuffers(_device._device, &allocInfo, commandBuffers.data()));
     }
 
     void RenderpassesApplication::recreateSwapChain()

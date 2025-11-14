@@ -26,8 +26,6 @@ namespace hl
 			swapChain._swapChainExtent.width,
 			swapChain._swapChainExtent.height,
 			swapChain._swapChainImageViews);
-
-        updateAllOutputResources();
 	}
 
     VkDescriptorSet GeneratedRenderGraph::getDescriptorSet(const std::string& renderpassName, const std::string& pipelineName, uint32_t frameNumber)

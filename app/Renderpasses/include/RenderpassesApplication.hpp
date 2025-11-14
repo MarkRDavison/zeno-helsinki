@@ -19,11 +19,11 @@
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
-#include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
+#include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 
 struct GLFWwindow;
