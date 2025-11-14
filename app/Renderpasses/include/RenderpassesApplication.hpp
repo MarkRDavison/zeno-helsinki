@@ -21,6 +21,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderResourcesSystem.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
+#include <helsinki/System/Resource/ResourceManager.hpp>
 
 struct GLFWwindow;
 
@@ -72,6 +73,8 @@ namespace rp
 		hl::GeneratedRenderGraph* _renderGraph{ nullptr };
 
 		hl::VulkanTexture _skyBoxTexture;
+
+		hl::ResourceManager _resourceManager;
 
 		uint32_t currentFrame = 0;
 		bool framebufferResized = false;
