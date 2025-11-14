@@ -38,6 +38,7 @@ namespace rp
 	private:
 		void mainLoop();
 		void cleanup();
+		void update(float delta);
 		void draw();
 
 		void initWindow(uint32_t width, uint32_t height, const char* title);
@@ -50,6 +51,7 @@ namespace rp
 		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline);
 
 	private:
+		std::string _title{};
 		GLFWwindow* _window;
 		hl::VulkanInstance _instance;
 		hl::VulkanSurface _surface;

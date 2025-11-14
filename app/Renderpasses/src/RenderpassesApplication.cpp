@@ -1,20 +1,18 @@
 ﻿#include <RenderpassesApplication.hpp>
 #include <stdexcept>
 #include <iostream>
+#include <format>
+#include <chrono>
+#include <vulkan/vulkan.h>
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 
 #include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphPipelineResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 
-#include <vulkan/vulkan.h>
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 #include "../RenderpassesConfig.hpp"
-
-#include <chrono>
 
 #define ROOT_PATH(x) (std::string(rp::RenderpassesConfig::RootPath) + std::string(x))
 
@@ -55,6 +53,7 @@ namespace rp
 
     void RenderpassesApplication::init(uint32_t width, uint32_t height, const char* title)
     {
+        _title = title;
         initWindow(width, height, title);
         initVulkan(title);
         mainLoop();
@@ -65,14 +64,51 @@ namespace rp
     }
     void RenderpassesApplication::mainLoop()
     {
+        const float delta = 1.0f / 60.0f;
+        float accumulator = 0.0f;
+        float statsAccumulator = 0.0f;
+        unsigned int fps = 0;
+        unsigned int ups = 0;
+
+        auto start = std::chrono::steady_clock::now();
+
         while (!glfwWindowShouldClose(_window))
         {
-            glfwPollEvents();
+            auto now = std::chrono::steady_clock::now();
+            const auto frameTime = now - start;
+            start = now;
+
+            accumulator += std::chrono::duration<float>(frameTime).count();
+            statsAccumulator += std::chrono::duration<float>(frameTime).count();
+
+            if (statsAccumulator >= 1.0f)
+            {
+                // TODO: config like multisampling...
+                const auto title = std::format("{} - FPS: {} UPS: {}", _title, fps, ups);
+                
+                glfwSetWindowTitle(_window, title.c_str());
+                statsAccumulator -= 1.0f;
+                fps = 0;
+                ups = 0;
+            }
+
+            while (accumulator >= delta)
+            {
+                glfwPollEvents();
+
+                update(delta);
+                ups++;
+
+                accumulator -= delta;
+            }
+
             draw();
+            fps++;
         }
 
         _device.waitIdle();
     }
+
     void RenderpassesApplication::cleanup()
     {
         _swapChain.destroy();
@@ -98,6 +134,11 @@ namespace rp
         glfwDestroyWindow(_window);
 
         glfwTerminate();
+    }
+
+    void RenderpassesApplication::update(float delta)
+    {
+
     }
 
     void RenderpassesApplication::draw()
