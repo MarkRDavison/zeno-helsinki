@@ -15,6 +15,13 @@
 
 #include "../RenderpassesConfig.hpp"
 
+#ifdef HELSINKI_TRACY_ENABLE
+#include <tracy/Tracy.hpp>
+#else
+#define ZoneScoped
+#define ZoneScopedN(x)
+#endif
+
 #define ROOT_PATH(x) (std::string(rp::RenderpassesConfig::RootPath) + std::string(x))
 
 const std::string MODEL_PATH = ROOT_PATH("/data/models/viking_room.obj");
@@ -74,6 +81,7 @@ namespace rp
 
         while (!glfwWindowShouldClose(_window))
         {
+            ZoneScopedN("MainLoop");
             auto now = std::chrono::steady_clock::now();
             const auto frameTime = now - start;
             start = now;
@@ -135,11 +143,14 @@ namespace rp
 
     void RenderpassesApplication::update(float delta)
     {
-
+        ZoneScopedN("Update");
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 
     void RenderpassesApplication::draw()
     {
+        ZoneScopedN("Draw");
+
         _syncContext.getFence(currentFrame).wait();
 
         uint32_t imageIndex;

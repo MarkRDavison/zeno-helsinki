@@ -27,6 +27,10 @@ FUNCTION(submodule MODULE_NAME MODULE_LIBS INCLUDE_DIRS)
 		endif()
 	endif()
 
+	if(ENABLE_TRACY)
+		list(APPEND MODULE_LIBS ThirdParty_Tracy)
+	endif()
+
 	foreach(liblib IN LISTS MODULE_LIBS)
 		TARGET_LINK_LIBRARIES(${LIB_NAME} PUBLIC ${liblib})
 	endforeach()

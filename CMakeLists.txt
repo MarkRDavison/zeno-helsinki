@@ -12,12 +12,19 @@ endif()
 
 OPTION(CMAKE_COMPILE_WARNING_AS_ERROR "Compile warnings as errors" ON)
 OPTION(HELSINKI_STRICT "Enable strict compile options" ON)
+option(ENABLE_TRACY "Enable Tracy Profiler" OFF)
 
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 SET(CMAKE_DEBUG_POSTFIX "-d")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	add_definitions(-DHELSINKI_DEBUG)
+    set(ENABLE_TRACY ON)
+endif()
+
+if(ENABLE_TRACY)
+    add_definitions(-DHELSINKI_TRACY_ENABLE)
+    add_definitions(-DTRACY_ENABLE)
 endif()
 
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)

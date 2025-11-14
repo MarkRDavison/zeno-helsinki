@@ -21,6 +21,10 @@ SET(MODULE_LIBS
 	imgui
 )
 
+if(ENABLE_TRACY)
+	list(APPEND MODULE_LIBS ThirdParty_Tracy)
+endif()
+
 CONFIGURE_FILE( RenderpassesConfig.hpp.in "${CMAKE_CURRENT_LIST_DIR}/RenderpassesConfig.hpp")
 
 helsinkiApplication("HelsinkiRenderpassesExample" "Renderpasses.cpp" "${MODULE_LIBS}")
