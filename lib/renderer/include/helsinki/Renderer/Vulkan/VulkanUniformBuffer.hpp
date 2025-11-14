@@ -10,7 +10,7 @@ namespace hl
 	public:
 		VulkanUniformBuffer(VulkanDevice& device);
 
-		void create(VkDeviceSize size, size_t uboSize);
+		void create(VkDeviceSize size);
 		void destroy();
 
 		void writeToBuffer(void* data);
@@ -19,7 +19,7 @@ namespace hl
 		VulkanDevice& _device;
 		VulkanBuffer _buffer;
 		void* _mappedMemory{ nullptr };
-		size_t _uboSize;
+		size_t _size;
 	};
 
 }

@@ -22,6 +22,10 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
+#include <helsinki/Renderer/Resource/TextureResource.hpp>
+#include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
+#include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
+#include <helsinki/System/Resource/ResourceHandle.hpp>
 
 struct GLFWwindow;
 
@@ -44,7 +48,6 @@ namespace rp
 
 		void initWindow(uint32_t width, uint32_t height, const char* title);
 		void initVulkan(const char* title);
-		void createUniformBuffers();
 		void createCommandBuffers();
 		void recreateSwapChain();
 		void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
@@ -66,8 +69,6 @@ namespace rp
 
 		hl::VulkanSynchronisationContext _syncContext;
 
-		std::vector<hl::VulkanUniformBuffer> _uniformBuffers;
-
 		std::vector<VkCommandBuffer> commandBuffers;
 
 		hl::GeneratedRenderGraph* _renderGraph{ nullptr };
@@ -75,6 +76,8 @@ namespace rp
 		hl::VulkanTexture _skyBoxTexture;
 
 		hl::ResourceManager _resourceManager;
+
+		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
 
 		uint32_t currentFrame = 0;
 		bool framebufferResized = false;
