@@ -46,7 +46,6 @@ namespace rp
         _oneTimeCommandPool(_device),
         _syncContext(_device),
         _model(_device),
-        _renderResourcesSystem(),
         _skyBoxTexture(_device)
     {
 
@@ -519,13 +518,12 @@ namespace rp
             .rootPath = rp::RenderpassesConfig::RootPath
         };
 
-        _resourceManager.Load<hl::TextureResource>(
+        _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "viking_room",
             resourceContext);
-        _resourceManager.LoadAs<hl::CubemapTextureResource, hl::TextureResource>(
+        _resourceManager.LoadAs<hl::CubemapTextureResource, hl::ImageSamplerResource>(
             "skybox_texture",
             resourceContext);
-
         _modelMatrixHandle = _resourceManager.Load<hl::UniformBufferResource>(
             "model_matrix_ubo", 
             resourceContext, 
@@ -536,7 +534,6 @@ namespace rp
             _device,
             _swapChain,
             renderpasses,
-            _renderResourcesSystem,
             _resourceManager);
 
         _renderGraph->updateAllDescriptorSets();

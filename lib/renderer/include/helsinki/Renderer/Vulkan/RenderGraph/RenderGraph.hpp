@@ -2,7 +2,6 @@
 
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
-#include <helsinki/Renderer/Vulkan/RenderGraph/RenderResourcesSystem.hpp>
 #include <string>
 #include <vector>
 #include <optional>
@@ -112,7 +111,6 @@ namespace hl
         RenderGraph() = delete;
     public:
         static std::vector<VulkanRenderGraphRenderpassResources*> create(
-            RenderResourcesSystem& renderResourcesSystem,
             const std::vector<hl::RenderpassInfo>& renderpassInfo, 
             VulkanDevice& device,
             uint32_t width,

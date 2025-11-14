@@ -1,14 +1,14 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <helsinki/System/Resource/Resource.hpp>
+#include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
 
 namespace hl
 {
-	class TextureResource : public Resource
+	class TextureResource : public ImageSamplerResource
 	{
 	public:
 		explicit TextureResource(const std::string& id, ResourceContext& context);
@@ -16,7 +16,7 @@ namespace hl
 		bool Load() override;
 		void Unload() override;
 
-		std::pair<VkSampler, VkImageView> getDescriptorInfo() const;
+		std::pair<VkSampler, VkImageView> getDescriptorInfo(uint32_t frame) const override;
 
 	protected:
 		ResourceContext _resourceContext;
