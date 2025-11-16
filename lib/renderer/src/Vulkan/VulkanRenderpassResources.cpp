@@ -304,14 +304,14 @@ namespace hl
 		}
 	}
 
-	void VulkanRenderpassResources::recreate(VkExtent2D extent)
+	void VulkanRenderpassResources::recreate(VkExtent2D extent, bool useVsync)
 	{
 		_renderpassExtent = extent;
 
 		if (_swapChain != nullptr)
 		{
 			_swapChain->destroy();
-			_swapChain->create();
+			_swapChain->create(useVsync);
 		}
 
 		{	// Destroy resources

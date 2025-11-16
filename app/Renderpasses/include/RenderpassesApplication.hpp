@@ -26,6 +26,7 @@
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
+#include "RenderpassesConfig.hpp"
 
 struct GLFWwindow;
 
@@ -36,7 +37,7 @@ namespace rp
 	public:
 		RenderpassesApplication(hl::EventBus& eventBus);
 		~RenderpassesApplication();
-		void init(uint32_t width, uint32_t height, const char *title);
+		void init(RenderpassConfig config);
 		void run();
 		void notifyFramebufferResized(int width, int height);
 		void sendEvent(const hl::Event& event);
@@ -59,7 +60,6 @@ namespace rp
 
 	private:
 		hl::EventBus& _eventBus;
-		std::string _title{};
 		GLFWwindow* _window;
 		hl::VulkanInstance _instance;
 		hl::VulkanSurface _surface;
@@ -79,8 +79,9 @@ namespace rp
 		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
 		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
 
+		RenderpassConfig _config;
+
 		uint32_t currentFrame = 0;
 		bool framebufferResized = false;
-		bool _useMultiSampling = true; // TODO: Need to add app config/settings or something, along with resoltion?
 	};
 }

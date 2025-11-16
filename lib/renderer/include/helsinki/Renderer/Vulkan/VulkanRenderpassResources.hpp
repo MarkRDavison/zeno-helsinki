@@ -29,7 +29,7 @@ namespace hl
 			VkExtent2D extent,
 			bool multisSampling);
 		void createUi(VulkanSwapChain& swapChain, bool multisSampling);
-		void recreate(VkExtent2D extent);
+		void recreate(VkExtent2D extent, bool useVsync);
 		void destroy();
 
 	private:
