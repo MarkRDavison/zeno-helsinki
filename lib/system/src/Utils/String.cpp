@@ -2,6 +2,7 @@
 
 #include <codecvt>
 #include <locale>
+#include <fstream>
 #include <algorithm>
 
 namespace hl
@@ -186,5 +187,17 @@ namespace hl
 	{
 		std::transform(str.begin(), str.end(), str.begin(), [](const char c) -> char { return (char)::toupper(c); });
 		return str;
+	}
+	std::string String::readFile(const std::string& filename)
+	{
+		std::ifstream file(filename, std::ios::in | std::ios::binary);
+		if (!file)
+		{
+			throw std::runtime_error("Failed to open file: " + filename);
+		}
+
+		std::ostringstream contents;
+		contents << file.rdbuf();
+		return contents.str();
 	}
 }

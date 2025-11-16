@@ -2,7 +2,6 @@
 
 #include <string>
 #include <cstdint>
-#include <fstream>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
 
@@ -19,7 +18,7 @@ namespace rp
 
 		static RenderpassConfig Load(const std::string& configPath)
 		{
-			const auto& doc = hl::Json::parseFromText(readFile(configPath));
+			const auto& doc = hl::Json::parseFromText(hl::String::readFile(configPath));
 			hl::JsonNode& root = *doc.m_Root;
 
 			RenderpassConfig c;
@@ -31,21 +30,6 @@ namespace rp
 			c.Height = root["Height"].integer;
 
 			return c;
-		}
-
-	private:
-
-		static std::string readFile(const std::string& filename)
-		{
-			std::ifstream file(filename, std::ios::in | std::ios::binary);
-			if (!file)
-			{
-				throw std::runtime_error("Failed to open file: " + filename);
-			}
-
-			std::ostringstream contents;
-			contents << file.rdbuf();
-			return contents.str();
 		}
 	};
 

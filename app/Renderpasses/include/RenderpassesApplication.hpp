@@ -13,10 +13,8 @@
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorPool.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSet.hpp>
-#include <helsinki/Renderer/Vulkan/VulkanGraphicsPipeline.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSynchronisationContext.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
-#include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
@@ -70,7 +68,7 @@ namespace rp
 
 		hl::VulkanSynchronisationContext _syncContext;
 
-		std::vector<VkCommandBuffer> _commandBuffers;
+		std::vector<VkCommandBuffer> _perFrameCommandBuffers;
 
 		hl::GeneratedRenderGraph* _renderGraph{ nullptr };
 

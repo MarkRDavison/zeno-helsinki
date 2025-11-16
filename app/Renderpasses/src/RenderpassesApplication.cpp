@@ -7,7 +7,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <helsinki/Renderer/Vulkan/VulkanRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphPipelineResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
@@ -221,8 +220,8 @@ namespace rp
 
         updateUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
         _syncContext.getFence(currentFrame).reset();
-        vkResetCommandBuffer(_commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-        recordCommandBuffer(_commandBuffers[currentFrame], imageIndex);
+        vkResetCommandBuffer(_perFrameCommandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+        recordCommandBuffer(_perFrameCommandBuffers[currentFrame], imageIndex);
 
         VkSemaphore waitSemaphores[] = { _syncContext.getImageAvailableSemaphore(currentFrame)._semaphore };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -233,7 +232,7 @@ namespace rp
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &_commandBuffers[currentFrame];
+        submitInfo.pCommandBuffers = &_perFrameCommandBuffers[currentFrame];
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -633,15 +632,15 @@ namespace rp
 
     void RenderpassesApplication::createCommandBuffers()
     {
-        _commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        _perFrameCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.commandPool = _commandPool._commandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t)_commandBuffers.size();
+        allocInfo.commandBufferCount = (uint32_t)_perFrameCommandBuffers.size();
 
-        CHECK_VK_RESULT(vkAllocateCommandBuffers(_device._device, &allocInfo, _commandBuffers.data()));
+        CHECK_VK_RESULT(vkAllocateCommandBuffers(_device._device, &allocInfo, _perFrameCommandBuffers.data()));
     }
 
     void RenderpassesApplication::recreateSwapChain()

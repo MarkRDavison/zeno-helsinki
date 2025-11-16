@@ -49,6 +49,7 @@ namespace hl
 		static std::string Lowercase(std::string str);
 
 		static std::string Uppercase(std::string str);
+		static std::string readFile(const std::string& filename);
 
 		template<typename T>
 		static std::string To(T val)

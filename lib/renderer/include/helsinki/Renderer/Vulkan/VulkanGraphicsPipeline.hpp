@@ -12,28 +12,6 @@ namespace hl
 	public:
 		VulkanGraphicsPipeline(VulkanDevice& device);
 
-		void create(
-			const std::string& vertexPath,
-			const std::string& fragmentPath,
-			VulkanRenderpass& renderpass,
-			VulkanDescriptorSetLayout& descriptorSetLayout,
-			bool multiSampling);
-
-		void createPostProcess(
-			const std::string& vertexPath,
-			const std::string& fragmentPath,
-			VulkanRenderpass& renderpass,
-			VulkanDescriptorSetLayout& descriptorSetLayout,
-			bool multiSampling);
-
-		void createUi(
-			const std::string& vertexPath,
-			const std::string& fragmentPath,
-			VulkanRenderpass& renderpass,
-			VulkanDescriptorSetLayout& descriptorSetLayout,
-			bool multiSampling,
-			bool part2);
-
 		void destroy();
 
 		static std::vector<uint32_t> readParseCompileShader(
