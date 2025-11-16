@@ -12,7 +12,8 @@ constexpr uint32_t HEIGHT = 600;
 
 int main()
 {
-    rp::RenderpassesApplication app;
+    hl::EventBus eventBus;
+    rp::RenderpassesApplication app(eventBus);
 
     app.init(WIDTH, HEIGHT, "Vulkan Helsinki Renderpasses");
     app.run();
