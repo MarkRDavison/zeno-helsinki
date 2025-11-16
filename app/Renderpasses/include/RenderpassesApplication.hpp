@@ -25,6 +25,7 @@
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
+#include <helsinki/System/Events/EventBus.hpp>
 
 struct GLFWwindow;
 
@@ -33,11 +34,10 @@ namespace rp
 	class RenderpassesApplication
 	{
 	public:
-		RenderpassesApplication();
+		RenderpassesApplication(hl::EventBus& eventBus);
 		void init(uint32_t width, uint32_t height, const char *title);
 		void run();
-
-		void notifyFramebufferResized() { framebufferResized = true; }
+		void notifyFramebufferResized(int width, int height);
 
 	private:
 		void mainLoop();
@@ -54,6 +54,7 @@ namespace rp
 		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline);
 
 	private:
+		hl::EventBus& _eventBus;
 		std::string _title{};
 		GLFWwindow* _window;
 		hl::VulkanInstance _instance;

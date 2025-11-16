@@ -1,5 +1,6 @@
 #include <helsinki/Renderer/Vulkan/VulkanGraphicsPipeline.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
+#include <helsinki/System/HelsinkiTracy.hpp>
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
@@ -51,12 +52,15 @@ namespace hl
         bool vertex)
     {
         // TODO: Compute etc
+        ZoneScoped;
+        
+        ZoneNameF("readParseCompileShader: %s", vertex ? "Vertex" : "Fragment");
         EShLanguage stage = vertex ? EShLanguage::EShLangVertex : EShLanguage::EShLangFragment;
 
         glslang::TShader shader(stage);
         const char* sources[] = { shaderSource.c_str() };
         shader.setStrings(sources, 1);
-        shader.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientVulkan, 450);
+        shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 450);
         shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
         shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_0);
 

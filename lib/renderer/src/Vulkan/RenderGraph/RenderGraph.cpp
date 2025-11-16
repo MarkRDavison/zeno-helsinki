@@ -1,5 +1,6 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
+#include <helsinki/System/HelsinkiTracy.hpp>
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
@@ -34,6 +35,8 @@ namespace hl
 
 		for (const auto& ri : renderpassInfo)
 		{
+			ZoneScoped;
+			ZoneNameF("Create renderpass %s", ri.name.c_str());
 			auto isLastRenderpass = lastName == ri.name;
 
 			auto imageCount = isLastRenderpass
@@ -240,6 +243,8 @@ namespace hl
 				{
 					for (const auto& g : ri.pipelines)
 					{
+						ZoneScoped;
+						ZoneNameF("Create pipeline %s", g.name.c_str());
 						// create descritpor set layouts
 
 						auto& pipeline = r->addPipeline(g.name);
@@ -270,6 +275,7 @@ namespace hl
 
 						if (!layoutBindings.empty())
 						{
+							ZoneScopedN("Create Descriptor Sets");
 							VkDescriptorSetLayoutCreateInfo layoutInfo{};
 							layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 							layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
@@ -289,6 +295,7 @@ namespace hl
 						VkPipelineLayout pipelineLayout;
 
 						{
+							ZoneScopedN("Create Pipeline Layout");
 							// TODO: Not complete
 							VkPushConstantRange pushConstantRange{};
 							pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -324,20 +331,20 @@ namespace hl
 						}
 
 						{
-							const auto& vertexSource = VulkanGraphicsPipeline::readParseCompileShader(
-								readFileContents(g.shaderVert),
-								true
-							);
-							const auto& fragmentSource = VulkanGraphicsPipeline::readParseCompileShader(
-								readFileContents(g.shaderFrag),
-								false
-							);
-
-
 							VkShaderModule vertexShaderModule;
 							VkShaderModule fragmentShaderModule;
 
 							{
+								ZoneScopedN("Create Shader Modules");
+								const auto& vertexSource = VulkanGraphicsPipeline::readParseCompileShader(
+									readFileContents(g.shaderVert),
+									true
+								);
+								const auto& fragmentSource = VulkanGraphicsPipeline::readParseCompileShader(
+									readFileContents(g.shaderFrag),
+									false
+								);
+
 								VkShaderModuleCreateInfo vertexCreateInfo{};
 								vertexCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 								vertexCreateInfo.codeSize = vertexSource.size() * sizeof(uint32_t);
@@ -354,6 +361,7 @@ namespace hl
 							}
 
 							{
+								ZoneScopedN("Create Graphics Pipeline");
 								VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 								vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 								vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;

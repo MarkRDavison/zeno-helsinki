@@ -12,15 +12,10 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphPipelineResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
+#include <helsinki/System/Events/WindowResizeEvent.hpp>
+#include <helsinki/System/HelsinkiTracy.hpp>
 
 #include "../RenderpassesConfig.hpp"
-
-#ifdef HELSINKI_TRACY_ENABLE
-#include <tracy/Tracy.hpp>
-#else
-#define ZoneScoped
-#define ZoneScopedN(x)
-#endif
 
 #define ROOT_PATH(x) (std::string(rp::RenderpassesConfig::RootPath) + std::string(x))
 
@@ -36,14 +31,16 @@ struct UniformBufferObject
 namespace rp
 {
 
-    static void framebufferResizeCallback(GLFWwindow* window, int, int)
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
     {
         auto app = reinterpret_cast<RenderpassesApplication*>(glfwGetWindowUserPointer(window));
-        app->notifyFramebufferResized();
+        app->notifyFramebufferResized(width, height);
     }
 
     RenderpassesApplication::RenderpassesApplication(
+        hl::EventBus& eventBus
     ) :
+        _eventBus(eventBus),
         _window(nullptr),
         _instance(),
         _surface(_instance),
@@ -66,6 +63,12 @@ namespace rp
     void RenderpassesApplication::run()
     {
         cleanup();
+    }
+    void RenderpassesApplication::notifyFramebufferResized(int width, int height)
+    { 
+        framebufferResized = true; 
+        hl::WindowResizeEvent event(width, height);
+        _eventBus.PublishEvent(event);
     }
     void RenderpassesApplication::mainLoop()
     {
@@ -213,6 +216,7 @@ namespace rp
 
     void RenderpassesApplication::initWindow(uint32_t width, uint32_t height, const char* title)
     {
+        ZoneScopedN("InitWindow");
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         _window = glfwCreateWindow(width, height, title, nullptr, nullptr);
@@ -222,10 +226,25 @@ namespace rp
 
     void RenderpassesApplication::initVulkan(const char* title)
     {
-        _instance.create(title);
-        _surface.create(_window);
-        _device.create();
-        _swapChain.create();
+        ZoneScopedN("InitVulkan");
+        {
+            {
+                ZoneScopedN("Create Instance");
+                _instance.create(title);
+            }
+            {
+                ZoneScopedN("Create Surface");
+                _surface.create(_window);
+            }
+            {
+                ZoneScopedN("Create Device");
+                _device.create();
+            }
+            {
+                ZoneScopedN("Create swapchain");
+                _swapChain.create();
+            }
+        }
 
         std::vector<hl::RenderpassInfo> renderpasses =
         {
@@ -500,11 +519,15 @@ namespace rp
             }
         };
 
-        _commandPool.create();
-        _oneTimeCommandPool.createTransferPool();
+        {
+            ZoneScopedN("PoolBufferSyncContext");
 
-        createCommandBuffers();
-        _syncContext.create();
+            _commandPool.create();
+            _oneTimeCommandPool.createTransferPool();
+
+            createCommandBuffers();
+            _syncContext.create();
+        }
 
         hl::ResourceContext resourceContext
         {
@@ -513,29 +536,42 @@ namespace rp
             .rootPath = rp::RenderpassesConfig::RootPath
         };
 
-        _modelHandle = _resourceManager.Load<hl::BasicModelResource>(
-            "viking_room",
-            resourceContext);
-        _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "viking_room",
-            resourceContext);
-        _resourceManager.LoadAs<hl::CubemapTextureResource, hl::ImageSamplerResource>(
-            "skybox_texture",
-            resourceContext);
-        _modelMatrixHandle = _resourceManager.Load<hl::UniformBufferResource>(
-            "model_matrix_ubo", 
-            resourceContext, 
-            sizeof(UniformBufferObject), 
-            MAX_FRAMES_IN_FLIGHT);
+        {
+            ZoneScopedN("LoadResources");
+            _modelHandle = _resourceManager.Load<hl::BasicModelResource>(
+                "viking_room",
+                resourceContext);
+            _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+                "viking_room",
+                resourceContext);
+            _resourceManager.LoadAs<hl::CubemapTextureResource, hl::ImageSamplerResource>(
+                "skybox_texture",
+                resourceContext);
+            _modelMatrixHandle = _resourceManager.Load<hl::UniformBufferResource>(
+                "model_matrix_ubo",
+                resourceContext,
+                sizeof(UniformBufferObject),
+                MAX_FRAMES_IN_FLIGHT);
+        }
 
-        _renderGraph = new hl::GeneratedRenderGraph(
-            _device,
-            _swapChain,
-            renderpasses,
-            _resourceManager);
+        {
+            ZoneScopedN("GenerateRenderGraph");
+            _renderGraph = new hl::GeneratedRenderGraph(
+                _device,
+                _swapChain,
+                renderpasses,
+                _resourceManager);
+        }
 
-        _renderGraph->updateAllOutputResources();
-        _renderGraph->updateAllDescriptorSets();
+        {
+            ZoneScopedN("updateAllOutputResources");
+            _renderGraph->updateAllOutputResources();
+        }
+
+        {
+            ZoneScopedN("updateAllDescriptorSets");
+            _renderGraph->updateAllDescriptorSets();
+        }
     }
 
     void RenderpassesApplication::createCommandBuffers()
@@ -610,20 +646,21 @@ namespace rp
 
         for (auto& renderpass : _renderGraph->getResources())
         {
-            VkRenderPassBeginInfo renderpassBegin{};
-            renderpassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderpassBegin.renderPass = renderpass->getRenderPass();
-            renderpassBegin.framebuffer = renderpass->getFramebuffer(
-                lastRenderpassName == renderpass->Name
-                ? imageIndex
-                : currentFrame);
-            renderpassBegin.renderArea.offset = { 0,0 };
-            renderpassBegin.renderArea.extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent);
-
             const auto& clearValues = renderpass->getClearValues();
 
-            renderpassBegin.clearValueCount = (uint32_t)clearValues.size();
-            renderpassBegin.pClearValues = clearValues.data();
+            VkRenderPassBeginInfo renderpassBegin
+            {
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                .renderPass = renderpass->getRenderPass(),
+                .framebuffer = renderpass->getFramebuffer(lastRenderpassName == renderpass->Name ? imageIndex : currentFrame),
+                .renderArea = 
+                {
+                    .offset = { 0,0 },
+                    .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent),
+                },
+                .clearValueCount = (uint32_t)clearValues.size(),
+                .pClearValues = clearValues.data()
+            };
 
             vkCmdBeginRenderPass(commandBuffer, &renderpassBegin, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -631,18 +668,22 @@ namespace rp
             {
                 vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
 
-                VkViewport viewport{};
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width;
-                viewport.height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height;
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
+                VkViewport viewport
+                {
+                    .x = 0.0f,
+                    .y = 0.0f,
+                    .width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width,
+                    .height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height,
+                    .minDepth = 0.0f,
+                    .maxDepth = 1.0f
+                };
                 vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-                VkRect2D scissor{};
-                scissor.offset = { 0, 0 };
-                scissor.extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent);
+                VkRect2D scissor
+                {
+                    .offset = { 0, 0 } ,
+                    .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent)
+                };
                 vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
                 renderPipelineDraw(commandBuffer, pipeline);
