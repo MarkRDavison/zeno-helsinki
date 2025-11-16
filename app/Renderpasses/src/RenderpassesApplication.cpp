@@ -13,6 +13,8 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
+#include <helsinki/System/Events/KeyEvents.hpp>
+#include <helsinki/System/Events/EventDispatcher.hpp>
 #include <helsinki/System/HelsinkiTracy.hpp>
 
 #include "../RenderpassesConfig.hpp"
@@ -36,6 +38,21 @@ namespace rp
         auto app = reinterpret_cast<RenderpassesApplication*>(glfwGetWindowUserPointer(window));
         app->notifyFramebufferResized(width, height);
     }
+    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+    {
+        auto app = reinterpret_cast<RenderpassesApplication*>(glfwGetWindowUserPointer(window));
+        if (action == GLFW_PRESS)
+        {
+            hl::KeyPressEvent event(key);
+            app->sendEvent(event);
+        }
+        else if (action == GLFW_RELEASE)
+        {
+            hl::KeyReleaseEvent event(key);
+            app->sendEvent(event);
+        }
+    }
+
 
     RenderpassesApplication::RenderpassesApplication(
         hl::EventBus& eventBus
@@ -50,7 +67,11 @@ namespace rp
         _oneTimeCommandPool(_device),
         _syncContext(_device)
     {
-
+        _eventBus.AddListener(this);
+    }
+    RenderpassesApplication::~RenderpassesApplication()
+    {
+        _eventBus.RemoveListener(this);
     }
 
     void RenderpassesApplication::init(uint32_t width, uint32_t height, const char* title)
@@ -70,6 +91,25 @@ namespace rp
         hl::WindowResizeEvent event(width, height);
         _eventBus.PublishEvent(event);
     }
+    void RenderpassesApplication::sendEvent(const hl::Event& event)
+    {
+        _eventBus.PublishEvent(event);
+    }
+
+    void RenderpassesApplication::OnEvent(const hl::Event& event)
+    {
+        hl::EventDispatcher dispatcher(event);
+        std::cout << "EVENT!" << std::endl;
+        dispatcher.Dispatch<hl::KeyPressEvent>([this](const hl::KeyPressEvent& e)
+            {
+                std::cout << " - Key Pressed Event: " << e.GetKeyCode() << std::endl;
+            });
+        dispatcher.Dispatch<hl::KeyReleaseEvent>([this](const hl::KeyReleaseEvent& e)
+            {
+                std::cout << " - Key Released Event: " << e.GetKeyCode() << std::endl;
+            });
+    }
+
     void RenderpassesApplication::mainLoop()
     {
         const float delta = 1.0f / 60.0f;
@@ -149,16 +189,23 @@ namespace rp
     {
         ZoneScopedN("Draw");
 
-        _syncContext.getFence(currentFrame).wait();
+        {
+            ZoneScopedN("Wait fence");
+            _syncContext.getFence(currentFrame).wait();
+        }
 
+        VkResult result;
         uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(
-            _device._device,
-            _swapChain._swapChain,
-            UINT64_MAX,
-            _syncContext.getImageAvailableSemaphore(currentFrame)._semaphore,
-            VK_NULL_HANDLE,
-            &imageIndex);
+        {
+            ZoneScopedN("Acquire next image");
+            result = vkAcquireNextImageKHR(
+                _device._device,
+                _swapChain._swapChain,
+                UINT64_MAX,
+                _syncContext.getImageAvailableSemaphore(currentFrame)._semaphore,
+                VK_NULL_HANDLE,
+                &imageIndex);
+        }
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
@@ -172,8 +219,8 @@ namespace rp
 
         updateUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
         _syncContext.getFence(currentFrame).reset();
-        vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-        recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+        vkResetCommandBuffer(_commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+        recordCommandBuffer(_commandBuffers[currentFrame], imageIndex);
 
         VkSemaphore waitSemaphores[] = { _syncContext.getImageAvailableSemaphore(currentFrame)._semaphore };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -184,11 +231,14 @@ namespace rp
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+        submitInfo.pCommandBuffers = &_commandBuffers[currentFrame];
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        CHECK_VK_RESULT(vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, _syncContext.getFence(currentFrame)._fence));
+        {
+            ZoneScopedN("Submit render queue");
+            CHECK_VK_RESULT(vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, _syncContext.getFence(currentFrame)._fence));
+        }
 
         VkSwapchainKHR swapChains[] = { _swapChain._swapChain };
         VkPresentInfoKHR presentInfo{};
@@ -199,7 +249,10 @@ namespace rp
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
 
-        result = vkQueuePresentKHR(_device._presentQueue._queue, &presentInfo);
+        {
+            ZoneScopedN("Present queue");
+            result = vkQueuePresentKHR(_device._presentQueue._queue, &presentInfo);
+        }
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
         {
@@ -222,6 +275,7 @@ namespace rp
         _window = glfwCreateWindow(width, height, title, nullptr, nullptr);
         glfwSetWindowUserPointer(_window, this);
         glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
+        glfwSetKeyCallback(_window, keyCallback);
     }
 
     void RenderpassesApplication::initVulkan(const char* title)
@@ -576,15 +630,15 @@ namespace rp
 
     void RenderpassesApplication::createCommandBuffers()
     {
-        commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        _commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.commandPool = _commandPool._commandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+        allocInfo.commandBufferCount = (uint32_t)_commandBuffers.size();
 
-        CHECK_VK_RESULT(vkAllocateCommandBuffers(_device._device, &allocInfo, commandBuffers.data()));
+        CHECK_VK_RESULT(vkAllocateCommandBuffers(_device._device, &allocInfo, _commandBuffers.data()));
     }
 
     void RenderpassesApplication::recreateSwapChain()
@@ -646,6 +700,8 @@ namespace rp
 
         for (auto& renderpass : _renderGraph->getResources())
         {
+            ZoneScoped;
+            ZoneNameF("record command buffer for %s", renderpass->Name.c_str());
             const auto& clearValues = renderpass->getClearValues();
 
             VkRenderPassBeginInfo renderpassBegin
