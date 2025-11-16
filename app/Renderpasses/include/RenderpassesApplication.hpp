@@ -31,13 +31,17 @@ struct GLFWwindow;
 
 namespace rp
 {
-	class RenderpassesApplication
+	class RenderpassesApplication : public hl::EventListener
 	{
 	public:
 		RenderpassesApplication(hl::EventBus& eventBus);
+		~RenderpassesApplication();
 		void init(uint32_t width, uint32_t height, const char *title);
 		void run();
 		void notifyFramebufferResized(int width, int height);
+		void sendEvent(const hl::Event& event);
+
+		void OnEvent(const hl::Event& event) override;
 
 	private:
 		void mainLoop();
@@ -66,7 +70,7 @@ namespace rp
 
 		hl::VulkanSynchronisationContext _syncContext;
 
-		std::vector<VkCommandBuffer> commandBuffers;
+		std::vector<VkCommandBuffer> _commandBuffers;
 
 		hl::GeneratedRenderGraph* _renderGraph{ nullptr };
 
