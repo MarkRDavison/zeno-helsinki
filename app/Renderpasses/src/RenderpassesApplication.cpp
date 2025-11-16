@@ -74,11 +74,11 @@ namespace rp
         _eventBus.RemoveListener(this);
     }
 
-    void RenderpassesApplication::init(uint32_t width, uint32_t height, const char* title)
+    void RenderpassesApplication::init(RenderpassConfig config)
     {
-        _title = title;
-        initWindow(width, height, title);
-        initVulkan(title);
+        _config = config;
+        initWindow(_config.Width, _config.Height, _config.Title.c_str());
+        initVulkan(_config.Title.c_str());
         mainLoop();
     }
     void RenderpassesApplication::run()
@@ -132,10 +132,11 @@ namespace rp
 
             if (statsAccumulator >= 1.0f)
             {
-                // TODO: config like multisampling...
-                const auto title = std::format("{} - FPS: {} UPS: {}", _title, fps, ups);
-                
-                glfwSetWindowTitle(_window, title.c_str());
+                if (_config.DisplayFps)
+                {
+                    const auto title = std::format("{} - FPS: {} UPS: {}", _config.Title, fps, ups);
+                    glfwSetWindowTitle(_window, title.c_str());
+                }
                 statsAccumulator -= 1.0f;
                 fps = 0;
                 ups = 0;
@@ -209,6 +210,7 @@ namespace rp
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
+            ZoneScopedN("Recreate swapchain");
             recreateSwapChain();
             return;
         }
@@ -256,6 +258,7 @@ namespace rp
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
         {
+            ZoneScopedN("Recreate swapchain");
             framebufferResized = false;
             recreateSwapChain();
         }
@@ -296,7 +299,7 @@ namespace rp
             }
             {
                 ZoneScopedN("Create swapchain");
-                _swapChain.create();
+                _swapChain.create(_config.EnableVsync);
             }
         }
 
@@ -654,7 +657,7 @@ namespace rp
         _device.waitIdle();
         
         _swapChain.destroy();
-        _swapChain.create();
+        _swapChain.create(_config.EnableVsync);
 
         _renderGraph->recreate((uint32_t)width, (uint32_t)height);
 

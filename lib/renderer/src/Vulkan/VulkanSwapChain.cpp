@@ -20,12 +20,12 @@ namespace hl
 
     }
 
-    void VulkanSwapChain::create()
+    void VulkanSwapChain::create(bool useVsync)
     {
         {
             auto swapChainSupport = hl::VulkanSwapChain::querySwapChainSupport(_device._physicalDevice, _surface._surface);
             auto surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-            auto presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+            auto presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, useVsync);
             auto extent = chooseSwapExtent(swapChainSupport.capabilities, _surface._window);
 
             uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
@@ -154,19 +154,23 @@ namespace hl
         return availableFormats[0];
     }
 
-    VkPresentModeKHR VulkanSwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+    VkPresentModeKHR VulkanSwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes, bool useVsync)
     {
         for (const auto& availablePresentMode : availablePresentModes)
         {
-            // TODO: Swap between these for enabling vsync, also add to config.
-            if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR)
+            if (useVsync)
             {
-                return availablePresentMode;
+                if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR)
+                {
+                    return availablePresentMode;
+                }
             }
-
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+            else
             {
-                //return availablePresentMode;
+                if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+                {
+                    return availablePresentMode;
+                }
             }
         }
 
