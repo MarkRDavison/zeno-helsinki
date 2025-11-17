@@ -13,6 +13,7 @@
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
+#include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/System/Events/EventDispatcher.hpp>
 #include <helsinki/System/HelsinkiTracy.hpp>
 
@@ -51,7 +52,12 @@ namespace rp
             app->sendEvent(event);
         }
     }
-
+    static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset)
+    {
+        auto app = reinterpret_cast<RenderpassesApplication*>(glfwGetWindowUserPointer(window));
+        hl::ScrollEvent event((int)xOffset, (int)yOffset);
+        app->sendEvent(event);
+    }
 
     RenderpassesApplication::RenderpassesApplication(
         hl::EventBus& eventBus
@@ -67,9 +73,16 @@ namespace rp
         _syncContext(_device)
     {
         _eventBus.AddListener(this);
+
+        _camera = new hl::Camera(
+            glm::vec3(2.0f, 0.5f, -2.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f),
+            135.0f,
+            -5.0f);
     }
     RenderpassesApplication::~RenderpassesApplication()
     {
+        delete _camera;
         _eventBus.RemoveListener(this);
     }
 
@@ -106,6 +119,18 @@ namespace rp
         dispatcher.Dispatch<hl::KeyReleaseEvent>([this](const hl::KeyReleaseEvent& e)
             {
                 std::cout << " - Key Released Event: " << e.GetKeyCode() << std::endl;
+            });
+        dispatcher.Dispatch<hl::ScrollEvent>([this](const hl::ScrollEvent& e)
+            {
+                const auto y = e.getY();
+                if (y < 0)
+                {
+                    _camera->setZoom(_camera->getZoom() * 1.1f);
+                }
+                else
+                {
+                    _camera->setZoom(_camera->getZoom() / 1.1f);
+                }
             });
     }
 
@@ -278,6 +303,7 @@ namespace rp
         glfwSetWindowUserPointer(_window, this);
         glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
         glfwSetKeyCallback(_window, keyCallback);
+        glfwSetScrollCallback(_window, scrollCallback);
     }
 
     void RenderpassesApplication::initVulkan(const char* title)
@@ -666,16 +692,9 @@ namespace rp
     void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
     {
         UniformBufferObject ubo{};
-        ubo.view = glm::lookAt(
-            glm::vec3(2.0f, 0.5f, -2.0f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f));
 
-        ubo.proj = glm::perspective(
-            glm::radians(45.0f),
-            _swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height,
-            0.1f,
-            10.0f);
+        ubo.view = _camera->getViewMatrix();
+        ubo.proj = _camera->getProjectionMatrix(_swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height);
 
         ubo.proj[1][1] *= -1;
 

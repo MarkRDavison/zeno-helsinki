@@ -24,6 +24,7 @@
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
+#include <helsinki/System/Infrastructure/Camera.hpp>
 #include "RenderpassesConfig.hpp"
 
 struct GLFWwindow;
@@ -76,6 +77,7 @@ namespace rp
 
 		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
 		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
+		hl::Camera* _camera{ nullptr };
 
 		RenderpassConfig _config;
 
