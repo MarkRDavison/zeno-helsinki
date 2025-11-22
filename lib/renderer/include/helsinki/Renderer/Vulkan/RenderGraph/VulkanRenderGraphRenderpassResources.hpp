@@ -17,6 +17,8 @@ namespace hl
 		RenderpassAttachment& addAttachment(const std::string& name);
 		void addRenderpass(VkRenderPass renderpass);
 		void addFramebuffer(VkFramebuffer framebuffer);
+		void startPipelineGroup();
+		void endPipelineGroup();
 		VulkanRenderGraphPipelineResources& addPipeline(const std::string& name);
 		void addDescriptorPool(VkDescriptorPool descriptorPool);
 		void destroy();
@@ -30,7 +32,7 @@ namespace hl
 
 		const std::vector<RenderpassAttachment>& getAttachments() const;
 		std::vector<RenderpassAttachment>& getAttachments();
-		const std::vector<VulkanRenderGraphPipelineResources*>& getPipelines() const;
+		const std::vector<std::vector<VulkanRenderGraphPipelineResources*>>& getPipelineGroupss() const;
 
 		const VkRenderPass getRenderPass() const;
 		const VkFramebuffer getFramebuffer(uint32_t imageIndex);
@@ -48,10 +50,11 @@ namespace hl
 		std::vector<RenderpassAttachment> _attachments;
 		VkRenderPass _renderpass{ VK_NULL_HANDLE };
 		std::vector<VkFramebuffer> _framebuffers;
-		std::vector<VulkanRenderGraphPipelineResources*> _pipelines;
+		std::vector<std::vector<VulkanRenderGraphPipelineResources*>> _pipelineGroups;
 		VkDescriptorPool _descriptorPool{ VK_NULL_HANDLE };
 		std::vector<VkClearValue> _clearValues;
 		VkExtent2D _extent{};
+		bool _pipelineGroupOpen{ false };
 	};
 
 }

@@ -830,31 +830,33 @@ namespace rp
                 secondaryBeginInfo.pInheritanceInfo = &inheritanceInfo;
                 CHECK_VK_RESULT(vkBeginCommandBuffer(secondaryCommandBuffer, &secondaryBeginInfo));
 
-                for (auto& pipeline : renderpass->getPipelines())
+                for (auto& pg : renderpass->getPipelineGroupss())
                 {
-                    vkCmdBindPipeline(secondaryCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
+                    for (auto& p : pg)
+                    {
+                        vkCmdBindPipeline(secondaryCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p->getPipeline());
+                        {   //  TODO: This can be wasteful if nothing has changed.
+                            VkViewport viewport
+                            {
+                                .x = 0.0f,
+                                .y = 0.0f,
+                                .width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width,
+                                .height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height,
+                                .minDepth = 0.0f,
+                                .maxDepth = 1.0f
+                            };
+                            vkCmdSetViewport(secondaryCommandBuffer, 0, 1, &viewport);
 
-                    {   //  TODO: This can be wasteful if nothing has changed.
-                        VkViewport viewport
-                        {
-                            .x = 0.0f,
-                            .y = 0.0f,
-                            .width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width,
-                            .height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height,
-                            .minDepth = 0.0f,
-                            .maxDepth = 1.0f
-                        };
-                        vkCmdSetViewport(secondaryCommandBuffer, 0, 1, &viewport);
+                            VkRect2D scissor
+                            {
+                                .offset = { 0, 0 } ,
+                                .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent)
+                            };
+                            vkCmdSetScissor(secondaryCommandBuffer, 0, 1, &scissor);
+                        }
 
-                        VkRect2D scissor
-                        {
-                            .offset = { 0, 0 } ,
-                            .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent)
-                        };
-                        vkCmdSetScissor(secondaryCommandBuffer, 0, 1, &scissor);
+                        renderPipelineDraw(secondaryCommandBuffer, p);
                     }
-
-                    renderPipelineDraw(secondaryCommandBuffer, pipeline);
                 }
 
                 CHECK_VK_RESULT(vkEndCommandBuffer(secondaryCommandBuffer));
@@ -869,7 +871,6 @@ namespace rp
 
         CHECK_VK_RESULT(vkEndCommandBuffer(frame.primaryCmd));
     }
-
 
     void RenderpassesApplication::renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline)
     {

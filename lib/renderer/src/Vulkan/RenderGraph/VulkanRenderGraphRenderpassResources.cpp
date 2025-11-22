@@ -1,4 +1,5 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
+#include <cassert>
 
 namespace hl
 {
@@ -35,11 +36,23 @@ namespace hl
 		_framebuffers.push_back(framebuffer);
 	}
 
+	void VulkanRenderGraphRenderpassResources::startPipelineGroup()
+	{
+		assert(!_pipelineGroupOpen);
+		_pipelineGroupOpen = true;
+		_pipelineGroups.push_back({});
+	}
+	void VulkanRenderGraphRenderpassResources::endPipelineGroup()
+	{
+		assert(_pipelineGroupOpen);
+		_pipelineGroupOpen = false;
+	}
 	VulkanRenderGraphPipelineResources& VulkanRenderGraphRenderpassResources::addPipeline(const std::string& name)
 	{
+		assert(_pipelineGroupOpen);
 		auto pipeline = new VulkanRenderGraphPipelineResources(name, _device);
 
-		_pipelines.push_back(pipeline);
+		_pipelineGroups.back().push_back(pipeline);
 
 		return *pipeline;
 	}
@@ -53,13 +66,16 @@ namespace hl
 	{
 		vkDestroyDescriptorPool(_device._device, _descriptorPool, nullptr);
 
-		for (auto& p : _pipelines)
+		for (auto& pg : _pipelineGroups)
 		{
-			p->destroy();
-			delete p;
+			for (auto& p : pg)
+			{
+				p->destroy();
+				delete p;
+			}
 		}
 
-		_pipelines.clear();
+		_pipelineGroups.clear();
 
 		for (auto& fb : _framebuffers)
 		{
@@ -159,9 +175,9 @@ namespace hl
 	{
 		return _attachments;
 	}
-	const std::vector<VulkanRenderGraphPipelineResources*>& VulkanRenderGraphRenderpassResources::getPipelines() const
+	const std::vector<std::vector<VulkanRenderGraphPipelineResources*>>& VulkanRenderGraphRenderpassResources::getPipelineGroupss() const
 	{
-		return _pipelines;
+		return _pipelineGroups;
 	}
 
 	const VkRenderPass VulkanRenderGraphRenderpassResources::getRenderPass() const
