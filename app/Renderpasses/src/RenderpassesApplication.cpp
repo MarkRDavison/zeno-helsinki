@@ -30,6 +30,17 @@ struct UniformBufferObject
     alignas(16) glm::mat4 proj;
 };
 
+struct DirLightsUBO
+{
+    alignas(16) glm::vec3 ambientColor;
+    alignas(16) glm::vec3 cameraPos;
+
+    alignas(16) int numDirLights;
+
+    alignas(16) glm::vec3 dirLightDirections[8];
+    alignas(16) glm::vec3 dirLightColors[8];
+};
+
 namespace rp
 {
 
@@ -257,7 +268,8 @@ namespace rp
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        updateUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
+        updateModelMatrixUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
+        updateDirectionalLightUniformBuffer(_directionalLightHandle.Get()->getUniformBuffer(currentFrame));
         _syncContext.getFence(currentFrame).reset();
 
         recordCommandBuffer(_frameResources[currentFrame], imageIndex);
@@ -412,8 +424,8 @@ namespace rp
                         hl::PipelineInfo
                         {
                             .name = "model_pipeline",
-                            .shaderVert = ROOT_PATH("/data/shaders/triangle.vert"),
-                            .shaderFrag = ROOT_PATH("/data/shaders/triangle.frag"),
+                            .shaderVert = ROOT_PATH("/data/shaders/basic_pbr.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/basic_pbr.frag"),
                             .descriptorSets =
                             {
                                 hl::DescriptorSetInfo
@@ -434,6 +446,13 @@ namespace rp
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                             .stage = "FRAGMENT",
                                             .resource = "viking_room"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 2,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "directional_light_ubo"
                                         }
                                     }
                                 }
@@ -455,9 +474,15 @@ namespace rp
                                         .offset = offsetof(hl::Vertex, color)
                                     },
                                     {
+                                        .name = "inNormal",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 2,
+                                        .offset = offsetof(hl::Vertex, normal)
+                                    },
+                                    {
                                         .name = "inTexCoord",
                                         .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 2,
+                                        .location = 3,
                                         .offset = offsetof(hl::Vertex, texCoord)
                                     },
                                 },
@@ -465,7 +490,7 @@ namespace rp
                             },
                             .rasterState =
                             {
-                                .cullMode = VK_CULL_MODE_BACK_BIT
+                                .cullMode = VK_CULL_MODE_NONE
                             },
                             .enableBlending = false
                         }
@@ -670,6 +695,11 @@ namespace rp
                 resourceContext,
                 sizeof(UniformBufferObject),
                 MAX_FRAMES_IN_FLIGHT);
+            _directionalLightHandle = _resourceManager.Load<hl::UniformBufferResource>(
+                "directional_light_ubo",
+                resourceContext,
+                sizeof(DirLightsUBO),
+                MAX_FRAMES_IN_FLIGHT);
         }
 
         {
@@ -764,7 +794,7 @@ namespace rp
         _renderGraph->updateAllDescriptorSets();
     }
 
-    void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
+    void RenderpassesApplication::updateModelMatrixUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
     {
         UniformBufferObject ubo{};
 
@@ -772,6 +802,25 @@ namespace rp
         ubo.proj = _camera->getProjectionMatrix(_swapChain._swapChainExtent.width / (float)_swapChain._swapChainExtent.height);
 
         ubo.proj[1][1] *= -1;
+
+        uniformBuffer.writeToBuffer(&ubo);
+    }
+
+    void RenderpassesApplication::updateDirectionalLightUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
+    {
+        DirLightsUBO ubo{};
+
+        ubo.ambientColor = glm::vec3(0.05f, 0.05f, 0.05f);
+        ubo.cameraPos = _camera->getPosition();
+        ubo.numDirLights = 2;
+
+        // Key light from above and in front-left of model
+        ubo.dirLightDirections[0] = glm::normalize(glm::vec3(-0.5f, -1.0f, 1.0f));
+        ubo.dirLightColors[0] = glm::vec3(1.0f, 0.95f, 0.9f); // warm white
+
+        // Fill light from above-right, softer
+        ubo.dirLightDirections[1] = glm::normalize(glm::vec3(0.5f, -0.5f, -1.0f));
+        ubo.dirLightColors[1] = glm::vec3(0.2f, 0.2f, 0.25f); // cooler fill
 
         uniformBuffer.writeToBuffer(&ubo);
     }
@@ -942,7 +991,14 @@ namespace rp
         }
         else if (pipeline->Name == "model_pipeline")
         {
+            static float rotationAngle = 0.0f;  // degrees
+
+            // Increment per frame (or scaled by deltaTime)
+            rotationAngle += 10.0f * 1.0f / 60.0f;  // 10 degrees per second
+            if (rotationAngle > 360.0f) rotationAngle -= 360.0f;
+
             glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(-rotationAngle), glm::vec3(0.0f, 0.0f, 1.0f));
 
             vkCmdPushConstants(
                 commandBuffer,
