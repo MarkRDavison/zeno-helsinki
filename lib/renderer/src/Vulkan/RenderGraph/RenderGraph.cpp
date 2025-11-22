@@ -215,28 +215,59 @@ namespace hl
 
 				//	Descriptor pool
 				{
-					// TODO: Need better than this maybe can calculate it from renderpass description
-					std::vector<VkDescriptorPoolSize> poolSizes
+					uint32_t totalSets = 0;
+
+					for (const auto& pg : ri.pipelineGroups)
 					{
-					   { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 40 * imageCount },
-					   { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 80 * imageCount },
-					};
+						for (const auto& p : pg)
+						{
+							totalSets += static_cast<uint32_t>(p.descriptorSets.size());
+						}
+					}
 
-					VkDescriptorPoolCreateInfo poolCreateInfo{};
-					poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-					poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-					poolCreateInfo.pPoolSizes = poolSizes.data();
-					poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount) * 20;
-					std::cerr << "TODO: calculate the max sets" << std::endl;
+					if (totalSets > 0)
+					{
+						std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCounts;
 
-					CHECK_VK_RESULT(vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool));
+						for (const auto& pg : ri.pipelineGroups)
+						{
+							for (const auto& p : pg)
+							{
+								for (const auto& ds : p.descriptorSets)
+								{
+									for (const auto& b : ds.bindings)
+									{
+										descriptorTypeCounts[extractDescriptorType(b.type)]++;
+									}
+								}
+							}
+						}
 
-					device.setDebugName(
-						reinterpret_cast<uint64_t>(descriptorPool),
-						VK_OBJECT_TYPE_DESCRIPTOR_POOL,
-						(r->Name + "_DescriptorPool").c_str());
+						std::vector<VkDescriptorPoolSize> poolSizes;
 
-					r->addDescriptorPool(descriptorPool);
+						for (const auto& [type, count] : descriptorTypeCounts)
+						{
+							if (count > 0)
+							{
+								poolSizes.push_back({ type, count * imageCount });
+							}
+						}
+
+						VkDescriptorPoolCreateInfo poolCreateInfo{};
+						poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+						poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+						poolCreateInfo.pPoolSizes = poolSizes.data();
+						poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount) * totalSets;
+
+						CHECK_VK_RESULT(vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool));
+
+						device.setDebugName(
+							reinterpret_cast<uint64_t>(descriptorPool),
+							VK_OBJECT_TYPE_DESCRIPTOR_POOL,
+							(r->Name + "_DescriptorPool").c_str());
+
+						r->addDescriptorPool(descriptorPool);
+					}
 				}
 
 				//	Graphics pipelines
