@@ -58,11 +58,14 @@ namespace hl
         {
             if (r->Name == renderpassName)
             {
-                for (auto& p : r->getPipelines())
+                for (auto& pg : r->getPipelineGroupss())
                 {
-                    if (p->Name == pipelineName)
+                    for (auto& p : pg)
                     {
-                        return p->getDescriptorSet(frameNumber);
+                        if (p->Name == pipelineName)
+                        {
+                            return p->getDescriptorSet(frameNumber);
+                        }
                     }
                 }
             }

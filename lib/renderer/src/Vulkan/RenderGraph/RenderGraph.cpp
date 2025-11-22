@@ -243,6 +243,7 @@ namespace hl
 				{
 					for (const auto& pg : ri.pipelineGroups)
 					{
+						r->startPipelineGroup();
 						for (const auto& p : pg)
 						{
 							ZoneScoped;
@@ -548,6 +549,8 @@ namespace hl
 								}
 							}
 						}
+
+						r->endPipelineGroup();
 					}
 				}
 			}
