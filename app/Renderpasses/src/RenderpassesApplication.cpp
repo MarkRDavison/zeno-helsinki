@@ -407,6 +407,8 @@ namespace rp
                             },
                             .enableBlending = false
                         },
+                    },
+                    {
                         hl::PipelineInfo
                         {
                             .name = "model_pipeline",
@@ -700,20 +702,27 @@ namespace rp
             for (uint32_t layer = 0; layer < _renderGraph->getNumberLayers(); layer++)
             {
                 const auto& renderpassesForLayer = _renderGraph->getSortedNodesByNameForLayer(layer);
+                auto& secondaryCommandsForLayerAndGroups = frame.secondaryCmdsByLayerAndPipelineGroup[layer];
 
-                auto& secondaryCommandsForLayer = frame.secondaryCmdsByLayer[layer];
+                secondaryCommandsForLayerAndGroups.resize(renderpassesForLayer.size());
 
-                secondaryCommandsForLayer.resize(renderpassesForLayer.size());
-
-                for (auto& secondaryCommand : secondaryCommandsForLayer)
+                for (size_t rpIndex = 0; rpIndex < renderpassesForLayer.size(); ++rpIndex)
                 {
-                    VkCommandBufferAllocateInfo allocInfo{};
-                    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-                    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-                    allocInfo.commandPool = _commandPool._commandPool;
-                    allocInfo.commandBufferCount = 1;
+                    const auto& renderpass = _renderGraph->getRenderpassByName(renderpassesForLayer[rpIndex]);
+                    auto& secondaryCommandsForGroups = secondaryCommandsForLayerAndGroups[rpIndex];
 
-                    vkAllocateCommandBuffers(_device._device, &allocInfo, &secondaryCommand);
+                    secondaryCommandsForGroups.resize(renderpass->getPipelineGroups().size());
+
+                    for (auto& secondaryCommand : secondaryCommandsForGroups)
+                    {
+                        VkCommandBufferAllocateInfo allocInfo{};
+                        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+                        allocInfo.commandPool = _commandPool._commandPool;
+                        allocInfo.commandBufferCount = 1;
+
+                        vkAllocateCommandBuffers(_device._device, &allocInfo, &secondaryCommand);
+                    }
                 }
             }
         }
@@ -766,11 +775,14 @@ namespace rp
         const auto& lastRenderpassName = _renderGraph->getResources().back()->Name;
 
         CHECK_VK_RESULT(vkResetCommandBuffer(frame.primaryCmd, 0));
-        for (auto& [_, secondaries] : frame.secondaryCmdsByLayer)
+        for (auto& [_, secondaries] : frame.secondaryCmdsByLayerAndPipelineGroup)
         {
-            for (auto& secondary : secondaries)
+            for (auto& secondaryGroup : secondaries)
             {
-                CHECK_VK_RESULT(vkResetCommandBuffer(secondary, 0));
+                for (auto& secondary : secondaryGroup)
+                {
+                    CHECK_VK_RESULT(vkResetCommandBuffer(secondary, 0));
+                }
             }
         }
 
@@ -783,11 +795,11 @@ namespace rp
             ZoneScoped;
             ZoneNameF("record command buffers for layer %s", std::to_string(layer).c_str());
 
-            assert(frame.secondaryCmdsByLayer.at(layer).size() == _renderGraph->getSortedNodesByNameForLayer(layer).size());
+            assert(frame.secondaryCmdsByLayerAndPipelineGroup.at(layer).size() == _renderGraph->getSortedNodesByNameForLayer(layer).size());
 
-            const auto& secondaryCommandBuffersForLayer = frame.secondaryCmdsByLayer.at(layer);
+            const auto& secondaryBuffersPerRenderpass = frame.secondaryCmdsByLayerAndPipelineGroup.at(layer);
 
-            size_t i = 0;
+            size_t renderpassIndex = 0;
             for (const auto& renderpassName : _renderGraph->getSortedNodesByNameForLayer(layer))
             {
                 ZoneScoped;
@@ -813,8 +825,6 @@ namespace rp
 
                 vkCmdBeginRenderPass(frame.primaryCmd, &renderpassBegin, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-                const auto secondaryCommandBuffer = secondaryCommandBuffersForLayer[i];
-
                 VkCommandBufferInheritanceInfo inheritanceInfo{};
                 inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
                 inheritanceInfo.renderPass = renderpass->getRenderPass();
@@ -828,13 +838,19 @@ namespace rp
                 secondaryBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                 secondaryBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
                 secondaryBeginInfo.pInheritanceInfo = &inheritanceInfo;
-                CHECK_VK_RESULT(vkBeginCommandBuffer(secondaryCommandBuffer, &secondaryBeginInfo));
 
-                for (auto& pg : renderpass->getPipelineGroupss())
+                const auto& secondaryBuffersForGroup = secondaryBuffersPerRenderpass[renderpassIndex];
+
+                size_t pipelineGroupIndex = 0;
+                for (const auto& pg : renderpass->getPipelineGroups())
                 {
-                    for (auto& p : pg)
+                    // TODO: Here create a job and put it into a worker thread queue to be picked up
+                    const auto secondaryBuffer = secondaryBuffersForGroup[pipelineGroupIndex];
+
+                    CHECK_VK_RESULT(vkBeginCommandBuffer(secondaryBuffer, &secondaryBeginInfo));
+                    for (const auto& p : pg)
                     {
-                        vkCmdBindPipeline(secondaryCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p->getPipeline());
+                        vkCmdBindPipeline(secondaryBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p->getPipeline());
                         {   //  TODO: This can be wasteful if nothing has changed.
                             VkViewport viewport
                             {
@@ -845,27 +861,31 @@ namespace rp
                                 .minDepth = 0.0f,
                                 .maxDepth = 1.0f
                             };
-                            vkCmdSetViewport(secondaryCommandBuffer, 0, 1, &viewport);
+                            vkCmdSetViewport(secondaryBuffer, 0, 1, &viewport);
 
                             VkRect2D scissor
                             {
                                 .offset = { 0, 0 } ,
                                 .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent)
                             };
-                            vkCmdSetScissor(secondaryCommandBuffer, 0, 1, &scissor);
+                            vkCmdSetScissor(secondaryBuffer, 0, 1, &scissor);
                         }
 
-                        renderPipelineDraw(secondaryCommandBuffer, p);
+                        renderPipelineDraw(secondaryBuffer, p);
                     }
+
+                    CHECK_VK_RESULT(vkEndCommandBuffer(secondaryBuffer));
+
+                    // TODO: Join/wait for all the thread jobs to complete here
+                    // TODO: Accumulate all the secondary buffers and call vkCmdExecuteCommands just before vkCmdEndRenderPass
+                    vkCmdExecuteCommands(frame.primaryCmd, 1, &secondaryBuffer);
+
+                    pipelineGroupIndex++;
                 }
-
-                CHECK_VK_RESULT(vkEndCommandBuffer(secondaryCommandBuffer));
-
-                vkCmdExecuteCommands(frame.primaryCmd, 1, &secondaryCommandBuffer);
 
                 vkCmdEndRenderPass(frame.primaryCmd);
 
-                ++i;
+                ++renderpassIndex;
             }
         }        
 

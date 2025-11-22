@@ -175,7 +175,7 @@ namespace hl
 	{
 		return _attachments;
 	}
-	const std::vector<std::vector<VulkanRenderGraphPipelineResources*>>& VulkanRenderGraphRenderpassResources::getPipelineGroupss() const
+	const std::vector<std::vector<VulkanRenderGraphPipelineResources*>>& VulkanRenderGraphRenderpassResources::getPipelineGroups() const
 	{
 		return _pipelineGroups;
 	}

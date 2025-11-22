@@ -35,7 +35,7 @@ namespace rp
 	struct FrameResources
 	{
 		VkCommandBuffer primaryCmd;
-		std::unordered_map<uint32_t, std::vector<VkCommandBuffer>> secondaryCmdsByLayer;
+		std::unordered_map<uint32_t, std::vector<std::vector<VkCommandBuffer>>> secondaryCmdsByLayerAndPipelineGroup;
 	};
 
 	class RenderpassesApplication : public hl::EventListener
