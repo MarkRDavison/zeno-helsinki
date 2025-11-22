@@ -800,6 +800,22 @@ namespace rp
             const auto& secondaryBuffersPerRenderpass = frame.secondaryCmdsByLayerAndPipelineGroup.at(layer);
 
             size_t renderpassIndex = 0;
+            // FUTURE WORK: Multithreaded secondary command buffer recording
+            //
+            // Current design records all pipeline groups in each renderpass sequentially.
+            // Potential optimization: record pipeline groups in parallel on worker threads.
+            //
+            // Plan:
+            // 1. For each renderpass, if it has >1 pipeline group, dispatch each group to a worker thread.
+            // 2. Each thread records its secondary command buffer independently.
+            // 3. Wait for all threads to finish.
+            // 4. Accumulate all secondary command buffers and call vkCmdExecuteCommands once to submit them to the primary command buffer.
+            //
+            // Notes:
+            // - Only safe for independent pipeline groups within a renderpass (no ordering dependencies).
+            //      - This should be fine since renderpasses in the same layer should be independant
+            // - Avoid multithreading overhead if there is only one pipeline group.
+            // - Later extension: consider parallel renderpasses if layers or renderpasses are independent.
             for (const auto& renderpassName : _renderGraph->getSortedNodesByNameForLayer(layer))
             {
                 ZoneScoped;
