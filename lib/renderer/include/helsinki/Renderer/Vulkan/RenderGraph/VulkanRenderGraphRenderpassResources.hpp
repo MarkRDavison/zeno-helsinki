@@ -32,7 +32,7 @@ namespace hl
 
 		const std::vector<RenderpassAttachment>& getAttachments() const;
 		std::vector<RenderpassAttachment>& getAttachments();
-		const std::vector<std::vector<VulkanRenderGraphPipelineResources*>>& getPipelineGroupss() const;
+		const std::vector<std::vector<VulkanRenderGraphPipelineResources*>>& getPipelineGroups() const;
 
 		const VkRenderPass getRenderPass() const;
 		const VkFramebuffer getFramebuffer(uint32_t imageIndex);

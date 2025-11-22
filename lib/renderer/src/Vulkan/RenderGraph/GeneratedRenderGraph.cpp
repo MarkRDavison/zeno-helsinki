@@ -58,7 +58,7 @@ namespace hl
         {
             if (r->Name == renderpassName)
             {
-                for (auto& pg : r->getPipelineGroupss())
+                for (auto& pg : r->getPipelineGroups())
                 {
                     for (auto& p : pg)
                     {
