@@ -168,10 +168,8 @@ namespace hl
         VkPhysicalDeviceProperties physicalDeviceProperties;
         vkGetPhysicalDeviceProperties(p, &physicalDeviceProperties);
 
-        uint32_t maxPushConstantSize = physicalDeviceProperties.limits.maxPushConstantsSize;
-
+        //uint32_t maxPushConstantSize = physicalDeviceProperties.limits.maxPushConstantsSize;
         // TODO: Record this max size somewhere
-        std::cout << "Max push constant size: " << maxPushConstantSize << std::endl;
 
         VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
         if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
