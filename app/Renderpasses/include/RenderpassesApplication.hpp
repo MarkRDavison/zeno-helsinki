@@ -31,6 +31,13 @@ struct GLFWwindow;
 
 namespace rp
 {
+
+	struct FrameResources
+	{
+		VkCommandBuffer primaryCmd;
+		std::unordered_map<uint32_t, std::vector<VkCommandBuffer>> secondaryCmdsByLayer;
+	};
+
 	class RenderpassesApplication : public hl::EventListener
 	{
 	public:
@@ -54,7 +61,7 @@ namespace rp
 		void createCommandBuffers();
 		void recreateSwapChain();
 		void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
-		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+		void recordCommandBuffer(FrameResources& frame, uint32_t imageIndex);
 		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline);
 
 	private:
@@ -69,7 +76,7 @@ namespace rp
 
 		hl::VulkanSynchronisationContext _syncContext;
 
-		std::vector<VkCommandBuffer> _perFrameCommandBuffers;
+		std::vector<FrameResources> _frameResources;
 
 		hl::GeneratedRenderGraph* _renderGraph{ nullptr };
 

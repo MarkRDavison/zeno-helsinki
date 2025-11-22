@@ -35,9 +35,10 @@ namespace hl
                             .format = "VK_FORMAT_D32_SFLOAT"
                         }
                     },
-                    .pipelines =
+                    .pipelineGroups =
                     {
-                        hl::PipelineInfo
+                        {
+                            hl::PipelineInfo
                         {
                             .name = "skybox_pipeline",
                             .shaderVert = ("/data/shaders/skybox.vert"),
@@ -137,6 +138,7 @@ namespace hl
                             },
                             .enableBlending = false
                         }
+                        }
                     }
                 },
                 hl::RenderpassInfo
@@ -153,40 +155,42 @@ namespace hl
                             .format = "VK_FORMAT_B8G8R8A8_SRGB"
                         }
                     },
-                    .pipelines =
+                    .pipelineGroups =
                     {
-                        hl::PipelineInfo
                         {
-                            .name = "postprocess_pipeline",
-                            .shaderVert = ("/data/shaders/post_process.vert"),
-                            .shaderFrag = ("/data/shaders/post_process.frag"),
-                            .descriptorSets =
+                            hl::PipelineInfo
                             {
-                                hl::DescriptorSetInfo
+                                .name = "postprocess_pipeline",
+                                .shaderVert = ("/data/shaders/post_process.vert"),
+                                .shaderFrag = ("/data/shaders/post_process.frag"),
+                                .descriptorSets =
                                 {
-                                    .name = "input_sampler",
-                                    .bindings =
+                                    hl::DescriptorSetInfo
                                     {
-                                        hl::DescriptorBinding
+                                        .name = "input_sampler",
+                                        .bindings =
                                         {
-                                            .binding = 0,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "scene_color"
+                                            hl::DescriptorBinding
+                                            {
+                                                .binding = 0,
+                                                .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                                .stage = "FRAGMENT",
+                                                .resource = "scene_color"
+                                            }
                                         }
                                     }
-                                }
-                            },
-                            .depthState =
-                            {
-                                .testEnable = false,
-                                .writeEnable = false
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_NONE
-                            },
-                            .enableBlending = false
+                                },
+                                .depthState =
+                                {
+                                    .testEnable = false,
+                                    .writeEnable = false
+                                },
+                                .rasterState =
+                                {
+                                    .cullMode = VK_CULL_MODE_NONE
+                                },
+                                .enableBlending = false
+                            }
                         }
                     }
                 },
@@ -205,24 +209,26 @@ namespace hl
                             .clear = VkClearValue{.color = {{ 0.0f, 0.0f, 0.0f, 0.0f }}}
                         }
                     },
-                    .pipelines =
+                    .pipelineGroups =
                     {
-                        hl::PipelineInfo
                         {
-                            .name = "ui",
-                            .shaderVert = ("/data/shaders/ui.vert"),
-                            .shaderFrag = ("/data/shaders/ui.frag"),
-                            .descriptorSets = {},
-                            .depthState =
+                            hl::PipelineInfo
                             {
-                                .testEnable = false,
-                                .writeEnable = false
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_NONE
-                            },
-                            .enableBlending = true // keep blending for UI elements
+                                .name = "ui",
+                                .shaderVert = ("/data/shaders/ui.vert"),
+                                .shaderFrag = ("/data/shaders/ui.frag"),
+                                .descriptorSets = {},
+                                .depthState =
+                                {
+                                    .testEnable = false,
+                                    .writeEnable = false
+                                },
+                                .rasterState =
+                                {
+                                    .cullMode = VK_CULL_MODE_NONE
+                                },
+                                .enableBlending = true // keep blending for UI elements
+                            }
                         }
                     }
                 },
@@ -240,47 +246,49 @@ namespace hl
                             .format = "VK_FORMAT_B8G8R8A8_SRGB"
                         }
                     },
-                    .pipelines =
+                    .pipelineGroups =
                     {
-                        hl::PipelineInfo
                         {
-                            .name = "composite_pipeline",
-                            .shaderVert = ("/data/shaders/fullscreen_sample.vert"),
-                            .shaderFrag = ("/data/shaders/composite.frag"),
-                            .descriptorSets =
+                            hl::PipelineInfo
                             {
-                                hl::DescriptorSetInfo
+                                .name = "composite_pipeline",
+                                .shaderVert = ("/data/shaders/fullscreen_sample.vert"),
+                                .shaderFrag = ("/data/shaders/composite.frag"),
+                                .descriptorSets =
                                 {
-                                    .name = "composite_inputs",
-                                    .bindings =
+                                    hl::DescriptorSetInfo
                                     {
-                                        hl::DescriptorBinding
+                                        .name = "composite_inputs",
+                                        .bindings =
                                         {
-                                            .binding = 0,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "post_color"
-                                        },
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 1,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "ui_color"
+                                            hl::DescriptorBinding
+                                            {
+                                                .binding = 0,
+                                                .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                                .stage = "FRAGMENT",
+                                                .resource = "post_color"
+                                            },
+                                            hl::DescriptorBinding
+                                            {
+                                                .binding = 1,
+                                                .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                                .stage = "FRAGMENT",
+                                                .resource = "ui_color"
+                                            }
                                         }
                                     }
-                                }
-                            },
-                            .depthState =
-                            {
-                                .testEnable = false,
-                                .writeEnable = false
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_NONE
-                            },
-                            .enableBlending = true
+                                },
+                                .depthState =
+                                {
+                                    .testEnable = false,
+                                    .writeEnable = false
+                                },
+                                .rasterState =
+                                {
+                                    .cullMode = VK_CULL_MODE_NONE
+                                },
+                                .enableBlending = true
+                            }
                         }
                     }
                 }

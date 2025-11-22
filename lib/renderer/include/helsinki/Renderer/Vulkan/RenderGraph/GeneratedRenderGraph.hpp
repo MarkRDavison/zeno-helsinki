@@ -22,6 +22,11 @@ namespace hl
 		VkDescriptorSet getDescriptorSet(const std::string& renderpassName, const std::string& pipelineName, uint32_t frameNumber);
 
 		std::vector<VulkanRenderGraphRenderpassResources*> getResources();
+		VulkanRenderGraphRenderpassResources* getRenderpassByName(const std::string& name);
+
+		std::vector<std::string> getSortedNodesByName() const;
+		const std::vector<std::string>& getSortedNodesByNameForLayer(uint32_t layer) const;
+		uint32_t getNumberLayers() const;
 
 		void destroy();
 		void recreate(uint32_t width, uint32_t height);
@@ -33,6 +38,9 @@ namespace hl
 		VulkanDevice& _device;
 		VulkanSwapChain& _swapChain;
 		const std::vector<hl::RenderpassInfo> _renderGraph;
+		const std::unordered_map<std::string, Node> _dag;
+		std::vector<const Node*> _sortedNodes;
+		std::unordered_map<uint32_t, std::vector<std::string>> _nodesByLayer;
 		std::vector<VulkanRenderGraphRenderpassResources*> _resources;
 		ResourceManager& _resourceManager;
 	};
