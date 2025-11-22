@@ -127,6 +127,8 @@ namespace hl
             throw std::runtime_error("texture image format does not support linear blitting!");
         }
 
+        // TODO: Validate that the command pool supports vkCmdBlitImage
+        // VUID states it MUST be a graphics queue, but locally this works for my transfer queue
         auto commandBuffer = commandPool.createSingleTimeCommands();
 
         {
