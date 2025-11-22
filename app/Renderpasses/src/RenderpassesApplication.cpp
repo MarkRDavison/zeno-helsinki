@@ -653,6 +653,9 @@ namespace rp
 
         {
             ZoneScopedN("LoadResources");
+            _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+                "placeholder",
+                resourceContext);
             _modelHandle = _resourceManager.Load<hl::BasicModelResource>(
                 "viking_room",
                 resourceContext);
