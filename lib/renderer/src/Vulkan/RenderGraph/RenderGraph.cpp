@@ -975,4 +975,107 @@ namespace hl
 		}
 	}
 
+	std::unordered_map<std::string, Node> RenderGraph::generateDAG(const std::vector<hl::RenderpassInfo>& renderpassInfo)
+	{
+		std::unordered_map<std::string, std::string> whoWritesWhatOutput;
+
+		for (const auto& r : renderpassInfo)
+		{
+			for (const auto& o : r.outputs)
+			{
+				whoWritesWhatOutput.insert({ o.name, r.name });
+			}
+		}
+
+		std::unordered_map<std::string, Node> nodes;
+
+		for (const auto& rpi : renderpassInfo)
+		{
+			nodes.insert(
+				{
+					rpi.name,
+					Node
+					{
+						.name = rpi.name
+					}
+				});
+		}
+
+		for (const auto& rpi : renderpassInfo)
+		{
+			auto& node = nodes[rpi.name];
+
+			for (const auto& i : rpi.inputs)
+			{
+				auto& inputProducer = nodes[whoWritesWhatOutput[i]];
+
+				node.prev.push_back(inputProducer.name);
+				inputProducer.next.push_back(node.name);
+			}
+		}
+
+		auto&& computeLevel = [&](auto&& self, Node& _n) -> uint32_t
+			{
+				if (_n.state == Node::Visit::Visiting)
+				{
+					throw std::runtime_error("Cycle detected in renderpass DAG: " + _n.name);
+				}
+
+				_n.state = Node::Visit::Visiting;
+
+				if (_n.prev.empty())
+				{
+					_n.layer = 0;
+				}
+				else
+				{
+					uint32_t maxParent = 0;
+					for (auto& parent : _n.prev)
+					{
+						maxParent = std::max(maxParent, self(self, nodes[parent]));
+					}
+
+					_n.layer = maxParent + 1;
+				}
+
+				_n.state = Node::Visit::Done;
+
+				return _n.layer;
+			};
+
+		for (auto& [nodeName, node] : nodes)
+		{
+			if (node.layer == std::numeric_limits<uint32_t>::max())
+			{
+				computeLevel(computeLevel, node);
+			}
+		}
+
+		uint32_t maxLayer = 0;
+		for (auto& [_, node] : nodes)
+		{
+			if (node.layer > maxLayer)
+			{
+				maxLayer = node.layer;
+			}
+		}
+
+		size_t topLayerCount = 0;
+		for (auto& [_, node] : nodes)
+		{
+			if (node.layer == maxLayer)
+			{
+				topLayerCount++;
+			}
+		}
+
+		if (topLayerCount != 1)
+		{
+			throw std::runtime_error(
+				"RenderGraph is invalid: multiple nodes exist at the top layer");
+		}
+
+		return nodes;
+	}
+
 }

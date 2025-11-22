@@ -2,13 +2,26 @@
 
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
+#include <unordered_map>
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
 namespace hl
 {
     class VulkanRenderGraphRenderpassResources;
+
+    struct Node
+    {
+        enum class Visit { NotVisited, Visiting, Done };
+
+        std::string name;
+        std::vector<std::string> next;
+        std::vector<std::string> prev;
+
+        uint32_t layer{ std::numeric_limits<uint32_t>::max() };
+        Visit state{ Visit::NotVisited };
+    };
 
     enum class ResourceType
     {
@@ -140,6 +153,8 @@ namespace hl
         static VkFormat extractFormat(const std::string& formatString);
         static VkDescriptorType extractDescriptorType(const std::string& descriptorTypeString);
         static VkFormat extractVertexAttributeFormat(VertexAttributeFormat format);
+
+        static std::unordered_map<std::string, Node> generateDAG(const std::vector<hl::RenderpassInfo>& renderpassInfo);
     };
 
 }

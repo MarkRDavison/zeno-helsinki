@@ -70,8 +70,8 @@ namespace hl
 
 		// User interaction and behavior parameters
 		// These control how the camera responds to input and environmental factors
-		float movementSpeed;    // Units per second for translation movement
-		float mouseSensitivity; // Multiplier for mouse input to rotation angle conversion
+		float movementSpeed{ 20.0f };    // Units per second for translation movement
+		float mouseSensitivity{ 1.0f }; // Multiplier for mouse input to rotation angle conversion
 		float zoom;             // Field of view control for perspective projection
 	};
 
