@@ -259,8 +259,8 @@ namespace rp
 
         updateUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
         _syncContext.getFence(currentFrame).reset();
-        vkResetCommandBuffer(_perFrameCommandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-        recordCommandBuffer(_perFrameCommandBuffers[currentFrame], imageIndex);
+
+        recordCommandBuffer(_frameResources[currentFrame], imageIndex);
 
         VkSemaphore waitSemaphores[] = { _syncContext.getImageAvailableSemaphore(currentFrame)._semaphore };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -271,7 +271,7 @@ namespace rp
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &_perFrameCommandBuffers[currentFrame];
+        submitInfo.pCommandBuffers = &_frameResources[currentFrame].primaryCmd;
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -364,107 +364,109 @@ namespace rp
                         .format = "VK_FORMAT_D32_SFLOAT"
                     }
                 },
-                .pipelines =
+                .pipelineGroups =
                 {
-                    hl::PipelineInfo
                     {
-                        .name = "skybox_pipeline",
-                        .shaderVert = ROOT_PATH("/data/shaders/skybox.vert"),
-                        .shaderFrag = ROOT_PATH("/data/shaders/skybox.frag"),
-                        .descriptorSets =
+                        hl::PipelineInfo
                         {
-                            hl::DescriptorSetInfo
+                            .name = "skybox_pipeline",
+                            .shaderVert = ROOT_PATH("/data/shaders/skybox.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/skybox.frag"),
+                            .descriptorSets =
                             {
-                                .name = "",
-                                .bindings = 
+                                hl::DescriptorSetInfo
                                 {
-                                    hl::DescriptorBinding
+                                    .name = "",
+                                    .bindings =
                                     {
-                                        .binding = 0,
-                                        .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-                                        .stage = "VERTEX",
-                                        .resource = "model_matrix_ubo"
-                                    },
-                                    hl::DescriptorBinding
-                                    {
-                                        .binding = 1,
-                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                        .stage = "FRAGMENT",
-                                        .resource = "skybox_texture"
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "model_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "skybox_texture"
+                                        }
                                     }
                                 }
-                            }
-                        },
-                        .depthState =
-                        {
-                            .writeEnable = false,
-                            .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
-                        },
-                        .rasterState = 
-                        {
-                            .cullMode = VK_CULL_MODE_NONE
-                        },
-                        .enableBlending = false
-                    },
-                    hl::PipelineInfo
-                    {
-                        .name = "model_pipeline",
-                        .shaderVert = ROOT_PATH("/data/shaders/triangle.vert"),
-                        .shaderFrag = ROOT_PATH("/data/shaders/triangle.frag"),
-                        .descriptorSets =
-                        {
-                            hl::DescriptorSetInfo
-                            {
-                                .name = "model_uniforms",
-                                .bindings =
-                                {
-                                    hl::DescriptorBinding
-                                    {
-                                        .binding = 0,
-                                        .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-                                        .stage = "VERTEX",
-                                        .resource = "model_matrix_ubo"
-                                    },
-                                    hl::DescriptorBinding
-                                    {
-                                        .binding = 1,
-                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                        .stage = "FRAGMENT",
-                                        .resource = "viking_room"
-                                    }
-                                }
-                            }
-                        },
-                        .vertexInputInfo = hl::VertexInputInfo
-                        {
-                            .attributes =
-                            {
-                                {
-                                    .name = "inPosition",
-                                    .format = hl::VertexAttributeFormat::Vec3,
-                                    .location = 0,
-                                    .offset = offsetof(hl::Vertex, pos)
-                                },
-                                {
-                                    .name = "inColor",
-                                    .format = hl::VertexAttributeFormat::Vec3,
-                                    .location = 1,
-                                    .offset = offsetof(hl::Vertex, color)
-                                },
-                                {
-                                    .name = "inTexCoord",
-                                    .format = hl::VertexAttributeFormat::Vec2,
-                                    .location = 2,
-                                    .offset = offsetof(hl::Vertex, texCoord)
-                                },
                             },
-                            .stride = sizeof(hl::Vertex)
+                            .depthState =
+                            {
+                                .writeEnable = false,
+                                .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = false
                         },
-                        .rasterState =
+                        hl::PipelineInfo
                         {
-                            .cullMode = VK_CULL_MODE_BACK_BIT
-                        },
-                        .enableBlending = false
+                            .name = "model_pipeline",
+                            .shaderVert = ROOT_PATH("/data/shaders/triangle.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/triangle.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .name = "model_uniforms",
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "model_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "viking_room"
+                                        }
+                                    }
+                                }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 0,
+                                        .offset = offsetof(hl::Vertex, pos)
+                                    },
+                                    {
+                                        .name = "inColor",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 1,
+                                        .offset = offsetof(hl::Vertex, color)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 2,
+                                        .offset = offsetof(hl::Vertex, texCoord)
+                                    },
+                                },
+                                .stride = sizeof(hl::Vertex)
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_BACK_BIT
+                            },
+                            .enableBlending = false
+                        }
                     }
                 }
             },
@@ -482,40 +484,42 @@ namespace rp
                         .format = "VK_FORMAT_B8G8R8A8_SRGB"
                     }
                 },
-                .pipelines =
+                .pipelineGroups =
                 {
-                    hl::PipelineInfo
                     {
-                        .name = "postprocess_pipeline",
-                        .shaderVert = ROOT_PATH("/data/shaders/post_process.vert"),
-                        .shaderFrag = ROOT_PATH("/data/shaders/post_process.frag"),
-                        .descriptorSets =
+                        hl::PipelineInfo
                         {
-                            hl::DescriptorSetInfo
+                            .name = "postprocess_pipeline",
+                            .shaderVert = ROOT_PATH("/data/shaders/post_process.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/post_process.frag"),
+                            .descriptorSets =
                             {
-                                .name = "input_sampler",
-                                .bindings =
+                                hl::DescriptorSetInfo
                                 {
-                                    hl::DescriptorBinding
+                                    .name = "input_sampler",
+                                    .bindings =
                                     {
-                                        .binding = 0,
-                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                        .stage = "FRAGMENT",
-                                        .resource = "scene_color"
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "scene_color"
+                                        }
                                     }
                                 }
-                            }
-                        },
-                        .depthState =
-                        {
-                            .testEnable = false,
-                            .writeEnable = false
-                        },
-                        .rasterState =
-                        {
-                            .cullMode = VK_CULL_MODE_NONE
-                        },
-                        .enableBlending = false
+                            },
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = false
+                        }
                     }
                 }
             },
@@ -534,24 +538,26 @@ namespace rp
                         .clear = VkClearValue{.color = {{ 0.0f, 0.0f, 0.0f, 0.0f }}}
                     }
                 },
-                .pipelines =
+                .pipelineGroups =
                 {
-                    hl::PipelineInfo
                     {
-                        .name = "ui",
-                        .shaderVert = ROOT_PATH("/data/shaders/ui.vert"),
-                        .shaderFrag = ROOT_PATH("/data/shaders/ui.frag"),
-                        .descriptorSets = {},
-                        .depthState =
+                        hl::PipelineInfo
                         {
-                            .testEnable = false,
-                            .writeEnable = false
-                        },
-                        .rasterState =
-                        {
-                            .cullMode = VK_CULL_MODE_NONE
-                        },
-                        .enableBlending = true // keep blending for UI elements
+                            .name = "ui",
+                            .shaderVert = ROOT_PATH("/data/shaders/ui.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/ui.frag"),
+                            .descriptorSets = {},
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = true // keep blending for UI elements
+                        }
                     }
                 }
             },
@@ -569,51 +575,62 @@ namespace rp
                         .format = "VK_FORMAT_B8G8R8A8_SRGB"
                     }
                 },
-                .pipelines =
+                .pipelineGroups =
                 {
-                    hl::PipelineInfo
                     {
-                        .name = "composite_pipeline",
-                        .shaderVert = ROOT_PATH("/data/shaders/fullscreen_sample.vert"),
-                        .shaderFrag = ROOT_PATH("/data/shaders/composite.frag"),
-                        .descriptorSets =
+                        hl::PipelineInfo
                         {
-                            hl::DescriptorSetInfo
+                            .name = "composite_pipeline",
+                            .shaderVert = ROOT_PATH("/data/shaders/fullscreen_sample.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/composite.frag"),
+                            .descriptorSets =
                             {
-                                .name = "composite_inputs",
-                                .bindings =
+                                hl::DescriptorSetInfo
                                 {
-                                    hl::DescriptorBinding
+                                    .name = "composite_inputs",
+                                    .bindings =
                                     {
-                                        .binding = 0,
-                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                        .stage = "FRAGMENT",
-                                        .resource = "post_color"
-                                    },
-                                    hl::DescriptorBinding
-                                    {
-                                        .binding = 1,
-                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                        .stage = "FRAGMENT",
-                                        .resource = "ui_color"
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "post_color"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "ui_color"
+                                        }
                                     }
                                 }
-                            }
-                        },
-                        .depthState =
-                        {
-                            .testEnable = false,
-                            .writeEnable = false
-                        },
-                        .rasterState =
-                        {
-                            .cullMode = VK_CULL_MODE_NONE
-                        },
-                        .enableBlending = true
+                            },
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = true
+                        }
                     }
                 }
             }
         };
+
+        {
+            ZoneScopedN("GenerateRenderGraph");
+            _renderGraph = new hl::GeneratedRenderGraph(
+                _device,
+                _swapChain,
+                renderpasses,
+                _resourceManager);
+        }
 
         {
             ZoneScopedN("PoolBufferSyncContext");
@@ -651,15 +668,6 @@ namespace rp
         }
 
         {
-            ZoneScopedN("GenerateRenderGraph");
-            _renderGraph = new hl::GeneratedRenderGraph(
-                _device,
-                _swapChain,
-                renderpasses,
-                _resourceManager);
-        }
-
-        {
             ZoneScopedN("updateAllOutputResources");
             _renderGraph->updateAllOutputResources();
         }
@@ -672,15 +680,43 @@ namespace rp
 
     void RenderpassesApplication::createCommandBuffers()
     {
-        _perFrameCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        _frameResources.resize(MAX_FRAMES_IN_FLIGHT);
 
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.commandPool = _commandPool._commandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t)_perFrameCommandBuffers.size();
+        allocInfo.commandBufferCount = (uint32_t)_frameResources.size();
 
-        CHECK_VK_RESULT(vkAllocateCommandBuffers(_device._device, &allocInfo, _perFrameCommandBuffers.data()));
+        std::vector<VkCommandBuffer> perFrameCommandBuffers(MAX_FRAMES_IN_FLIGHT);
+
+        CHECK_VK_RESULT(vkAllocateCommandBuffers(_device._device, &allocInfo, perFrameCommandBuffers.data()));
+
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            auto& frame = _frameResources[i];
+            frame.primaryCmd = perFrameCommandBuffers[i];
+
+            for (uint32_t layer = 0; layer < _renderGraph->getNumberLayers(); layer++)
+            {
+                const auto& renderpassesForLayer = _renderGraph->getSortedNodesByNameForLayer(layer);
+
+                auto& secondaryCommandsForLayer = frame.secondaryCmdsByLayer[layer];
+
+                secondaryCommandsForLayer.resize(renderpassesForLayer.size());
+
+                for (auto& secondaryCommand : secondaryCommandsForLayer)
+                {
+                    VkCommandBufferAllocateInfo allocInfo{};
+                    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+                    allocInfo.commandPool = _commandPool._commandPool;
+                    allocInfo.commandBufferCount = 1;
+
+                    vkAllocateCommandBuffers(_device._device, &allocInfo, &secondaryCommand);
+                }
+            }
+        }
     }
 
     void RenderpassesApplication::recreateSwapChain()
@@ -725,65 +761,113 @@ namespace rp
         return framebufferExtent;
     }
 
-    void RenderpassesApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+    void RenderpassesApplication::recordCommandBuffer(FrameResources& frame, uint32_t imageIndex)
     {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
         const auto& lastRenderpassName = _renderGraph->getResources().back()->Name;
 
-        for (auto& renderpass : _renderGraph->getResources())
+        CHECK_VK_RESULT(vkResetCommandBuffer(frame.primaryCmd, 0));
+        for (auto& [_, secondaries] : frame.secondaryCmdsByLayer)
         {
-            ZoneScoped;
-            ZoneNameF("record command buffer for %s", renderpass->Name.c_str());
-            const auto& clearValues = renderpass->getClearValues();
-
-            VkRenderPassBeginInfo renderpassBegin
+            for (auto& secondary : secondaries)
             {
-                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                .renderPass = renderpass->getRenderPass(),
-                .framebuffer = renderpass->getFramebuffer(lastRenderpassName == renderpass->Name ? imageIndex : currentFrame),
-                .renderArea = 
-                {
-                    .offset = { 0,0 },
-                    .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent),
-                },
-                .clearValueCount = (uint32_t)clearValues.size(),
-                .pClearValues = clearValues.data()
-            };
-
-            vkCmdBeginRenderPass(commandBuffer, &renderpassBegin, VK_SUBPASS_CONTENTS_INLINE);
-
-            for (auto& pipeline : renderpass->getPipelines())
-            {
-                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
-
-                VkViewport viewport
-                {
-                    .x = 0.0f,
-                    .y = 0.0f,
-                    .width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width,
-                    .height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height,
-                    .minDepth = 0.0f,
-                    .maxDepth = 1.0f
-                };
-                vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-                VkRect2D scissor
-                {
-                    .offset = { 0, 0 } ,
-                    .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent)
-                };
-                vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-                renderPipelineDraw(commandBuffer, pipeline);
+                CHECK_VK_RESULT(vkResetCommandBuffer(secondary, 0));
             }
-
-            vkCmdEndRenderPass(commandBuffer);
         }
 
-        vkEndCommandBuffer(commandBuffer);
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        CHECK_VK_RESULT(vkBeginCommandBuffer(frame.primaryCmd, &beginInfo));
+
+        for (uint32_t layer = 0; layer < _renderGraph->getNumberLayers(); ++layer)
+        {
+            ZoneScoped;
+            ZoneNameF("record command buffers for layer %s", std::to_string(layer).c_str());
+
+            assert(frame.secondaryCmdsByLayer.at(layer).size() == _renderGraph->getSortedNodesByNameForLayer(layer).size());
+
+            const auto& secondaryCommandBuffersForLayer = frame.secondaryCmdsByLayer.at(layer);
+
+            size_t i = 0;
+            for (const auto& renderpassName : _renderGraph->getSortedNodesByNameForLayer(layer))
+            {
+                ZoneScoped;
+                ZoneNameF("record command buffer for %s", renderpassName.c_str());
+
+                const auto& renderpass = _renderGraph->getRenderpassByName(renderpassName);
+                const auto& clearValues = renderpass->getClearValues();
+                const auto& framebuffer = renderpass->getFramebuffer(lastRenderpassName == renderpass->Name ? imageIndex : currentFrame);
+
+                VkRenderPassBeginInfo renderpassBegin
+                {
+                    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                    .renderPass = renderpass->getRenderPass(),
+                    .framebuffer = framebuffer,
+                    .renderArea =
+                    {
+                        .offset = { 0,0 },
+                        .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent),
+                    },
+                    .clearValueCount = (uint32_t)clearValues.size(),
+                    .pClearValues = clearValues.data()
+                };
+
+                vkCmdBeginRenderPass(frame.primaryCmd, &renderpassBegin, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+                const auto secondaryCommandBuffer = secondaryCommandBuffersForLayer[i];
+
+                VkCommandBufferInheritanceInfo inheritanceInfo{};
+                inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+                inheritanceInfo.renderPass = renderpass->getRenderPass();
+                inheritanceInfo.subpass = 0;
+                inheritanceInfo.framebuffer = framebuffer;
+                inheritanceInfo.occlusionQueryEnable = VK_FALSE;
+                inheritanceInfo.queryFlags = 0;
+                inheritanceInfo.pipelineStatistics = 0;
+
+                VkCommandBufferBeginInfo secondaryBeginInfo{};
+                secondaryBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                secondaryBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+                secondaryBeginInfo.pInheritanceInfo = &inheritanceInfo;
+                CHECK_VK_RESULT(vkBeginCommandBuffer(secondaryCommandBuffer, &secondaryBeginInfo));
+
+                for (auto& pipeline : renderpass->getPipelines())
+                {
+                    vkCmdBindPipeline(secondaryCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
+
+                    {   //  TODO: This can be wasteful if nothing has changed.
+                        VkViewport viewport
+                        {
+                            .x = 0.0f,
+                            .y = 0.0f,
+                            .width = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).width,
+                            .height = (float)getExtent(renderpass->getExtent(), _swapChain._swapChainExtent).height,
+                            .minDepth = 0.0f,
+                            .maxDepth = 1.0f
+                        };
+                        vkCmdSetViewport(secondaryCommandBuffer, 0, 1, &viewport);
+
+                        VkRect2D scissor
+                        {
+                            .offset = { 0, 0 } ,
+                            .extent = getExtent(renderpass->getExtent(), _swapChain._swapChainExtent)
+                        };
+                        vkCmdSetScissor(secondaryCommandBuffer, 0, 1, &scissor);
+                    }
+
+                    renderPipelineDraw(secondaryCommandBuffer, pipeline);
+                }
+
+                CHECK_VK_RESULT(vkEndCommandBuffer(secondaryCommandBuffer));
+
+                vkCmdExecuteCommands(frame.primaryCmd, 1, &secondaryCommandBuffer);
+
+                vkCmdEndRenderPass(frame.primaryCmd);
+
+                ++i;
+            }
+        }        
+
+        CHECK_VK_RESULT(vkEndCommandBuffer(frame.primaryCmd));
     }
 
 

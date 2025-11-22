@@ -103,9 +103,9 @@ namespace hl
     {
         std::string name;
         bool useMultiSampling;// TODO: Move this to the outputs ResourceInfo type
-        std::vector<std::string> inputs;           // names of input resources
-        std::vector<ResourceInfo> outputs;         // resources this pass writes
-        std::vector<PipelineInfo> pipelines;       // pipelines in this pass
+        std::vector<std::string> inputs;
+        std::vector<ResourceInfo> outputs;
+        std::vector<std::vector<PipelineInfo>> pipelineGroups;
         VkExtent2D extent{};
     };
 
