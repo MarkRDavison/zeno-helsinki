@@ -702,6 +702,11 @@ namespace rp
             auto& frame = _frameResources[i];
             frame.primaryCmd = perFrameCommandBuffers[i];
 
+            _device.setDebugName(
+                reinterpret_cast<uint64_t>(frame.primaryCmd),
+                VK_OBJECT_TYPE_COMMAND_BUFFER,
+                ("PrimaryCommandBuffer" + std::to_string(i)).c_str());
+
             for (uint32_t layer = 0; layer < _renderGraph->getNumberLayers(); layer++)
             {
                 const auto& renderpassesForLayer = _renderGraph->getSortedNodesByNameForLayer(layer);
@@ -716,6 +721,7 @@ namespace rp
 
                     secondaryCommandsForGroups.resize(renderpass->getPipelineGroups().size());
 
+                    uint32_t groupIndex = 0;
                     for (auto& secondaryCommand : secondaryCommandsForGroups)
                     {
                         VkCommandBufferAllocateInfo allocInfo{};
@@ -725,6 +731,13 @@ namespace rp
                         allocInfo.commandBufferCount = 1;
 
                         vkAllocateCommandBuffers(_device._device, &allocInfo, &secondaryCommand);
+
+                        _device.setDebugName(
+                            reinterpret_cast<uint64_t>(secondaryCommand),
+                            VK_OBJECT_TYPE_COMMAND_BUFFER,
+                            ("SecondaryCommandBuffer_" + std::to_string(i) + "_" + renderpass->Name + "_Group_" + std::to_string(groupIndex)).c_str());
+
+                        groupIndex++;
                     }
                 }
             }
