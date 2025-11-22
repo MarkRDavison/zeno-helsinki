@@ -111,14 +111,28 @@ namespace rp
     void RenderpassesApplication::OnEvent(const hl::Event& event)
     {
         hl::EventDispatcher dispatcher(event);
-        std::cout << "EVENT!" << std::endl;
         dispatcher.Dispatch<hl::KeyPressEvent>([this](const hl::KeyPressEvent& e)
             {
-                std::cout << " - Key Pressed Event: " << e.GetKeyCode() << std::endl;
+                if (e.GetKeyCode() == GLFW_KEY_A)
+                {
+                    _camera->processKeyboard(hl::CameraMovement::LEFT, 1.0f / 60.0f);
+                }
+                if (e.GetKeyCode() == GLFW_KEY_D)
+                {
+                    _camera->processKeyboard(hl::CameraMovement::RIGHT, 1.0f / 60.0f);
+                }
+                if (e.GetKeyCode() == GLFW_KEY_S)
+                {
+                    _camera->processKeyboard(hl::CameraMovement::BACKWARD, 1.0f / 60.0f);
+                }
+                if (e.GetKeyCode() == GLFW_KEY_W)
+                {
+                    _camera->processKeyboard(hl::CameraMovement::FORWARD, 1.0f / 60.0f);
+                }
             });
         dispatcher.Dispatch<hl::KeyReleaseEvent>([this](const hl::KeyReleaseEvent& e)
             {
-                std::cout << " - Key Released Event: " << e.GetKeyCode() << std::endl;
+
             });
         dispatcher.Dispatch<hl::ScrollEvent>([this](const hl::ScrollEvent& e)
             {
@@ -791,8 +805,7 @@ namespace rp
         }
         else if (pipeline->Name == "model_pipeline")
         {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
             vkCmdPushConstants(
                 commandBuffer,
