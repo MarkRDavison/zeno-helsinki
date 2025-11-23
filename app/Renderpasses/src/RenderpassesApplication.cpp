@@ -673,6 +673,7 @@ namespace rp
         {
             .device = &_device,
             .pool = &_oneTimeCommandPool, 
+            .resourceManager = &_resourceManager,
             .rootPath = rp::RenderpassesConfig::RootPath
         };
 
@@ -680,6 +681,10 @@ namespace rp
             ZoneScopedN("LoadResources");
             _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
                 "placeholder",
+                resourceContext);
+            
+            _newModelHandle = _resourceManager.Load<hl::ModelResource>(
+                "satelliteDish_detailed",
                 resourceContext);
             _modelHandle = _resourceManager.Load<hl::BasicModelResource>(
                 "viking_room",

@@ -15,7 +15,7 @@ namespace hl
         std::vector<tinyobj::material_t> materials;
         std::string err;
         std::string warn;
-
+        
         if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath.c_str()))
         {
             throw std::runtime_error(err);

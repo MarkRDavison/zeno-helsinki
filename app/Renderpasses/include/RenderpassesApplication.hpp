@@ -21,6 +21,7 @@
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
+#include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
@@ -86,6 +87,7 @@ namespace rp
 		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
 		hl::ResourceHandle<hl::UniformBufferResource> _directionalLightHandle;
 		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
+		hl::ResourceHandle<hl::ModelResource> _newModelHandle;
 		hl::Camera* _camera{ nullptr };
 
 		RenderpassConfig _config;
