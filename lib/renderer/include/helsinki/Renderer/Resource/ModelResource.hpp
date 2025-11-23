@@ -4,10 +4,11 @@
 #include <helsinki/System/Resource/Resource.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanBuffer.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
+#include <helsinki/Renderer/Resource/Material.hpp>
+#include <helsinki/Renderer/Resource/Mesh.hpp>
 
 namespace hl
 {
-
 	class ModelResource : public Resource
 	{
 	public:
@@ -23,6 +24,8 @@ namespace hl
 		VulkanCommandPool& _commandPool;
 		ResourceManager& _resourceManager;
 		const std::string _rootPath;
+		std::vector<Material> _materials;
+		std::vector<Mesh> _meshes;
 	};
 
 }

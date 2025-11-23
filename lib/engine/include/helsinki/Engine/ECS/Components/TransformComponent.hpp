@@ -1,9 +1,7 @@
 #pragma once
 
 #include <helsinki/Engine/ECS/Component.hpp>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <helsinki/System/glm.hpp>
 
 namespace hl
 {
