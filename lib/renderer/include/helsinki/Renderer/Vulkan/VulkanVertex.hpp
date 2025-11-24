@@ -72,6 +72,7 @@ namespace std
             seed ^= h2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             seed ^= h3 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             seed ^= h4 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            return seed;
         }
     };
 }
