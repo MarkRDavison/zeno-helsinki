@@ -21,6 +21,7 @@
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
+#include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
@@ -61,6 +62,7 @@ namespace rp
 		void createCommandBuffers();
 		void recreateSwapChain();
 		void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
+		void updateMaterialUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer, const hl::Material& material, uint32_t index);
 		void recordCommandBuffer(FrameResources& frame, uint32_t imageIndex);
 		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline);
 
@@ -83,7 +85,10 @@ namespace rp
 		hl::ResourceManager _resourceManager;
 
 		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
+		hl::ResourceHandle<hl::UniformBufferResource> _materialHandle;
 		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
+		hl::ResourceHandle<hl::ModelResource> _satelliteModelHandle;
+
 		hl::Camera* _camera{ nullptr };
 
 		RenderpassConfig _config;

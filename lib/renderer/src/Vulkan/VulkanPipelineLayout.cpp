@@ -1,7 +1,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanPipelineLayout.hpp>
+#include <helsinki/System/glm.hpp>
 #include <stdexcept>
 #include <iostream>
-#include <glm/glm.hpp>
 
 namespace hl
 {
