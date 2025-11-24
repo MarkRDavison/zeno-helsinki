@@ -295,11 +295,7 @@ namespace hl
 											.binding = b.binding,
 											.descriptorType = extractDescriptorType(b.type),
 											.descriptorCount = 1,
-											.stageFlags = (uint32_t)(b.stage == "VERTEX"
-												? VK_SHADER_STAGE_VERTEX_BIT
-												: (b.stage == "FRAGMENT"
-													? VK_SHADER_STAGE_FRAGMENT_BIT
-													: throw std::runtime_error("Invalid shader stage"))),
+											.stageFlags = extractStage(b.stage),
 											.pImmutableSamplers = nullptr
 										});
 								}
@@ -985,6 +981,10 @@ namespace hl
 		{
 			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		}
+		else if (descriptorTypeString == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC")
+		{
+			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+		}
 		else if (descriptorTypeString == "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER")
 		{
 			return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -993,6 +993,23 @@ namespace hl
 		{
 			throw std::runtime_error("Invalid descriptor type");
 		}
+	}
+
+	uint32_t RenderGraph::extractStage(const std::string& stage)
+	{
+		uint32_t flags = 0;
+
+		if (stage.contains("VERTEX"))
+		{
+			flags |= VK_SHADER_STAGE_VERTEX_BIT;
+		}
+
+		if (stage.contains("FRAGMENT"))
+		{
+			flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+		}
+
+		return flags;
 	}
 
 	VkFormat RenderGraph::extractVertexAttributeFormat(VertexAttributeFormat format)

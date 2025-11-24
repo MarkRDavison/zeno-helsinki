@@ -61,8 +61,8 @@ namespace rp
 		void initVulkan(const char* title);
 		void createCommandBuffers();
 		void recreateSwapChain();
-		void updateModelMatrixUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
-		void updateDirectionalLightUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
+		void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
+		void updateMaterialUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer, const hl::Material& material, uint32_t index);
 		void recordCommandBuffer(FrameResources& frame, uint32_t imageIndex);
 		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline);
 
@@ -85,9 +85,10 @@ namespace rp
 		hl::ResourceManager _resourceManager;
 
 		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
-		hl::ResourceHandle<hl::UniformBufferResource> _directionalLightHandle;
+		hl::ResourceHandle<hl::UniformBufferResource> _materialHandle;
 		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
-		hl::ResourceHandle<hl::ModelResource> _newModelHandle;
+		hl::ResourceHandle<hl::ModelResource> _satelliteModelHandle;
+
 		hl::Camera* _camera{ nullptr };
 
 		RenderpassConfig _config;

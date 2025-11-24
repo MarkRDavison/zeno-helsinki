@@ -55,7 +55,6 @@ namespace hl
         yaw += xOffset;
         pitch += yOffset;
 
-        // Constrain pitch to avoid flipping
         if (constrainPitch)
         {
             if (pitch > 89.0f)
@@ -68,20 +67,18 @@ namespace hl
             }
         }
 
-        // Update camera vectors based on updated Euler angles
         updateCameraVectors();
     }
 
     void Camera::updateCameraVectors()
     {
-        // Calculate the new front vector
         glm::vec3 newFront;
+
         newFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
         newFront.y = sin(glm::radians(pitch));
         newFront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        front = glm::normalize(newFront);
 
-        // Recalculate the right and up vectors
+        front = glm::normalize(newFront);
         right = glm::normalize(glm::cross(front, worldUp));
         up = glm::normalize(glm::cross(right, front));
     }

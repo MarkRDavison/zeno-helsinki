@@ -30,15 +30,10 @@ struct UniformBufferObject
     alignas(16) glm::mat4 proj;
 };
 
-struct DirLightsUBO
+struct MaterialUniformBufferObject
 {
-    alignas(16) glm::vec3 ambientColor;
-    alignas(16) glm::vec3 cameraPos;
-
-    alignas(16) int numDirLights;
-
-    alignas(16) glm::vec3 dirLightDirections[8];
-    alignas(16) glm::vec3 dirLightColors[8];
+    alignas(16) glm::vec3 color;
+    float _pad;  // required to make size = 16
 };
 
 namespace rp
@@ -268,8 +263,7 @@ namespace rp
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        updateModelMatrixUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
-        updateDirectionalLightUniformBuffer(_directionalLightHandle.Get()->getUniformBuffer(currentFrame));
+        updateUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
         _syncContext.getFence(currentFrame).reset();
 
         recordCommandBuffer(_frameResources[currentFrame], imageIndex);
@@ -420,12 +414,12 @@ namespace rp
                             .enableBlending = false
                         },
                     },
-                    {
+                    /*{
                         hl::PipelineInfo
                         {
                             .name = "model_pipeline",
-                            .shaderVert = ROOT_PATH("/data/shaders/basic_pbr.vert"),
-                            .shaderFrag = ROOT_PATH("/data/shaders/basic_pbr.frag"),
+                            .shaderVert = ROOT_PATH("/data/shaders/triangle.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/triangle.frag"),
                             .descriptorSets =
                             {
                                 hl::DescriptorSetInfo
@@ -446,13 +440,6 @@ namespace rp
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                             .stage = "FRAGMENT",
                                             .resource = "viking_room"
-                                        },
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 2,
-                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "directional_light_ubo"
                                         }
                                     }
                                 }
@@ -474,15 +461,9 @@ namespace rp
                                         .offset = offsetof(hl::Vertex, color)
                                     },
                                     {
-                                        .name = "inNormal",
-                                        .format = hl::VertexAttributeFormat::Vec3,
-                                        .location = 2,
-                                        .offset = offsetof(hl::Vertex, normal)
-                                    },
-                                    {
                                         .name = "inTexCoord",
                                         .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 3,
+                                        .location = 2,
                                         .offset = offsetof(hl::Vertex, texCoord)
                                     },
                                 },
@@ -490,7 +471,82 @@ namespace rp
                             },
                             .rasterState =
                             {
-                                .cullMode = VK_CULL_MODE_NONE
+                                .cullMode = VK_CULL_MODE_BACK_BIT
+                            },
+                            .enableBlending = false
+                        }
+                    }*/
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "model_pipeline",
+                            .shaderVert = ROOT_PATH("/data/shaders/material_pbr.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/material_pbr.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .name = "model_uniforms",
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "model_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC",
+                                            .stage = "VERTEX&FRAGMENT",
+                                            .resource = "material_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 2,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "white"
+                                        }
+                                    }
+                                }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 0,
+                                        .offset = offsetof(hl::Vertex, pos)
+                                    },
+                                    {
+                                        .name = "inColor",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 1,
+                                        .offset = offsetof(hl::Vertex, color)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 2,
+                                        .offset = offsetof(hl::Vertex, texCoord)
+                                    },
+                                    {
+                                        .name = "inNormal",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 3,
+                                        .offset = offsetof(hl::Vertex, normal)
+                                    }
+                                },
+                                .stride = sizeof(hl::Vertex)
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_BACK_BIT
                             },
                             .enableBlending = false
                         }
@@ -682,8 +738,7 @@ namespace rp
             _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
                 "placeholder",
                 resourceContext);
-            
-            _newModelHandle = _resourceManager.Load<hl::ModelResource>(
+            _satelliteModelHandle = _resourceManager.Load<hl::ModelResource>(
                 "satelliteDish_detailed",
                 resourceContext);
             _modelHandle = _resourceManager.Load<hl::BasicModelResource>(
@@ -692,6 +747,9 @@ namespace rp
             _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
                 "viking_room",
                 resourceContext);
+            _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+                "white",
+                resourceContext);
             _resourceManager.LoadAs<hl::CubemapTextureResource, hl::ImageSamplerResource>(
                 "skybox_texture",
                 resourceContext);
@@ -699,12 +757,14 @@ namespace rp
                 "model_matrix_ubo",
                 resourceContext,
                 sizeof(UniformBufferObject),
-                MAX_FRAMES_IN_FLIGHT);
-            _directionalLightHandle = _resourceManager.Load<hl::UniformBufferResource>(
-                "directional_light_ubo",
+                MAX_FRAMES_IN_FLIGHT,
+                1);
+            _materialHandle = _resourceManager.Load<hl::UniformBufferResource>(
+                "material_ubo",
                 resourceContext,
-                sizeof(DirLightsUBO),
-                MAX_FRAMES_IN_FLIGHT);
+                std::max(sizeof(MaterialUniformBufferObject), 64ull), // TODO: need this to somehow be smarter...
+                MAX_FRAMES_IN_FLIGHT,
+                (uint32_t)_satelliteModelHandle.Get()->getMeshes().size());// TODO: need this to somehow be smarter...
         }
 
         {
@@ -799,7 +859,7 @@ namespace rp
         _renderGraph->updateAllDescriptorSets();
     }
 
-    void RenderpassesApplication::updateModelMatrixUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
+    void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
     {
         UniformBufferObject ubo{};
 
@@ -811,23 +871,13 @@ namespace rp
         uniformBuffer.writeToBuffer(&ubo);
     }
 
-    void RenderpassesApplication::updateDirectionalLightUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
+    void RenderpassesApplication::updateMaterialUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer, const hl::Material& material, uint32_t index)
     {
-        DirLightsUBO ubo{};
+        MaterialUniformBufferObject ubo{};
 
-        ubo.ambientColor = glm::vec3(0.05f, 0.05f, 0.05f);
-        ubo.cameraPos = _camera->getPosition();
-        ubo.numDirLights = 2;
+        ubo.color = material.diffuse;
 
-        // Key light from above and in front-left of model
-        ubo.dirLightDirections[0] = glm::normalize(glm::vec3(-0.5f, -1.0f, 1.0f));
-        ubo.dirLightColors[0] = glm::vec3(1.0f, 0.95f, 0.9f); // warm white
-
-        // Fill light from above-right, softer
-        ubo.dirLightDirections[1] = glm::normalize(glm::vec3(0.5f, -0.5f, -1.0f));
-        ubo.dirLightColors[1] = glm::vec3(0.2f, 0.2f, 0.25f); // cooler fill
-
-        uniformBuffer.writeToBuffer(&ubo);
+        uniformBuffer.writeToBuffer(&ubo, (size_t)index);
     }
 
     VkExtent2D getExtent(VkExtent2D framebufferExtent, VkExtent2D swapchainExtent)
@@ -996,53 +1046,83 @@ namespace rp
         }
         else if (pipeline->Name == "model_pipeline")
         {
-            static float rotationAngle = 0.0f;  // degrees
+            static float angle = 0.0f;
+            angle += 0.1f / 60.0f; // rotation speed per frame
 
-            // Increment per frame (or scaled by deltaTime)
-            rotationAngle += 10.0f * 1.0f / 60.0f;  // 10 degrees per second
-            if (rotationAngle > 360.0f) rotationAngle -= 360.0f;
+            // for each model
+            {
+                glm::mat4 model = glm::mat4(1.0f);
+                model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-            glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-            model = glm::rotate(model, glm::radians(-rotationAngle), glm::vec3(0.0f, 0.0f, 1.0f));
+                vkCmdPushConstants(
+                    commandBuffer,
+                    pipeline->getPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT,
+                    0,
+                    sizeof(glm::mat4),
+                    &model
+                );
 
-            vkCmdPushConstants(
-                commandBuffer,
-                pipeline->getPipelineLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0,
-                sizeof(glm::mat4),
-                &model
-            );
+                auto modelResource = _satelliteModelHandle.Get();
 
-            auto modelResource = _modelHandle.Get();
+                const auto& meshes = modelResource->getMeshes();
+                const auto& materials = modelResource->getMaterials();
 
-            VkBuffer vertexBuffers[] = { modelResource->getVertexBuffer() };
-            VkDeviceSize offsets[] = { 0 };
-            vkCmdBindVertexBuffers(
-                commandBuffer,
-                0,
-                1,
-                vertexBuffers,
-                offsets);
+                uint32_t meshIndex = 0;
 
-            vkCmdBindIndexBuffer(
-                commandBuffer,
-                modelResource->getIndexBuffer(),
-                0,
-                VK_INDEX_TYPE_UINT32);
+                for (const auto& mesh : meshes)
+                {
+                    {   // TODO: This isn't dynamic so can be done once.
+                        const auto& iter = std::find_if(
+                            materials.begin(),
+                            materials.end(),
+                            [&](const hl::Material& m) -> bool
+                            {
+                                return m.name == mesh.materialName;
+                            });
 
-            auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
-            vkCmdBindDescriptorSets(
-                commandBuffer,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                pipeline->getPipelineLayout(),
-                0,
-                1,
-                &descriptorSet,
-                0,
-                nullptr);
+                        if (iter == materials.end())
+                        {
+                            throw std::runtime_error("Failed to find material by name");
+                        }
 
-            vkCmdDrawIndexed(commandBuffer, modelResource->getIndexCount(), 1, 0, 0, 0); // viking model
+                        updateMaterialUniformBuffer(
+                            _materialHandle.Get()->getUniformBuffer(currentFrame),
+                            (*iter),
+                            meshIndex);
+                    }
+
+                    VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
+                    VkDeviceSize offsets[] = { 0 };
+                    vkCmdBindVertexBuffers(
+                        commandBuffer,
+                        0,
+                        1,
+                        vertexBuffers,
+                        offsets);
+
+                    vkCmdBindIndexBuffer(
+                        commandBuffer,
+                        mesh._indexBuffer._buffer,
+                        0,
+                        VK_INDEX_TYPE_UINT32);
+
+                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                    uint32_t dynamicOffset = meshIndex * std::max(sizeof(MaterialUniformBufferObject), 64ull);
+                    vkCmdBindDescriptorSets(
+                        commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        1,
+                        &dynamicOffset);
+
+                    vkCmdDrawIndexed(commandBuffer, mesh._indexCount, 1, 0, 0, 0);
+                    meshIndex++;
+                }
+            }
         }
         else if (pipeline->Name == "postprocess_pipeline")
         {
