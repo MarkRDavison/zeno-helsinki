@@ -35,7 +35,7 @@ namespace rp
 
 	struct FrameResources
 	{
-		VkCommandBuffer primaryCmd;
+		VkCommandBuffer primaryCmd{ VK_NULL_HANDLE };
 		std::unordered_map<uint32_t, std::vector<std::vector<VkCommandBuffer>>> secondaryCmdsByLayerAndPipelineGroup;
 	};
 
@@ -61,7 +61,7 @@ namespace rp
 		void initVulkan(const char* title);
 		void createCommandBuffers();
 		void recreateSwapChain();
-		void updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
+		void updateCameraUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
 		void updateMaterialUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer, const hl::Material& material, uint32_t index);
 		void recordCommandBuffer(FrameResources& frame, uint32_t imageIndex);
 		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline);
@@ -84,10 +84,18 @@ namespace rp
 
 		hl::ResourceManager _resourceManager;
 
-		hl::ResourceHandle<hl::UniformBufferResource> _modelMatrixHandle;
-		hl::ResourceHandle<hl::UniformBufferResource> _materialHandle;
-		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
+		hl::ResourceHandle<hl::UniformBufferResource> _cameraMatrixHandle;
+
+		hl::ResourceHandle<hl::UniformBufferResource> _satelliteMaterialHandle;
 		hl::ResourceHandle<hl::ModelResource> _satelliteModelHandle;
+
+		hl::ResourceHandle<hl::UniformBufferResource> _turretMaterialHandle;
+		hl::ResourceHandle<hl::ModelResource> _turrentModelHandle;
+
+		hl::ResourceHandle<hl::UniformBufferResource> _planeMaterialHandle;
+		hl::ResourceHandle<hl::ModelResource> _planeModelHandle;
+
+		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
 
 		hl::Camera* _camera{ nullptr };
 
