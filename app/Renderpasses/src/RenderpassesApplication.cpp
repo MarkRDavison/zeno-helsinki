@@ -21,9 +21,6 @@
 
 #define ROOT_PATH(x) (std::string(rp::RenderpassesConfig::RootPath) + std::string(x))
 
-const std::string MODEL_PATH = ROOT_PATH("/data/models/viking_room.obj");
-const std::string TEXTURE_PATH = ROOT_PATH("/data/textures/viking_room.png");
-
 struct UniformBufferObject
 {
     alignas(16) glm::mat4 view;
@@ -825,12 +822,6 @@ namespace rp
             ZoneScopedN("LoadResources");
             _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
                 "placeholder",
-                resourceContext);
-            _modelHandle = _resourceManager.Load<hl::BasicModelResource>(
-                "viking_room",
-                resourceContext);
-            _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-                "viking_room",
                 resourceContext);
             _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
                 "white",

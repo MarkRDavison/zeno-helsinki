@@ -95,8 +95,6 @@ namespace rp
 		hl::ResourceHandle<hl::UniformBufferResource> _planeMaterialHandle;
 		hl::ResourceHandle<hl::ModelResource> _planeModelHandle;
 
-		hl::ResourceHandle<hl::BasicModelResource> _modelHandle;
-
 		hl::Camera* _camera{ nullptr };
 
 		RenderpassConfig _config;
