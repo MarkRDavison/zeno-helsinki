@@ -1,16 +1,8 @@
 #pragma once
 
 #include <array>
-
 #include <vulkan/vulkan.h>
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/hash.hpp>
+#include <helsinki/System/glm.hpp>
 
 namespace hl
 {
@@ -19,6 +11,7 @@ namespace hl
         glm::vec3 pos;
         glm::vec3 color;
         glm::vec2 texCoord;
+        glm::vec3 normal;
 
         static VkVertexInputBindingDescription getBindingDescription()
         {
@@ -48,6 +41,11 @@ namespace hl
             attributeDescriptions[2].location = 2;
             attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
             attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+
+            attributeDescriptions[3].binding = 0;
+            attributeDescriptions[3].location = 3;
+            attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[3].offset = offsetof(Vertex, normal);
 
             return attributeDescriptions;
         }

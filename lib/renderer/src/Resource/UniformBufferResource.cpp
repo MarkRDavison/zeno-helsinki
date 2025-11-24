@@ -7,12 +7,14 @@ namespace hl
 		const std::string& id,
 		ResourceContext& context,
 		VkDeviceSize size,
-		uint32_t count
+		uint32_t count,
+		uint32_t multiple
 	) : 
 		Resource(id),
 		_device(*context.device),
 		_size(size),
-		_count(count)
+		_count(count),
+		_multiple(multiple)
 	{
 
 	}
@@ -23,7 +25,7 @@ namespace hl
 
 		for (auto& b : _buffers)
 		{
-			b.create(_size);
+			b.create(_size, _multiple);
 		}
 
 		return Resource::Load();

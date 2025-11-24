@@ -171,7 +171,8 @@ namespace hl
                             {
                                 if (b.resource.has_value())
                                 {
-                                    if (b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER")
+                                    if (b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER" ||
+                                        b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC")
                                     {
                                         auto& ub = _resourceManager
                                             .GetResource<UniformBufferResource>(
@@ -182,7 +183,7 @@ namespace hl
                                             {
                                                 .buffer = ub._buffer._buffer,
                                                 .offset = 0,
-                                                .range = ub._size
+                                                .range = ub._size / ub._multiple
                                             });
 
                                         descriptorWrites.emplace_back(VkWriteDescriptorSet
@@ -192,7 +193,7 @@ namespace hl
                                                 .dstBinding = b.binding,
                                                 .dstArrayElement = 0,
                                                 .descriptorCount = 1,
-                                                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                .descriptorType = RenderGraph::extractDescriptorType(b.type),
                                                 .pBufferInfo = &bufferInfos.back()
                                             });
                                     }

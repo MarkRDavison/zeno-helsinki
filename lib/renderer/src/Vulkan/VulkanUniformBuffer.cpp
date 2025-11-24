@@ -7,16 +7,18 @@ namespace hl
 	) : 
 		_device(device),
 		_buffer(device),
-		_size(0)
+		_size(0),
+		_multiple(0)
 	{
 
 	}
 
-	void VulkanUniformBuffer::create(VkDeviceSize size)
+	void VulkanUniformBuffer::create(VkDeviceSize size, uint32_t multiple /*= 1*/)
 	{
 		_size = size;
+		_multiple = multiple;
 		_buffer.create(
-			size,
+			size * multiple,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -34,8 +36,9 @@ namespace hl
 		_buffer.destroy();
 	}
 
-	void VulkanUniformBuffer::writeToBuffer(void* data)
+	void VulkanUniformBuffer::writeToBuffer(void* data, size_t index /*= 0*/)
 	{
-		memcpy(_mappedMemory, data, _size);
+		uint8_t* dst = static_cast<uint8_t*>(_mappedMemory) + index * _size;
+		memcpy(dst, data, _size);
 	}
 }

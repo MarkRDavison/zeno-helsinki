@@ -15,7 +15,8 @@ namespace hl
 			const std::string& id, 
 			ResourceContext& context,
 			VkDeviceSize size,
-			uint32_t count);
+			uint32_t count,
+			uint32_t multiple);
 
 		bool Load() override;
 		void Unload() override;
@@ -26,6 +27,7 @@ namespace hl
 		VulkanDevice& _device;
 		VkDeviceSize _size;
 		uint32_t _count;
+		uint32_t _multiple;
 
 		std::vector<VulkanUniformBuffer> _buffers;
 	};

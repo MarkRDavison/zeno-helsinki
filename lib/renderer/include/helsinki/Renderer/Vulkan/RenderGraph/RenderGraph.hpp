@@ -152,6 +152,7 @@ namespace hl
 
         static VkFormat extractFormat(const std::string& formatString);
         static VkDescriptorType extractDescriptorType(const std::string& descriptorTypeString);
+        static uint32_t extractStage(const std::string& stage);
         static VkFormat extractVertexAttributeFormat(VertexAttributeFormat format);
 
         static std::unordered_map<std::string, Node> generateDAG(const std::vector<hl::RenderpassInfo>& renderpassInfo);
