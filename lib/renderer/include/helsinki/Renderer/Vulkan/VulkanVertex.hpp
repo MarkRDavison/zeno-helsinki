@@ -63,11 +63,15 @@ namespace std
     {
         size_t operator()(hl::Vertex const& vertex) const
         {
-            return (
-                (hash<glm::vec3>()(vertex.pos) ^
-                (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-                (hash<glm::vec2>()(vertex.normal) << 1) ^
-                (hash<glm::vec2>()(vertex.texCoord) << 1);
+            size_t h1 = std::hash<glm::vec3>{}(vertex.pos);
+            size_t h2 = std::hash<glm::vec3>{}(vertex.color);
+            size_t h3 = std::hash<glm::vec3>{}(vertex.normal);
+            size_t h4 = std::hash<glm::vec2>{}(vertex.texCoord);
+
+            size_t seed = h1;
+            seed ^= h2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= h3 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= h4 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         }
     };
 }
