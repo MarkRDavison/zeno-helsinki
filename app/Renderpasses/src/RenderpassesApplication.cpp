@@ -263,7 +263,7 @@ namespace rp
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        updateUniformBuffer(_modelMatrixHandle.Get()->getUniformBuffer(currentFrame));
+        updateCameraUniformBuffer(_cameraMatrixHandle.Get()->getUniformBuffer(currentFrame));
         _syncContext.getFence(currentFrame).reset();
 
         recordCommandBuffer(_frameResources[currentFrame], imageIndex);
@@ -390,7 +390,7 @@ namespace rp
                                             .binding = 0,
                                             .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                             .stage = "VERTEX",
-                                            .resource = "model_matrix_ubo"
+                                            .resource = "camera_matrix_ubo"
                                         },
                                         hl::DescriptorBinding
                                         {
@@ -414,72 +414,10 @@ namespace rp
                             .enableBlending = false
                         },
                     },
-                    /*{
-                        hl::PipelineInfo
-                        {
-                            .name = "model_pipeline",
-                            .shaderVert = ROOT_PATH("/data/shaders/triangle.vert"),
-                            .shaderFrag = ROOT_PATH("/data/shaders/triangle.frag"),
-                            .descriptorSets =
-                            {
-                                hl::DescriptorSetInfo
-                                {
-                                    .name = "model_uniforms",
-                                    .bindings =
-                                    {
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 0,
-                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-                                            .stage = "VERTEX",
-                                            .resource = "model_matrix_ubo"
-                                        },
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 1,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "viking_room"
-                                        }
-                                    }
-                                }
-                            },
-                            .vertexInputInfo = hl::VertexInputInfo
-                            {
-                                .attributes =
-                                {
-                                    {
-                                        .name = "inPosition",
-                                        .format = hl::VertexAttributeFormat::Vec3,
-                                        .location = 0,
-                                        .offset = offsetof(hl::Vertex, pos)
-                                    },
-                                    {
-                                        .name = "inColor",
-                                        .format = hl::VertexAttributeFormat::Vec3,
-                                        .location = 1,
-                                        .offset = offsetof(hl::Vertex, color)
-                                    },
-                                    {
-                                        .name = "inTexCoord",
-                                        .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 2,
-                                        .offset = offsetof(hl::Vertex, texCoord)
-                                    },
-                                },
-                                .stride = sizeof(hl::Vertex)
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_BACK_BIT
-                            },
-                            .enableBlending = false
-                        }
-                    }*/
                     {
                         hl::PipelineInfo
                         {
-                            .name = "model_pipeline",
+                            .name = "satellite_model_pipeline",
                             .shaderVert = ROOT_PATH("/data/shaders/material_pbr.vert"),
                             .shaderFrag = ROOT_PATH("/data/shaders/material_pbr.frag"),
                             .descriptorSets =
@@ -494,14 +432,14 @@ namespace rp
                                             .binding = 0,
                                             .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                             .stage = "VERTEX",
-                                            .resource = "model_matrix_ubo"
+                                            .resource = "camera_matrix_ubo"
                                         },
                                         hl::DescriptorBinding
                                         {
                                             .binding = 1,
                                             .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC",
                                             .stage = "VERTEX&FRAGMENT",
-                                            .resource = "material_ubo"
+                                            .resource = "satellite_material_ubo"
                                         },
                                         hl::DescriptorBinding
                                         {
@@ -547,6 +485,156 @@ namespace rp
                             .rasterState =
                             {
                                 .cullMode = VK_CULL_MODE_BACK_BIT
+                            },
+                            .enableBlending = false
+                        }
+                    },
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "turret_model_pipeline",
+                            .shaderVert = ROOT_PATH("/data/shaders/material_pbr.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/material_pbr.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .name = "model_uniforms",
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "camera_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC",
+                                            .stage = "VERTEX&FRAGMENT",
+                                            .resource = "turret_material_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 2,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "white"
+                                        }
+                                    }
+                                }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 0,
+                                        .offset = offsetof(hl::Vertex, pos)
+                                    },
+                                    {
+                                        .name = "inColor",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 1,
+                                        .offset = offsetof(hl::Vertex, color)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 2,
+                                        .offset = offsetof(hl::Vertex, texCoord)
+                                    },
+                                    {
+                                        .name = "inNormal",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 3,
+                                        .offset = offsetof(hl::Vertex, normal)
+                                    }
+                                },
+                                .stride = sizeof(hl::Vertex)
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_BACK_BIT
+                            },
+                            .enableBlending = false
+                        }
+                    },
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "plane_model_pipeline",
+                            .shaderVert = ROOT_PATH("/data/shaders/material_pbr.vert"),
+                            .shaderFrag = ROOT_PATH("/data/shaders/material_pbr.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .name = "model_uniforms",
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "camera_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC",
+                                            .stage = "VERTEX&FRAGMENT",
+                                            .resource = "plane_material_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 2,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "white"
+                                        }
+                                    }
+                                }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 0,
+                                        .offset = offsetof(hl::Vertex, pos)
+                                    },
+                                    {
+                                        .name = "inColor",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 1,
+                                        .offset = offsetof(hl::Vertex, color)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 2,
+                                        .offset = offsetof(hl::Vertex, texCoord)
+                                    },
+                                    {
+                                        .name = "inNormal",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 3,
+                                        .offset = offsetof(hl::Vertex, normal)
+                                    }
+                                },
+                                .stride = sizeof(hl::Vertex)
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
                             },
                             .enableBlending = false
                         }
@@ -738,9 +826,6 @@ namespace rp
             _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
                 "placeholder",
                 resourceContext);
-            _satelliteModelHandle = _resourceManager.Load<hl::ModelResource>(
-                "satelliteDish_detailed",
-                resourceContext);
             _modelHandle = _resourceManager.Load<hl::BasicModelResource>(
                 "viking_room",
                 resourceContext);
@@ -753,18 +838,43 @@ namespace rp
             _resourceManager.LoadAs<hl::CubemapTextureResource, hl::ImageSamplerResource>(
                 "skybox_texture",
                 resourceContext);
-            _modelMatrixHandle = _resourceManager.Load<hl::UniformBufferResource>(
-                "model_matrix_ubo",
+
+            _cameraMatrixHandle = _resourceManager.Load<hl::UniformBufferResource>(
+                "camera_matrix_ubo",
                 resourceContext,
                 sizeof(UniformBufferObject),
                 MAX_FRAMES_IN_FLIGHT,
                 1);
-            _materialHandle = _resourceManager.Load<hl::UniformBufferResource>(
-                "material_ubo",
+
+            _satelliteModelHandle = _resourceManager.Load<hl::ModelResource>(
+                "satelliteDish_detailed",
+                resourceContext);
+            _satelliteMaterialHandle = _resourceManager.Load<hl::UniformBufferResource>(
+                "satellite_material_ubo",
                 resourceContext,
                 std::max(sizeof(MaterialUniformBufferObject), 64ull), // TODO: need this to somehow be smarter...
                 MAX_FRAMES_IN_FLIGHT,
-                (uint32_t)_satelliteModelHandle.Get()->getMeshes().size());// TODO: need this to somehow be smarter...
+                (uint32_t)_satelliteModelHandle.Get()->getMeshes().size());
+
+            _turrentModelHandle = _resourceManager.Load<hl::ModelResource>(
+                "turret_double",
+                resourceContext);
+            _turretMaterialHandle = _resourceManager.Load<hl::UniformBufferResource>(
+                "turret_material_ubo",
+                resourceContext,
+                std::max(sizeof(MaterialUniformBufferObject), 64ull),// TODO: need this to somehow be smarter...
+                MAX_FRAMES_IN_FLIGHT,
+                (uint32_t)_turrentModelHandle.Get()->getMeshes().size());
+
+            _planeModelHandle = _resourceManager.Load<hl::ModelResource>(
+                "plane",
+                resourceContext);
+            _planeMaterialHandle = _resourceManager.Load<hl::UniformBufferResource>(
+                "plane_material_ubo",
+                resourceContext,
+                std::max(sizeof(MaterialUniformBufferObject), 64ull),// TODO: need this to somehow be smarter...
+                MAX_FRAMES_IN_FLIGHT,
+                (uint32_t)_planeModelHandle.Get()->getMeshes().size());
         }
 
         {
@@ -859,7 +969,7 @@ namespace rp
         _renderGraph->updateAllDescriptorSets();
     }
 
-    void RenderpassesApplication::updateUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
+    void RenderpassesApplication::updateCameraUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer)
     {
         UniformBufferObject ubo{};
 
@@ -984,6 +1094,7 @@ namespace rp
                     const auto secondaryBuffer = secondaryBuffersForGroup[pipelineGroupIndex];
 
                     CHECK_VK_RESULT(vkBeginCommandBuffer(secondaryBuffer, &secondaryBeginInfo));
+
                     for (const auto& p : pg)
                     {
                         vkCmdBindPipeline(secondaryBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p->getPipeline());
@@ -1044,7 +1155,7 @@ namespace rp
 
             vkCmdDraw(commandBuffer, 36, 1, 0, 0); // quad from 12 triangles
         }
-        else if (pipeline->Name == "model_pipeline")
+        else if (pipeline->Name == "satellite_model_pipeline")
         {
             static float angle = 0.0f;
             angle += 0.1f / 60.0f; // rotation speed per frame
@@ -1052,6 +1163,7 @@ namespace rp
             // for each model
             {
                 glm::mat4 model = glm::mat4(1.0f);
+                model = glm::translate(model, glm::vec3(-0.5f, 0.0f, 1.0f));
                 model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
                 vkCmdPushConstants(
@@ -1087,7 +1199,7 @@ namespace rp
                         }
 
                         updateMaterialUniformBuffer(
-                            _materialHandle.Get()->getUniformBuffer(currentFrame),
+                            _satelliteMaterialHandle.Get()->getUniformBuffer(currentFrame),
                             (*iter),
                             meshIndex);
                     }
@@ -1124,6 +1236,163 @@ namespace rp
                 }
             }
         }
+        else if (pipeline->Name == "turret_model_pipeline")
+        {
+            static float angle2 = 0.0f;
+            angle2 += 0.1f / 60.0f; // rotation speed per frame
+
+            // for each model
+            {
+                glm::mat4 model = glm::mat4(1.0f);
+                model = glm::translate(model, glm::vec3(+0.5f, 0.0f, 1.0f));
+                model = glm::rotate(model, angle2, glm::vec3(0.0f, 1.0f, 0.0f));
+
+                vkCmdPushConstants(
+                    commandBuffer,
+                    pipeline->getPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT,
+                    0,
+                    sizeof(glm::mat4),
+                    &model
+                );
+
+                auto modelResource = _turrentModelHandle.Get();
+
+                const auto& meshes = modelResource->getMeshes();
+                const auto& materials = modelResource->getMaterials();
+
+                uint32_t meshIndex = 0;
+
+                for (const auto& mesh : meshes)
+                {
+                    {   // TODO: This isn't dynamic so can be done once.
+                        const auto& iter = std::find_if(
+                            materials.begin(),
+                            materials.end(),
+                            [&](const hl::Material& m) -> bool
+                            {
+                                return m.name == mesh.materialName;
+                            });
+
+                        if (iter == materials.end())
+                        {
+                            throw std::runtime_error("Failed to find material by name");
+                        }
+
+                        updateMaterialUniformBuffer(
+                            _turretMaterialHandle.Get()->getUniformBuffer(currentFrame),
+                            (*iter),
+                            meshIndex);
+                    }
+
+                    VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
+                    VkDeviceSize offsets[] = { 0 };
+                    vkCmdBindVertexBuffers(
+                        commandBuffer,
+                        0,
+                        1,
+                        vertexBuffers,
+                        offsets);
+
+                    vkCmdBindIndexBuffer(
+                        commandBuffer,
+                        mesh._indexBuffer._buffer,
+                        0,
+                        VK_INDEX_TYPE_UINT32);
+
+                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                    uint32_t dynamicOffset = meshIndex * std::max(sizeof(MaterialUniformBufferObject), 64ull);
+                    vkCmdBindDescriptorSets(
+                        commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        1,
+                        &dynamicOffset);
+
+                    vkCmdDrawIndexed(commandBuffer, mesh._indexCount, 1, 0, 0, 0);
+                    meshIndex++;
+                }
+            }
+        }
+        else if (pipeline->Name == "plane_model_pipeline")
+        {
+            // for each model
+            {
+                glm::mat4 model = glm::mat4(1.0f);
+
+                vkCmdPushConstants(
+                    commandBuffer,
+                    pipeline->getPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT,
+                    0,
+                    sizeof(glm::mat4),
+                    &model
+                );
+
+                auto modelResource = _planeModelHandle.Get();
+
+                const auto& meshes = modelResource->getMeshes();
+                const auto& materials = modelResource->getMaterials();
+
+                uint32_t meshIndex = 0;
+
+                for (const auto& mesh : meshes)
+                {
+                    {   // TODO: This isn't dynamic so can be done once.
+                        const auto& iter = std::find_if(
+                            materials.begin(),
+                            materials.end(),
+                            [&](const hl::Material& m) -> bool
+                            {
+                                return m.name == mesh.materialName;
+                            });
+
+                        if (iter == materials.end())
+                        {
+                            throw std::runtime_error("Failed to find material by name");
+                        }
+
+                        updateMaterialUniformBuffer(
+                            _planeMaterialHandle.Get()->getUniformBuffer(currentFrame),
+                            (*iter),
+                            meshIndex);
+                    }
+
+                    VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
+                    VkDeviceSize offsets[] = { 0 };
+                    vkCmdBindVertexBuffers(
+                        commandBuffer,
+                        0,
+                        1,
+                        vertexBuffers,
+                        offsets);
+
+                    vkCmdBindIndexBuffer(
+                        commandBuffer,
+                        mesh._indexBuffer._buffer,
+                        0,
+                        VK_INDEX_TYPE_UINT32);
+
+                    auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                    uint32_t dynamicOffset = meshIndex * std::max(sizeof(MaterialUniformBufferObject), 64ull);
+                    vkCmdBindDescriptorSets(
+                        commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        1,
+                        &dynamicOffset);
+
+                    vkCmdDrawIndexed(commandBuffer, mesh._indexCount, 1, 0, 0, 0);
+                    meshIndex++;
+                }
+            }
+            }
         else if (pipeline->Name == "postprocess_pipeline")
         {
             auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
