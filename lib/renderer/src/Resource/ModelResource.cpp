@@ -70,10 +70,72 @@ namespace hl
 		return materials;
 	}
 
+	static void GenerateMeshes(
+		VulkanDevice& device,
+		VulkanCommandPool& pool,
+		std::vector<Mesh>& meshes)
+	{
+		for (auto& mesh : meshes)
+		{
+			mesh._indexCount = static_cast<uint32_t>(mesh.indices.size());
+
+			{
+				VkDeviceSize bufferSize = sizeof(mesh.vertices[0]) * mesh.vertices.size();
+
+				hl::VulkanBuffer stagingBuffer(device);
+				stagingBuffer.create(
+					bufferSize,
+					VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+				stagingBuffer.mapMemory(
+					mesh.vertices.data());
+
+				mesh._vertexBuffer.create(
+					bufferSize,
+					VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+				stagingBuffer.copyToBuffer(
+					pool,
+					bufferSize,
+					mesh._vertexBuffer);
+
+				stagingBuffer.destroy();
+			}
+
+			{
+				VkDeviceSize bufferSize = sizeof(mesh.indices[0]) * mesh.indices.size();
+
+				hl::VulkanBuffer stagingBuffer(device);
+
+				stagingBuffer.create(
+					bufferSize,
+					VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+				stagingBuffer.mapMemory(
+					mesh.indices.data());
+
+				mesh._indexBuffer.create(
+					bufferSize,
+					VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+				stagingBuffer.copyToBuffer(
+					pool,
+					bufferSize,
+					mesh._indexBuffer);
+
+				stagingBuffer.destroy();
+			}
+		}
+	}
+
 	bool ModelResource::Load()
 	{
 		std::string modelPath = std::format("{}/data/models/{}.obj", _rootPath, GetId());
-		
+
 		std::ifstream file(modelPath);
 		if (!file.is_open())
 		{
@@ -115,16 +177,16 @@ namespace hl
 			else if (key == "usemtl")
 			{
 				if (!_meshes.empty() && !_meshes.back().vertices.empty())
-				{ 
+				{
 					assert(currentMesh != nullptr);
 					currentMesh->materialName = currentMaterial;
 				}
 
-				_meshes.push_back({});
+				_meshes.emplace_back(_device);
 				currentMesh = &_meshes.back();
 				vertexMap.clear();
 
-				iss >> currentMaterial;				
+				iss >> currentMaterial;
 			}
 			else if (key == "g")
 			{
@@ -189,24 +251,36 @@ namespace hl
 			}
 		}
 
+		assert(currentMesh != nullptr);
+		currentMesh->materialName = currentMaterial;
+		vertexMap.clear();
+
 		for (const auto& materialFile : materialFiles)
 		{
-			std::cout << "Material file: " << materialFile << std::endl;
 			for (const auto& m : LoadMaterialFile(std::format("{}/data/models/{}", _rootPath, materialFile)))
 			{
 				_materials.emplace_back(m);
 			}
 		}
 
-		return Resource::Load();
+		GenerateMeshes(_device, _commandPool, _meshes);
 
-		return false;
+		return Resource::Load();
 	}
 
 	void ModelResource::Unload()
 	{
 		if (IsLoaded())
 		{
+			for (auto& m : _meshes)
+			{
+				m._vertexBuffer.destroy();
+				m._indexBuffer.destroy();
+			}
+
+			_meshes.clear();
+			_materials.clear();
+
 			Resource::Unload();
 		}
 	}
