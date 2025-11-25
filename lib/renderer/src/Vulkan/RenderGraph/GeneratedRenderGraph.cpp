@@ -2,6 +2,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
+#include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <helsinki/Renderer/Resource/OffscreenImageResource.hpp>
 #include <stdexcept>
 #include <iostream>
@@ -171,8 +172,32 @@ namespace hl
                             {
                                 if (b.resource.has_value())
                                 {
-                                    if (b.type == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER" ||
-                                        b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER" ||
+                                    if (b.type == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER")
+                                    {
+                                        auto& ub = _resourceManager
+                                            .GetResource<StorageBufferResource>(
+                                                b.resource.value())
+                                            ->getBuffer();
+
+                                        bufferInfos.push_back(VkDescriptorBufferInfo
+                                            {
+                                                .buffer = ub._buffer,
+                                                .offset = 0,
+                                                .range = VK_WHOLE_SIZE
+                                            });
+
+                                        descriptorWrites.emplace_back(VkWriteDescriptorSet
+                                            {
+                                                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                                .dstSet = getDescriptorSet(r.name, p.name, i),
+                                                .dstBinding = b.binding,
+                                                .dstArrayElement = 0,
+                                                .descriptorCount = 1,
+                                                .descriptorType = RenderGraph::extractDescriptorType(b.type),
+                                                .pBufferInfo = &bufferInfos.back()
+                                            });
+                                    }
+                                    else if (b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER" ||
                                         b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC")
                                     {
                                         auto& ub = _resourceManager

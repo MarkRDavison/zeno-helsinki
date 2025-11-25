@@ -5,10 +5,10 @@ mtllib plane.mtl
 g plane
 
 # vertices
-v -20.0 0.0 -20.0
-v  20.0 0.0 -20.0
-v  20.0 0.0  20.0
-v -20.0 0.0  20.0
+v -2.0 0.0 -2.0
+v  2.0 0.0 -2.0
+v  2.0 0.0  2.0
+v -2.0 0.0  2.0
 
 # normals (one per vertex, all pointing up Y)
 vn 0.0 1.0 0.0

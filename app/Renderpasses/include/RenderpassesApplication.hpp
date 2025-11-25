@@ -20,6 +20,7 @@
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
+#include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
@@ -44,6 +45,7 @@ namespace rp
 	public:
 		RenderpassesApplication(hl::EventBus& eventBus);
 		~RenderpassesApplication();
+
 		void init(RenderpassConfig config);
 		void run();
 		void notifyFramebufferResized(int width, int height);
@@ -62,7 +64,6 @@ namespace rp
 		void createCommandBuffers();
 		void recreateSwapChain();
 		void updateCameraUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer);
-		void updateMaterialUniformBuffer(hl::VulkanUniformBuffer& uniformBuffer, const hl::Material& material, uint32_t index);
 		void recordCommandBuffer(FrameResources& frame, uint32_t imageIndex);
 		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline);
 
@@ -86,14 +87,13 @@ namespace rp
 
 		hl::ResourceHandle<hl::UniformBufferResource> _cameraMatrixHandle;
 
-		hl::ResourceHandle<hl::UniformBufferResource> _satelliteMaterialHandle;
 		hl::ResourceHandle<hl::ModelResource> _satelliteModelHandle;
 
-		hl::ResourceHandle<hl::UniformBufferResource> _turretMaterialHandle;
 		hl::ResourceHandle<hl::ModelResource> _turrentModelHandle;
 
-		hl::ResourceHandle<hl::UniformBufferResource> _planeMaterialHandle;
+		hl::ResourceHandle<hl::StorageBufferResource> _materialStorageBufferHandle;
 		hl::ResourceHandle<hl::ModelResource> _planeModelHandle;
+		std::unordered_map<std::string, uint32_t> _materialNameToIndexMap;
 
 		hl::Camera* _camera{ nullptr };
 
