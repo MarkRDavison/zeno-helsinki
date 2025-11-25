@@ -34,11 +34,6 @@ struct PushConstantObject
     uint32_t pad[3]; // fills remaining bytes to 16
 };
 
-struct MaterialStorageBufferObject
-{
-    alignas(16) glm::vec4 color;
-};
-
 namespace rp
 {
 
@@ -79,7 +74,8 @@ namespace rp
         _swapChain(_device, _surface),
         _commandPool(_device),
         _oneTimeCommandPool(_device),
-        _syncContext(_device)
+        _syncContext(_device),
+        _materialSystem(_device, _resourceManager)
     {
         _eventBus.AddListener(this);
 
@@ -138,6 +134,15 @@ namespace rp
                 {
                     _camera->processKeyboard(hl::CameraMovement::FORWARD, 1.0f / 60.0f);
                 }
+                if (e.GetKeyCode() == GLFW_KEY_R)
+                {
+                    delete _camera;
+                    _camera = new hl::Camera(
+                        glm::vec3(2.0f, 0.5f, -2.0f),
+                        glm::vec3(0.0f, 1.0f, 0.0f),
+                        135.0f,
+                        -5.0f);
+                }
             });
         dispatcher.Dispatch<hl::KeyReleaseEvent>([this](const hl::KeyReleaseEvent& e)
             {
@@ -148,11 +153,13 @@ namespace rp
                 const auto y = e.getY();
                 if (y < 0)
                 {
-                    _camera->setZoom(_camera->getZoom() * 1.1f);
+                    auto newZoom = _camera->getZoom() * 1.1f;
+                    _camera->setZoom(std::min(newZoom, 170.0f));
                 }
                 else
                 {
-                    _camera->setZoom(_camera->getZoom() / 1.1f);
+                    auto newZoom = _camera->getZoom() / 1.1f;
+                    _camera->setZoom(std::max(newZoom, 10.0f));
                 }
             });
     }
@@ -208,6 +215,8 @@ namespace rp
 
     void RenderpassesApplication::cleanup()
     {
+        _materialSystem.destroy();
+
         _swapChain.destroy();
 
         _renderGraph->destroy();
@@ -707,12 +716,7 @@ namespace rp
                 "plane",
                 resourceContext);
 
-            // Needs to be a buffer, not a uniform buffer, maybe a separate storage buffer
-            _materialStorageBufferHandle = _resourceManager.Load<hl::StorageBufferResource>(
-                "material_ssbo",
-                resourceContext,
-                sizeof(MaterialStorageBufferObject),
-                MAX_MATERIALS);
+            _materialSystem.create();
         }
 
         {
@@ -725,27 +729,11 @@ namespace rp
                 _turrentModelHandle.Get()
             };
 
-            auto storageBuffer = _materialStorageBufferHandle.Get();
-
             for (const auto& model : modelResources)
             {
                 for (const auto& material : model->getMaterials())
                 {
-                    if (_materialNameToIndexMap.contains(material.name))
-                    {
-                        continue;
-                    }
-
-                    auto nextIndex = (uint32_t)_materialNameToIndexMap.size();
-
-                    _materialNameToIndexMap.insert({ material.name, nextIndex });
-
-                    auto materialObj = MaterialStorageBufferObject
-                    {
-                        .color = glm::vec4(material.diffuse, 1.0f)
-                    };
-
-                    storageBuffer->writeToBuffer(&materialObj, nextIndex);
+                    _materialSystem.addMaterial(material);
                 }
             }
         }
@@ -1055,25 +1043,10 @@ namespace rp
                 const auto& meshes = modelResource->getMeshes();
                 const auto& materials = modelResource->getMaterials();
 
-                uint32_t meshIndex = 0;
-
                 for (const auto& mesh : meshes)
                 {
-                    {   // TODO: This isn't dynamic so can be done once.
-                        const auto& iter = std::find_if(
-                            materials.begin(),
-                            materials.end(),
-                            [&](const hl::Material& m) -> bool
-                            {
-                                return m.name == mesh.materialName;
-                            });
-
-                        if (iter == materials.end())
-                        {
-                            throw std::runtime_error("Failed to find material by name");
-                        }
-
-                        pc.materialIndex = _materialNameToIndexMap[(*iter).name];
+                    {
+                        pc.materialIndex = _materialSystem.getMaterialIndex(mesh.materialName);
 
                         vkCmdPushConstants(
                             commandBuffer,
@@ -1112,7 +1085,6 @@ namespace rp
                         nullptr);
 
                     vkCmdDrawIndexed(commandBuffer, mesh._indexCount, 1, 0, 0, 0);
-                    meshIndex++;
                 }
             }
         }
