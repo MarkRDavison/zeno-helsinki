@@ -19,4 +19,5 @@ function(testsubmodule MODULE_NAME MODULE_LIBS)
 endfunction()
 
 ADD_SUBDIRECTORY(example)
+ADD_SUBDIRECTORY(system)
 ADD_SUBDIRECTORY(renderer)

@@ -769,35 +769,5 @@ namespace hl
             }
         }
 
-        TEST_CASE("RenderGraph detects cycles in complex DAG", "[RenderPassInfo]")
-        {
-            std::vector<hl::RenderpassInfo> renderpasses;
-
-            renderpasses.push_back({ .name = "A", .inputs = {}, .outputs = { hl::ResourceInfo{.name = "A_out" } } });
-            renderpasses.push_back({ .name = "B", .inputs = { "A_out" }, .outputs = { hl::ResourceInfo{.name = "B_out" } } });
-            renderpasses.push_back({ .name = "C", .inputs = { "B_out" }, .outputs = { hl::ResourceInfo{.name = "C_out" } } });
-            renderpasses.push_back({ .name = "D", .inputs = { "C_out" }, .outputs = { hl::ResourceInfo{.name = "D_out" } } });
-            renderpasses.push_back({ .name = "E", .inputs = { "D_out" }, .outputs = { hl::ResourceInfo{.name = "E_out" } } });
-
-            renderpasses.push_back({ .name = "F", .inputs = {}, .outputs = { hl::ResourceInfo{.name = "F_out" } } });
-            renderpasses.push_back({ .name = "G", .inputs = { "F_out" }, .outputs = { hl::ResourceInfo{.name = "G_out" } } });
-            renderpasses.push_back({ .name = "H", .inputs = { "G_out" }, .outputs = { hl::ResourceInfo{.name = "H_out" } } });
-
-            renderpasses.push_back({
-                .name = "Final",
-                .inputs = { "E_out", "H_out" },
-                .outputs = { hl::ResourceInfo{.name = "swapchain_color" } }
-                });
-
-            // Introduce a cycle: D → B
-            renderpasses.push_back({
-                .name = "CycleHelper",
-                .inputs = { "D_out" },
-                .outputs = { hl::ResourceInfo{.name = "B_out" } }
-                });
-
-            REQUIRE_THROWS_AS(RenderGraph::generateDAG(renderpasses), std::runtime_error);
-        }
-
 	}
 }

@@ -23,6 +23,7 @@
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
@@ -88,12 +89,10 @@ namespace rp
 		hl::ResourceHandle<hl::UniformBufferResource> _cameraMatrixHandle;
 
 		hl::ResourceHandle<hl::ModelResource> _satelliteModelHandle;
-
 		hl::ResourceHandle<hl::ModelResource> _turrentModelHandle;
-
-		hl::ResourceHandle<hl::StorageBufferResource> _materialStorageBufferHandle;
 		hl::ResourceHandle<hl::ModelResource> _planeModelHandle;
-		std::unordered_map<std::string, uint32_t> _materialNameToIndexMap;
+
+		hl::MaterialSystem _materialSystem;
 
 		hl::Camera* _camera{ nullptr };
 
