@@ -26,8 +26,19 @@ struct UniformBufferObject
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
 };
+struct PushConstantObject
+{
+    alignas(16) glm::mat4 model;
+    uint32_t materialIndex;
+};
 
 struct MaterialUniformBufferObject
+{
+    alignas(16) glm::vec3 color;
+    float _pad;  // required to make size = 16
+};
+
+struct MaterialStorageBufferObject
 {
     alignas(16) glm::vec3 color;
     float _pad;  // required to make size = 16
@@ -408,7 +419,8 @@ namespace rp
                             {
                                 .cullMode = VK_CULL_MODE_NONE
                             },
-                            .enableBlending = false
+                            .enableBlending = false,
+                            .pushConstantSize = sizeof(PushConstantObject)
                         },
                     },
                     {
@@ -483,7 +495,8 @@ namespace rp
                             {
                                 .cullMode = VK_CULL_MODE_BACK_BIT
                             },
-                            .enableBlending = false
+                            .enableBlending = false,
+                            .pushConstantSize = sizeof(PushConstantObject)
                         }
                     },
                     {
@@ -558,7 +571,8 @@ namespace rp
                             {
                                 .cullMode = VK_CULL_MODE_BACK_BIT
                             },
-                            .enableBlending = false
+                            .enableBlending = false,
+                            .pushConstantSize = sizeof(PushConstantObject)
                         }
                     },
                     {
@@ -633,7 +647,8 @@ namespace rp
                             {
                                 .cullMode = VK_CULL_MODE_NONE
                             },
-                            .enableBlending = false
+                            .enableBlending = false,
+                            .pushConstantSize = sizeof(PushConstantObject)
                         }
                     }
                 }
@@ -1153,17 +1168,20 @@ namespace rp
 
             // for each model
             {
+                PushConstantObject pc{};
                 glm::mat4 model = glm::mat4(1.0f);
                 model = glm::translate(model, glm::vec3(-0.5f, 0.0f, 1.0f));
                 model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
+
+                pc.model = model;
 
                 vkCmdPushConstants(
                     commandBuffer,
                     pipeline->getPipelineLayout(),
                     VK_SHADER_STAGE_VERTEX_BIT,
                     0,
-                    sizeof(glm::mat4),
-                    &model
+                    sizeof(PushConstantObject),
+                    &pc
                 );
 
                 auto modelResource = _satelliteModelHandle.Get();

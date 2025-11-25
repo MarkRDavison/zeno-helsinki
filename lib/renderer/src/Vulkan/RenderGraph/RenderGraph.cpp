@@ -330,7 +330,7 @@ namespace hl
 								VkPushConstantRange pushConstantRange{};
 								pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 								pushConstantRange.offset = 0;
-								pushConstantRange.size = 64;// TODO: Provide this??? sizeof(glm::mat4);
+								pushConstantRange.size = p.pushConstantSize;
 								// todo: compare this size to physicalDeviceProperties.limits.maxPushConstantsSize
 
 								VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -345,9 +345,12 @@ namespace hl
 									pipelineLayoutInfo.setLayoutCount = 1;
 									pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 								}
-								pipelineLayoutInfo.pushConstantRangeCount = 1;
-								pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
+								if (p.pushConstantSize > 0)
+								{
+									pipelineLayoutInfo.pushConstantRangeCount = 1;
+									pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+								}
 
 								CHECK_VK_RESULT(vkCreatePipelineLayout(device._device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
@@ -988,6 +991,10 @@ namespace hl
 		else if (descriptorTypeString == "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER")
 		{
 			return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		}
+		else if (descriptorTypeString == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER")
+		{
+			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		}
 		else
 		{

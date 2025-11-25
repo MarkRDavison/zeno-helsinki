@@ -98,6 +98,7 @@ namespace hl
         DepthState depthState;
         RasterState rasterState;
         bool enableBlending = false;
+        uint32_t pushConstantSize;
     };
 
     struct RenderpassInfo

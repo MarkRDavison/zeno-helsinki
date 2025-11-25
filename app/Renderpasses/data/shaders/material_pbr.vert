@@ -2,6 +2,7 @@
 
 layout(push_constant) uniform PushConstants {
     mat4 model;
+    int materialIndex;
 } pc;
 
 layout(binding = 0) uniform UniformBufferObject {
