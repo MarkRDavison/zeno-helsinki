@@ -19,6 +19,7 @@
 
 #include "../RenderpassesConfig.hpp"
 
+#define MAX_MATERIALS 64
 #define ROOT_PATH(x) (std::string(rp::RenderpassesConfig::RootPath) + std::string(x))
 
 struct UniformBufferObject
@@ -706,19 +707,12 @@ namespace rp
                 "plane",
                 resourceContext);
 
-            const auto size = sizeof(MaterialStorageBufferObject);
-
-            if (size != 16)
-            {
-
-            }
-
             // Needs to be a buffer, not a uniform buffer, maybe a separate storage buffer
             _materialStorageBufferHandle = _resourceManager.Load<hl::StorageBufferResource>(
                 "material_ssbo",
                 resourceContext,
                 sizeof(MaterialStorageBufferObject),
-                64); // TODO: constants MAX_MATERIALS
+                MAX_MATERIALS);
         }
 
         {
