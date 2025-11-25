@@ -171,7 +171,8 @@ namespace hl
                             {
                                 if (b.resource.has_value())
                                 {
-                                    if (b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER" ||
+                                    if (b.type == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER" ||
+                                        b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER" ||
                                         b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC")
                                     {
                                         auto& ub = _resourceManager
