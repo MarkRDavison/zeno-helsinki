@@ -996,6 +996,10 @@ namespace hl
 		{
 			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		}
+		else if (descriptorTypeString == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC")
+		{
+			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+		}
 		else
 		{
 			throw std::runtime_error("Invalid descriptor type");
