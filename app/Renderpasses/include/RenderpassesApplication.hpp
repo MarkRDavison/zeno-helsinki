@@ -28,6 +28,7 @@
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
 #include <helsinki/System/Infrastructure/Camera.hpp>
+#include <helsinki/Engine/Scene/Scene.hpp>
 #include "RenderpassesConfig.hpp"
 
 struct GLFWwindow;
@@ -88,13 +89,11 @@ namespace rp
 
 		hl::ResourceHandle<hl::UniformBufferResource> _cameraMatrixHandle;
 
-		hl::ResourceHandle<hl::ModelResource> _satelliteModelHandle;
-		hl::ResourceHandle<hl::ModelResource> _turrentModelHandle;
-		hl::ResourceHandle<hl::ModelResource> _planeModelHandle;
-
 		hl::MaterialSystem _materialSystem;
 
 		hl::Camera* _camera{ nullptr };
+
+		hl::Scene* _currentScene{ nullptr };
 
 		RenderpassConfig _config;
 

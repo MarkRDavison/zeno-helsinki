@@ -1,4 +1,5 @@
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <iostream>
 
 namespace hl
 {
@@ -37,21 +38,25 @@ namespace hl
 
 	void MaterialSystem::addMaterial(const Material& material)
 	{
+		uint32_t index;
 		if (_materialNameToIndexMap.contains(material.name))
 		{
-			return;
+			index = _materialNameToIndexMap[material.name];
+		}
+		else
+		{
+			index = (uint32_t)_materialNameToIndexMap.size();
+
+			_materialNameToIndexMap.insert({ material.name, index });
+
 		}
 
-		auto nextIndex = (uint32_t)_materialNameToIndexMap.size();
-
-		_materialNameToIndexMap.insert({ material.name, nextIndex });
-
-		auto materialObj = hl::MaterialStorageBufferObject
+		auto materialObj = MaterialStorageBufferObject
 		{
 			.color = glm::vec4(material.diffuse, 1.0f)
 		};
 
-		_materialStorageBufferHandle->writeToBuffer(&materialObj, nextIndex);
+		_materialStorageBufferHandle->writeToBuffer(&materialObj, index);
 	}
 
 	uint32_t MaterialSystem::getMaterialIndex(const std::string& materialName) const

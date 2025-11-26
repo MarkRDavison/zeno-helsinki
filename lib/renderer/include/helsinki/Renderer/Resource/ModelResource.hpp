@@ -27,6 +27,7 @@ namespace hl
 		VulkanDevice& _device;
 		VulkanCommandPool& _commandPool;
 		ResourceManager& _resourceManager;
+		MaterialSystem& _materialSystem;
 		std::string _rootPath;
 
 		std::vector<Mesh> _meshes;
