@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/ECS/Component.hpp>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <memory>
 #include <string>
@@ -13,6 +14,10 @@ namespace hl
     public:
         void setName(const std::string& name) { _name = name; }
         const std::string& getName() const { return _name; }
+
+        void AddTag(const std::string& tag);
+        void ClearTag(const std::string& tag);
+        bool HasTag(const std::string& tag) const;
 
         template<typename T, typename... Args>
         T* AddComponent(Args&&... args)
@@ -88,5 +93,6 @@ namespace hl
         std::string _name;
         std::vector<std::unique_ptr<Component>> _components;
         std::unordered_map<size_t, Component*> _componentMap;
+        std::unordered_set<uint32_t> tags;
     };
 }
