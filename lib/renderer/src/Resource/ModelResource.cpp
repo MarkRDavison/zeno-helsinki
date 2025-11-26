@@ -1,4 +1,5 @@
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 #include <helsinki/System/Utils/String.hpp>
 #include <unordered_set>
 #include <fstream>
@@ -16,6 +17,7 @@ namespace hl
 		_device(*context.device),
 		_commandPool(*context.pool),
 		_resourceManager(*context.resourceManager),
+		_materialSystem(*context.materialSystem),
 		_rootPath(context.rootPath)
 	{
 
@@ -260,6 +262,7 @@ namespace hl
 			for (const auto& m : LoadMaterialFile(std::format("{}/data/models/{}", _rootPath, materialFile)))
 			{
 				_materials.emplace_back(m);
+				_materialSystem.addMaterial(m);
 			}
 		}
 

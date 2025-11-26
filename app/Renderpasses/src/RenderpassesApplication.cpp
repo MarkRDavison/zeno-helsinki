@@ -7,6 +7,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
+#include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphPipelineResources.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
@@ -84,9 +86,12 @@ namespace rp
             glm::vec3(0.0f, 1.0f, 0.0f),
             135.0f,
             -5.0f);
+
+        _currentScene = new hl::Scene();
     }
     RenderpassesApplication::~RenderpassesApplication()
     {
+        delete _currentScene;
         delete _camera;
         _eventBus.RemoveListener(this);
     }
@@ -682,11 +687,15 @@ namespace rp
             .device = &_device,
             .pool = &_oneTimeCommandPool, 
             .resourceManager = &_resourceManager,
+            .materialSystem = &_materialSystem,
             .rootPath = rp::RenderpassesConfig::RootPath
         };
 
         {
             ZoneScopedN("LoadResources");
+
+            _materialSystem.create();
+
             _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
                 "placeholder",
                 resourceContext);
@@ -704,37 +713,32 @@ namespace rp
                 MAX_FRAMES_IN_FLIGHT,
                 1);
 
-            _satelliteModelHandle = _resourceManager.Load<hl::ModelResource>(
-                "satelliteDish_detailed",
-                resourceContext);
-
-            _turrentModelHandle = _resourceManager.Load<hl::ModelResource>(
-                "turret_double",
-                resourceContext);
-
-            _planeModelHandle = _resourceManager.Load<hl::ModelResource>(
-                "plane",
-                resourceContext);
-
-            _materialSystem.create();
-        }
-
-        {
-            ZoneScopedN("Write Material Storage Buffer");
-
-            std::vector<hl::ModelResource*> modelResources = 
             {
-                _planeModelHandle.Get(),
-                _satelliteModelHandle.Get(),
-                _turrentModelHandle.Get()
-            };
+                auto satelliteModelHandle = _resourceManager.Load<hl::ModelResource>(
+                    "satelliteDish_detailed",
+                    resourceContext);
 
-            for (const auto& model : modelResources)
+                auto satellite = _currentScene->addEntity(satelliteModelHandle->GetId());
+                satellite->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(-1.0, 0.0, 0.0));
+                satellite->AddComponent<hl::ModelComponent>()->setModelId(satelliteModelHandle->GetId());
+            }
             {
-                for (const auto& material : model->getMaterials())
-                {
-                    _materialSystem.addMaterial(material);
-                }
+                auto turrentModelHandle = _resourceManager.Load<hl::ModelResource>(
+                    "turret_double",
+                    resourceContext);
+
+                auto turret = _currentScene->addEntity(turrentModelHandle->GetId());
+                turret->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(+1.0, 0.0, 0.0));
+                turret->AddComponent<hl::ModelComponent>()->setModelId(turrentModelHandle->GetId());
+            }
+            {
+                auto planeModelHandle = _resourceManager.Load<hl::ModelResource>(
+                    "plane",
+                    resourceContext);
+
+                auto plane = _currentScene->addEntity(planeModelHandle->GetId());
+                plane->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0, 0.0, 0.0));
+                plane->AddComponent<hl::ModelComponent>()->setModelId(planeModelHandle->GetId());
             }
         }
 
@@ -1009,54 +1013,33 @@ namespace rp
         }
         else if (pipeline->Name == "model_pipeline")
         {
-            static float angle = 0.0f;
-            angle += 0.1f / 60.0f; // rotation speed per frame
-
-            std::vector<glm::vec3> positions = {
-                glm::vec3(-1.0f, 0.0f, 0.0f),
-                glm::vec3(1.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f)
-            };
-            std::vector<hl::ModelResource*> modelResources =
+            for (const auto& entity : _currentScene->getEntities())
             {
-                _satelliteModelHandle.Get(),
-                _turrentModelHandle.Get(),
-                _planeModelHandle.Get()
-            };
+                const auto& transform = entity->GetComponent<hl::TransformComponent>();
+                const auto& model = entity->GetComponent<hl::ModelComponent>();
 
-            uint32_t ii = 0;
-            // for each model
-            for (auto& modelResource : modelResources)
-            {
-                PushConstantObject pc{};
-                glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(model, positions[ii]);
-                if (ii < 2)
-                {
-                    model = glm::rotate(model, angle, glm::vec3(0.0f, 1.0f, 0.0f));
-                }
-
-                pc.model = model;
-
-                ii++;
+                const auto& modelResource = _resourceManager.GetResource<hl::ModelResource>(model->getModelId());
 
                 const auto& meshes = modelResource->getMeshes();
                 const auto& materials = modelResource->getMaterials();
 
+                auto pc = PushConstantObject
+                {
+                    .model = transform->GetTransformMatrix()
+                };
+
                 for (const auto& mesh : meshes)
                 {
-                    {
-                        pc.materialIndex = _materialSystem.getMaterialIndex(mesh.materialName);
+                    pc.materialIndex = _materialSystem.getMaterialIndex(mesh.materialName);
 
-                        vkCmdPushConstants(
-                            commandBuffer,
-                            pipeline->getPipelineLayout(),
-                            VK_SHADER_STAGE_VERTEX_BIT,
-                            0,
-                            sizeof(PushConstantObject),
-                            &pc
-                        );
-                    }
+                    vkCmdPushConstants(
+                        commandBuffer,
+                        pipeline->getPipelineLayout(),
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(PushConstantObject),
+                        &pc
+                    );
 
                     VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
                     VkDeviceSize offsets[] = { 0 };

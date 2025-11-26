@@ -4,16 +4,16 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <string>
 
 namespace hl
 {
     class Entity
     {
-    private:
-        std::vector<std::unique_ptr<Component>> components;
-        std::unordered_map<size_t, Component*> componentMap;
-
     public:
+        void setName(const std::string& name) { _name = name; }
+        const std::string& getName() const { return _name; }
+
         template<typename T, typename... Args>
         T* AddComponent(Args&&... args)
         {
@@ -22,8 +22,8 @@ namespace hl
             size_t typeID = Component::GetTypeID<T>();
 
             // Check if component of this type already exists
-            auto it = componentMap.find(typeID);
-            if (it != componentMap.end())
+            auto it = _componentMap.find(typeID);
+            if (it != _componentMap.end())
             {
                 return static_cast<T*>(it->second);
             }
@@ -31,8 +31,8 @@ namespace hl
             // Create new component
             auto component = std::make_unique<T>(std::forward<Args>(args)...);
             T* componentPtr = component.get();
-            componentMap[typeID] = componentPtr;
-            components.push_back(std::move(component));
+            _componentMap[typeID] = componentPtr;
+            _components.push_back(std::move(component));
             return componentPtr;
         }
 
@@ -40,34 +40,53 @@ namespace hl
         T* GetComponent()
         {
             size_t typeID = Component::GetTypeID<T>();
-            auto it = componentMap.find(typeID);
-            if (it != componentMap.end())
+            auto it = _componentMap.find(typeID);
+            if (it != _componentMap.end())
             {
                 return static_cast<T*>(it->second);
             }
             return nullptr;
         }
 
+
+        template<typename... Args>
+        bool HasComponents() const
+        {
+            return (HasComponent<Args>() && ...);
+        }
+
+        template<typename T>
+        bool HasComponent() const
+        {
+            const auto c = GetComponent<T>();
+            return c != nullptr;
+        }
+
         template<typename T>
         bool RemoveComponent()
         {
             size_t typeID = Component::GetTypeID<T>();
-            auto it = componentMap.find(typeID);
-            if (it != componentMap.end())
+            auto it = _componentMap.find(typeID);
+            if (it != _componentMap.end())
             {
                 Component* componentPtr = it->second;
-                componentMap.erase(it);
+                _componentMap.erase(it);
 
-                for (auto compIt = components.begin(); compIt != components.end(); ++compIt)
+                for (auto compIt = _components.begin(); compIt != _components.end(); ++compIt)
                 {
                     if (compIt->get() == componentPtr)
                     {
-                        components.erase(compIt);
+                        _components.erase(compIt);
                         return true;
                     }
                 }
             }
             return false;
         }
+
+    private:
+        std::string _name;
+        std::vector<std::unique_ptr<Component>> _components;
+        std::unordered_map<size_t, Component*> _componentMap;
     };
 }
