@@ -719,6 +719,7 @@ namespace rp
                     resourceContext);
 
                 auto satellite = _currentScene->addEntity(satelliteModelHandle->GetId());
+                satellite->AddTag("ROTATE");
                 satellite->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(-1.0, 0.0, 0.0));
                 satellite->AddComponent<hl::ModelComponent>()->setModelId(satelliteModelHandle->GetId());
             }
@@ -728,6 +729,7 @@ namespace rp
                     resourceContext);
 
                 auto turret = _currentScene->addEntity(turrentModelHandle->GetId());
+                turret->AddTag("ROTATE");
                 turret->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(+1.0, 0.0, 0.0));
                 turret->AddComponent<hl::ModelComponent>()->setModelId(turrentModelHandle->GetId());
             }
@@ -1013,6 +1015,10 @@ namespace rp
         }
         else if (pipeline->Name == "model_pipeline")
         {
+            static float angle = 0.0f;
+
+            angle += 0.0025f;
+
             for (const auto& entity : _currentScene->getEntities())
             {
                 const auto& transform = entity->GetComponent<hl::TransformComponent>();
@@ -1023,9 +1029,15 @@ namespace rp
                 const auto& meshes = modelResource->getMeshes();
                 const auto& materials = modelResource->getMaterials();
 
+                auto modelTransform = transform->GetTransformMatrix();
+                if (entity->HasTag("ROTATE"))
+                {
+                    modelTransform = glm::rotate(modelTransform, angle, glm::vec3(0.0, 1.0, 0.0));
+                }
+
                 auto pc = PushConstantObject
                 {
-                    .model = transform->GetTransformMatrix()
+                    .model = modelTransform
                 };
 
                 for (const auto& mesh : meshes)
