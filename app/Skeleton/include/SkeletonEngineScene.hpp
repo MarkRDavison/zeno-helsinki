@@ -1,6 +1,7 @@
 #pragma once
 
 #include <helsinki/Engine/EngineScene.hpp>
+#include <helsinki/Engine/Engine.hpp>
 
 namespace sk
 {
@@ -8,7 +9,7 @@ namespace sk
 	class SkeletonEngineScene : public hl::EngineScene
 	{
 	public:
-		SkeletonEngineScene(const std::string& rootPath);
+		SkeletonEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig);
 		void initialise(
 			const std::string& cameraMatrixResourceId,
 			hl::VulkanDevice& device,
@@ -20,7 +21,7 @@ namespace sk
 
 		void update(uint32_t currentFrame, float delta) override;
 	private:
-		const std::string _rootPath;
+		const hl::EngineConfiguration& _engineConfig;
 	};
 
 }

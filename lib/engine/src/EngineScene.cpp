@@ -1,4 +1,5 @@
 #include <helsinki/Engine/EngineScene.hpp>
+#include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/glm.hpp>
 #include <helsinki/System/HelsinkiTracy.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
@@ -20,7 +21,10 @@ namespace hl
         return framebufferExtent;
     }
 
-	EngineScene::EngineScene()
+	EngineScene::EngineScene(
+        hl::Engine& engine
+    ) :
+        _engine(engine)
 	{
         // TODO: Better way of doing this...
         _camera = new hl::Camera(
@@ -77,7 +81,7 @@ namespace hl
 			device.setDebugName(
 				reinterpret_cast<uint64_t>(frame.primaryCmd),
 				VK_OBJECT_TYPE_COMMAND_BUFFER,
-				("PrimaryCommandBuffer" + std::to_string(i)).c_str());
+				("PrimaryCommandBuffer_" + std::to_string(i)).c_str());
 
 			for (uint32_t layer = 0; layer < _renderGraph->getNumberLayers(); layer++)
 			{
@@ -133,15 +137,18 @@ namespace hl
 		_renderGraph = nullptr;
 	}
 
-	void EngineScene::update(uint32_t currentFrame, float /*delta*/)
+    void EngineScene::updateBase(uint32_t currentFrame, float delta)
+    {
+        ZoneScopedN("Engine Scene Update");
+        update(currentFrame, delta);
+        updateCameraUniformBuffer(_cameraMatrixPushConstantHandle.Get()->getUniformBuffer(currentFrame));
+    }
+	void EngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)
 	{
-		ZoneScopedN("Engine Scene Update");
-		updateCameraUniformBuffer(_cameraMatrixPushConstantHandle.Get()->getUniformBuffer(currentFrame));
 	}
 	VkCommandBuffer EngineScene::draw(uint32_t currentFrame, uint32_t imageIndex)
 	{
 		ZoneScopedN("Engine Scene Draw");
-		// recordCommandBuffer(_frameResources[_currentFrame], imageIndex);
 		auto& frame = _frameResources[currentFrame];
 
         const auto& lastRenderpassName = _renderGraph->getResources().back()->Name;

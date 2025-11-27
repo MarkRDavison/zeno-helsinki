@@ -12,11 +12,11 @@
 
 namespace hl
 {
-
+	class Engine;
 	class EngineScene : NonCopyable
 	{
 	public:
-		EngineScene();
+		EngineScene(hl::Engine& engine);
 		~EngineScene();
 
 		void initialise(
@@ -38,6 +38,7 @@ namespace hl
 			MaterialSystem& materialSystem);
 		void cleanup();
 
+		void updateBase(uint32_t currentFrame, float delta);
 		virtual void update(uint32_t currentFrame, float delta);
 		VkCommandBuffer draw(uint32_t currentFrame, uint32_t imageIndex);
 
@@ -51,6 +52,7 @@ namespace hl
 		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline, uint32_t currentFrame);
 
 	protected:
+		hl::Engine& _engine;
 		Scene _scene;
 		VulkanDevice* _device;
 		VulkanSwapChain* _swapChain;

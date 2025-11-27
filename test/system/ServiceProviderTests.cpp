@@ -6,7 +6,7 @@ namespace hl
 {
     namespace test
     {
-
+        struct NoInterface {};
         struct IServiceB { virtual void hello() = 0; virtual ~IServiceB() = default; };
         struct IServiceC { virtual void hello() = 0; virtual ~IServiceC() = default; };
 
@@ -491,6 +491,42 @@ namespace hl
             REQUIRE(&parentA.getC() != &childA.getC());
             REQUIRE(&parentA.getC() != &siblingA.getC());
             REQUIRE(&childA.getC() != &siblingA.getC());
+        }
+
+        TEST_CASE("Registering concrete service without interface works", "[ServiceProvider]")
+        {
+            hl::ServiceProvider root;
+
+            root.registerService<NoInterface, NoInterface>(hl::ServiceLifetime::Singleton);
+
+            SECTION("Singleton concrete service returns same instance from root")
+            {
+                NoInterface& e1 = root.get<NoInterface>();
+                NoInterface& e2 = root.get<NoInterface>();
+                REQUIRE(&e1 == &e2);
+            }
+
+            SECTION("Scopes share same singleton instance")
+            {
+                auto scope1 = root.createScope();
+                auto scope2 = root.createScope();
+
+                NoInterface& e1 = scope1.get<NoInterface>();
+                NoInterface& e2 = scope2.get<NoInterface>();
+
+                REQUIRE(&e1 == &e2);
+            }
+
+            SECTION("Transient creation still supported if lifetime changed to transient")
+            {
+                hl::ServiceProvider sp;
+                sp.registerService<NoInterface, NoInterface>(hl::ServiceLifetime::Transient);
+
+                auto t1 = sp.getTransient<NoInterface>();
+                auto t2 = sp.getTransient<NoInterface>();
+
+                REQUIRE(t1 != t2);
+            }
         }
     }
 }

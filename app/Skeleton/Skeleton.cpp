@@ -1,21 +1,24 @@
 #include "SkeletonConfig.hpp"
 #include <SkeletonEngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
-
-#define ROOT_PATH(x) (std::string(sk::SkeletonConfig::RootPath) + std::string(x))
+#include <helsinki/System/Utils/ServiceProvider.hpp>
 
 int main()
 {
-	hl::EventBus eventBus;
+	hl::ServiceProvider serviceProvider;
 
-	hl::Engine engine(eventBus);
+	serviceProvider.registerService<hl::EventBus, hl::EventBus>(hl::ServiceLifetime::Singleton);
+	serviceProvider.registerService<hl::Engine, hl::Engine, hl::EventBus>(hl::ServiceLifetime::Singleton);
+	serviceProvider.registerService<hl::EngineConfiguration, hl::EngineConfiguration>(hl::ServiceLifetime::Singleton);
 
-	auto engineConfig = hl::EngineConfiguration::Load(ROOT_PATH("/data/config.json"));
-	engineConfig.RootPath = std::string(sk::SkeletonConfig::RootPath);
+	hl::Engine& engine = serviceProvider.get<hl::Engine>();
+
+	auto& engineConfig = serviceProvider.get<hl::EngineConfiguration>(); 
+	engineConfig.applyConfig("/data/config.json", std::string(sk::SkeletonConfig::RootPath));
 
 	engine.init(engineConfig);
 
-	engine.setScene(new sk::SkeletonEngineScene(std::string(sk::SkeletonConfig::RootPath)));
+	engine.setScene(new sk::SkeletonEngineScene(engine, engineConfig));
 
 	engine.run();
 
