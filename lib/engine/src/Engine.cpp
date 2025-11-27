@@ -173,7 +173,7 @@ namespace hl
 	void Engine::update(float delta)
 	{
 		ZoneScopedN("Update");
-		_currentEngineScene->update(_currentFrame, delta);
+		_currentEngineScene->updateBase(_currentFrame, delta);
 	}
 	void Engine::draw()
 	{

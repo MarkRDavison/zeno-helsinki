@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
+#include <format>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
 
@@ -16,6 +17,18 @@ namespace hl
 		uint32_t Width{ 800 };
 		uint32_t Height{ 600 };
 		uint32_t MaxMaterials{ 64 };
+
+		void applyConfig(const std::string& filename, const std::string& rootPath)
+		{
+			const auto& parsed = EngineConfiguration::Load(std::format("{}{}", rootPath, filename));
+
+			this->EnableVsync = parsed.EnableVsync;
+			this->DisplayFps = parsed.DisplayFps;
+			this->Title = parsed.Title;
+			this->Width = parsed.Width;
+			this->Height = parsed.Height;
+			this->RootPath = rootPath;
+		}
 
 		static EngineConfiguration Load(const std::string& configPath)
 		{

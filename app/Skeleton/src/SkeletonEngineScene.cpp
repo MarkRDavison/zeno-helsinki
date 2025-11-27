@@ -15,9 +15,11 @@ namespace sk
 {
 
     SkeletonEngineScene::SkeletonEngineScene(
-        const std::string& rootPath
+        hl::Engine& engine,
+        const hl::EngineConfiguration& engineConfig
     ) :
-        _rootPath(rootPath)
+        EngineScene(engine),
+        _engineConfig(engineConfig)
     {
 
     }
@@ -58,8 +60,8 @@ namespace sk
                         hl::PipelineInfo
                         {
                             .name = "skybox_pipeline",
-                            .shaderVert = _rootPath + std::string("/data/shaders/skybox.vert"),
-                            .shaderFrag = _rootPath + std::string("/data/shaders/skybox.frag"),
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/skybox.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/skybox.frag"),
                             .descriptorSets =
                             {
                                 hl::DescriptorSetInfo
@@ -101,8 +103,8 @@ namespace sk
                         hl::PipelineInfo
                         {
                             .name = "model_pipeline",
-                            .shaderVert = _rootPath + std::string("/data/shaders/material_pbr.vert"),
-                            .shaderFrag = _rootPath + std::string("/data/shaders/material_pbr.frag"),
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/material_pbr.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/material_pbr.frag"),
                             .descriptorSets =
                             {
                                 hl::DescriptorSetInfo
@@ -195,8 +197,8 @@ namespace sk
                         hl::PipelineInfo
                         {
                             .name = "postprocess_pipeline",
-                            .shaderVert = _rootPath + std::string("/data/shaders/post_process.vert"),
-                            .shaderFrag = _rootPath + std::string("/data/shaders/post_process.frag"),
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/post_process.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/post_process.frag"),
                             .descriptorSets =
                             {
                                 hl::DescriptorSetInfo
@@ -249,8 +251,8 @@ namespace sk
                         hl::PipelineInfo
                         {
                             .name = "ui",
-                            .shaderVert = _rootPath + std::string("/data/shaders/ui.vert"),
-                            .shaderFrag = _rootPath + std::string("/data/shaders/ui.frag"),
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/ui.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/ui.frag"),
                             .descriptorSets = {},
                             .depthState =
                             {
@@ -286,8 +288,8 @@ namespace sk
                         hl::PipelineInfo
                         {
                             .name = "composite_pipeline",
-                            .shaderVert = _rootPath + std::string("/data/shaders/fullscreen_sample.vert"),
-                            .shaderFrag = _rootPath + std::string("/data/shaders/composite.frag"),
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/fullscreen_sample.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/composite.frag"),
                             .descriptorSets =
                             {
                                 hl::DescriptorSetInfo
@@ -334,7 +336,7 @@ namespace sk
             .pool = &transferCommandPool,
             .resourceManager = &resourceManager,
             .materialSystem = &materialSystem,
-            .rootPath = _rootPath
+            .rootPath = _engineConfig.RootPath
         };
 
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
@@ -403,8 +405,5 @@ namespace sk
                 transform->SetRotation(glm::quat(glm::vec3(0.0, glm::radians(angle), 0.0)));
             }
         }
-
-        std::cout << "TODO: Don't want to do this, need a base call and one for overriding" << std::endl;
-        EngineScene::update(currentFrame, delta);
     }
 }
