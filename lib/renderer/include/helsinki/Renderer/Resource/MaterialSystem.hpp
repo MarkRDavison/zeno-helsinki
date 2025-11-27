@@ -19,6 +19,7 @@ namespace hl
 	{
 	public:
 		static constexpr const char StorageBufferName[] = "material_ssbo";
+		static constexpr const char FallbackTextureName[] = "placeholder";
 
 		MaterialSystem(VulkanDevice& device, ResourceManager& resourceManager);
 

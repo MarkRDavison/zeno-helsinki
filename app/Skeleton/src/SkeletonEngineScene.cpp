@@ -9,6 +9,7 @@
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
+#include <iostream>
 
 namespace sk
 {
@@ -337,7 +338,7 @@ namespace sk
         };
 
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "placeholder",
+            hl::MaterialSystem::FallbackTextureName,
             resourceContext);
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "white",
@@ -346,6 +347,15 @@ namespace sk
             "skybox_texture",
             resourceContext);
 
+        {
+            auto planeModelHandle = resourceManager.Load<hl::ModelResource>(
+                "plane",
+                resourceContext);
+
+            auto plane = _scene.addEntity(planeModelHandle->GetId());
+            plane->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0, 0.0, 0.0));
+            plane->AddComponent<hl::ModelComponent>()->setModelId(planeModelHandle->GetId());
+        }
         {
             auto satelliteModelHandle = resourceManager.Load<hl::ModelResource>(
                 "satelliteDish_detailed",
@@ -366,15 +376,6 @@ namespace sk
             turret->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(+1.0, 0.0, 0.0));
             turret->AddComponent<hl::ModelComponent>()->setModelId(turrentModelHandle->GetId());
         }
-        {
-            auto planeModelHandle = resourceManager.Load<hl::ModelResource>(
-                "plane",
-                resourceContext);
-
-            auto plane = _scene.addEntity(planeModelHandle->GetId());
-            plane->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0, 0.0, 0.0));
-            plane->AddComponent<hl::ModelComponent>()->setModelId(planeModelHandle->GetId());
-        }
 
         EngineScene::initialise(
             cameraMatrixResourceId,
@@ -386,4 +387,24 @@ namespace sk
             materialSystem, 
             renderpasses);
 	}
+
+    void SkeletonEngineScene::update(uint32_t currentFrame, float delta)
+    {
+        static float angle = 0.0f;
+
+        angle += 45.0f * delta;
+
+        for (auto& e : _scene.getEntities())
+        {
+            if (e->HasComponents<hl::TransformComponent, hl::ModelComponent>() &&
+                e->HasTag("ROTATE"))
+            {
+                auto transform = e->GetComponent<hl::TransformComponent>();
+                transform->SetRotation(glm::quat(glm::vec3(0.0, glm::radians(angle), 0.0)));
+            }
+        }
+
+        std::cout << "TODO: Don't want to do this, need a base call and one for overriding" << std::endl;
+        EngineScene::update(currentFrame, delta);
+    }
 }
