@@ -18,12 +18,11 @@ namespace hl
 	class MaterialSystem
 	{
 	public:
-		static constexpr const uint32_t MAX_MATERIALS = 64;
 		static constexpr const char StorageBufferName[] = "material_ssbo";
 
 		MaterialSystem(VulkanDevice& device, ResourceManager& resourceManager);
 
-		void create();
+		void create(uint32_t maxMaterials);
 		void destroy();
 
 		void addMaterial(const Material& material);
