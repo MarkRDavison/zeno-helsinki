@@ -101,10 +101,10 @@ namespace rp
         _config = config;
         initWindow(_config.Width, _config.Height, _config.Title.c_str());
         initVulkan(_config.Title.c_str());
-        mainLoop();
     }
     void RenderpassesApplication::run()
     {
+        mainLoop();
         cleanup();
     }
     void RenderpassesApplication::notifyFramebufferResized(int width, int height)
@@ -694,7 +694,7 @@ namespace rp
         {
             ZoneScopedN("LoadResources");
 
-            _materialSystem.create();
+            _materialSystem.create(MAX_MATERIALS);
 
             _resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
                 "placeholder",

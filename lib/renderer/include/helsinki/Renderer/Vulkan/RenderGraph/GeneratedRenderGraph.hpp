@@ -23,6 +23,7 @@ namespace hl
 
 		std::vector<VulkanRenderGraphRenderpassResources*> getResources();
 		VulkanRenderGraphRenderpassResources* getRenderpassByName(const std::string& name);
+		const std::vector<hl::RenderpassInfo>& getRenderpassInfo() const;
 
 		std::vector<std::string> getSortedNodesByName() const;
 		const std::vector<std::string>& getSortedNodesByNameForLayer(uint32_t layer) const;

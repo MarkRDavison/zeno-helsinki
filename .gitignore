@@ -34,4 +34,4 @@ out/
 .vs/
 *.spv
 /.idea
-*.in
+*.hpp.in

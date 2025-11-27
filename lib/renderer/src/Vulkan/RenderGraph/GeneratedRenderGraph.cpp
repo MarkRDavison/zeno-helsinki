@@ -91,6 +91,10 @@ namespace hl
 
         throw std::runtime_error("Could not find renderpass with given name");
     }
+    const std::vector<hl::RenderpassInfo>& GeneratedRenderGraph::getRenderpassInfo() const
+    {
+        return _renderGraph;
+    }
 
     std::vector<std::string> GeneratedRenderGraph::getSortedNodesByName() const
     {

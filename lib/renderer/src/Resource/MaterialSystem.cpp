@@ -14,7 +14,7 @@ namespace hl
 
 	}
 
-	void MaterialSystem::create()
+	void MaterialSystem::create(uint32_t maxMaterials)
 	{
 		auto context = ResourceContext
 		{
@@ -28,7 +28,7 @@ namespace hl
 			StorageBufferName,
 			context,
 			sizeof(MaterialStorageBufferObject),
-			MAX_MATERIALS);
+			maxMaterials);
 	}
 
 	void MaterialSystem::destroy()
