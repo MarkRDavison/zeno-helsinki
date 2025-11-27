@@ -17,6 +17,8 @@ namespace sk
 			hl::VulkanCommandPool& transferCommandPool,
 			hl::ResourceManager& resourceManager,
 			hl::MaterialSystem& materialSystem) override;
+
+		void update(uint32_t currentFrame, float delta) override;
 	private:
 		const std::string _rootPath;
 	};

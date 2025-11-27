@@ -42,7 +42,7 @@ namespace hl
         }
 
         template<typename T>
-        T* GetComponent()
+        T* GetComponent() const
         {
             size_t typeID = Component::GetTypeID<T>();
             auto it = _componentMap.find(typeID);
@@ -50,6 +50,7 @@ namespace hl
             {
                 return static_cast<T*>(it->second);
             }
+
             return nullptr;
         }
 
@@ -63,8 +64,7 @@ namespace hl
         template<typename T>
         bool HasComponent() const
         {
-            const auto c = GetComponent<T>();
-            return c != nullptr;
+            return GetComponent<T>() != nullptr;
         }
 
         template<typename T>

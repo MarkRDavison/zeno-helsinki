@@ -308,6 +308,7 @@ namespace hl
     }
     void EngineScene::renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline, uint32_t currentFrame)
     {
+        // TODO: Need a system to register draw commands for different pipelines.
         if (pipeline->Name == "skybox_pipeline")
         {
             auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
@@ -324,9 +325,6 @@ namespace hl
         }
         else if (pipeline->Name == "model_pipeline")
         {
-            static float angle = 0.0f;
-
-            angle += 0.0025f;
 
             for (const auto& entity : _scene.getEntities())
             {
@@ -334,14 +332,12 @@ namespace hl
                 const auto& model = entity->GetComponent<hl::ModelComponent>();
 
                 const auto& modelResource = _resourceManager->GetResource<hl::ModelResource>(model->getModelId());
-
-                const auto& meshes = modelResource->getMeshes();
+                //const auto& modelResource = _resourceManager->HasResource<hl::ModelResource>(model->getModelId())
+                //    ? _resourceManager->GetResource<hl::ModelResource>(model->getModelId())
+                //    : _resourceManager->GetResource<hl::ModelResource>("FALLBACK_MODEL");
 
                 auto modelTransform = transform->GetTransformMatrix();
-                if (entity->HasTag("ROTATE"))
-                {
-                    modelTransform = glm::rotate(modelTransform, angle, glm::vec3(0.0, 1.0, 0.0));
-                }
+                const auto& meshes = modelResource->getMeshes();
 
                 auto pc = hl::MaterialPushConstantObject
                 {
@@ -351,6 +347,8 @@ namespace hl
                 for (const auto& mesh : meshes)
                 {
                     pc.materialIndex = _materialSystem->getMaterialIndex(mesh.materialName);
+                    // TODO: Somehow need to know if this material isn't loaded, and use a fallback material index, 
+                    // When I use textures as part of materials...
 
                     vkCmdPushConstants(
                         commandBuffer,
