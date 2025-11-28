@@ -19,5 +19,5 @@ FUNCTION(helsinkiApplication AppMain CPP_NAME MODULE_LIBS)
 
 ENDFUNCTION()
 
-ADD_SUBDIRECTORY(Renderpasses)
+ADD_SUBDIRECTORY(TwoDimensional)
 ADD_SUBDIRECTORY(Skeleton)

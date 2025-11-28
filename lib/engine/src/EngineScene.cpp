@@ -149,9 +149,9 @@ namespace hl
 	VkCommandBuffer EngineScene::draw(uint32_t currentFrame, uint32_t imageIndex)
 	{
 		ZoneScopedN("Engine Scene Draw");
-		auto& frame = _frameResources[currentFrame];
 
         const auto& lastRenderpassName = _renderGraph->getResources().back()->Name;
+        auto& frame = _frameResources[currentFrame];
 
         CHECK_VK_RESULT(vkResetCommandBuffer(frame.primaryCmd, 0));
         for (auto& [_, secondaries] : frame.secondaryCommandsByLayerAndPipelineGroup)
@@ -440,6 +440,10 @@ namespace hl
                 0,
                 nullptr);
             vkCmdDraw(commandBuffer, 3, 1, 0, 0); // halfscreen triangle
+        }
+        else if (pipeline->Name == "sprite_pipeline")
+        {
+
         }
         else
         {

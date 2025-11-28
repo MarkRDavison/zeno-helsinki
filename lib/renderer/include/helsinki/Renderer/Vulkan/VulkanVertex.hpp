@@ -6,6 +6,12 @@
 
 namespace hl
 {
+    struct Vertex2D
+    {
+        glm::vec3 pos;
+        glm::vec2 texCoord;
+    };
+
     struct Vertex
     {
         glm::vec3 pos;
