@@ -88,9 +88,9 @@ namespace hl
         return glm::lookAt(position, position + front, up);
     }
 
-    glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float nearPlane, float farPlane) const
+    glm::mat4 Camera::getProjectionMatrix() const
     {
-        return glm::perspective(glm::radians(zoom), aspectRatio, nearPlane, farPlane);
+        return glm::perspective(glm::radians(zoom), _aspectRatio, 0.1f, 100.0f);
     }
 
 }

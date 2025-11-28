@@ -21,7 +21,12 @@ namespace sk
         EngineScene(engine),
         _engineConfig(engineConfig)
     {
-
+        // TODO: Better way of doing this...
+        _camera = new hl::Camera(
+            glm::vec3(2.0f, 0.5f, -2.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f),
+            135.0f,
+            -5.0f);
     }
 	void SkeletonEngineScene::initialise(
         const std::string& cameraMatrixResourceId,

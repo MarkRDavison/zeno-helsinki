@@ -58,12 +58,12 @@ namespace hl
 		VulkanSwapChain* _swapChain;
 		ResourceManager* _resourceManager;
 		MaterialSystem* _materialSystem;
+		BaseCamera* _camera; // TODO: We may want multiple cameras
 
 	private:
 		std::vector<FrameResources> _frameResources;
 		GeneratedRenderGraph* _renderGraph{ nullptr };
 		ResourceHandle<UniformBufferResource> _cameraMatrixPushConstantHandle;
-		Camera* _camera; // TODO: We may want multiple cameras
 	};
 
 }

@@ -1,20 +1,11 @@
 #pragma once
 
-#include <helsinki/System/glm.hpp>
+#include <helsinki/System/Infrastructure/BaseCamera.hpp>
 
 namespace hl
 {
-	enum class CameraMovement
-	{
-		FORWARD,
-		BACKWARD,
-		LEFT,
-		RIGHT,
-		UP,
-		DOWN
-	};
 
-	class Camera
+	class Camera : public BaseCamera
 	{
 	public:
 		// Constructor with sensible defaults for common use cases
@@ -25,11 +16,12 @@ namespace hl
 			float yaw,
 			float pitch
 		);
+		~Camera() override = default;
 
 		// Matrix generation for graphics pipeline integration
 		// These methods bridge between the camera's spatial representation and GPU requirements
-		glm::mat4 getViewMatrix() const;
-		glm::mat4 getProjectionMatrix(float aspectRatio, float nearPlane = 0.1f, float farPlane = 100.0f) const;
+		glm::mat4 getViewMatrix() const override;
+		glm::mat4 getProjectionMatrix() const override;
 		
 		// Input processing methods for different interaction modalities
 		// Each method handles a specific type of user input with appropriate transformations
@@ -43,6 +35,7 @@ namespace hl
 		glm::vec3 getFront() const { return front; }
 		float getZoom() const { return zoom; }
 		void setZoom(float newZoom) { zoom = newZoom; }
+		void setAspectRatio(float aspectRatio) { _aspectRatio = aspectRatio; }
 	private:
 		// Internal coordinate system maintenance
 		// Ensures mathematical consistency when orientation changes occur
@@ -67,6 +60,7 @@ namespace hl
 		float movementSpeed{ 20.0f };    // Units per second for translation movement
 		float mouseSensitivity{ 1.0f }; // Multiplier for mouse input to rotation angle conversion
 		float zoom;             // Field of view control for perspective projection
+		float _aspectRatio{ 1.0f };
 	};
 
 }
