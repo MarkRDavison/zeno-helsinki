@@ -178,7 +178,6 @@ namespace hl
 
             const auto& secondaryBuffersPerRenderpass = frame.secondaryCommandsByLayerAndPipelineGroup.at(layer);
 
-            size_t renderpassIndex = 0;
             // FUTURE WORK: Multithreaded secondary command buffer recording
             //
             // Current design records all pipeline groups in each renderpass sequentially.
@@ -195,6 +194,7 @@ namespace hl
             //      - This should be fine since renderpasses in the same layer should be independant
             // - Avoid multithreading overhead if there is only one pipeline group.
             // - Later extension: consider parallel renderpasses if layers or renderpasses are independent.
+            size_t renderpassIndex = 0;
             for (const auto& renderpassName : _renderGraph->getSortedNodesByNameForLayer(layer))
             {
                 ZoneScoped;
