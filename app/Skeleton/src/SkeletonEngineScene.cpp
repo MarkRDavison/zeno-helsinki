@@ -359,13 +359,23 @@ namespace sk
             plane->AddComponent<hl::ModelComponent>()->setModelId(planeModelHandle->GetId());
         }
         {
+            auto rockCrystalsModelHandle = resourceManager.Load<hl::ModelResource>(
+                "rock_crystals",
+                resourceContext);
+
+            auto satellite = _scene.addEntity(rockCrystalsModelHandle->GetId());
+            satellite->AddTag("ROTATE");
+            satellite->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(-1.0, 0.0, -1.0));
+            satellite->AddComponent<hl::ModelComponent>()->setModelId(rockCrystalsModelHandle->GetId());
+        }
+        {
             auto satelliteModelHandle = resourceManager.Load<hl::ModelResource>(
                 "satelliteDish_detailed",
                 resourceContext);
 
             auto satellite = _scene.addEntity(satelliteModelHandle->GetId());
             satellite->AddTag("ROTATE");
-            satellite->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(-1.0, 0.0, 0.0));
+            satellite->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(-1.0, 0.0, +1.0));
             satellite->AddComponent<hl::ModelComponent>()->setModelId(satelliteModelHandle->GetId());
         }
         {
@@ -375,7 +385,7 @@ namespace sk
 
             auto turret = _scene.addEntity(turrentModelHandle->GetId());
             turret->AddTag("ROTATE");
-            turret->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(+1.0, 0.0, 0.0));
+            turret->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(+1.0, 0.0, +1.0));
             turret->AddComponent<hl::ModelComponent>()->setModelId(turrentModelHandle->GetId());
         }
 
