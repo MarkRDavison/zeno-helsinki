@@ -1,12 +1,15 @@
 #include <TwoDimensionalEngineScene.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
+#include <helsinki/System/Infrastructure/Camera2D.hpp>
+#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <iostream>
 
 namespace td
@@ -19,7 +22,7 @@ namespace td
         EngineScene(engine),
         _engineConfig(engineConfig)
     {
-
+        _camera = new hl::Camera2D();
     }
 
     void TwoDimensionalEngineScene::initialise(
@@ -85,7 +88,7 @@ namespace td
                                     }
                                 }
                             },
-                            .vertexInputInfo = hl::VertexInputInfo
+                            /*.vertexInputInfo = hl::VertexInputInfo
                             {
                                 .attributes =
                                 {
@@ -103,13 +106,13 @@ namespace td
                                     }
                                 },
                                 .stride = sizeof(hl::Vertex)
-                            },
+                            },*/
                             .rasterState =
                             {
                                 .cullMode = VK_CULL_MODE_NONE
                             },
                             .enableBlending = false,
-                            .pushConstantSize = sizeof(hl::MaterialPushConstantObject)
+                            .pushConstantSize = sizeof(hl::SpritePushConstantObject)
                         }
                     }
                 }
@@ -128,6 +131,12 @@ namespace td
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "spritesheet",
             resourceContext);
+
+        {
+            auto entity = _scene.addEntity("entity1");
+            entity->AddTag("SPRITE");
+            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        }
 
         EngineScene::initialise(
             cameraMatrixResourceId,

@@ -1,3 +1,4 @@
+
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/glm.hpp>
@@ -7,6 +8,7 @@
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 
 namespace hl
 {
@@ -26,16 +28,15 @@ namespace hl
     ) :
         _engine(engine)
 	{
-        // TODO: Better way of doing this...
-        _camera = new hl::Camera(
-            glm::vec3(2.0f, 0.5f, -2.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f),
-            135.0f,
-            -5.0f);
+
 	}
 	EngineScene::~EngineScene()
 	{
-        delete _camera;
+        if (_camera != nullptr)
+        {
+            delete _camera;
+            _camera = nullptr;
+        }
 	}
 
 	void EngineScene::initialise(
@@ -305,9 +306,9 @@ namespace hl
     void EngineScene::updateCameraUniformBuffer(VulkanUniformBuffer& uniformBuffer)
     {
         CameraUniformBufferObject ubo{};
-
+        ((Camera*)_camera)->setAspectRatio(_swapChain->_swapChainExtent.width / (float)_swapChain->_swapChainExtent.height);
         ubo.view = _camera->getViewMatrix();
-        ubo.proj = _camera->getProjectionMatrix(_swapChain->_swapChainExtent.width / (float)_swapChain->_swapChainExtent.height);
+        ubo.proj = _camera->getProjectionMatrix();
 
         ubo.proj[1][1] *= -1;
 
@@ -332,7 +333,6 @@ namespace hl
         }
         else if (pipeline->Name == "model_pipeline")
         {
-
             for (const auto& entity : _scene.getEntities())
             {
                 const auto& transform = entity->GetComponent<hl::TransformComponent>();
@@ -443,7 +443,39 @@ namespace hl
         }
         else if (pipeline->Name == "sprite_pipeline")
         {
+            for (const auto& entity : _scene.getEntities())
+            {
+                const auto& transform = entity->GetComponent<hl::TransformComponent>();
 
+                auto modelTransform = transform->GetTransformMatrix();
+
+                auto pc = hl::SpritePushConstantObject
+                {
+                    .model = modelTransform
+                };
+
+                vkCmdPushConstants(
+                    commandBuffer,
+                    pipeline->getPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT,
+                    0,
+                    sizeof(hl::SpritePushConstantObject),
+                    &pc
+                );
+
+                auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                vkCmdBindDescriptorSets(
+                    commandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    pipeline->getPipelineLayout(),
+                    0,
+                    1,
+                    &descriptorSet,
+                    0,
+                    nullptr);
+
+                vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+            }
         }
         else
         {
