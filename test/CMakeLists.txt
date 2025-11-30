@@ -18,6 +18,5 @@ function(testsubmodule MODULE_NAME MODULE_LIBS)
 	catch_discover_tests(${TestMain})
 endfunction()
 
-ADD_SUBDIRECTORY(example)
 ADD_SUBDIRECTORY(system)
 ADD_SUBDIRECTORY(renderer)

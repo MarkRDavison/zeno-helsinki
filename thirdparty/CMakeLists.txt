@@ -94,20 +94,6 @@ FetchContent_Declare(
     GIT_TAG v2.0.0rc13)
     
 FetchContent_MakeAvailable(tinyobjloader)
-
-FetchContent_Declare(
-    vk-bootstrap
-    GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap.git
-    GIT_TAG v1.4.329)
-    
-FetchContent_MakeAvailable(vk-bootstrap)
-    
-FetchContent_Declare(
-    GPUOpen
-    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-    GIT_TAG v3.3.0)
-    
-FetchContent_MakeAvailable(GPUOpen)
     
 FetchContent_Declare(
     imgui

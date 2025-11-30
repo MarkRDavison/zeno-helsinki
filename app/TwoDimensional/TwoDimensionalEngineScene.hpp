@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
+#include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 
 namespace td
 {
@@ -21,6 +22,7 @@ namespace td
 		void update(uint32_t currentFrame, float delta) override;
 	private:
 		const hl::EngineConfiguration& _engineConfig;
+		hl::ResourceHandle<hl::StorageBufferResource> frameSSBOResourceHandle;
 	};
 
 }

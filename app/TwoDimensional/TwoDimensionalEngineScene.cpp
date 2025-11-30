@@ -8,8 +8,10 @@
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
+#include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
+#include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
 #include <iostream>
 
 namespace td
@@ -81,6 +83,13 @@ namespace td
                                         hl::DescriptorBinding
                                         {
                                             .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "spritesheet_frame_ssbo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 2,
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                             .stage = "FRAGMENT",
                                             .resource = "spritesheet"
@@ -132,10 +141,40 @@ namespace td
             "spritesheet",
             resourceContext);
 
+        frameSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
+            "spritesheet_frame_ssbo",
+            resourceContext,
+            sizeof(hl::FrameDataStorageBufferObject),
+            128);
+
+        {
+            const constexpr float TEX_SIZE = 1024.0f;
+            const constexpr float CELL_SIZE = 64.0f;
+            auto ssbo = frameSSBOResourceHandle.Get();
+            std::vector<hl::FrameDataStorageBufferObject> frameData
+            {
+                {.uvRect = glm::vec4(CELL_SIZE * 0, CELL_SIZE * 0, CELL_SIZE * 1, CELL_SIZE * 1) / TEX_SIZE },
+                {.uvRect = glm::vec4(CELL_SIZE * 1, CELL_SIZE * 0, CELL_SIZE * 2, CELL_SIZE * 1) / TEX_SIZE },
+                {.uvRect = glm::vec4(CELL_SIZE * 2, CELL_SIZE * 0, CELL_SIZE * 3, CELL_SIZE * 1) / TEX_SIZE },
+                {.uvRect = glm::vec4(CELL_SIZE * 0, CELL_SIZE * 1, CELL_SIZE * 1, CELL_SIZE * 2) / TEX_SIZE },
+                {.uvRect = glm::vec4(CELL_SIZE * 1, CELL_SIZE * 1, CELL_SIZE * 2, CELL_SIZE * 2) / TEX_SIZE },
+                {.uvRect = glm::vec4(CELL_SIZE * 2, CELL_SIZE * 1, CELL_SIZE * 3, CELL_SIZE * 2) / TEX_SIZE },
+                {.uvRect = glm::vec4(CELL_SIZE * 0, CELL_SIZE * 2, CELL_SIZE * 1, CELL_SIZE * 3) / TEX_SIZE },
+                {.uvRect = glm::vec4(CELL_SIZE * 1, CELL_SIZE * 2, CELL_SIZE * 2, CELL_SIZE * 3) / TEX_SIZE },
+                {.uvRect = glm::vec4(CELL_SIZE * 2, CELL_SIZE * 2, CELL_SIZE * 3, CELL_SIZE * 3) / TEX_SIZE },
+            };
+
+            for (uint32_t i = 0; i < (uint32_t)frameData.size(); ++i)
+            {
+                ssbo->writeToBuffer(&frameData[i], i);
+            }
+        }
+
         {
             auto entity = _scene.addEntity("entity1");
             entity->AddTag("SPRITE");
-            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(64.0f, 128.0f, 0.0f));
+            entity->AddComponent<hl::SpriteComponent>()->setFrameDataIndex(0);
         }
 
         EngineScene::initialise(
@@ -149,8 +188,27 @@ namespace td
             renderpasses);
     }
 
-    void TwoDimensionalEngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)
+    void TwoDimensionalEngineScene::update(uint32_t /*currentFrame*/, float delta)
     {
+        const int max = 9;
+        static float acc = 0.0f;
+
+        acc += delta;
+        if (acc > 1.0f)
+        {
+            acc -= 1.0f;
+            for (auto& e : _scene.getEntities())
+            {
+                if (e->HasTag("SPRITE") &&
+                    e->HasComponent<hl::SpriteComponent>())
+                {
+                    auto sc = e->GetComponent<hl::SpriteComponent>();
+                    auto curr = sc->getFrameDataIndex();
+                    auto next = (curr + 1) % max;
+                    sc->setFrameDataIndex(next);
+                }
+            }
+        }
 
     }
 }
