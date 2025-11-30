@@ -5,6 +5,10 @@ SET(MODULE_LIBS
 	glfw
 	stb
 	tinyobjloader
+	tinyxml2
+	Freetype::Freetype
+	msdfgen-core
+	msdfgen-ext
 )
 
 SET(INCLUDE_DIRS

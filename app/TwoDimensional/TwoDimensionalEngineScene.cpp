@@ -3,6 +3,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
+#include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
@@ -140,6 +141,9 @@ namespace td
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "spritesheet",
             resourceContext);
+
+
+        resourceManager.Load<hl::FontResource>("calibri", resourceContext);
 
         frameSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
             "spritesheet_frame_ssbo",
