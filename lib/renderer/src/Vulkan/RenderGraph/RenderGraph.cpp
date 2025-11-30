@@ -369,12 +369,16 @@ namespace hl
 
 								{
 									ZoneScopedN("Create Shader Modules");
+
+									const auto& vertexShaderContents = readFileContents(p.shaderVert);
+									const auto& fragmentShaderContents = readFileContents(p.shaderFrag);
+
 									const auto& vertexSource = VulkanGraphicsPipeline::readParseCompileShader(
-										readFileContents(p.shaderVert),
+										vertexShaderContents,
 										true
 									);
 									const auto& fragmentSource = VulkanGraphicsPipeline::readParseCompileShader(
-										readFileContents(p.shaderFrag),
+										fragmentShaderContents,
 										false
 									);
 
@@ -462,7 +466,7 @@ namespace hl
 									rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 									rasterizer.lineWidth = 1.0f;
 									rasterizer.cullMode = p.rasterState.cullMode,
-										rasterizer.frontFace = p.rasterState.frontFace;
+									rasterizer.frontFace = p.rasterState.frontFace;
 									rasterizer.depthBiasEnable = VK_FALSE;
 
 									VkPipelineMultisampleStateCreateInfo multisampling{};

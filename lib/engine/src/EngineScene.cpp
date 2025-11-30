@@ -5,6 +5,7 @@
 #include <helsinki/System/HelsinkiTracy.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
+#include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
@@ -446,12 +447,15 @@ namespace hl
             for (const auto& entity : _scene.getEntities())
             {
                 const auto& transform = entity->GetComponent<hl::TransformComponent>();
+                const auto& sprite = entity->GetComponent<hl::SpriteComponent>();
 
                 auto modelTransform = transform->GetTransformMatrix();
 
                 auto pc = hl::SpritePushConstantObject
                 {
-                    .model = modelTransform
+                    .model = modelTransform,
+                    .size = glm::vec2(64.0f, 64.0f),
+                    .frameIndex = sprite->getFrameDataIndex()
                 };
 
                 vkCmdPushConstants(

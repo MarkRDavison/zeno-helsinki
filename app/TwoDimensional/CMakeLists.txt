@@ -16,8 +16,6 @@ SET(MODULE_LIBS
 	"helsinki-renderer${LIB_EXTENSION_SHARED}"
 	"helsinki-engine${LIB_EXTENSION_SHARED}"
 	TwoDimensional
-	vk-bootstrap::vk-bootstrap
-	GPUOpen::VulkanMemoryAllocator
 )
 
 if(ENABLE_TRACY)
