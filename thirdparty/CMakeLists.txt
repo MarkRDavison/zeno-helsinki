@@ -118,3 +118,40 @@ add_library(ThirdParty_Tracy STATIC
 target_include_directories(ThirdParty_Tracy PUBLIC
     "${tracy_SOURCE_DIR}/public"
 )
+
+set(FT_DISABLE_BROTLI TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_ZLIB   TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_BZIP2  TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_PNG    TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_HARFBUZZ TRUE CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    freetype
+    GIT_REPOSITORY https://github.com/freetype/freetype.git
+    GIT_TAG        VER-2-14-1
+)
+
+FetchContent_MakeAvailable(freetype)
+
+add_library(Freetype::Freetype ALIAS freetype)
+
+
+FetchContent_Declare(
+  tinyxml2
+  GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+  GIT_TAG        11.0.0
+)
+
+FetchContent_MakeAvailable(tinyxml2)
+
+set(MSDFGEN_DYNAMIC_RUNTIME ON CACHE BOOL "" FORCE)
+set(MSDFGEN_BUILD_STANDALONE OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_USE_VCPKG OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_USE_SKIA OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_DISABLE_SVG ON CACHE BOOL "" FORCE)
+set(MSDFGEN_DISABLE_PNG ON CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  msdfgen
+  GIT_REPOSITORY https://github.com/Chlumsky/msdfgen.git
+  GIT_TAG        v1.12.1
+)
+FetchContent_MakeAvailable(msdfgen)
