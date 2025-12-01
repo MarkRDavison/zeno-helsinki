@@ -1076,6 +1076,11 @@ namespace hl
 
 			for (const auto& i : rpi.inputs)
 			{
+				if (whoWritesWhatOutput.find(i) == whoWritesWhatOutput.end())
+				{
+					throw std::runtime_error("No producer for specified input");
+				}
+				
 				auto& inputProducer = nodes[whoWritesWhatOutput[i]];
 
 				node.prev.push_back(inputProducer.name);

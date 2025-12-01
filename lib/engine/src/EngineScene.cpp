@@ -481,6 +481,31 @@ namespace hl
                 vkCmdDraw(commandBuffer, 6, 1, 0, 0);
             }
         }
+        else if (pipeline->Name == "text_pipeline")
+        {
+            int cellIndex = 4;
+            vkCmdPushConstants(
+                commandBuffer,
+                pipeline->getPipelineLayout(),
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0,
+                sizeof(int),
+                &cellIndex
+            );
+
+            auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+            vkCmdBindDescriptorSets(
+                commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipeline->getPipelineLayout(),
+                0,
+                1,
+                &descriptorSet,
+                0,
+                nullptr);
+
+            vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+        }
         else
         {
             throw std::runtime_error("TODO: HARD CODED DRAW FUNCTIONS");

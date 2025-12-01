@@ -17,9 +17,12 @@ namespace hl
 		bool Load() override;
 		void Unload() override;
 
+
+
 	private:
 		VulkanDevice& _device;
 		VulkanCommandPool& _commandPool;
+		ResourceManager& _resourceManager;
 		const std::string _rootPath;
 	};
 
