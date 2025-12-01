@@ -58,5 +58,5 @@ void main() {
     vec2 cellOrigin = vec2(float(col), float(row)) * (cellSizePx / atlasSizePx);
     vec2 cellScale  = vec2(cellSizePx / atlasSizePx);
 
-    outAtlasUV = cellOrigin + CELL_UV[gl_VertexIndex] * cellScale;
+    fragTexCoord = cellOrigin + CELL_UV[gl_VertexIndex] * cellScale;
 }

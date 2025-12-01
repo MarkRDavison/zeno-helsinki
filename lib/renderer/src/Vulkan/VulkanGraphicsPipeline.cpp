@@ -85,11 +85,19 @@ namespace hl
             DefaultTBuiltInResource.limits.generalConstantMatrixVectorIndexing = 1;
         }
 
-        shader.parse(&DefaultTBuiltInResource, 0, false, EShMsgDefault);
+        EShMessages messages = (EShMessages)(EShMsgDefault | EShMsgVulkanRules | EShMsgSpvRules);
+        if (!shader.parse(&DefaultTBuiltInResource, 0, false, messages))
+        {
+            std::cerr
+                << "GLSL link failed: " << std::endl
+                << shader.getInfoDebugLog() << std::endl
+                << shader.getInfoLog() << std::endl;
+            return {};
+        }
 
         glslang::TProgram program;
         program.addShader(&shader);
-        if (!program.link(EShMsgDefault))
+        if (!program.link(messages))
         {
             std::cerr 
                 << "GLSL link failed: " << std::endl 
@@ -99,7 +107,12 @@ namespace hl
         }
 
         std::vector<uint32_t> spirv;
-        glslang::GlslangToSpv(*program.getIntermediate(stage), spirv);
+        glslang::SpvOptions options{}; 
+        
+        // TODO: only for debug
+        options.disableOptimizer = true;    // better for debugging
+        options.validate = true;
+        glslang::GlslangToSpv(*program.getIntermediate(stage), spirv, &options);
 
         return spirv;
     }
