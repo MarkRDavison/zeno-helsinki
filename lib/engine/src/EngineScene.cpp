@@ -483,7 +483,7 @@ namespace hl
         }
         else if (pipeline->Name == "text_pipeline")
         {
-            int cellIndex = 4;
+            int cellIndex = 23;
             vkCmdPushConstants(
                 commandBuffer,
                 pipeline->getPipelineLayout(),
