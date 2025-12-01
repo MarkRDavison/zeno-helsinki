@@ -98,31 +98,133 @@ namespace td
                                     }
                                 }
                             },
-                            /*.vertexInputInfo = hl::VertexInputInfo
-                            {
-                                .attributes =
-                                {
-                                    {
-                                        .name = "inPosition",
-                                        .format = hl::VertexAttributeFormat::Vec3,
-                                        .location = 0,
-                                        .offset = offsetof(hl::Vertex2D, pos)
-                                    },
-                                    {
-                                        .name = "inTexCoord",
-                                        .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 1,
-                                        .offset = offsetof(hl::Vertex2D, texCoord)
-                                    }
-                                },
-                                .stride = sizeof(hl::Vertex)
-                            },*/
                             .rasterState =
                             {
                                 .cullMode = VK_CULL_MODE_NONE
                             },
                             .enableBlending = false,
                             .pushConstantSize = sizeof(hl::SpritePushConstantObject)
+                        }
+                    }
+                }
+            },
+            hl::RenderpassInfo
+            {
+                .name = "text_pass",
+                .useMultiSampling = false,
+                .inputs = {},
+                .outputs =
+                {
+                    hl::ResourceInfo
+                    {
+                        .name = "text_color",
+                        .type = hl::ResourceType::Color,
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB",
+                        .clear = VkClearValue{.color = {{ 0.0f, 0.0f, 0.0f, 0.0f }}}
+                    }
+                },
+                .pipelineGroups =
+                {
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "text_pipeline",
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/text.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/text.frag"),
+                             .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "camera_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "calibri"
+                                        }
+                                    }
+                                }
+                            },
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = true, // keep blending for UI elements
+                            .pushConstantSize = sizeof(int)
+                        }
+                    }
+                }
+            },
+            hl::RenderpassInfo
+            {
+                .name = "composite_pass",
+                .useMultiSampling = false,
+                .inputs = { "scene_color", "text_color" },
+                .outputs =
+                {
+                    hl::ResourceInfo
+                    {
+                        .name = "swapchain_color",
+                        .type = hl::ResourceType::Color,
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
+                    }
+                },
+                .pipelineGroups =
+                {
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "composite_pipeline",
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/fullscreen_sample.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/composite.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .name = "composite_inputs",
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "scene_color"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "text_color"
+                                        }
+                                    }
+                                }
+                            },
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = true
                         }
                     }
                 }
@@ -142,8 +244,10 @@ namespace td
             "spritesheet",
             resourceContext);
 
-
         resourceManager.Load<hl::FontResource>("calibri", resourceContext);
+        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+            "calibri",
+            resourceContext);
 
         frameSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
             "spritesheet_frame_ssbo",

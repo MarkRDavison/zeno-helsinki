@@ -296,17 +296,17 @@ namespace hl
 
             return renderpasses;
         }
-        
-		TEST_CASE("Renderpass info can generate DAG", "[RenderPassInfo]")
-		{
+
+        TEST_CASE("Renderpass info can generate DAG", "[RenderPassInfo]")
+        {
             const auto& renderpasses = createTestsRenderpasses();
 
             auto nodes = RenderGraph::generateDAG(renderpasses);
 
             std::unordered_map<uint32_t, int> counts;
-            for (auto& [_, n] : nodes) 
-            { 
-                counts[n.layer]++; 
+            for (auto& [_, n] : nodes)
+            {
+                counts[n.layer]++;
             }
 
             REQUIRE(nodes["scene_pass"].layer == 0);
@@ -324,7 +324,43 @@ namespace hl
             REQUIRE(counts[0] == 2); // scene_pass, ui_pass  
             REQUIRE(counts[1] == 1); // postprocess_pass  
             REQUIRE(counts[2] == 1); // composite_pass  
-		}
+        }
+
+        TEST_CASE("When input specified that no one creates throws exception", "[RenderPassInfo]")
+        {
+            std::vector<hl::RenderpassInfo> renderpasses;
+
+            renderpasses.push_back(
+                hl::RenderpassInfo{
+                    .name = "A",
+                    .inputs = {},
+                    .outputs = { hl::ResourceInfo{.name = "A_out" } }
+                });
+
+            renderpasses.push_back(
+                hl::RenderpassInfo{
+                    .name = "B",
+                    .inputs = { "A_out" },
+                    .outputs = { hl::ResourceInfo{.name = "B_out" } }
+                });
+            renderpasses.push_back(
+                hl::RenderpassInfo{
+                    .name = "C",
+                    .inputs = { "A_out" },
+                    .outputs = { hl::ResourceInfo{.name = "C_out" } }
+                });
+
+            renderpasses.push_back(
+                hl::RenderpassInfo{
+                    .name = "D",
+                    .inputs = { "X_out", "B_out", "C_out" },
+                    .outputs = { hl::ResourceInfo{.name = "D_out" } }
+                });
+
+            REQUIRE_THROWS_AS(
+                RenderGraph::generateDAG(renderpasses),
+                std::runtime_error);
+        }
 
         TEST_CASE("RenderGraph detects cycles", "[RenderPassInfo]")
         {

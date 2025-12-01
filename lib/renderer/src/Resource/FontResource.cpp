@@ -8,6 +8,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 #include <algorithm>
+#include <filesystem>
 
 namespace hl
 {
@@ -19,6 +20,7 @@ namespace hl
 		Resource(id),
 		_device(*context.device),
 		_commandPool(*context.pool),
+        _resourceManager(*context.resourceManager),
 		_rootPath(context.rootPath)
 	{
 
@@ -26,6 +28,13 @@ namespace hl
 
 	bool FontResource::Load()
 	{
+        auto fontTexturePath = std::format("{}/data/textures/{}.png", _rootPath, GetId());
+
+        if (std::filesystem::exists(fontTexturePath))
+        {
+            return Resource::Load();
+        }
+
         auto fontPath = std::format("{}/data/fonts/{}.ttf", _rootPath, GetId());
 
         const std::size_t Width = 2048;
@@ -38,7 +47,6 @@ namespace hl
         std::size_t yPos = 0;
         std::size_t maxY = 0;
 
-        std::string savepath = _rootPath + "/data/ex.png";
         if (msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype())
         {
             if (msdfgen::FontHandle* font = loadFont(ft, fontPath.c_str()))
@@ -96,7 +104,7 @@ namespace hl
                     }
                 }
 
-                if (!stbi_write_png(savepath.c_str(), Width, Height, Channels, data.data(), Width * Channels))
+                if (!stbi_write_png(fontTexturePath.c_str(), Width, Height, Channels, data.data(), Width * Channels))
                 {
                     std::cout << "WOOPS" << std::endl;
                 }
