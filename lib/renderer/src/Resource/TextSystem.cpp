@@ -15,11 +15,11 @@ namespace hl
 
 	}
 
-	int TextSystem::registerText(const std::string& text, const std::string& font)
+	int TextSystem::registerText(const std::string& text, const std::string& font, unsigned size)
 	{
-		return registerText(-1, text, font);
+		return registerText(-1, text, font, size);
 	}
-	int TextSystem::registerText(int id, const std::string& text, const std::string& font)
+	int TextSystem::registerText(int id, const std::string& text, const std::string& font, unsigned size)
 	{
 		if (id >= 0)
 		{
@@ -33,7 +33,7 @@ namespace hl
 
 		_textInfo.insert({ id, new Text(_device) });
 
-		generateText(id, text, font);
+		generateText(id, text, font, size);
 
 		return id;
 	}
@@ -55,7 +55,7 @@ namespace hl
 		return *_textInfo.at(id);
 	}
 
-	void TextSystem::generateText(int id, const std::string& text, const std::string& font)
+	void TextSystem::generateText(int id, const std::string& text, const std::string& font, unsigned size)
 	{
 		auto t = _textInfo.at(id);
 
@@ -65,9 +65,11 @@ namespace hl
 			throw std::runtime_error("INVALID FONT!");
 		}
 
-		const auto& vert = fontResource->generateTextVertexes(text);
+		const auto& vert = fontResource->generateTextVertexes(text, size);
 
+		t->_fontType = fontResource->getFontType();
 		t->_vertexCount = (uint32_t)vert.size();
+		t->_size = size;
 
 		VkDeviceSize bufferSize = sizeof(vert[0]) * vert.size();
 

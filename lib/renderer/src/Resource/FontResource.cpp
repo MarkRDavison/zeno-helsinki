@@ -10,8 +10,10 @@
 #include <algorithm>
 #include <filesystem>
 
-constexpr const int AtlasWidth = 2048;
-constexpr const int AtlasHeight = 2048;
+constexpr const int AtlasWidth = 4096;
+constexpr const int AtlasHeight = 4096;
+constexpr const int SDF_GenSize = 64;
+constexpr const int Raster_GenSize = 24;
 
 namespace hl
 {
@@ -78,7 +80,10 @@ namespace hl
 
         int maxY = 0;
 
-        if (FT_Set_Pixel_Sizes(_face, 0, 24))
+        auto size = _fontType == FontType::Rasterised
+            ? Raster_GenSize
+            : SDF_GenSize;
+        if (FT_Set_Pixel_Sizes(_face, 0, size))
         {
             std::cerr << "Failed to set pixel sizes" << std::endl;
             return false;
@@ -179,7 +184,10 @@ namespace hl
 
                 _characters[glyph_index] = character;
 
-                maxY = std::max(maxY, penPosition.y + character.size.y + 1);
+                if (maxY < penPosition.y + character.size.y + 1)
+                {
+                    maxY = penPosition.y + character.size.y + 1;
+                }
 
                 if (penPosition.x + character.size.x + 1 >= AtlasWidth)
                 {
@@ -207,14 +215,27 @@ namespace hl
 		return Resource::Load();
 	}
 
-    std::vector<Vertex22D> FontResource::generateTextVertexes(const std::string& text) const
+    std::vector<Vertex22D> FontResource::generateTextVertexes(const std::string& text, unsigned size) const
     {
         std::vector<Vertex22D> vert;
 
-        float _scale = 1.0f;
-
         float x{ 0.0f };
         float y{ 0.0f };
+
+        float scale = 1.0f;
+
+        if (_fontType == FontType::Rasterised)
+        {
+            scale = (float)size / (float)Raster_GenSize;
+        }
+        else if (_fontType == FontType::SignedDistanceField)
+        {
+            scale = (float)size / (float)SDF_GenSize;
+        }
+        else
+        {
+            throw std::runtime_error("INVALID FONT TYPE");
+        }
 
         for (const auto& c : text)
         {
@@ -244,12 +265,12 @@ namespace hl
               //well, bearing is the metrics telling you what space you need to correctly  
               //place the glyph
               //the scale allows me to change the size of the text
-            float xpos = x + ch.bearing.x / 64.0f * _scale;
-            float ypos = y - ch.bearing.y / 64.0f * _scale;
+            float xpos = x + ch.bearing.x / 64.0f * scale;
+            float ypos = y - ch.bearing.y / 64.0f * scale;
 
             //compute the size of the glyph
-            float w = ch.size.x * _scale;
-            float h = ch.size.y * _scale;
+            float w = ch.size.x * scale;
+            float h = ch.size.y * scale;
 
             //you will need the total size of your atlas texture
             float const width{ static_cast<float>(AtlasWidth) };
@@ -296,7 +317,7 @@ namespace hl
 
             //advance is the metrics that gives you the space needed for each glyph to     
             //not overlap with the next glyph
-            x += (ch.advanceX >> 6) * _scale;
+            x += (ch.advanceX >> 6) * scale;
         }
 
         return vert;
