@@ -314,7 +314,6 @@ namespace hl
     void EngineScene::updateCameraUniformBuffer(VulkanUniformBuffer& uniformBuffer)
     {
         CameraUniformBufferObject ubo{};
-        ((Camera*)_camera)->setAspectRatio(_swapChain->_swapChainExtent.width / (float)_swapChain->_swapChainExtent.height);
         ubo.view = _camera->getViewMatrix();
         ubo.proj = _camera->getProjectionMatrix();
 
