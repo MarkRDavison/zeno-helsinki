@@ -3,7 +3,6 @@
 #include <helsinki/System/Resource/Resource.hpp>
 #include <unordered_map>
 #include <typeindex>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -128,7 +127,6 @@ namespace hl
             {
                 for (auto& [id, resource] : typeResources)
                 {
-                    std::cout << "Unloading resource '" << id << "'" << std::endl;
                     resource->Unload();
                 }
 
