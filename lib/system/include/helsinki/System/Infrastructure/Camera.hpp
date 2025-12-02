@@ -35,6 +35,8 @@ namespace hl
 		glm::vec3 getFront() const { return front; }
 		float getZoom() const { return zoom; }
 		void setZoom(float newZoom) { zoom = newZoom; }
+
+		// TODO: Remove and override base class method that updates framebuffer size
 		void setAspectRatio(float aspectRatio) { _aspectRatio = aspectRatio; }
 	private:
 		// Internal coordinate system maintenance

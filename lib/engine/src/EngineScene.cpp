@@ -12,6 +12,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
+#include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 
 namespace hl
 {
@@ -274,7 +275,7 @@ namespace hl
                             vkCmdSetScissor(secondaryBuffer, 0, 1, &scissor);
                         }
 
-                        renderPipelineDraw(secondaryBuffer, p, currentFrame);
+                        renderPipelineDraw(secondaryBuffer, renderpassName, p, currentFrame);
                     }
 
                     CHECK_VK_RESULT(vkEndCommandBuffer(secondaryBuffer));
@@ -321,7 +322,11 @@ namespace hl
 
         uniformBuffer.writeToBuffer(&ubo);
     }
-    void EngineScene::renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline, uint32_t currentFrame)
+    void EngineScene::renderPipelineDraw(
+        VkCommandBuffer commandBuffer,
+        const std::string& renderpassName, 
+        hl::VulkanRenderGraphPipelineResources* pipeline, 
+        uint32_t currentFrame)
     {
         // TODO: Need a system to register draw commands for different pipelines.
         if (pipeline->Name == "skybox_pipeline")
@@ -494,7 +499,10 @@ namespace hl
         }
         else if (pipeline->Name == "text_pipeline")
         {
-            auto& textSystem = _engine.getTextSystem();
+            auto& textSystem = _engine.getTextSystem();            
+
+            std::string lastFontBound;
+
             for (const auto& entity : _scene.getEntities())
             {
                 if (!entity->HasComponents<hl::TransformComponent, hl::TextComponent>())
@@ -504,6 +512,41 @@ namespace hl
 
                 const auto& transform = entity->GetComponent<hl::TransformComponent>();
                 const auto& text = entity->GetComponent<hl::TextComponent>();
+
+                if (lastFontBound != text->getFont())
+                {
+                    lastFontBound = text->getFont();
+
+                    auto info = _resourceManager
+                        ->GetResource<ImageSamplerResource>(
+                            lastFontBound)
+                        ->getDescriptorInfo(0);
+
+                    auto imageInfo = VkDescriptorImageInfo
+                    {
+                        .sampler = info.first,
+                        .imageView = info.second,
+                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    };
+
+                    auto descriptorWrite = VkWriteDescriptorSet
+                    {
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = _renderGraph->getDescriptorSet(renderpassName, pipeline->Name, currentFrame),
+                        .dstBinding = 1,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .pImageInfo = &imageInfo
+                    };
+
+                    vkUpdateDescriptorSets(
+                        _device->_device,
+                        1,
+                        &descriptorWrite,
+                        0,
+                        nullptr);
+                }
 
                 auto modelTransform = transform->GetTransformMatrix();
 

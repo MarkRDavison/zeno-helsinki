@@ -150,8 +150,8 @@ namespace td
                                         {
                                             .binding = 1,
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "consola"
+                                            .stage = "FRAGMENT"
+                                            //.resource = "consola" // Setting this ourselves in the pipeline render method...
                                         }
                                     }
                                 }
