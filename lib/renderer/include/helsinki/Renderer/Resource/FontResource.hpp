@@ -11,6 +11,11 @@
 
 namespace hl
 {
+	enum class FontType
+	{
+		Rasterised = 0,
+		SignedDistanceField		
+	};
 
 	class FontResource : public Resource
 	{
@@ -30,12 +35,15 @@ namespace hl
 
 		explicit FontResource(
 			const std::string& id,
-			ResourceContext& context);
+			ResourceContext& context,
+			FontType fontType);
 
 		bool Load() override;
 		void Unload() override;
 
 		std::vector<Vertex22D> generateTextVertexes(const std::string& text) const;
+
+	protected:
 
 	private:
 		VulkanDevice& _device;
@@ -45,6 +53,7 @@ namespace hl
 		std::unordered_map<unsigned int, FontCharacter> _characters;
 		FT_Library _ft;
 		FT_Face _face;
+		FontType _fontType;
 	};
 
 }

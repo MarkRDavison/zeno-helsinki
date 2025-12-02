@@ -5,6 +5,8 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
+#include <helsinki/Renderer/Resource/SignedDistanceFieldFontResource.hpp>
+#include <helsinki/Renderer/Resource/RasterisedFontResource.hpp>
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
@@ -133,7 +135,7 @@ namespace td
                             .name = "text_pipeline",
                             .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/text.vert"),
                             .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/text.frag"),
-                             .descriptorSets =
+                            .descriptorSets =
                             {
                                 hl::DescriptorSetInfo
                                 {
@@ -152,6 +154,66 @@ namespace td
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                             .stage = "FRAGMENT"
                                             //.resource = "consola" // Setting this ourselves in the pipeline render method...
+                                        }
+                                    }
+                                }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 0,
+                                        .offset = offsetof(hl::Vertex22D, pos)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 1,
+                                        .offset = offsetof(hl::Vertex22D, texCoord)
+                                    }
+                                },
+                                .stride = sizeof(hl::Vertex22D)
+                            },
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = true, // keep blending for UI elements
+                            .pushConstantSize = sizeof(hl::TextPushConstantObject)
+                        }
+                    },
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "sdf_text_pipeline",
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/text.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/sdf.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "camera_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT"
                                         }
                                     }
                                 }
@@ -265,9 +327,13 @@ namespace td
             "spritesheet",
             resourceContext);
 
-        resourceManager.Load<hl::FontResource>("consola", resourceContext);
+        resourceManager.LoadAs<hl::RasterisedFontResource, hl::FontResource>("consola", resourceContext);
+        resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>("consolab", resourceContext);
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "consola",
+            resourceContext);
+        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+            "consolab",
             resourceContext);
 
         frameSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
@@ -311,6 +377,13 @@ namespace td
             entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(192.0f, 128.0f, 0.0f));
             // TODO: Dont like having to pass text system here...
             entity->AddComponent<hl::TextComponent>()->setString(_engine.getTextSystem(), "Hello[] how you doin'? JQjqPp <>", "consola");
+        }
+        {
+            auto entity = _scene.addEntity("entity3");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(192.0f, 256.0f, 0.0f));
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(_engine.getTextSystem(), "Hello[] how you doin'? JQjqPp <>", "consolab");
         }
 
         EngineScene::initialise(
