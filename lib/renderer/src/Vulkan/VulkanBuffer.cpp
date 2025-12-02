@@ -37,7 +37,7 @@ namespace hl
 		CHECK_VK_RESULT(vkBindBufferMemory(_device._device, _buffer, _memory, 0));
 	}
 
-	void VulkanBuffer::mapMemory(void* data)
+	void VulkanBuffer::mapMemory(const void* data)
 	{
 		void* mappedMemory;
 		CHECK_VK_RESULT(vkMapMemory(_device._device, _memory, 0, _size, 0, &mappedMemory));

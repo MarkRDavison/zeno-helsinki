@@ -21,6 +21,8 @@ namespace hl
 		virtual glm::mat4 getViewMatrix() const = 0;
 		virtual glm::mat4 getProjectionMatrix() const = 0;
 
+		virtual void notifyFramebufferChangeSize(uint32_t /*width*/, uint32_t /*height*/) {}
+
 	protected:
 
 	};

@@ -50,7 +50,8 @@ namespace hl
 		_transferCommandPool(_device),
 		_syncContext(_device),
 		_resourceManager(),
-		_materialSystem(_device, _resourceManager)
+		_materialSystem(_device, _resourceManager),
+		_textSystem(_device, _transferCommandPool, _resourceManager)
 	{
 
 	}
@@ -153,6 +154,7 @@ namespace hl
 	{
 		destroyScene();
 
+		_textSystem.destroy();
 		_materialSystem.destroy();
 
 		_swapChain.destroy();

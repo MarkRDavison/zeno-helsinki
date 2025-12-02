@@ -4,30 +4,23 @@
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanBuffer.hpp>
-#include <string>
 #include <vector>
 
 namespace hl
 {
-	struct Mesh
+	struct Text
 	{
-		Mesh(
+		Text(
 			VulkanDevice& device
 		) :
-			_indexCount(0),
-			_vertexBuffer(device),
-			_indexBuffer(device)
+			_vertexCount(0),
+			_vertexBuffer(device)
 		{
 
 		}
 
-		std::string materialName;
-		std::vector<Vertex> vertices;
-		std::vector<uint32_t> indices;
-
-		uint32_t _indexCount;
+		uint32_t _vertexCount;
 		VulkanBuffer _vertexBuffer;
-		VulkanBuffer _indexBuffer;
 	};
 
 }

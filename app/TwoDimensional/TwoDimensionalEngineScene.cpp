@@ -2,6 +2,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
@@ -13,6 +14,7 @@
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
+#include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <iostream>
 
 namespace td
@@ -149,10 +151,29 @@ namespace td
                                             .binding = 1,
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                             .stage = "FRAGMENT",
-                                            .resource = "calibri"
+                                            .resource = "consola"
                                         }
                                     }
                                 }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 0,
+                                        .offset = offsetof(hl::Vertex22D, pos)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 1,
+                                        .offset = offsetof(hl::Vertex22D, texCoord)
+                                    }
+                                },
+                                .stride = sizeof(hl::Vertex22D)
                             },
                             .depthState =
                             {
@@ -164,7 +185,7 @@ namespace td
                                 .cullMode = VK_CULL_MODE_NONE
                             },
                             .enableBlending = true, // keep blending for UI elements
-                            .pushConstantSize = sizeof(int)
+                            .pushConstantSize = sizeof(hl::TextPushConstantObject)
                         }
                     }
                 }
@@ -244,9 +265,9 @@ namespace td
             "spritesheet",
             resourceContext);
 
-        resourceManager.Load<hl::FontResource>("calibri", resourceContext);
+        resourceManager.Load<hl::FontResource>("consola", resourceContext);
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "calibri",
+            "consola",
             resourceContext);
 
         frameSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
@@ -283,6 +304,13 @@ namespace td
             entity->AddTag("SPRITE");
             entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(64.0f, 128.0f, 0.0f));
             entity->AddComponent<hl::SpriteComponent>()->setFrameDataIndex(0);
+        }
+        {
+            auto entity = _scene.addEntity("entity2");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(192.0f, 128.0f, 0.0f));
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(_engine.getTextSystem(), "Hello[] how you doin'? JQjqPp <>", "consola");
         }
 
         EngineScene::initialise(

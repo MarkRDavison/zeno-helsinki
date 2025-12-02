@@ -12,7 +12,7 @@ namespace hl
 
 		void create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 
-		void mapMemory(void* data);
+		void mapMemory(const void* data);
 
 		void copyToBuffer(VulkanCommandPool& commandPool, VkDeviceSize size, VulkanBuffer& target);
 
