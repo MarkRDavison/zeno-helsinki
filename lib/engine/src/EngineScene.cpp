@@ -6,10 +6,12 @@
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
+#include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 
 namespace hl
 {
@@ -120,7 +122,10 @@ namespace hl
 				}
 			}
 		}
+
+        _camera->notifyFramebufferChangeSize((uint32_t)swapChain._swapChainExtent.width, (uint32_t)swapChain._swapChainExtent.height);
 	}
+
 	void EngineScene::initialise(
         const std::string& cameraMatrixResourceId,
 		VulkanDevice& device,
@@ -294,7 +299,8 @@ namespace hl
 
 	void EngineScene::recreate(uint32_t width, uint32_t height)
 	{
-		_renderGraph->recreate((uint32_t)width, (uint32_t)height);
+		_renderGraph->recreate(width, height);
+        _camera->notifyFramebufferChangeSize(width, height);
 	}
 	void EngineScene::updateAllDescriptorSets()
 	{
@@ -446,6 +452,11 @@ namespace hl
         {
             for (const auto& entity : _scene.getEntities())
             {
+                if (!entity->HasComponents<hl::TransformComponent, hl::SpriteComponent>())
+                {
+                    continue;
+                }
+
                 const auto& transform = entity->GetComponent<hl::TransformComponent>();
                 const auto& sprite = entity->GetComponent<hl::SpriteComponent>();
 
@@ -483,28 +494,57 @@ namespace hl
         }
         else if (pipeline->Name == "text_pipeline")
         {
-            int cellIndex = 23;
-            vkCmdPushConstants(
-                commandBuffer,
-                pipeline->getPipelineLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0,
-                sizeof(int),
-                &cellIndex
-            );
+            auto& textSystem = _engine.getTextSystem();
+            for (const auto& entity : _scene.getEntities())
+            {
+                if (!entity->HasComponents<hl::TransformComponent, hl::TextComponent>())
+                {
+                    continue;
+                }
 
-            auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
-            vkCmdBindDescriptorSets(
-                commandBuffer,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                pipeline->getPipelineLayout(),
-                0,
-                1,
-                &descriptorSet,
-                0,
-                nullptr);
+                const auto& transform = entity->GetComponent<hl::TransformComponent>();
+                const auto& text = entity->GetComponent<hl::TextComponent>();
 
-            vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+                auto modelTransform = transform->GetTransformMatrix();
+
+                auto pc = hl::TextPushConstantObject
+                {
+                    .model = modelTransform
+                };
+                
+                vkCmdPushConstants(
+                    commandBuffer,
+                    pipeline->getPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT,
+                    0,
+                    sizeof(hl::TextPushConstantObject),
+                    &pc
+                );
+
+                const auto& t = textSystem.getText(text->getTextSystemId());
+                
+                VkBuffer vertexBuffers[] = { t._vertexBuffer._buffer};
+                VkDeviceSize offsets[] = { 0 };
+                vkCmdBindVertexBuffers(
+                    commandBuffer,
+                    0,
+                    1,
+                    vertexBuffers,
+                    offsets);
+
+                auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
+                vkCmdBindDescriptorSets(
+                    commandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    pipeline->getPipelineLayout(),
+                    0,
+                    1,
+                    &descriptorSet,
+                    0,
+                    nullptr);
+
+                vkCmdDraw(commandBuffer, t._vertexCount, 1, 0, 0);
+            }
         }
         else
         {

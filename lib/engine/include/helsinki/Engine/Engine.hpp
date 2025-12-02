@@ -4,6 +4,7 @@
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
 #include <helsinki/System/Utils/NonCopyable.hpp>
+#include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/FrameResources.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
@@ -27,6 +28,10 @@ namespace hl
 		void sendEvent(const Event& event);
 
 		void setScene(EngineScene* scene);
+
+		// CONSOLIDATE
+		// TODO: Between this and the material system, we have 2 different approaches
+		TextSystem& getTextSystem() { return _textSystem; }
 
 	private:
 		void mainLoop();
@@ -54,6 +59,7 @@ namespace hl
 
 		ResourceManager _resourceManager;
 		MaterialSystem _materialSystem;
+		TextSystem _textSystem;
 
 		EngineConfiguration _config;
 		uint32_t _currentFrame = 0;

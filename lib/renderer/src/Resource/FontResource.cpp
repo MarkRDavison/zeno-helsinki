@@ -1,8 +1,8 @@
 #include <helsinki/Renderer/Resource/FontResource.hpp>
+#include <iostream>
 #include <format>
 #define _CRT_SECURE_NO_WARNINGS
-#include <msdfgen.h>
-#include <msdfgen-ext.h>
+
 #include <stb_image.h>
 #define __STDC_LIB_EXT1__
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -10,8 +10,13 @@
 #include <algorithm>
 #include <filesystem>
 
+constexpr const int AtlasWidth = 2048;
+constexpr const int AtlasHeight = 2048;
+
 namespace hl
 {
+
+    
 
 	FontResource::FontResource(
 		const std::string& id,
@@ -26,101 +31,278 @@ namespace hl
 
 	}
 
-	bool FontResource::Load()
-	{
-        auto fontTexturePath = std::format("{}/data/textures/{}.png", _rootPath, GetId());
-
-        if (std::filesystem::exists(fontTexturePath))
-        {
-            return Resource::Load();
-        }
-
+    bool FontResource::Load()
+    {
         auto fontPath = std::format("{}/data/fonts/{}.ttf", _rootPath, GetId());
 
-        const std::size_t Width = 2048;
-        const std::size_t Height = 2048;
-        const std::size_t Channels = 3;
-        std::vector<uint8_t> data;
-        data.resize(Width * Height * Channels);
-
-        std::size_t xPos = 0;
-        std::size_t yPos = 0;
-        std::size_t maxY = 0;
-
-        if (msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype())
+        if (FT_Init_FreeType(&_ft))
         {
-            if (msdfgen::FontHandle* font = loadFont(ft, fontPath.c_str()))
+            std::cerr << "Failed to init freetype" << std::endl;
+            return false;
+        }
+
+        if (FT_New_Face(_ft, fontPath.c_str(), 0, &_face))
+        {
+            std::cerr << "Failed to create font face" << std::endl;
+            return false;
+        }
+
+        FT_CharMap found{ 0 };
+        FT_CharMap charmap;
+
+        for (auto n{ 0 }; n < _face->num_charmaps; n++)
+        {
+            charmap = _face->charmaps[n];
+            if (charmap)
             {
-                int i = 0;
+                found = charmap;
+                break;
+            }
+        }
 
-                for (char c  = 33; c <= 126 && c >= 33; ++c)
+        if (!found)
+        {
+            std::cerr << "Failed to find character map" << std::endl;
+            return false;
+        }
+
+        if (FT_Set_Charmap(_face, found))
+        {
+            std::cerr << "Failed to set character map" << std::endl;
+            return false;
+        }
+
+        glm::ivec2 penPosition{};
+
+        int maxY = 0;
+
+        if (FT_Set_Pixel_Sizes(_face, 0, 24))
+        {
+            std::cerr << "Failed to set pixel sizes" << std::endl;
+            return false;
+        }
+
+        FT_ULong c;
+        FT_UInt glyph_index;
+        c = FT_Get_First_Char(_face, &glyph_index);
+
+        std::vector<uint8_t> pixels;
+        pixels.resize(4 * AtlasWidth * AtlasHeight);
+        
+        while (glyph_index != 0)
+        {
+            bool renderable{ true };
+
+            glyph_index = FT_Get_Char_Index(_face, c);
+
+            if (FT_Load_Glyph(_face, glyph_index, FT_LOAD_RENDER))
+            {
+                std::cerr << "Failed to load Glyph" << std::endl;
+                renderable = false;
+            }
+
+            if (FT_Render_Glyph(_face->glyph, FT_RENDER_MODE_NORMAL)) // TODO: Rendermode SDF
+            {
+                std::cerr << "Failed to render Glyph" << std::endl;
+                renderable = false;
+            }
+
+            if (_face->glyph->bitmap.buffer == NULL || 
+                _face->glyph->bitmap.width == 0 || 
+                _face->glyph->bitmap.rows == 0)
+            {
+                renderable = false;
+            }
+
+            //some glyphs are not to be rendered, nothing to draw for a space for     example
+            if (renderable)
+            {
+                std::vector<unsigned char> r_buffer{};
+
+                unsigned int glyph_width{ 0 };
+                unsigned int glyph_height{ 0 };
+                int glyph_pitch{ 0 };
+
+                glyph_width = _face->glyph->bitmap.width;
+                glyph_height = _face->glyph->bitmap.rows;
+                glyph_pitch = _face->glyph->bitmap.pitch;
+
+                r_buffer.resize(glyph_width * glyph_height, 0);
+
+                auto buffer = _face->glyph->bitmap.buffer;
+                int index{ 0 };
+
+                //reading the bitmap buffer, saving data as alpha 
+                for (unsigned int y{ 0 }; y < glyph_height; y++)
                 {
-                    i++;
-                    std::cout << i << "/" << (127 - 33) << std::endl;
-                    msdfgen::Shape shape;
-                    if (msdfgen::loadGlyph(shape, font, c, msdfgen::FONT_SCALING_EM_NORMALIZED))
+                    const uint8_t* row_buffer = buffer + y * glyph_pitch;
+                    for (unsigned int x{ 0 }; x < glyph_width; x++)
                     {
-                        shape.normalize();
-                        msdfgen::edgeColoringSimple(shape, 3.0);
-                        int width = 64;
-                        int height = 64;
-                        msdfgen::Bitmap<float, Channels> msdf(width, height);
-
-                        msdfgen::SDFTransformation t(
-                            msdfgen::Projection(64.0,
-                                msdfgen::Vector2(0.125, 0.125)),
-                            msdfgen::Range(0.125));
-
-                        msdfgen::generateMSDF(msdf, shape, t);
-
-                        const float* raw = static_cast<float*>(msdf);
-
-                        if (xPos + width >= Width)
-                        {
-                            xPos = 0;
-                            yPos = maxY;
-                            if (yPos >= Height)
-                            {
-                                throw std::runtime_error("FONT ATLAS TOO SMALL");
-                            }
-                        }
-
-                        maxY = std::max(maxY, yPos + height);
-
-                        for (int y = 0; y < height; ++y)
-                        {
-                            int flippedY = height - 1 - y;
-                            for (int x = 0; x < width; ++x)
-                            {
-                                const float* px = raw + (flippedY * width + x) * Channels;
-                                uint32_t idx = (uint32_t)((y + yPos) * Width + x + xPos) * Channels;
-                                data[idx + 0] = static_cast<uint8_t>(std::clamp(px[0], 0.0f, 1.0f) * 255.0f);
-                                data[idx + 1] = static_cast<uint8_t>(std::clamp(px[1], 0.0f, 1.0f) * 255.0f);
-                                data[idx + 2] = static_cast<uint8_t>(std::clamp(px[2], 0.0f, 1.0f) * 255.0f);
-                            }
-                        }
-
-                        xPos += width;
+                        auto gray_value = row_buffer[x];
+                        r_buffer[index++] = gray_value;
                     }
                 }
 
-                if (!stbi_write_png(fontTexturePath.c_str(), Width, Height, Channels, data.data(), Width * Channels))
+                auto character = FontCharacter
                 {
-                    std::cout << "WOOPS" << std::endl;
+                  .glyph_index = glyph_index,
+                  .size = glm::ivec2(glyph_width, glyph_height),
+                  .start = glm::ivec2(_face->glyph->bitmap_left, _face->glyph->bitmap_top),
+                  .bearing = glm::ivec2(_face->glyph->metrics.horiBearingX, _face->glyph->metrics.horiBearingY),
+                  .advanceX = _face->glyph->advance.x,
+                  .glyph_area = glyph_width * glyph_height,
+                  .tex_x_offset = penPosition.x,
+                  .tex_y_offset = penPosition.y
+                };
+
+                for (unsigned int glyphY = 0; glyphY < glyph_height; ++glyphY)
+                {
+                    for (unsigned int glyphX = 0; glyphX < glyph_width; ++glyphX)
+                    {
+                        unsigned int targetAtlasX = penPosition.x + glyphX;
+                        unsigned int targetAtlasY = penPosition.y + glyphY;
+
+                        pixels[4 * (targetAtlasY * AtlasWidth + targetAtlasX) + 0] = r_buffer[glyphY * glyph_width + glyphX];
+                        pixels[4 * (targetAtlasY * AtlasWidth + targetAtlasX) + 1] = 0;
+                        pixels[4 * (targetAtlasY * AtlasWidth + targetAtlasX) + 2] = 0;
+                        pixels[4 * (targetAtlasY * AtlasWidth + targetAtlasX) + 3] = 255;
+                    }
                 }
 
-                msdfgen::destroyFont(font);
+                penPosition.x += character.size.x + 1;
+
+                _characters[glyph_index] = character;
+
+                maxY = std::max(maxY, penPosition.y + character.size.y + 1);
+
+                if (penPosition.x + character.size.x + 1 >= AtlasWidth)
+                {
+                    penPosition = glm::ivec2(0, maxY);
+                }
+
+                if (penPosition.y + character.size.y + 1 >= AtlasHeight)
+                {
+                    throw std::runtime_error("ATLAS TOO SMALL");
+                }
             }
-            msdfgen::deinitializeFreetype(ft);
+
+            c = FT_Get_Next_Char(_face, c, &glyph_index);
+        }
+
+        auto fontTexturePath = std::format("{}/data/textures/{}.png", _rootPath, GetId());
+
+        if (!stbi_write_png(fontTexturePath.c_str(), AtlasWidth, AtlasHeight, 4, pixels.data(), AtlasWidth * 4))
+        {
+            FT_Done_Face(_face);
+            FT_Done_FreeType(_ft);
+            return false;
         }
 
 		return Resource::Load();
 	}
 
+    std::vector<Vertex22D> FontResource::generateTextVertexes(const std::string& text) const
+    {
+        std::vector<Vertex22D> vert;
+
+        float _scale = 1.0f;
+
+        float x{ 0.0f };
+        float y{ 0.0f };
+
+        for (const auto& c : text)
+        {
+            auto const glyph_index = FT_Get_Char_Index(_face, c);
+
+            if (_characters.count(glyph_index) == 0)
+            {
+                // Some random space
+                x += 5.0f;
+                continue;
+            }
+
+            const auto& ch = _characters.at(glyph_index);
+
+            //non renderable glyphs, remember ? right now I'm treating it as a 5 pixels   space.
+            if (ch.size.x == 0 && ch.size.y == 0)
+            {
+                x += 5;
+                continue;
+            }
+
+            //remember when I told you to read the documentation ? Did you do it ?
+            //if you want to understand more about glyph metrics
+            //go here https://freetype.org/freetype2/docs/glyphs/glyphs-3.html
+
+              //here we are computing the x and y position, to simplify and if I understood  
+              //well, bearing is the metrics telling you what space you need to correctly  
+              //place the glyph
+              //the scale allows me to change the size of the text
+            float xpos = x + ch.bearing.x / 64.0f * _scale;
+            float ypos = y - ch.bearing.y / 64.0f * _scale;
+
+            //compute the size of the glyph
+            float w = ch.size.x * _scale;
+            float h = ch.size.y * _scale;
+
+            //you will need the total size of your atlas texture
+            float const width{ static_cast<float>(AtlasWidth) };
+            float const height{ static_cast<float>(AtlasHeight) };
+
+            //here we are computing the UV coordinates (textures coordinates to fetch the      
+            //data into the texture in the fragment shader
+            float u0{ ch.tex_x_offset / width };
+            float v0{ (ch.tex_y_offset + ch.size.y) / height };
+            float u1{ (ch.tex_x_offset + ch.size.x) / width };
+            float v1{ ch.tex_y_offset / height };
+
+            //actually creating the six vertices
+            Vertex22D vertex_1{
+              { xpos, ypos + h},
+              { u0, v0 } };
+
+            Vertex22D vertex_2{
+              { xpos, ypos},
+              { u0, v1 } };
+
+            Vertex22D vertex_3{
+              { xpos + w, ypos},
+              { u1, v1 } };
+
+            Vertex22D vertex_4{
+              { xpos, ypos + h},
+              { u0, v0 } };
+
+            Vertex22D vertex_5{
+              { xpos + w, ypos},
+              { u1, v1 } };
+
+            Vertex22D vertex_6{
+              { xpos + w, ypos + h},
+              { u1, v0 } };
+
+            vert.emplace_back(vertex_1);
+            vert.emplace_back(vertex_2);
+            vert.emplace_back(vertex_3);
+            vert.emplace_back(vertex_4);
+            vert.emplace_back(vertex_5);
+            vert.emplace_back(vertex_6);
+
+            //advance is the metrics that gives you the space needed for each glyph to     
+            //not overlap with the next glyph
+            x += (ch.advanceX >> 6) * _scale;
+        }
+
+        return vert;
+    }
+
 	void FontResource::Unload()
 	{
 		if (IsLoaded())
 		{
+            std::cout << "Unloading font resource" << std::endl;
+            FT_Done_Face(_face);
+            FT_Done_FreeType(_ft);
 			Resource::Unload();
 		}
 	}
