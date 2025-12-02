@@ -15,10 +15,15 @@ namespace hl
 		{
 			_textSystemId = textSystem.registerText(_textSystemId, text, font);
 			_text = text; 
+			_font = font;
 		}
-		const std::string& getString() const 
-		{ 
+		const std::string& getString() const
+		{
 			return _text;
+		}
+		const std::string& getFont() const
+		{
+			return _font;
 		}
 
 		int getTextSystemId() const { return _textSystemId; };
@@ -26,5 +31,6 @@ namespace hl
 	private:
 		int _textSystemId{ -1 };
 		std::string _text;
+		std::string _font;
 	};
 }

@@ -46,10 +46,14 @@ namespace hl
 		void updateAllDescriptorSets();
 		void updateAllOutputResources();
 
-	private: // TODO: TEMP
-
+	private:
 		void updateCameraUniformBuffer(VulkanUniformBuffer& uniformBuffer);
-		void renderPipelineDraw(VkCommandBuffer commandBuffer, hl::VulkanRenderGraphPipelineResources* pipeline, uint32_t currentFrame);
+		// TODO: TEMP
+		void renderPipelineDraw(
+			VkCommandBuffer commandBuffer, 
+			const std::string& renderpassName,
+			hl::VulkanRenderGraphPipelineResources* pipeline, 
+			uint32_t currentFrame);
 
 	protected:
 		hl::Engine& _engine;
