@@ -188,9 +188,7 @@ namespace td
                             },
                             .enableBlending = true, // keep blending for UI elements
                             .pushConstantSize = sizeof(hl::TextPushConstantObject)
-                        }
-                    },
-                    {
+                        },
                         hl::PipelineInfo
                         {
                             .name = "sdf_text_pipeline",
@@ -214,6 +212,7 @@ namespace td
                                             .binding = 1,
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                             .stage = "FRAGMENT"
+                                            //.resource = "consola" // Setting this ourselves in the pipeline render method...
                                         }
                                     }
                                 }
@@ -327,8 +326,8 @@ namespace td
             "spritesheet",
             resourceContext);
 
-        resourceManager.LoadAs<hl::RasterisedFontResource, hl::FontResource>("consola", resourceContext);
-        resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>("consolab", resourceContext);
+        resourceManager.LoadAs<hl::RasterisedFontResource, hl::FontResource>("consolab", resourceContext);
+        resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>("consola", resourceContext);
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "consola",
             resourceContext);
@@ -376,14 +375,22 @@ namespace td
             entity->AddTag("TEXT");
             entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(192.0f, 128.0f, 0.0f));
             // TODO: Dont like having to pass text system here...
-            entity->AddComponent<hl::TextComponent>()->setString(_engine.getTextSystem(), "Hello[] how you doin'? JQjqPp <>", "consola");
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(), 
+                "SDF text - '? JQjqPp <>", 
+                "consola",
+                96);
         }
         {
             auto entity = _scene.addEntity("entity3");
             entity->AddTag("TEXT");
             entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(192.0f, 256.0f, 0.0f));
             // TODO: Dont like having to pass text system here...
-            entity->AddComponent<hl::TextComponent>()->setString(_engine.getTextSystem(), "Hello[] how you doin'? JQjqPp <>", "consolab");
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(), 
+                "Rasterised Text - #!@# 9JpqQ", 
+                "consolab",
+                24);
         }
 
         EngineScene::initialise(

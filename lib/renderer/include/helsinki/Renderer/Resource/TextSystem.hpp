@@ -21,15 +21,15 @@ namespace hl
 			VulkanCommandPool& transferPool,
 			ResourceManager& resourceManager);
 
-		int registerText(const std::string& text, const std::string& font);
-		int registerText(int id, const std::string& text, const std::string& font);
+		int registerText(const std::string& text, const std::string& font, unsigned size);
+		int registerText(int id, const std::string& text, const std::string& font, unsigned size);
 		
 		void destroy();
 
 		const Text& getText(int id) const;
 
 	private:
-		void generateText(int id, const std::string& text, const std::string& font);
+		void generateText(int id, const std::string& text, const std::string& font, unsigned size);
 
 	private:
 		VulkanDevice& _device;

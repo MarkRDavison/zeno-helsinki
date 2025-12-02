@@ -41,7 +41,9 @@ namespace hl
 		bool Load() override;
 		void Unload() override;
 
-		std::vector<Vertex22D> generateTextVertexes(const std::string& text) const;
+		std::vector<Vertex22D> generateTextVertexes(const std::string& text, unsigned size) const;
+
+		FontType getFontType() const { return _fontType; }
 
 	protected:
 

@@ -11,9 +11,9 @@ namespace hl
 	{
 	public:
 
-		void setString(TextSystem& textSystem, const std::string& text, const std::string& font) 
+		void setString(TextSystem& textSystem, const std::string& text, const std::string& font, unsigned size) 
 		{
-			_textSystemId = textSystem.registerText(_textSystemId, text, font);
+			_textSystemId = textSystem.registerText(_textSystemId, text, font, size);
 			_text = text; 
 			_font = font;
 		}

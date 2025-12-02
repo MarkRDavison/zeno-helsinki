@@ -13,12 +13,14 @@ namespace hl
 		Text(
 			VulkanDevice& device
 		) :
+			_size(0),
 			_vertexCount(0),
 			_vertexBuffer(device)
 		{
 
 		}
 
+		unsigned _size;
 		uint32_t _vertexCount;
 		VulkanBuffer _vertexBuffer;
 		FontType _fontType{ FontType::Rasterised };
