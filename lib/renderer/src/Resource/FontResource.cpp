@@ -20,13 +20,15 @@ namespace hl
 
 	FontResource::FontResource(
 		const std::string& id,
-		ResourceContext& context
+		ResourceContext& context,
+        FontType fontType
 	) :
 		Resource(id),
 		_device(*context.device),
 		_commandPool(*context.pool),
         _resourceManager(*context.resourceManager),
-		_rootPath(context.rootPath)
+		_rootPath(context.rootPath),
+        _fontType(fontType)
 	{
 
 	}
@@ -101,7 +103,11 @@ namespace hl
                 renderable = false;
             }
 
-            if (FT_Render_Glyph(_face->glyph, FT_RENDER_MODE_NORMAL)) // TODO: Rendermode SDF
+            auto renderMode = _fontType == FontType::Rasterised 
+                ? FT_RENDER_MODE_NORMAL 
+                : FT_RENDER_MODE_SDF;
+
+            if (FT_Render_Glyph(_face->glyph, renderMode))
             {
                 std::cerr << "Failed to render Glyph" << std::endl;
                 renderable = false;
@@ -300,7 +306,6 @@ namespace hl
 	{
 		if (IsLoaded())
 		{
-            std::cout << "Unloading font resource" << std::endl;
             FT_Done_Face(_face);
             FT_Done_FreeType(_ft);
 			Resource::Unload();
