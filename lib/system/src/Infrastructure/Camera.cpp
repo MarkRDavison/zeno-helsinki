@@ -70,6 +70,11 @@ namespace hl
         updateCameraVectors();
     }
 
+    void Camera::notifyFramebufferChangeSize(uint32_t width, uint32_t height)
+    {
+        setAspectRatio((float)width / (float)height);
+    }
+
     void Camera::updateCameraVectors()
     {
         glm::vec3 newFront;

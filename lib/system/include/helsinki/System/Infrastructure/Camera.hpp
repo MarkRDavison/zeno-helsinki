@@ -38,6 +38,8 @@ namespace hl
 
 		// TODO: Remove and override base class method that updates framebuffer size
 		void setAspectRatio(float aspectRatio) { _aspectRatio = aspectRatio; }
+
+		void notifyFramebufferChangeSize(uint32_t width, uint32_t height) override;
 	private:
 		// Internal coordinate system maintenance
 		// Ensures mathematical consistency when orientation changes occur
