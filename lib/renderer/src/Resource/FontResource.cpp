@@ -2,13 +2,13 @@
 #include <iostream>
 #include <format>
 #define _CRT_SECURE_NO_WARNINGS
-
 #include <stb_image.h>
 #define __STDC_LIB_EXT1__
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 
 constexpr const int AtlasWidth = 4096;
 constexpr const int AtlasHeight = 4096;
@@ -37,6 +37,7 @@ namespace hl
 
     bool FontResource::Load()
     {
+        auto fontTexturePath = std::format("{}/data/textures/{}.png", _rootPath, GetId());
         auto fontPath = std::format("{}/data/fonts/{}.ttf", _rootPath, GetId());
 
         if (FT_Init_FreeType(&_ft))
@@ -92,6 +93,11 @@ namespace hl
         FT_ULong c;
         FT_UInt glyph_index;
         c = FT_Get_First_Char(_face, &glyph_index);
+
+        if (std::filesystem::exists(fontTexturePath) && loadFontConfigFile())
+        {
+            return Resource::Load();
+        }
 
         std::vector<uint8_t> pixels;
         pixels.resize(4 * AtlasWidth * AtlasHeight);
@@ -203,7 +209,6 @@ namespace hl
             c = FT_Get_Next_Char(_face, c, &glyph_index);
         }
 
-        auto fontTexturePath = std::format("{}/data/textures/{}.png", _rootPath, GetId());
 
         if (!stbi_write_png(fontTexturePath.c_str(), AtlasWidth, AtlasHeight, 4, pixels.data(), AtlasWidth * 4))
         {
@@ -211,6 +216,8 @@ namespace hl
             FT_Done_FreeType(_ft);
             return false;
         }
+
+        writeFontConfigFile();
 
 		return Resource::Load();
 	}
@@ -332,5 +339,113 @@ namespace hl
 			Resource::Unload();
 		}
 	}
+
+    void FontResource::writeFontConfigFile() const
+    {
+        auto fontDataPath = std::format("{}/data/fonts/{}.config", _rootPath, GetId());
+
+
+        std::ofstream file;
+
+        file.open(fontDataPath, std::ios::out | std::ios::trunc);
+        if (file.good())
+        {
+            for (const auto& [glyphIndex, character] : _characters)
+            {
+                file << "GI " << glyphIndex << '\n';
+                file << "si " << character.size.x << " " << character.size.y << '\n';
+                file << "st " << character.start.x << " " << character.start.y << '\n';
+                file << "be " << character.bearing.x << " " << character.bearing.y << '\n';
+                file << "ad " << character.advanceX << '\n';
+                file << "ga " << character.glyph_area << '\n';
+                file << "tx " << character.tex_x_offset << " " << character.tex_y_offset << '\n';
+                file << "uv " << character.texUv.x << " " << character.texUv.y << '\n' << '\n';
+            }
+
+            file.close();
+        }
+    }
+
+    bool FontResource::loadFontConfigFile()
+    {
+        auto fontDataPath = std::format("{}/data/fonts/{}.config", _rootPath, GetId());
+
+        _characters.clear();
+
+        std::ifstream file(fontDataPath);
+        if (!file.is_open())
+        {
+            return false;
+        }
+
+        FontCharacter* current = nullptr;
+
+        std::string line;
+        while (std::getline(file, line))
+        {
+            std::istringstream iss(line);
+            std::string key;
+            iss >> key;
+
+            if (key.starts_with('#') ||
+                line.empty())
+            {
+                continue;
+            }
+            else if (key.starts_with("GI"))
+            {
+                unsigned int glyphIndex; iss >> glyphIndex;
+                assert(_characters.contains(glyphIndex) == 0);
+                _characters.insert({ glyphIndex, FontCharacter{} });
+                current = &_characters.at(glyphIndex);
+                current->glyph_index = glyphIndex;
+            }
+            else if (key.starts_with("si"))
+            {
+                assert(current != nullptr);
+                iss >> current->size.x >> current->size.y;
+            }
+            else if (key.starts_with("st"))
+            {
+                assert(current != nullptr);
+                iss >> current->start.x >> current->start.y;
+            }
+            else if (key.starts_with("be"))
+            {
+                assert(current != nullptr);
+                iss >> current->bearing.x >> current->bearing.y;
+            }
+            else if (key.starts_with("ad"))
+            {
+                assert(current != nullptr);
+                iss >> current->advanceX;
+            }
+            else if (key.starts_with("ga"))
+            {
+                assert(current != nullptr);
+                iss >> current->glyph_area;
+
+            }
+            else if (key.starts_with("tx"))
+            {
+                assert(current != nullptr);
+                iss >> current->tex_x_offset >> current->tex_y_offset;
+
+            }
+            else if (key.starts_with("uv"))
+            {
+                assert(current != nullptr);
+                iss >> current->texUv.x >> current->texUv.y;
+            }
+            else
+            {
+                throw std::runtime_error("Unhandled font config key.");
+            }
+        }
+
+        file.close();
+
+        return true;
+    }
 
 }

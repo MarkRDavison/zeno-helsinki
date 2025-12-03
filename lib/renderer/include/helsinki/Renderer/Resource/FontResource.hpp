@@ -45,7 +45,10 @@ namespace hl
 
 		FontType getFontType() const { return _fontType; }
 
-	protected:
+	private:
+		void writeFontConfigFile() const;
+		bool loadFontConfigFile();
+
 
 	private:
 		VulkanDevice& _device;
