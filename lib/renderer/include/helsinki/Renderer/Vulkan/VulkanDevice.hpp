@@ -6,6 +6,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanSwapChainSupportDetails.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanQueue.hpp>
 #include <iostream>
+#include <unordered_map>
 
 namespace hl
 {
@@ -29,11 +30,18 @@ namespace hl
 			nameInfo.objectHandle = handle;
 			nameInfo.pObjectName = name;
 
+			_handleToNameMap.insert({ handle, std::string(name) });
+
 			auto func = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(_device, "vkSetDebugUtilsObjectNameEXT");
 			if (func)
 			{
 				func(_device, &nameInfo);
 			}
+		}
+
+		inline std::string getNameFromHandle(uint64_t handle)
+		{
+			return _handleToNameMap.at(handle);
 		}
 
 	private:
@@ -53,5 +61,6 @@ namespace hl
 		VulkanQueue _graphicsQueue;
 		VulkanQueue _presentQueue;
 		VkSampleCountFlagBits _msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+		std::unordered_map<uint64_t, std::string> _handleToNameMap;
 	};
 }

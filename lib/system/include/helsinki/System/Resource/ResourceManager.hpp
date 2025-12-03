@@ -5,6 +5,7 @@
 #include <typeindex>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace hl
 {
@@ -81,6 +82,20 @@ namespace hl
             }
 
             return nullptr;
+        }
+
+        template<typename T>
+        std::vector<T*> GetAllResources()
+        {
+            std::vector<T*> local;
+
+            auto& typeResources = resources[std::type_index(typeid(T))];
+            for (auto& [name, res] : typeResources)
+            {
+                local.push_back(static_cast<T*>(res.get()));
+            }
+
+            return local;
         }
 
         template<typename T, typename TBase>

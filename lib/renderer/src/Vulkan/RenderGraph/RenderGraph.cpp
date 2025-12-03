@@ -237,7 +237,7 @@ namespace hl
 								{
 									for (const auto& b : ds.bindings)
 									{
-										descriptorTypeCounts[extractDescriptorType(b.type)]++;
+										descriptorTypeCounts[extractDescriptorType(b.type)] += b.count;
 									}
 								}
 							}
@@ -294,7 +294,7 @@ namespace hl
 										{
 											.binding = b.binding,
 											.descriptorType = extractDescriptorType(b.type),
-											.descriptorCount = 1,
+											.descriptorCount = b.count,
 											.stageFlags = extractStage(b.stage),
 											.pImmutableSamplers = nullptr
 										});

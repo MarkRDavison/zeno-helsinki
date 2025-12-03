@@ -234,6 +234,11 @@ namespace hl
                                                 b.resource.value())
                                             ->getDescriptorInfo(i);
 
+                                        if (b.count > 1)
+                                        {
+                                            throw std::runtime_error("Cannot handle hard coded image sampler arrays");
+                                        }
+
                                         imageInfos.push_back(VkDescriptorImageInfo
                                             {
                                                 .sampler = info.first,
