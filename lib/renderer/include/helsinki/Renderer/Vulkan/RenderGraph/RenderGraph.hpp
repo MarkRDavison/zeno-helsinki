@@ -52,6 +52,7 @@ namespace hl
         std::string type;           // e.g., "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER", "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER"
         std::string stage;          // "VERTEX", "FRAGMENT"
         std::optional<std::string> resource; // name of the resource bound to this descriptor
+        uint32_t count{ 1 };
         // TODO: Something to indicate how often it should be updated???
     };
 

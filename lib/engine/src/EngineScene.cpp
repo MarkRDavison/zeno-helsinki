@@ -496,108 +496,19 @@ namespace hl
                 vkCmdDraw(commandBuffer, 6, 1, 0, 0);
             }
         }
-        else if (pipeline->Name == "text_pipeline")
-        {
-            auto& textSystem = _engine.getTextSystem();            
-
-            std::string lastFontBound;
-
-            for (const auto& entity : _scene.getEntities())
-            {
-                if (!entity->HasComponents<hl::TransformComponent, hl::TextComponent>())
-                {
-                    continue;
-                }
-
-                const auto& transform = entity->GetComponent<hl::TransformComponent>();
-                const auto& text = entity->GetComponent<hl::TextComponent>();
-
-                const auto& t = textSystem.getText(text->getTextSystemId());
-
-                if (t._fontType != hl::FontType::Rasterised)
-                {
-                    continue;
-                }
-
-                if (lastFontBound != text->getFont())
-                {
-                    lastFontBound = text->getFont();
-
-                    auto info = _resourceManager
-                        ->GetResource<ImageSamplerResource>(
-                            lastFontBound)
-                        ->getDescriptorInfo(0);
-
-                    auto imageInfo = VkDescriptorImageInfo
-                    {
-                        .sampler = info.first,
-                        .imageView = info.second,
-                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                    };
-
-                    auto descriptorWrite = VkWriteDescriptorSet
-                    {
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = _renderGraph->getDescriptorSet(renderpassName, pipeline->Name, currentFrame),
-                        .dstBinding = 1,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .pImageInfo = &imageInfo
-                    };
-
-                    vkUpdateDescriptorSets(
-                        _device->_device,
-                        1,
-                        &descriptorWrite,
-                        0,
-                        nullptr);
-                }
-
-                auto modelTransform = transform->GetTransformMatrix();
-
-                auto pc = hl::TextPushConstantObject
-                {
-                    .model = modelTransform
-                };
-                
-                vkCmdPushConstants(
-                    commandBuffer,
-                    pipeline->getPipelineLayout(),
-                    VK_SHADER_STAGE_VERTEX_BIT,
-                    0,
-                    sizeof(hl::TextPushConstantObject),
-                    &pc
-                );
-                
-                VkBuffer vertexBuffers[] = { t._vertexBuffer._buffer};
-                VkDeviceSize offsets[] = { 0 };
-                vkCmdBindVertexBuffers(
-                    commandBuffer,
-                    0,
-                    1,
-                    vertexBuffers,
-                    offsets);
-
-                auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
-                vkCmdBindDescriptorSets(
-                    commandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pipeline->getPipelineLayout(),
-                    0,
-                    1,
-                    &descriptorSet,
-                    0,
-                    nullptr);
-
-                vkCmdDraw(commandBuffer, t._vertexCount, 1, 0, 0);
-            }
-        }
-        else if (pipeline->Name == "sdf_text_pipeline")
+        else if (pipeline->Name == "text_pipeline" ||
+                 pipeline->Name == "sdf_text_pipeline")
         {
             auto& textSystem = _engine.getTextSystem();
 
-            std::string lastFontBound;
+            auto fontType = pipeline->Name == "text_pipeline"
+                ? hl::FontType::Rasterised
+                : hl::FontType::SignedDistanceField;
+
+            // TODO: Need to not do this every frame...
+            const auto& fontToindexMap = textSystem.bindFontsDescriptor(
+                fontType,
+                _renderGraph->getDescriptorSet(renderpassName, pipeline->Name, currentFrame));
 
             for (const auto& entity : _scene.getEntities())
             {
@@ -611,51 +522,17 @@ namespace hl
 
                 const auto& t = textSystem.getText(text->getTextSystemId());
 
-                if (t._fontType != hl::FontType::SignedDistanceField)
+                if (t._fontType != fontType)
                 {
                     continue;
-                }
-
-                if (lastFontBound != text->getFont())
-                {
-                    lastFontBound = text->getFont();
-
-                    auto info = _resourceManager
-                        ->GetResource<ImageSamplerResource>(
-                            lastFontBound)
-                        ->getDescriptorInfo(0);
-
-                    auto imageInfo = VkDescriptorImageInfo
-                    {
-                        .sampler = info.first,
-                        .imageView = info.second,
-                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                    };
-
-                    auto descriptorWrite = VkWriteDescriptorSet
-                    {
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = _renderGraph->getDescriptorSet(renderpassName, pipeline->Name, currentFrame),
-                        .dstBinding = 1,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .pImageInfo = &imageInfo
-                    };
-
-                    vkUpdateDescriptorSets(
-                        _device->_device,
-                        1,
-                        &descriptorWrite,
-                        0,
-                        nullptr);
                 }
 
                 auto modelTransform = transform->GetTransformMatrix();
 
                 auto pc = hl::TextPushConstantObject
                 {
-                    .model = modelTransform
+                    .model = modelTransform,
+                    .fontAtlasIndex = fontToindexMap.at(text->getFont())
                 };
 
                 vkCmdPushConstants(

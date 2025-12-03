@@ -28,6 +28,10 @@ namespace hl
 
 		const Text& getText(int id) const;
 
+		std::unordered_map<std::string, uint32_t> bindFontsDescriptor(
+			FontType fontType, 
+			VkDescriptorSet descriptorSet) const;
+
 	private:
 		void generateText(int id, const std::string& text, const std::string& font, unsigned size);
 
