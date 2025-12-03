@@ -250,47 +250,32 @@ namespace hl
 
             if (_characters.count(glyph_index) == 0)
             {
-                // Some random space
                 x += 5.0f;
                 continue;
             }
 
             const auto& ch = _characters.at(glyph_index);
 
-            //non renderable glyphs, remember ? right now I'm treating it as a 5 pixels   space.
             if (ch.size.x == 0 && ch.size.y == 0)
             {
                 x += 5;
                 continue;
             }
 
-            //remember when I told you to read the documentation ? Did you do it ?
-            //if you want to understand more about glyph metrics
-            //go here https://freetype.org/freetype2/docs/glyphs/glyphs-3.html
-
-              //here we are computing the x and y position, to simplify and if I understood  
-              //well, bearing is the metrics telling you what space you need to correctly  
-              //place the glyph
-              //the scale allows me to change the size of the text
             float xpos = x + ch.bearing.x / 64.0f * scale;
             float ypos = y - ch.bearing.y / 64.0f * scale;
 
-            //compute the size of the glyph
             float w = ch.size.x * scale;
             float h = ch.size.y * scale;
 
-            //you will need the total size of your atlas texture
             float const width{ static_cast<float>(AtlasWidth) };
             float const height{ static_cast<float>(AtlasHeight) };
 
-            //here we are computing the UV coordinates (textures coordinates to fetch the      
-            //data into the texture in the fragment shader
             float u0{ ch.tex_x_offset / width };
             float v0{ (ch.tex_y_offset + ch.size.y) / height };
             float u1{ (ch.tex_x_offset + ch.size.x) / width };
             float v1{ ch.tex_y_offset / height };
 
-            //actually creating the six vertices
             Vertex22D vertex_1{
               { xpos, ypos + h},
               { u0, v0 } };

@@ -49,7 +49,6 @@ namespace hl
 		void writeFontConfigFile() const;
 		bool loadFontConfigFile();
 
-
 	private:
 		VulkanDevice& _device;
 		VulkanCommandPool& _commandPool;
