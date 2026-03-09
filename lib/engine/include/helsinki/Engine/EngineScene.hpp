@@ -12,6 +12,15 @@
 
 namespace hl
 {
+
+	struct PipelineDrawData
+	{
+		uint32_t currentFrame;
+		VkCommandBuffer commandBuffer;
+		hl::VulkanRenderGraphPipelineResources* pipeline;
+		Scene* scene;
+	};
+
 	class Engine;
 	class EngineScene : NonCopyable
 	{
@@ -46,9 +55,11 @@ namespace hl
 		void updateAllDescriptorSets();
 		void updateAllOutputResources();
 
+		void registerPipelineDraw(const std::string& pipelineName, std::function<void(PipelineDrawData&)> pipelineDraw);
+
 	private:
 		void updateCameraUniformBuffer(VulkanUniformBuffer& uniformBuffer);
-		// TODO: TEMP
+
 		void renderPipelineDraw(
 			VkCommandBuffer commandBuffer, 
 			const std::string& renderpassName,
@@ -68,6 +79,7 @@ namespace hl
 		std::vector<FrameResources> _frameResources;
 		GeneratedRenderGraph* _renderGraph{ nullptr };
 		ResourceHandle<UniformBufferResource> _cameraMatrixPushConstantHandle;
+		std::unordered_map<std::string, std::function<void(PipelineDrawData&)>> _pipelineDraws;
 	};
 
 }

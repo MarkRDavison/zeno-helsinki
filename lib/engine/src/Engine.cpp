@@ -315,7 +315,7 @@ namespace hl
 				_materialSystem.create(_config.MaxMaterials);
 
 				_resourceManager.Load<hl::UniformBufferResource>(
-					"camera_matrix_ubo",
+					"camera_matrix_ubo",// TODO: To constant
 					resourceContext,
 					sizeof(CameraUniformBufferObject),
 					MAX_FRAMES_IN_FLIGHT,
@@ -348,7 +348,7 @@ namespace hl
 
 		_currentEngineScene.reset(scene);
 		_currentEngineScene->initialise(
-			"camera_matrix_ubo",
+			"camera_matrix_ubo",// TODO: To constant
 			_device,
 			_swapChain,
 			_graphicsCommandPool,

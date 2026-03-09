@@ -311,6 +311,10 @@ namespace hl
     {
         _renderGraph->updateAllOutputResources();
     }
+    void EngineScene::registerPipelineDraw(const std::string& pipelineName, std::function<void(PipelineDrawData&)> pipelineDraw)
+    {
+        _pipelineDraws.insert({ pipelineName, pipelineDraw });
+    }
     void EngineScene::updateCameraUniformBuffer(VulkanUniformBuffer& uniformBuffer)
     {
         CameraUniformBufferObject ubo{};
@@ -327,8 +331,21 @@ namespace hl
         hl::VulkanRenderGraphPipelineResources* pipeline, 
         uint32_t currentFrame)
     {
-        // TODO: Need a system to register draw commands for different pipelines.
-        if (pipeline->Name == "skybox_pipeline")
+        auto iter = _pipelineDraws.find(pipeline->Name);
+
+        PipelineDrawData pdd
+        {
+            .currentFrame = currentFrame,
+            .commandBuffer = commandBuffer,
+            .pipeline = pipeline,
+            .scene = &_scene
+        };
+
+        if (iter != _pipelineDraws.end())
+        {
+            (*iter).second(pdd);
+        }
+        else if (pipeline->Name == "skybox_pipeline")
         {
             auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
             vkCmdBindDescriptorSets(commandBuffer,
@@ -451,51 +468,7 @@ namespace hl
                 0,
                 nullptr);
             vkCmdDraw(commandBuffer, 3, 1, 0, 0); // halfscreen triangle
-        }
-        else if (pipeline->Name == "sprite_pipeline")
-        {
-            for (const auto& entity : _scene.getEntities())
-            {
-                if (!entity->HasComponents<hl::TransformComponent, hl::SpriteComponent>())
-                {
-                    continue;
-                }
-
-                const auto& transform = entity->GetComponent<hl::TransformComponent>();
-                const auto& sprite = entity->GetComponent<hl::SpriteComponent>();
-
-                auto modelTransform = transform->GetTransformMatrix();
-
-                auto pc = hl::SpritePushConstantObject
-                {
-                    .model = modelTransform,
-                    .size = glm::vec2(64.0f, 64.0f),
-                    .frameIndex = sprite->getFrameDataIndex()
-                };
-
-                vkCmdPushConstants(
-                    commandBuffer,
-                    pipeline->getPipelineLayout(),
-                    VK_SHADER_STAGE_VERTEX_BIT,
-                    0,
-                    sizeof(hl::SpritePushConstantObject),
-                    &pc
-                );
-
-                auto descriptorSet = pipeline->getDescriptorSet(currentFrame);
-                vkCmdBindDescriptorSets(
-                    commandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pipeline->getPipelineLayout(),
-                    0,
-                    1,
-                    &descriptorSet,
-                    0,
-                    nullptr);
-
-                vkCmdDraw(commandBuffer, 6, 1, 0, 0);
-            }
-        }
+        }        
         else if (pipeline->Name == "text_pipeline" ||
                  pipeline->Name == "sdf_text_pipeline")
         {
@@ -569,7 +542,7 @@ namespace hl
         }
         else
         {
-            throw std::runtime_error("TODO: HARD CODED DRAW FUNCTIONS");
+            std::cout << "Renderpass: '" << renderpassName << "' has unhandled pipeline draw: '" << pipeline->Name << "'" << std::endl;
         }
     }
 }

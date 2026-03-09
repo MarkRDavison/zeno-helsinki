@@ -405,6 +405,53 @@ namespace td
             resourceManager,
             materialSystem,
             renderpasses);
+
+        registerPipelineDraw(
+            "sprite_pipeline",
+            [](hl::PipelineDrawData& pdd) -> void
+            {
+                for (const auto& entity : pdd.scene->getEntities())
+                {
+                    if (!entity->HasComponents<hl::TransformComponent, hl::SpriteComponent>())
+                    {
+                        continue;
+                    }
+
+                    const auto& transform = entity->GetComponent<hl::TransformComponent>();
+                    const auto& sprite = entity->GetComponent<hl::SpriteComponent>();
+
+                    auto modelTransform = transform->GetTransformMatrix();
+
+                    auto pc = hl::SpritePushConstantObject
+                    {
+                        .model = modelTransform,
+                        .size = glm::vec2(64.0f, 64.0f),
+                        .frameIndex = sprite->getFrameDataIndex()
+                    };
+
+                    vkCmdPushConstants(
+                        pdd.commandBuffer,
+                        pdd.pipeline->getPipelineLayout(),
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(hl::SpritePushConstantObject),
+                        &pc
+                    );
+
+                    auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
+                    vkCmdBindDescriptorSets(
+                        pdd.commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pdd.pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        0,
+                        nullptr);
+
+                    vkCmdDraw(pdd.commandBuffer, 6, 1, 0, 0);
+                }
+            });
     }
 
     void TwoDimensionalEngineScene::update(uint32_t /*currentFrame*/, float delta)
