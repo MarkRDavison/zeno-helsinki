@@ -10,7 +10,9 @@ namespace pong
 	class PongEngineScene : public hl::EngineScene
 	{
 	public:
-		PongEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig);
+		PongEngineScene(
+			hl::Engine& engine, 
+			const hl::EngineConfiguration& engineConfig);
 		void initialise(
 			const std::string& cameraMatrixResourceId,
 			hl::VulkanDevice& device,

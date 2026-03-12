@@ -15,7 +15,8 @@
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
 #include <EntityPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
-#include <EntityComponent.hpp>
+#include <Components/EntityComponent.hpp>
+#include <Systems/PaddlePlayerControlSystem.hpp>
 #include <glm/matrix.hpp>
 
 namespace pong
@@ -30,6 +31,7 @@ namespace pong
     {
         _camera = new hl::Camera2D();
     }
+
     void PongEngineScene::initialise(
         const std::string& cameraMatrixResourceId,
         hl::VulkanDevice& device,
@@ -194,6 +196,7 @@ namespace pong
             auto ec = entity->AddComponent<EntityComponent>();
             ec->Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
             ec->VertexBufferResourceName = "paddle";
+            ec->ControlledState = ControlledState::PLAYER;
         }
         {
             auto entity = _scene.addEntity("Paddle2");
@@ -203,6 +206,7 @@ namespace pong
             auto ec = entity->AddComponent<EntityComponent>();
             ec->Color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
             ec->VertexBufferResourceName = "paddle";
+            ec->ControlledState = ControlledState::COMPUTER;
         }
         {
             auto entity = _scene.addEntity("WallTop");
@@ -243,7 +247,7 @@ namespace pong
                         continue;
                     }
 
-                    const auto& transform = entity->GetComponent<hl::TransformComponent>();
+                    auto transform = entity->GetComponent<hl::TransformComponent>();
                     const auto& ec = entity->GetComponent<EntityComponent>();
 
                     const auto& resource = _resourceManager->GetResource<hl::VertexArrayResource>(ec->VertexBufferResourceName);
@@ -293,6 +297,11 @@ namespace pong
                     vkCmdDrawIndexed(pdd.commandBuffer, resource->getIndexCount(), 1, 0, 0, 0);
                 }
             });
+
+        _scene.addSystem(new PaddlePlayerControlSystem(
+            _engine.getInputManager(),
+            this->_scene));
+        // _scene.addSystem(new PaddleComputerControlSystem());
     }
 
     void PongEngineScene::update(uint32_t /*currentFrame*/, float delta)
@@ -327,5 +336,7 @@ namespace pong
         {
 
         }
+
+        _scene.update(delta);
     }
 }

@@ -60,4 +60,12 @@ namespace hl
 	{
 		return _entities;
 	}
+
+	void Scene::update(float delta)
+	{
+		for (auto& system : _systems)
+		{
+			system->update(delta);
+		}
+	}
 }

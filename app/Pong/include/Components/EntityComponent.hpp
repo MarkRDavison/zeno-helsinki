@@ -12,6 +12,7 @@ namespace pong
 	public:
 		std::string VertexBufferResourceName;
 		glm::vec4 Color = glm::vec4(1.0, 0.0, 0.0, 1.0);
+		ControlledState ControlledState = ControlledState::NONE;
 	private:
 
 	};

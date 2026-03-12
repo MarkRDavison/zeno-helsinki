@@ -20,6 +20,8 @@ namespace hl
 		const std::vector<std::unique_ptr<Entity>>& getEntities() const;
 		std::vector<std::unique_ptr<Entity>>& getEntities();
 
+		void update(float delta);
+
 	private:
 		std::vector<std::unique_ptr<Entity>> _entities;
 		std::vector<std::unique_ptr<System>> _systems;

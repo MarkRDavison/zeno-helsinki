@@ -18,8 +18,15 @@ namespace pong
 		static const int GameBoundsHeight = 600;
 
 		static const int GameBoundsWallWidth = 24;
+		static constexpr const float PaddleMoveSpeedBase = 512.0f;
 	};
 
+	enum class ControlledState
+	{
+		NONE = 0,
+		PLAYER = 1,
+		COMPUTER = 2
+	};
 
 	enum class GameState
 	{
