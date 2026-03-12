@@ -38,9 +38,11 @@ namespace hl
 	}
 
 	Engine::Engine(
-		EventBus& eventBus
+		EventBus& eventBus, 
+		InputManager& inputManager
 	) :
 		_eventBus(eventBus),
+		_inputManager(inputManager),
 		_window(nullptr),
 		_instance(),
 		_surface(_instance),
@@ -274,6 +276,7 @@ namespace hl
 		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
 		glfwSetKeyCallback(_window, keyCallback);
 		glfwSetScrollCallback(_window, scrollCallback);
+		_inputManager.setWindow(_window);
 	}
 	void Engine::initVulkan(const char* title)
 	{

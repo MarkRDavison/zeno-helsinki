@@ -6,7 +6,8 @@
 static void registerServices(hl::ServiceProvider& services)
 {
 	services.registerService<hl::EventBus, hl::EventBus>(hl::ServiceLifetime::Singleton);
-	services.registerService<hl::Engine, hl::Engine, hl::EventBus>(hl::ServiceLifetime::Singleton);
+	services.registerService<hl::InputManager, hl::InputManager>(hl::ServiceLifetime::Singleton);
+	services.registerService<hl::Engine, hl::Engine, hl::EventBus, hl::InputManager>(hl::ServiceLifetime::Singleton);
 	services.registerService<hl::EngineConfiguration, hl::EngineConfiguration>(hl::ServiceLifetime::Singleton);
 }
 

@@ -10,6 +10,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSynchronisationContext.hpp>
+#include <helsinki/Engine/Input/InputManager.hpp>
 
 struct GLFWwindow;
 
@@ -19,7 +20,7 @@ namespace hl
 	class Engine : NonCopyable
 	{
 	public:
-		Engine(EventBus& eventBus);
+		Engine(EventBus& eventBus, InputManager& inputManager);
 		~Engine();
 
 		void init(EngineConfiguration config);
@@ -32,6 +33,7 @@ namespace hl
 		// CONSOLIDATE
 		// TODO: Between this and the material system, we have 2 different approaches
 		TextSystem& getTextSystem() { return _textSystem; }
+		InputManager& getInputManager() { return _inputManager; }
 
 	private:
 		void mainLoop();
@@ -48,6 +50,7 @@ namespace hl
 
 	private:
 		EventBus& _eventBus;
+		InputManager& _inputManager;
 		GLFWwindow* _window;
 		VulkanInstance _instance;
 		VulkanSurface _surface;
