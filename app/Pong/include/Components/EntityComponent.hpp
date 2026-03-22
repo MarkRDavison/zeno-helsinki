@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <PongConstants.hpp>
 #include <helsinki/Engine/ECS/Component.hpp>
 #include <helsinki/System/glm.hpp>
 

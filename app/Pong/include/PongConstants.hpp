@@ -32,6 +32,7 @@ namespace pong
 	{
 		INIT = 0,
 		PLAYING = 1,
-		GAME_OVER = 2
+		POINT_SCORED = 2,
+		GAME_OVER = 3
 	};
 }
