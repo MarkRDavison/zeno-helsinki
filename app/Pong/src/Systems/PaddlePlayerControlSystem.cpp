@@ -44,7 +44,19 @@ namespace pong
 					{
 						const auto& pos = tc->GetPosition();
 
-						tc->SetPosition(pos -glm::vec3(0.0f, offset, 0.0f));
+						auto newPos = pos - glm::vec3(0.0f, offset, 0.0f);
+
+						if (newPos.y < 0.0f)
+						{
+							newPos.y = 0.0f;
+						}
+
+						if (newPos.y + PongConstants::PaddleHeight > PongConstants::GameBoundsHeight)
+						{
+							newPos.y = PongConstants::GameBoundsHeight - PongConstants::PaddleHeight;
+						}
+
+						tc->SetPosition(newPos);
 					}
 				}
 			}

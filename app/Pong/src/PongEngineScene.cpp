@@ -17,7 +17,12 @@
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
 #include <Components/EntityComponent.hpp>
 #include <Systems/PaddlePlayerControlSystem.hpp>
-#include <glm/matrix.hpp>
+#include <Systems/PaddleComputerControlSystem.hpp>
+#include <Systems/BallMovementSystem.hpp>
+#include <Events/PointScoredEvent.hpp>
+#include <helsinki/System/glm.hpp>
+#include <GLFW/glfw3.h>
+#include <helsinki/Engine/ECS/Components/KinematicComponent.hpp>
 
 namespace pong
 {
@@ -30,6 +35,13 @@ namespace pong
         _engineConfig(engineConfig)
     {
         _camera = new hl::Camera2D();
+        _engine.getEventBus().AddListener(this);
+    }
+
+
+    PongEngineScene::~PongEngineScene()
+    {
+        _engine.getEventBus().RemoveListener(this);
     }
 
     void PongEngineScene::initialise(
@@ -153,11 +165,11 @@ namespace pong
         {
             { .pos = { 0.0f, 0.0f } },
             { .pos = { (float)PongConstants::GameBoundsWidth, 0.0f } },
-            { .pos = { (float)PongConstants::GameBoundsWidth, -(float)PongConstants::GameBoundsWallWidth } },
+            { .pos = { (float)PongConstants::GameBoundsWidth, (float)PongConstants::GameBoundsWallWidth } },
 
             { .pos = { 0.0f, 0.0f } },
-            { .pos = { (float)PongConstants::GameBoundsWidth, -(float)PongConstants::GameBoundsWallWidth } },
-            { .pos = { 0.0f, -(float)PongConstants::GameBoundsWallWidth } }
+            { .pos = { (float)PongConstants::GameBoundsWidth, (float)PongConstants::GameBoundsWallWidth } },
+            { .pos = { 0.0f, (float)PongConstants::GameBoundsWallWidth } }
         });
 
         resourceManager.Load<hl::VertexArrayResource>(
@@ -212,7 +224,7 @@ namespace pong
             auto entity = _scene.addEntity("WallTop");
             entity->AddTag("ENTITY");
             entity->AddTag("WALL");
-            entity->AddComponent<hl::TransformComponent>();
+            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0f, (float)(-PongConstants::GameBoundsWallWidth), 0.0f));
             auto ec = entity->AddComponent<EntityComponent>();
             ec->Color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
             ec->VertexBufferResourceName = "wall";
@@ -221,7 +233,7 @@ namespace pong
             auto entity = _scene.addEntity("WallBottom");
             entity->AddTag("ENTITY");
             entity->AddTag("WALL");
-            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0f, (float)(PongConstants::GameBoundsHeight + PongConstants::GameBoundsWallWidth), 0.0f));
+            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0f, (float)(PongConstants::GameBoundsHeight), 0.0f));
             auto ec = entity->AddComponent<EntityComponent>();
             ec->Color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
             ec->VertexBufferResourceName = "wall";
@@ -231,6 +243,7 @@ namespace pong
             entity->AddTag("ENTITY");
             entity->AddTag("BALL");
             entity->AddComponent<hl::TransformComponent>();
+            entity->AddComponent<hl::KinematicComponent>();
             auto ec = entity->AddComponent<EntityComponent>();
             ec->Color = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
             ec->VertexBufferResourceName = "ball";
@@ -298,10 +311,16 @@ namespace pong
                 }
             });
 
+        _scene.addSystem(new BallMovementSystem(
+            _engine.getInputManager(), 
+            _engine.getEventBus(),
+            this->_scene));
         _scene.addSystem(new PaddlePlayerControlSystem(
             _engine.getInputManager(),
             this->_scene));
-        // _scene.addSystem(new PaddleComputerControlSystem());
+        _scene.addSystem(new PaddleComputerControlSystem(
+            _engine.getInputManager(),
+            this->_scene));
     }
 
     void PongEngineScene::update(uint32_t /*currentFrame*/, float delta)
@@ -324,6 +343,7 @@ namespace pong
                 0.0f));
 
             auto ball = _scene.getEntity("Ball");
+            ball->GetComponent<hl::KinematicComponent>()->velocity = 4.0f * glm::vec3(64.0f, 64.0f, 0.0f);
             auto btc = ball->GetComponent<hl::TransformComponent>();
             btc->SetPosition(glm::vec3(
                 (float)(PongConstants::GameBoundsWidth - PongConstants::BallSize) / 2.0f,
@@ -334,9 +354,24 @@ namespace pong
         }
         else if (_state == GameState::PLAYING)
         {
-
+            _scene.update(delta);
         }
+        else if (_state == GameState::POINT_SCORED)
+        {
+            if (_engine.getInputManager().isKeyDown(GLFW_KEY_ENTER))
+            {
+                _state = GameState::INIT;
+            }
+        }
+    }
 
-        _scene.update(delta);
+    void PongEngineScene::OnEvent(const hl::Event& event)
+    {
+        if (auto pse = dynamic_cast<const PointScoredEvent*>(&event))
+        {
+            const auto player = pse->GetPlayerNumber();
+            std::cout << "Player '" << player << "' scored!" << std::endl;
+            _state = GameState::POINT_SCORED;
+        }
     }
 }

@@ -7,12 +7,13 @@
 namespace pong
 {
 
-	class PongEngineScene : public hl::EngineScene
+	class PongEngineScene : public hl::EngineScene, public hl::EventListener
 	{
 	public:
 		PongEngineScene(
 			hl::Engine& engine, 
 			const hl::EngineConfiguration& engineConfig);
+		~PongEngineScene();
 		void initialise(
 			const std::string& cameraMatrixResourceId,
 			hl::VulkanDevice& device,
@@ -23,6 +24,8 @@ namespace pong
 			hl::MaterialSystem& materialSystem) override;
 
 		void update(uint32_t currentFrame, float delta) override;
+
+		void OnEvent(const hl::Event& event) override;
 	private:
 		const hl::EngineConfiguration& _engineConfig;
 		GameState _state{ GameState::INIT };
