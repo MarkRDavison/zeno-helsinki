@@ -56,7 +56,6 @@ namespace pong
 					.vY = kc->velocity.y
 				};
 
-				// PROCESS COLLISION
 				auto eTc = e->GetComponent<hl::TransformComponent>();
 
 				// TODO: Record bounds on entity???
@@ -80,12 +79,12 @@ namespace pong
 					if (e->HasTag("PADDLE"))
 					{
 						newPos.x = oldPos.x;
-						kc->velocity.x *= -1.0f;
+						kc->velocity.x *= -1.1f;
 					}
 					else
 					{
 						newPos.y = oldPos.y;
-						kc->velocity.y *= -1.0f;
+						kc->velocity.y *= -1.1f;
 					}
 				}
 
