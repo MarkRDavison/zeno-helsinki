@@ -86,22 +86,12 @@ namespace hl
 	}
 	void Engine::setScene(EngineScene* scene)
 	{
-		if (_currentEngineScene)
+		if (_nextEngineScene != nullptr)
 		{
-			destroyScene();
+			throw std::runtime_error("Setting a new scene twice in one frame");
 		}
 
-		createScene(scene);
-
-		{
-			ZoneScopedN("updateAllOutputResources");
-			scene->updateAllOutputResources();
-		}
-
-		{
-			ZoneScopedN("updateAllDescriptorSets");
-			scene->updateAllDescriptorSets();
-		}
+		_nextEngineScene = scene;
 	}
 
 	void Engine::mainLoop()
@@ -111,6 +101,8 @@ namespace hl
 		float statsAccumulator = 0.0f;
 		unsigned int fps = 0;
 		unsigned int ups = 0;
+
+		setCurrentSceneAsAppropriate();
 
 		auto start = std::chrono::steady_clock::now();
 
@@ -136,6 +128,8 @@ namespace hl
 				ups = 0;
 			}
 
+			setCurrentSceneAsAppropriate();
+			
 			while (accumulator >= delta)
 			{
 				glfwPollEvents();
@@ -365,6 +359,31 @@ namespace hl
 
 		_currentEngineScene->cleanup();
 		_currentEngineScene.reset();
+	}
+
+	void Engine::setCurrentSceneAsAppropriate()
+	{
+		if (_nextEngineScene)
+		{
+			if (_currentEngineScene)
+			{
+				this->_device.waitIdle();
+				destroyScene();
+			}
+
+			createScene(_nextEngineScene);
+			_nextEngineScene = nullptr;
+
+			{
+				ZoneScopedN("updateAllOutputResources");
+				_currentEngineScene->updateAllOutputResources();
+			}
+
+			{
+				ZoneScopedN("updateAllDescriptorSets");
+				_currentEngineScene->updateAllDescriptorSets();
+			}
+		}
 	}
 
 }

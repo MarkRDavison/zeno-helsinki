@@ -49,6 +49,8 @@ namespace hl
 		void createScene(EngineScene* scene);
 		void destroyScene();
 
+		void setCurrentSceneAsAppropriate();
+
 	private:
 		EventBus& _eventBus;
 		InputManager& _inputManager;
@@ -70,6 +72,9 @@ namespace hl
 		bool _framebufferResized = false;
 
 		std::unique_ptr<EngineScene> _currentEngineScene;
+		EngineScene* _nextEngineScene{nullptr};
+
+
 	};
 
 }
