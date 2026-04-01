@@ -1,4 +1,5 @@
 #include "PongEngineScene.hpp"
+#include "PongTitleEngineScene.hpp"
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
@@ -23,6 +24,7 @@
 #include <helsinki/System/glm.hpp>
 #include <GLFW/glfw3.h>
 #include <helsinki/Engine/ECS/Components/KinematicComponent.hpp>
+#include <helsinki/System/Events/KeyEvents.hpp>
 
 namespace pong
 {
@@ -374,6 +376,17 @@ namespace pong
             const auto player = pse->GetPlayerNumber();
             std::cout << "Player '" << player << "' scored!" << std::endl;
             _state = GameState::POINT_SCORED;
+        }
+
+        if (auto ke = dynamic_cast<const hl::KeyPressEvent*>(&event))
+        {
+            const auto code = ke->GetKeyCode();
+
+            if (code == GLFW_KEY_BACKSPACE)
+            {
+                std::cout << "BACKSPACE PRESSED!" << std::endl;
+                _engine.setScene(new PongTitleEngineScene(_engine, _engineConfig));
+            }
         }
     }
 }
