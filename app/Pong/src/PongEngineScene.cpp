@@ -162,43 +162,43 @@ namespace pong
             "wall",
             resourceContext,
             std::vector<hl::Vertex2>
-        {
-            { .pos = { 0.0f, 0.0f } },
-            { .pos = { (float)PongConstants::GameBoundsWidth, 0.0f } },
-            { .pos = { (float)PongConstants::GameBoundsWidth, (float)PongConstants::GameBoundsWallWidth } },
+            {
+                { .pos = { 0.0f, 0.0f } },
+                { .pos = { (float)PongConstants::GameBoundsWidth, 0.0f } },
+                { .pos = { (float)PongConstants::GameBoundsWidth, (float)PongConstants::GameBoundsWallWidth } },
 
-            { .pos = { 0.0f, 0.0f } },
-            { .pos = { (float)PongConstants::GameBoundsWidth, (float)PongConstants::GameBoundsWallWidth } },
-            { .pos = { 0.0f, (float)PongConstants::GameBoundsWallWidth } }
-        });
+                { .pos = { 0.0f, 0.0f } },
+                { .pos = { (float)PongConstants::GameBoundsWidth, (float)PongConstants::GameBoundsWallWidth } },
+                { .pos = { 0.0f, (float)PongConstants::GameBoundsWallWidth } }
+            });
 
         resourceManager.Load<hl::VertexArrayResource>(
             "paddle",
             resourceContext,
             std::vector<hl::Vertex2>
-        {
-            {.pos = { 0.0f, 0.0f } },
-            { .pos = { (float)PongConstants::PaddleWidth, 0.0f } },
-            { .pos = { (float)PongConstants::PaddleWidth, (float)PongConstants::PaddleHeight } },
+            {
+                {.pos = { 0.0f, 0.0f } },
+                { .pos = { (float)PongConstants::PaddleWidth, 0.0f } },
+                { .pos = { (float)PongConstants::PaddleWidth, (float)PongConstants::PaddleHeight } },
 
-            { .pos = { 0.0f, 0.0f } },
-            { .pos = { (float)PongConstants::PaddleWidth, (float)PongConstants::PaddleHeight } },
-            { .pos = { 0.0f, (float)PongConstants::PaddleHeight } },
-        });
+                { .pos = { 0.0f, 0.0f } },
+                { .pos = { (float)PongConstants::PaddleWidth, (float)PongConstants::PaddleHeight } },
+                { .pos = { 0.0f, (float)PongConstants::PaddleHeight } },
+            });
 
         resourceManager.Load<hl::VertexArrayResource>(
             "ball",
             resourceContext,
             std::vector<hl::Vertex2>
-        {
-            { .pos = { 0.0f, 0.0f } },
-            { .pos = { (float)PongConstants::BallSize, 0.0f } },
-            { .pos = { (float)PongConstants::BallSize, (float)PongConstants::BallSize } },
+            {
+                { .pos = { 0.0f, 0.0f } },
+                { .pos = { (float)PongConstants::BallSize, 0.0f } },
+                { .pos = { (float)PongConstants::BallSize, (float)PongConstants::BallSize } },
 
-            { .pos = { 0.0f, 0.0f } },
-            { .pos = { (float)PongConstants::BallSize, (float)PongConstants::BallSize } },
-            { .pos = { 0.0f, (float)PongConstants::BallSize } },
-        });
+                { .pos = { 0.0f, 0.0f } },
+                { .pos = { (float)PongConstants::BallSize, (float)PongConstants::BallSize } },
+                { .pos = { 0.0f, (float)PongConstants::BallSize } },
+            });
 
         {
             auto entity = _scene.addEntity("Paddle1");
@@ -367,6 +367,8 @@ namespace pong
 
     void PongEngineScene::OnEvent(const hl::Event& event)
     {
+        // TODO: Better way to do this without the dynamic cast?
+        // Maybe a type property that can be compared?
         if (auto pse = dynamic_cast<const PointScoredEvent*>(&event))
         {
             const auto player = pse->GetPlayerNumber();
