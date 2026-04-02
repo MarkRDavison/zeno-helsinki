@@ -229,6 +229,8 @@ namespace hl
         float x{ 0.0f };
         float y{ 0.0f };
 
+        float minY = 0.0f;
+
         float scale = 1.0f;
 
         if (_fontType == FontType::Rasterised)
@@ -264,6 +266,8 @@ namespace hl
 
             float xpos = x + ch.bearing.x / 64.0f * scale;
             float ypos = y - ch.bearing.y / 64.0f * scale;
+
+            minY = std::min(minY, ypos);
 
             float w = ch.size.x * scale;
             float h = ch.size.y * scale;
@@ -310,6 +314,11 @@ namespace hl
             //advance is the metrics that gives you the space needed for each glyph to     
             //not overlap with the next glyph
             x += (ch.advanceX >> 6) * scale;
+        }
+
+        for (auto& v : vert)
+        {
+            v.pos.y -= minY;
         }
 
         return vert;

@@ -27,6 +27,7 @@ namespace hl
 		void destroy();
 
 		const Text& getText(int id) const;
+		glm::vec4 getTextSize(int id) const;
 
 		std::unordered_map<std::string, uint32_t> bindFontsDescriptor(
 			FontType fontType, 
