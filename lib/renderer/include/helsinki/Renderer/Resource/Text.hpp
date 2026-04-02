@@ -24,6 +24,8 @@ namespace hl
 		uint32_t _vertexCount;
 		VulkanBuffer _vertexBuffer;
 		FontType _fontType{ FontType::Rasterised };
+		std::string _text;
+		std::string _font;
 	};
 
 }

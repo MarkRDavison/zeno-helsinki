@@ -8,6 +8,9 @@
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
+#include <helsinki/Engine/ECS/Components/TextComponent.hpp>
+#include <helsinki/System/Events/WindowResizeEvent.hpp>
 
 namespace pong
 {
@@ -37,6 +40,8 @@ namespace pong
 		hl::ResourceManager& resourceManager,
 		hl::MaterialSystem& materialSystem)
 	{
+
+        // TODO: Helper methods to create these standard renderpasses???
 		std::vector<hl::RenderpassInfo> renderpasses
 		{
 			hl::RenderpassInfo
@@ -132,14 +137,14 @@ namespace pong
                                             .binding = 0,
                                             .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                             .stage = "VERTEX",
-                                            .resource = "camera_matrix_ubo"
+                                            .resource = cameraMatrixResourceId
                                         },
                                         hl::DescriptorBinding
                                         {
                                             .binding = 1,
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                             .stage = "VERTEX&FRAGMENT",
-                                            .count = 64
+                                            .count = 64 // TODO: Constant? MAX_FONTS????
                                         }
                                     }
                                 }
@@ -198,6 +203,43 @@ namespace pong
             "roboto",
             resourceContext);
 
+        {
+            auto entity = _scene.addEntity("title");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>();
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(),
+                "PONG",
+                "roboto",
+                128);
+            entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+        }
+        {
+            auto entity = _scene.addEntity("start");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>();
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(),
+                "Start",
+                "roboto",
+                64);
+        }
+        {
+            auto entity = _scene.addEntity("quit");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>();
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(),
+                "Quit",
+                "roboto",
+                64);
+        }
+
+        handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
+
 		EngineScene::initialise(
 			cameraMatrixResourceId,
 			device,
@@ -226,5 +268,33 @@ namespace pong
                 _engine.setScene(new PongEngineScene(_engine, _engineConfig));
             }
         }
+        else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
+        {
+            handleWindowSizeChange(wre->GetWidth(), wre->GetHeight());
+        }
 	}
+
+    void PongTitleEngineScene::handleWindowSizeChange(int width, int height)
+    {
+        const auto& centerTextAt = [&](const std::string & entityName, float yOffset) -> void
+        {
+            auto desiredCenter = glm::vec2(((float)width) / 2.0f, ((float)height) / 3.0f + yOffset);
+
+            auto entity = _scene.getEntity(entityName);
+
+            const auto& size = _engine
+                .getTextSystem()
+                .getTextSize(
+                    entity->GetComponent<hl::TextComponent>()->getTextSystemId());
+
+            desiredCenter.x += size.x - size.z / 2.0f;
+            desiredCenter.y += size.y - size.w / 2.0f;
+
+            entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredCenter, 0.0f));
+        };
+
+        centerTextAt("title", 0.0f);
+        centerTextAt("start", 1.0f * height / 6.0f);
+        centerTextAt("quit", 2.0f * height / 6.0f);
+    }
 }

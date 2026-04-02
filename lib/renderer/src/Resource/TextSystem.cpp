@@ -56,6 +56,34 @@ namespace hl
 		return *_textInfo.at(id);
 	}
 
+	glm::vec4 TextSystem::getTextSize(int id) const
+	{
+		const auto& t = getText(id);
+
+		auto fontResource = _resourceManager.GetResource<hl::FontResource>(t._font);
+
+		if (fontResource == nullptr)
+		{
+			throw std::runtime_error("INVALID FONT!");
+		}
+		// TODO: generateTextVertexes should return verticies and bounds?
+		const auto& vert = fontResource->generateTextVertexes(t._text, t._size);
+
+		glm::vec2 min{};
+		glm::vec2 max{};
+
+		for (const auto& vertex : vert)
+		{
+			min.x = std::min(min.x, vertex.pos.x);
+			min.y = std::min(min.y, vertex.pos.y);
+
+			max.x = std::max(max.x, vertex.pos.x);
+			max.y = std::max(max.y, vertex.pos.y);
+		}
+
+		return glm::vec4(min.x, min.y, max.x - min.x, max.y - min.y);
+	}
+
 	std::unordered_map<std::string, uint32_t> TextSystem::bindFontsDescriptor(
 		FontType fontType,
 		VkDescriptorSet descriptorSet) const
@@ -131,6 +159,7 @@ namespace hl
 		auto t = _textInfo.at(id);
 
 		auto fontResource = _resourceManager.GetResource<hl::FontResource>(font);
+
 		if (fontResource == nullptr)
 		{
 			throw std::runtime_error("INVALID FONT!");
@@ -141,6 +170,8 @@ namespace hl
 		t->_fontType = fontResource->getFontType();
 		t->_vertexCount = (uint32_t)vert.size();
 		t->_size = size;
+		t->_text = text;
+		t->_font = font;
 
 		VkDeviceSize bufferSize = sizeof(vert[0]) * vert.size();
 

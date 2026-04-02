@@ -28,6 +28,9 @@ namespace pong
 		void OnEvent(const hl::Event& event) override;
 
 	private:
+		void handleWindowSizeChange(int width, int height);
+
+	private:
 		const hl::EngineConfiguration& _engineConfig;
 
 	};

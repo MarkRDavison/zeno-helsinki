@@ -88,7 +88,8 @@ namespace hl
 	{
 		if (_nextEngineScene != nullptr)
 		{
-			throw std::runtime_error("Setting a new scene twice in one frame");
+			std::cout << "Setting a new scene twice in one frame - skipping...." << std::endl;
+			return;
 		}
 
 		_nextEngineScene = scene;
@@ -123,6 +124,7 @@ namespace hl
 					const auto title = std::format("{} - FPS: {} UPS: {}", _config.Title, fps, ups);
 					glfwSetWindowTitle(_window, title.c_str());
 				}
+
 				statsAccumulator -= 1.0f;
 				fps = 0;
 				ups = 0;
@@ -367,6 +369,8 @@ namespace hl
 		{
 			if (_currentEngineScene)
 			{
+				// TODO: Only have to do this because we are destroying the scene NOW.
+				// We could wait till the next time we're already waiting on idle and destroy there.....
 				this->_device.waitIdle();
 				destroyScene();
 			}
