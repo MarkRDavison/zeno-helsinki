@@ -29,6 +29,7 @@ namespace hl
 		void sendEvent(const Event& event);
 
 		void setScene(EngineScene* scene);
+		void stop();
 
 		// CONSOLIDATE
 		// TODO: Between this and the material system, we have 2 different approaches
@@ -70,6 +71,7 @@ namespace hl
 		EngineConfiguration _config;
 		uint32_t _currentFrame = 0;
 		bool _framebufferResized = false;
+		bool _running = false;
 
 		std::unique_ptr<EngineScene> _currentEngineScene;
 		EngineScene* _nextEngineScene{nullptr};

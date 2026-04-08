@@ -505,6 +505,7 @@ namespace hl
                 auto pc = hl::TextPushConstantObject
                 {
                     .model = modelTransform,
+                    .colour = text->getColour(),
                     .fontAtlasIndex = fontToindexMap.at(text->getFont())
                 };
 

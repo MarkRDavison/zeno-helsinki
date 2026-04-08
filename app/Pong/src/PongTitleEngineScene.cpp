@@ -213,7 +213,7 @@ namespace pong
                 "PONG",
                 "roboto",
                 128);
-            entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+            entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 0.5f, 0.0f, 1.0f));
         }
         {
             auto entity = _scene.addEntity("start");
@@ -237,6 +237,28 @@ namespace pong
                 "roboto",
                 64);
         }
+        {
+            auto entity = _scene.addEntity("topleft");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>();
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(),
+                "TL",
+                "roboto",
+                64);
+        }
+        {
+            auto entity = _scene.addEntity("bottomright");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>();
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(),
+                "BR",
+                "roboto",
+                64);
+        }
 
         handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 
@@ -253,7 +275,43 @@ namespace pong
 
 	void PongTitleEngineScene::update(uint32_t currentFrame, float delta)
 	{
+        const auto mouse = _engine.getInputManager().getMousePosition();
 
+        auto wasPressedLastFrame = _wasPressed;
+
+        _wasPressed = _engine.getInputManager().isButtonDown(GLFW_MOUSE_BUTTON_1);
+
+        const auto checkClick = wasPressedLastFrame && !_wasPressed;
+
+        for (auto& e : _scene.getEntities())
+        {
+            if (!e->HasTag("TEXT") ||
+                !e->HasComponents<hl::TransformComponent, hl::TextComponent>())
+            {
+                continue;
+            }
+
+            auto tc = e->GetComponent<hl::TransformComponent>();
+            auto textComponent = e->GetComponent<hl::TextComponent>();
+            auto tcp = tc->GetPosition();
+
+            const auto& size = _engine.getTextSystem().getTextSize(textComponent->getTextSystemId());
+
+            if ((tcp.x + size.x <= mouse.x) && (mouse.x <= tcp.x + size.z) &&
+                (tcp.y + size.y <= mouse.y) && (mouse.y <= tcp.y + size.w))
+            {
+                textComponent->setColour(glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+
+                if (checkClick)
+                {
+                    handleTextClicked(e->getName());
+                }
+            }
+            else
+            {
+                textComponent->setColour(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+            }
+        }
 	}
 
 	void PongTitleEngineScene::OnEvent(const hl::Event& event)
@@ -293,8 +351,58 @@ namespace pong
             entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredCenter, 0.0f));
         };
 
+        // TODO: Replace this with flags/enum for anchor/alignment, left, right, top, bottom, center -> 9 possibilities.
+        const auto& alignTextTopLeft = [&](const std::string & entityName, float x, float y) -> void
+        {
+            auto desiredPosition = glm::vec2(x, y);
+
+            auto entity = _scene.getEntity(entityName);
+
+            const auto& size = _engine
+                .getTextSystem()
+                .getTextSize(
+                    entity->GetComponent<hl::TextComponent>()->getTextSystemId());
+
+            entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredPosition, 0.0f));
+        };
+
+        const auto& alignTextBottomRight = [&](const std::string & entityName, float x, float y) -> void
+        {
+            auto desiredPosition = glm::vec2(width, height);
+
+            auto entity = _scene.getEntity(entityName);
+
+            const auto& size = _engine
+                .getTextSystem()
+                .getTextSize(
+                    entity->GetComponent<hl::TextComponent>()->getTextSystemId());
+
+            desiredPosition.x += size.x - size.z;
+            desiredPosition.y += size.y - size.w;
+
+            entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredPosition, 0.0f));
+        };
+
         centerTextAt("title", 0.0f);
         centerTextAt("start", 1.0f * height / 6.0f);
         centerTextAt("quit", 2.0f * height / 6.0f);
+        alignTextTopLeft("topleft", 0.0f, 0.0f);
+        alignTextBottomRight("bottomright", 0.0f, 0.0f);
+    }
+
+    void PongTitleEngineScene::handleTextClicked(const std::string& name)
+    {
+        if (name == "quit")
+        {
+            _engine.stop();
+        }
+        else if (name == "start")
+        {
+            _engine.setScene(new PongEngineScene(_engine, _engineConfig));
+        }
+        else
+        {
+            std::cout << "Clicked on " << name << std::endl;
+        }
     }
 }

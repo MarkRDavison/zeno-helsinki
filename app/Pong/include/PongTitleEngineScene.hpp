@@ -29,9 +29,10 @@ namespace pong
 
 	private:
 		void handleWindowSizeChange(int width, int height);
-
+		void handleTextClicked(const std::string& name);
 	private:
 		const hl::EngineConfiguration& _engineConfig;
+		bool _wasPressed{false};
 
 	};
 
