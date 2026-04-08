@@ -95,6 +95,11 @@ namespace hl
 		_nextEngineScene = scene;
 	}
 
+	void Engine::stop()
+	{
+		_running = false;
+	}
+
 	void Engine::mainLoop()
 	{
 		const float delta = 1.0f / 60.0f;
@@ -107,7 +112,9 @@ namespace hl
 
 		auto start = std::chrono::steady_clock::now();
 
-		while (!glfwWindowShouldClose(_window))
+		_running = true;
+
+		while (_running && !glfwWindowShouldClose(_window))
 		{
 			ZoneScopedN("MainLoop");
 			auto now = std::chrono::steady_clock::now();

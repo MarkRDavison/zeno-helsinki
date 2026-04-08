@@ -56,6 +56,7 @@ namespace hl
 		return *_textInfo.at(id);
 	}
 
+	// TODO: NEEDS CACHE
 	glm::vec4 TextSystem::getTextSize(int id) const
 	{
 		const auto& t = getText(id);
