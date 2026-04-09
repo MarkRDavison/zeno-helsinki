@@ -32,7 +32,6 @@ namespace pong
 		void handleTextClicked(const std::string& name);
 	private:
 		const hl::EngineConfiguration& _engineConfig;
-		bool _wasPressed{false};
 
 	};
 

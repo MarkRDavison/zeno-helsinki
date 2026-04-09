@@ -276,21 +276,10 @@ namespace pong
 	void PongTitleEngineScene::update(uint32_t currentFrame, float delta)
 	{
         const auto mouse = _engine.getInputManager().getMousePosition();
+        const auto checkClick = _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1);
 
-        auto wasPressedLastFrame = _wasPressed;
-
-        _wasPressed = _engine.getInputManager().isButtonDown(GLFW_MOUSE_BUTTON_1);
-
-        const auto checkClick = wasPressedLastFrame && !_wasPressed;
-
-        for (auto& e : _scene.getEntities())
+        for (auto& e : _scene.getEntitiesWithComponents<hl::TransformComponent, hl::TextComponent>("TEXT"))
         {
-            if (!e->HasTag("TEXT") ||
-                !e->HasComponents<hl::TransformComponent, hl::TextComponent>())
-            {
-                continue;
-            }
-
             auto tc = e->GetComponent<hl::TransformComponent>();
             auto textComponent = e->GetComponent<hl::TextComponent>();
             auto tcp = tc->GetPosition();
@@ -334,6 +323,7 @@ namespace pong
 
     void PongTitleEngineScene::handleWindowSizeChange(int width, int height)
     {
+        // TODO: Replace these with flags/enum for anchor/alignment, left, right, top, bottom, center -> 9 possibilities.
         const auto& centerTextAt = [&](const std::string & entityName, float yOffset) -> void
         {
             auto desiredCenter = glm::vec2(((float)width) / 2.0f, ((float)height) / 3.0f + yOffset);
@@ -351,7 +341,6 @@ namespace pong
             entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredCenter, 0.0f));
         };
 
-        // TODO: Replace this with flags/enum for anchor/alignment, left, right, top, bottom, center -> 9 possibilities.
         const auto& alignTextTopLeft = [&](const std::string & entityName, float x, float y) -> void
         {
             auto desiredPosition = glm::vec2(x, y);
@@ -395,10 +384,15 @@ namespace pong
         if (name == "quit")
         {
             _engine.stop();
+            // end credits scene?
         }
         else if (name == "start")
         {
             _engine.setScene(new PongEngineScene(_engine, _engineConfig));
+        }
+        else if (name == "settings")
+        {
+            // TODO
         }
         else
         {
