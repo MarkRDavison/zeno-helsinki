@@ -26,9 +26,16 @@ namespace pong
 		void update(uint32_t currentFrame, float delta) override;
 
 		void OnEvent(const hl::Event& event) override;
+
+	private:
+		void handleWindowSizeChange(int width, int height);
+
 	private:
 		const hl::EngineConfiguration& _engineConfig;
 		GameState _state{ GameState::INIT };
+
+		int _player1Score{ 0 };
+		int _player2Score{ 0 };
 	};
 
 }

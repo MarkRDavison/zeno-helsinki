@@ -24,11 +24,11 @@ namespace hl
 	{
 		if (id >= 0)
 		{
-			auto t= _textInfo.at(id);
-			t->_vertexBuffer.destroy();
-			delete t;
-			_textInfo.erase(id);
+			_textToDestroy.push(id);
 		}
+
+		// TODO: Need to handle re-using ids
+		// TODO: Some system to keep a backlog of text's and re-use them? Commonly used etc...
 
 		id = _nextId++;
 
@@ -153,6 +153,25 @@ namespace hl
 			nullptr);
 
 		return fontToTextureIndexMap;
+	}
+
+	void TextSystem::processDeferredTextDestruction(int count /*= -1*/)
+	{
+		if (count < 0)
+		{
+			count = 100;
+		}
+
+		while (count > 0 && _textToDestroy.size() > 0)
+		{
+			const auto idToDestroy = _textToDestroy.front();
+			_textToDestroy.pop();
+			auto t = _textInfo.at(idToDestroy);
+			t->_vertexBuffer.destroy();
+			delete t;
+			_textInfo.erase(idToDestroy);
+			count--;
+		}
 	}
 
 	void TextSystem::generateText(int id, const std::string& text, const std::string& font, unsigned size)

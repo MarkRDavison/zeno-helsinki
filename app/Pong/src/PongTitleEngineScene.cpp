@@ -282,7 +282,7 @@ namespace pong
         {
             auto tc = e->GetComponent<hl::TransformComponent>();
             auto textComponent = e->GetComponent<hl::TextComponent>();
-            auto tcp = tc->GetPosition();
+            const auto tcp = tc->GetPosition();
 
             const auto& size = _engine.getTextSystem().getTextSize(textComponent->getTextSystemId());
 
