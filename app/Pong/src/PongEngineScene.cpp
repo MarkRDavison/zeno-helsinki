@@ -25,6 +25,9 @@
 #include <GLFW/glfw3.h>
 #include <helsinki/Engine/ECS/Components/KinematicComponent.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
+#include <helsinki/Engine/ECS/Components/TextComponent.hpp>
+#include <helsinki/System/Events/WindowResizeEvent.hpp>
 
 namespace pong
 {
@@ -57,10 +60,6 @@ namespace pong
     {
         std::vector<hl::RenderpassInfo> renderpasses = 
         { 
-            /*
-                -   Ui/score
-                -   Paddles/balls/borders
-            */
             hl::RenderpassInfo
             {
                 .name = "scene_pass",
@@ -130,6 +129,205 @@ namespace pong
                             },
                             .enableBlending = false,
                             .pushConstantSize = sizeof(EntityPushConstantObject)
+                        }
+                    }
+                }
+            },
+            hl::RenderpassInfo
+            {
+                .name = "text_pass",
+                .useMultiSampling = false,
+                .inputs = {},
+                .outputs =
+                {
+                    hl::ResourceInfo
+                    {
+                        .name = "text_color",
+                        .type = hl::ResourceType::Color,
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB",
+                        .clear = VkClearValue{.color = {{ 0.0f, 0.0f, 0.0f, 0.0f }}}
+                    }
+                },
+                .pipelineGroups =
+                {
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "text_pipeline",
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/text.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/text.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "camera_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "VERTEX&FRAGMENT",
+                                            .count = 64
+                                        }
+                                    }
+                                }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 0,
+                                        .offset = offsetof(hl::Vertex22D, pos)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 1,
+                                        .offset = offsetof(hl::Vertex22D, texCoord)
+                                    }
+                                },
+                                .stride = sizeof(hl::Vertex22D)
+                            },
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = true, // keep blending for UI elements
+                            .pushConstantSize = sizeof(hl::TextPushConstantObject)
+                        },
+                        hl::PipelineInfo
+                        {
+                            .name = "sdf_text_pipeline",
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/text.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/sdf.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "camera_matrix_ubo"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "VERTEX&FRAGMENT",
+                                            .count = 64
+                                        }
+                                    }
+                                }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 0,
+                                        .offset = offsetof(hl::Vertex22D, pos)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 1,
+                                        .offset = offsetof(hl::Vertex22D, texCoord)
+                                    }
+                                },
+                                .stride = sizeof(hl::Vertex22D)
+                            },
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = true, // keep blending for UI elements
+                            .pushConstantSize = sizeof(hl::TextPushConstantObject)
+                        }
+                    }
+                }
+            },
+            hl::RenderpassInfo
+            {
+                .name = "composite_pass",
+                .useMultiSampling = false,
+                .inputs = { "scene_color", "text_color" },
+                .outputs =
+                {
+                    hl::ResourceInfo
+                    {
+                        .name = "swapchain_color",
+                        .type = hl::ResourceType::Color,
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
+                    }
+                },
+                .pipelineGroups =
+                {
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "composite_pipeline",
+                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/fullscreen_sample.vert"),
+                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/composite.frag"),
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .name = "composite_inputs",
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "scene_color"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "text_color"
+                                        }
+                                    }
+                                }
+                            },
+                            .depthState =
+                            {
+                                .testEnable = false,
+                                .writeEnable = false
+                            },
+                            .rasterState =
+                            {
+                                .cullMode = VK_CULL_MODE_NONE
+                            },
+                            .enableBlending = true
                         }
                     }
                 }
@@ -250,6 +448,30 @@ namespace pong
             ec->Color = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
             ec->VertexBufferResourceName = "ball";
         }
+        {
+            auto entity = _scene.addEntity("score1");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>();
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(),
+                "0",
+                "roboto",
+                96);
+            entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 0.5f, 0.0f, 1.0f));
+        }
+        {
+            auto entity = _scene.addEntity("score2");
+            entity->AddTag("TEXT");
+            entity->AddComponent<hl::TransformComponent>();
+            // TODO: Dont like having to pass text system here...
+            entity->AddComponent<hl::TextComponent>()->setString(
+                _engine.getTextSystem(),
+                "0",
+                "roboto",
+                96);
+            entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 0.5f, 0.0f, 1.0f));
+        }
 
         registerPipelineDraw(
             "entity_pipeline", 
@@ -323,6 +545,11 @@ namespace pong
         _scene.addSystem(new PaddleComputerControlSystem(
             _engine.getInputManager(),
             this->_scene));
+
+        _player1Score = 0;
+        _player2Score = 0;
+
+        handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
     }
 
     void PongEngineScene::update(uint32_t /*currentFrame*/, float delta)
@@ -375,10 +602,30 @@ namespace pong
         {
             const auto player = pse->GetPlayerNumber();
             std::cout << "Player '" << player << "' scored!" << std::endl;
-            _state = GameState::POINT_SCORED;
-        }
+            if (player == 1)
+            {
+                _player1Score += 1; 
+                auto entity = _scene.getEntity("score1");
+                entity->GetComponent<hl::TextComponent>()->setString(_engine.getTextSystem(),
+                    std::to_string(_player1Score),
+                    "roboto",
+                    96);
+            }
+            else
+            {
+                _player2Score += 1; 
+                auto entity = _scene.getEntity("score2");
+                entity->GetComponent<hl::TextComponent>()->setString(_engine.getTextSystem(),
+                    std::to_string(_player2Score),
+                    "roboto",
+                    96);
+            }
 
-        if (auto ke = dynamic_cast<const hl::KeyPressEvent*>(&event))
+            handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
+            
+            _state = GameState::POINT_SCORED;
+        } 
+        else if (auto ke = dynamic_cast<const hl::KeyPressEvent*>(&event))
         {
             const auto code = ke->GetKeyCode();
 
@@ -388,5 +635,62 @@ namespace pong
                 _engine.setScene(new PongTitleEngineScene(_engine, _engineConfig));
             }
         }
+        else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
+        {
+            handleWindowSizeChange(wre->GetWidth(), wre->GetHeight());
+        }
+    }
+
+    // TODO: Break out into handle ui layout etc....
+    void PongEngineScene::handleWindowSizeChange(int width, int height)
+    {
+        const auto& alignTextTopLeft = [&](const std::string& entityName) -> void
+        {
+            auto desiredPosition = glm::vec2();
+
+            auto entity = _scene.getEntity(entityName);
+
+            const auto& size = _engine
+                .getTextSystem()
+                .getTextSize(
+                    entity->GetComponent<hl::TextComponent>()->getTextSystemId());
+
+            entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredPosition, 0.0f));
+        };
+        
+        const auto& alignTextTopRight = [&](const std::string& entityName) -> void
+        {
+            auto desiredPosition = glm::vec2(width, 0.0f);
+
+            auto entity = _scene.getEntity(entityName);
+
+            const auto& size = _engine
+                .getTextSystem()
+                .getTextSize(
+                    entity->GetComponent<hl::TextComponent>()->getTextSystemId());
+
+            desiredPosition.x += size.x - size.z;
+
+            entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredPosition, 0.0f));
+        };
+        const auto& centerTextAt = [&](const std::string& entityName, float yOffset) -> void
+        {
+            auto desiredCenter = glm::vec2((float)width / 2.0f, yOffset);
+
+            auto entity = _scene.getEntity(entityName);
+
+            const auto& size = _engine
+                .getTextSystem()
+                .getTextSize(
+                    entity->GetComponent<hl::TextComponent>()->getTextSystemId());
+
+            desiredCenter.x += size.x - size.z / 2.0f;
+            desiredCenter.y += size.y - size.w / 2.0f;
+
+            entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredCenter, 0.0f));
+        };
+
+        alignTextTopLeft("score1");
+        alignTextTopRight("score2");
     }
 }

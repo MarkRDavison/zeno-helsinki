@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <queue>
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
@@ -33,6 +34,8 @@ namespace hl
 			FontType fontType, 
 			VkDescriptorSet descriptorSet) const;
 
+		void processDeferredTextDestruction(int count = -1);
+
 	private:
 		void generateText(int id, const std::string& text, const std::string& font, unsigned size);
 
@@ -42,6 +45,7 @@ namespace hl
 		ResourceManager& _resourceManager;
 		int _nextId{ 0 };
 		std::unordered_map<int, Text*> _textInfo;
+		std::queue<int> _textToDestroy;
 	};
 
 }

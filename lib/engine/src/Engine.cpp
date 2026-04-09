@@ -78,6 +78,9 @@ namespace hl
 		_framebufferResized = true;
 		// TODO: Should this be sent now or when we actually re-create the framebuffer/swapchain?
 		WindowResizeEvent event(width, height);
+		// TODO: Should this actually set it here? or event set it? just retrieve it from somewhere else
+		_config.Width = width;
+		_config.Height = height;
 		_eventBus.PublishEvent(event);
 	}
 	void Engine::sendEvent(const Event& event)
@@ -150,6 +153,9 @@ namespace hl
 			}
 
 			draw();
+
+			_textSystem.processDeferredTextDestruction(1); // TODO: CONFIG/ a better place for idle destruction, another thread???
+
 			fps++;
 		}
 

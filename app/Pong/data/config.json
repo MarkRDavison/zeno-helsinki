@@ -2,6 +2,6 @@
   "EnableVsync": true,
   "DisplayFps": true,
   "Title": "Helsinki Pong",
-  "Width": 1280,
-  "Height": 720
+  "Width": 880,
+  "Height": 800
 }
