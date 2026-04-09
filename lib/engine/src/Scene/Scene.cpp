@@ -61,6 +61,20 @@ namespace hl
 		return _entities;
 	}
 
+	std::vector<Entity*> Scene::getEntitiesByTag(const std::string& tag) const
+	{
+		std::vector<Entity*> taggedEntities;
+
+		transform_if(
+			std::cbegin(_entities),
+			std::cend(_entities),
+			std::back_inserter(taggedEntities),
+			[&](const std::unique_ptr<Entity>& o) { return o->HasTag(tag); },
+			[](const std::unique_ptr<Entity>& o) { return o.get(); });
+
+		return taggedEntities;
+	}
+
 	void Scene::update(float delta)
 	{
 		for (auto& system : _systems)
