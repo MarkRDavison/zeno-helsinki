@@ -419,6 +419,7 @@ namespace pong
             ec->Color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
             ec->VertexBufferResourceName = "paddle";
             ec->ControlledState = ControlledState::COMPUTER;
+            ec->BrainType = BrainType::LAZY;
         }
         {
             auto entity = _scene.addEntity("WallTop");
