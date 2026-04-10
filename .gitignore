@@ -34,3 +34,5 @@ out/
 .vs/
 *.spv
 /.idea
+
+UserInterfaceConfig.hpp
