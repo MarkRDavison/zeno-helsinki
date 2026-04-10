@@ -28,6 +28,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 
 namespace pong
 {
@@ -58,280 +59,86 @@ namespace pong
         hl::ResourceManager& resourceManager,
         hl::MaterialSystem& materialSystem)
     {
-        std::vector<hl::RenderpassInfo> renderpasses = 
-        { 
-            hl::RenderpassInfo
+        auto sceneRenderpassInfo = hl::RenderpassInfo
+        {
+            .name = "scene_pass",
+            .useMultiSampling = false,
+            .inputs = {},
+            .outputs =
             {
-                .name = "scene_pass",
-                .useMultiSampling = false,
-                .inputs = {},
-                .outputs = 
+                hl::ResourceInfo
                 {
-                    hl::ResourceInfo
-                    {
-                        .name = "scene_color",
-                        .type = hl::ResourceType::Color,
-                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
-                    },
-                    hl::ResourceInfo
-                    {
-                        .name = "scene_depth",
-                        .type = hl::ResourceType::Depth,
-                        .format = "VK_FORMAT_D32_SFLOAT"
-                    }
+                    .name = "scene_color",
+                    .type = hl::ResourceType::Color,
+                    .format = "VK_FORMAT_B8G8R8A8_SRGB"
                 },
-                .pipelineGroups =
+                hl::ResourceInfo
                 {
-                    {
-                        hl::PipelineInfo
-                        {
-                            .name = "entity_pipeline",
-                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/entity.vert"),
-                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/entity.frag"),
-                            .descriptorSets =
-                            {
-                                hl::DescriptorSetInfo
-                                {
-                                    .name = "",
-                                    .bindings =
-                                    {
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 0,
-                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-                                            .stage = "VERTEX",
-                                            .resource = "camera_matrix_ubo" // TODO: Constant
-                                        }
-                                    }
-                                }
-                            },
-                            .vertexInputInfo = hl::VertexInputInfo
-                            {
-                                .attributes =
-                                {
-                                    {
-                                        .name = "inPosition",
-                                        .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 0,
-                                        .offset = offsetof(hl::Vertex2, pos)
-                                    }
-                                },
-                                .stride = sizeof(hl::Vertex2)
-                            },
-                            .depthState =
-                            {
-                                .writeEnable = true,
-                                .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_NONE
-                            },
-                            .enableBlending = false,
-                            .pushConstantSize = sizeof(EntityPushConstantObject)
-                        }
-                    }
+                    .name = "scene_depth",
+                    .type = hl::ResourceType::Depth,
+                    .format = "VK_FORMAT_D32_SFLOAT"
                 }
             },
-            hl::RenderpassInfo
+            .pipelineGroups =
             {
-                .name = "text_pass",
-                .useMultiSampling = false,
-                .inputs = {},
-                .outputs =
                 {
-                    hl::ResourceInfo
+                    hl::PipelineInfo
                     {
-                        .name = "text_color",
-                        .type = hl::ResourceType::Color,
-                        .format = "VK_FORMAT_B8G8R8A8_SRGB",
-                        .clear = VkClearValue{.color = {{ 0.0f, 0.0f, 0.0f, 0.0f }}}
-                    }
-                },
-                .pipelineGroups =
-                {
-                    {
-                        hl::PipelineInfo
+                        .name = "entity_pipeline",
+                        .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/entity.vert"),
+                        .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/entity.frag"),
+                        .descriptorSets =
                         {
-                            .name = "text_pipeline",
-                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/text.vert"),
-                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/text.frag"),
-                            .descriptorSets =
+                            hl::DescriptorSetInfo
                             {
-                                hl::DescriptorSetInfo
+                                .name = "",
+                                .bindings =
                                 {
-                                    .bindings =
+                                    hl::DescriptorBinding
                                     {
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 0,
-                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-                                            .stage = "VERTEX",
-                                            .resource = "camera_matrix_ubo"
-                                        },
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 1,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "VERTEX&FRAGMENT",
-                                            .count = 64
-                                        }
+                                        .binding = 0,
+                                        .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                        .stage = "VERTEX",
+                                        .resource = cameraMatrixResourceId
                                     }
                                 }
-                            },
-                            .vertexInputInfo = hl::VertexInputInfo
-                            {
-                                .attributes =
-                                {
-                                    {
-                                        .name = "inPosition",
-                                        .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 0,
-                                        .offset = offsetof(hl::Vertex22D, pos)
-                                    },
-                                    {
-                                        .name = "inTexCoord",
-                                        .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 1,
-                                        .offset = offsetof(hl::Vertex22D, texCoord)
-                                    }
-                                },
-                                .stride = sizeof(hl::Vertex22D)
-                            },
-                            .depthState =
-                            {
-                                .testEnable = false,
-                                .writeEnable = false
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_NONE
-                            },
-                            .enableBlending = true, // keep blending for UI elements
-                            .pushConstantSize = sizeof(hl::TextPushConstantObject)
+                            }
                         },
-                        hl::PipelineInfo
+                        .vertexInputInfo = hl::VertexInputInfo
                         {
-                            .name = "sdf_text_pipeline",
-                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/text.vert"),
-                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/sdf.frag"),
-                            .descriptorSets =
+                            .attributes =
                             {
-                                hl::DescriptorSetInfo
                                 {
-                                    .bindings =
-                                    {
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 0,
-                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-                                            .stage = "VERTEX",
-                                            .resource = "camera_matrix_ubo"
-                                        },
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 1,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "VERTEX&FRAGMENT",
-                                            .count = 64
-                                        }
-                                    }
+                                    .name = "inPosition",
+                                    .format = hl::VertexAttributeFormat::Vec2,
+                                    .location = 0,
+                                    .offset = offsetof(hl::Vertex2, pos)
                                 }
                             },
-                            .vertexInputInfo = hl::VertexInputInfo
-                            {
-                                .attributes =
-                                {
-                                    {
-                                        .name = "inPosition",
-                                        .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 0,
-                                        .offset = offsetof(hl::Vertex22D, pos)
-                                    },
-                                    {
-                                        .name = "inTexCoord",
-                                        .format = hl::VertexAttributeFormat::Vec2,
-                                        .location = 1,
-                                        .offset = offsetof(hl::Vertex22D, texCoord)
-                                    }
-                                },
-                                .stride = sizeof(hl::Vertex22D)
-                            },
-                            .depthState =
-                            {
-                                .testEnable = false,
-                                .writeEnable = false
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_NONE
-                            },
-                            .enableBlending = true, // keep blending for UI elements
-                            .pushConstantSize = sizeof(hl::TextPushConstantObject)
-                        }
-                    }
-                }
-            },
-            hl::RenderpassInfo
-            {
-                .name = "composite_pass",
-                .useMultiSampling = false,
-                .inputs = { "scene_color", "text_color" },
-                .outputs =
-                {
-                    hl::ResourceInfo
-                    {
-                        .name = "swapchain_color",
-                        .type = hl::ResourceType::Color,
-                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
-                    }
-                },
-                .pipelineGroups =
-                {
-                    {
-                        hl::PipelineInfo
+                            .stride = sizeof(hl::Vertex2)
+                        },
+                        .depthState =
                         {
-                            .name = "composite_pipeline",
-                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/fullscreen_sample.vert"),
-                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/composite.frag"),
-                            .descriptorSets =
-                            {
-                                hl::DescriptorSetInfo
-                                {
-                                    .name = "composite_inputs",
-                                    .bindings =
-                                    {
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 0,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "scene_color"
-                                        },
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 1,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "text_color"
-                                        }
-                                    }
-                                }
-                            },
-                            .depthState =
-                            {
-                                .testEnable = false,
-                                .writeEnable = false
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_NONE
-                            },
-                            .enableBlending = true
-                        }
+                            .writeEnable = true,
+                            .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
+                        },
+                        .rasterState =
+                        {
+                            .cullMode = VK_CULL_MODE_NONE
+                        },
+                        .enableBlending = false,
+                        .pushConstantSize = sizeof(EntityPushConstantObject)
                     }
                 }
             }
+        };
+
+        std::vector<hl::RenderpassInfo> renderpasses = 
+        { 
+            sceneRenderpassInfo,
+            hl::RenderGraphHelpers::createTextRenderpassInfo(cameraMatrixResourceId),
+            // TODO: ref vars for the outputs???
+            hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "scene_color", "text_color" })
         };
 
         hl::ResourceContext resourceContext
