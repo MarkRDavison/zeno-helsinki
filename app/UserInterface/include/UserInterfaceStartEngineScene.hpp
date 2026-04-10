@@ -25,6 +25,7 @@ namespace ui
 			hl::MaterialSystem& materialSystem) override;
 
 		void update(uint32_t currentFrame, float delta) override;
+		void updateGpuResources(uint32_t currentFrame) override;
 		void additionalCleanup() override;
 
 		void OnEvent(const hl::Event& event) override;

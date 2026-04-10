@@ -156,6 +156,10 @@ namespace hl
 	void EngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)
 	{
 	}
+    void EngineScene::updateGpuResources(uint32_t /*currentFrame*/)
+    {
+
+    }
 	VkCommandBuffer EngineScene::draw(uint32_t currentFrame, uint32_t imageIndex)
 	{
 		ZoneScopedN("Engine Scene Draw");

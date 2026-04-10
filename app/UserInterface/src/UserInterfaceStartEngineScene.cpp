@@ -174,16 +174,25 @@ namespace ui
 
     void UserInterfaceStartEngineScene::update(uint32_t currentFrame, float delta)
     {
+
+    }
+    void UserInterfaceStartEngineScene::updateGpuResources(uint32_t currentFrame)
+    {
+        const auto mouse = _engine.getInputManager().getMousePosition();
+
         std::array<hl::Vertex2, VERTEX_COUNT> verts
         {
-            hl::Vertex2{.pos = { 100.0f, 200.0f + 5.0f } },
-            hl::Vertex2{.pos = { 200.0f, 200.0f + 5.0f } },
-            hl::Vertex2{.pos = { 200.0f, 100.0f + 5.0f } },
+            hl::Vertex2{.pos = { -50.0f + mouse.x, +50.0f + mouse.y } },
+            hl::Vertex2{.pos = { +50.0f + mouse.x, +50.0f + mouse.y } },
+            hl::Vertex2{.pos = { +50.0f + mouse.x, -50.0f + mouse.y } },
 
-            hl::Vertex2{.pos = { 100.0f, 200.0f - 5.0f } },
-            hl::Vertex2{.pos = { 200.0f, 100.0f - 5.0f } },
-            hl::Vertex2{.pos = { 100.0f, 100.0f - 5.0f } },
+            hl::Vertex2{.pos = { -50.0f + mouse.x, +50.0f + mouse.y } },
+            hl::Vertex2{.pos = { +50.0f + mouse.x, -50.0f + mouse.y } },
+            hl::Vertex2{.pos = { -50.0f + mouse.x, -50.0f + mouse.y } },
         };
+
+        // TODO: Calculate the gpu resources in update and map them here?
+        // Or is that wasteful cos I can update more than I render
 
         _mappedBuffers[currentFrame].write(verts.data(), sizeof(hl::Vertex2) * VERTEX_COUNT);
     }

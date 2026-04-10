@@ -50,6 +50,7 @@ namespace hl
 
 		void updateBase(uint32_t currentFrame, float delta);
 		virtual void update(uint32_t currentFrame, float delta);
+		virtual void updateGpuResources(uint32_t currentFrame);
 		VkCommandBuffer draw(uint32_t currentFrame, uint32_t imageIndex);
 
 		void recreate(uint32_t width, uint32_t height);
