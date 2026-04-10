@@ -28,6 +28,13 @@ namespace pong
 		COMPUTER = 2
 	};
 
+	enum class BrainType
+	{
+		FOLLOW = 0,
+		SHORT_SIGHTED_CENTER = 1,
+		LAZY
+	};
+
 	enum class GameState
 	{
 		INIT = 0,
