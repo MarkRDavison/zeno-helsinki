@@ -140,6 +140,7 @@ namespace hl
 	}
 	void EngineScene::cleanup()
 	{
+        additionalCleanup();
 		_renderGraph->destroy();
 		delete _renderGraph;
 		_renderGraph = nullptr;

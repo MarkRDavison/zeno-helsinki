@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanMappedBuffer.hpp>
 
 namespace ui
 {
@@ -24,6 +25,7 @@ namespace ui
 			hl::MaterialSystem& materialSystem) override;
 
 		void update(uint32_t currentFrame, float delta) override;
+		void additionalCleanup() override;
 
 		void OnEvent(const hl::Event& event) override;
 
@@ -32,7 +34,7 @@ namespace ui
 
 	private:
 		const hl::EngineConfiguration& _engineConfig;
-
+		std::vector<hl::VulkanMappedBuffer> _mappedBuffers;
 	};
 
 }
