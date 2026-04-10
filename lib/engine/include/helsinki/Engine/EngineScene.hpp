@@ -46,6 +46,7 @@ namespace hl
 			ResourceManager& resourceManager,
 			MaterialSystem& materialSystem);
 		void cleanup();
+		virtual void additionalCleanup() {}
 
 		void updateBase(uint32_t currentFrame, float delta);
 		virtual void update(uint32_t currentFrame, float delta);
