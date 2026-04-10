@@ -223,6 +223,8 @@ namespace hl
 
 		_syncContext.getFence(_currentFrame).reset();
 
+		_currentEngineScene->updateGpuResources(_currentFrame);
+
 		const auto primaryCommandBuffer = _currentEngineScene->draw(_currentFrame, imageIndex);
 
 		VkSemaphore waitSemaphores[] = { _syncContext.getImageAvailableSemaphore(_currentFrame)._semaphore };
