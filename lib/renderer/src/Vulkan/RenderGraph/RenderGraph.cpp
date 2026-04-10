@@ -1,5 +1,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
+#include <helsinki/Renderer/Resource/WellKnownResources.hpp>
+#include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/HelsinkiTracy.hpp>
 #include <stdexcept>
 #include <iostream>
@@ -27,7 +29,8 @@ namespace hl
 		VulkanDevice& device,
 		uint32_t width,
 		uint32_t height,
-		const std::vector<VkImageView>& swapChainImageViews)
+		const std::vector<VkImageView>& swapChainImageViews,
+		ResourceManager& /*resourceManager*/)
 	{
 		std::vector<VulkanRenderGraphRenderpassResources*> renderpasses;
 
@@ -370,8 +373,13 @@ namespace hl
 								{
 									ZoneScopedN("Create Shader Modules");
 
-									const auto& vertexShaderContents = readFileContents(p.shaderVert);
-									const auto& fragmentShaderContents = readFileContents(p.shaderFrag);
+									auto vertexShaderContents = WellKnownResources::IsWellKnown(p.shaderVert)
+										? WellKnownResources::GetWellKnown(p.shaderVert)
+										: readFileContents(p.shaderVert);
+
+									auto fragmentShaderContents = WellKnownResources::IsWellKnown(p.shaderFrag)
+										? WellKnownResources::GetWellKnown(p.shaderFrag)
+										: readFileContents(p.shaderFrag);
 
 									const auto& vertexSource = VulkanGraphicsPipeline::readParseCompileShader(
 										vertexShaderContents,

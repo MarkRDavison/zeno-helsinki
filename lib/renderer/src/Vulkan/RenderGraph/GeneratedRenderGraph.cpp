@@ -27,7 +27,8 @@ namespace hl
 			device,
 			swapChain._swapChainExtent.width,
 			swapChain._swapChainExtent.height,
-			swapChain._swapChainImageViews);
+			swapChain._swapChainImageViews,
+            resourceManager);
 
         for (uint32_t layer = 0;; ++layer)
         {

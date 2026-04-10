@@ -10,6 +10,7 @@
 namespace hl
 {
     class VulkanRenderGraphRenderpassResources;
+    class ResourceManager;
 
     struct Node
     {
@@ -131,7 +132,8 @@ namespace hl
             VulkanDevice& device,
             uint32_t width,
             uint32_t height,
-            const std::vector<VkImageView>& swapChainImageViews);
+            const std::vector<VkImageView>& swapChainImageViews,
+            ResourceManager& resourceManager);
 
         static void destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources);
 
