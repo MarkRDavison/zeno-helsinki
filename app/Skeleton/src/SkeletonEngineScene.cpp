@@ -10,6 +10,7 @@
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <iostream>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 
 namespace sk
 {
@@ -273,66 +274,7 @@ namespace sk
                     }
                 }
             },
-            hl::RenderpassInfo
-            {
-                .name = "composite_pass",
-                .useMultiSampling = false,
-                .inputs = { "post_color", "ui_color" },
-                .outputs =
-                {
-                    hl::ResourceInfo
-                    {
-                        .name = "swapchain_color",
-                        .type = hl::ResourceType::Color,
-                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
-                    }
-                },
-                .pipelineGroups =
-                {
-                    {
-                        hl::PipelineInfo
-                        {
-                            .name = "composite_pipeline",
-                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/fullscreen_sample.vert"),
-                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/composite.frag"),
-                            .descriptorSets =
-                            {
-                                hl::DescriptorSetInfo
-                                {
-                                    .name = "composite_inputs",
-                                    .bindings =
-                                    {
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 0,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "post_color"
-                                        },
-                                        hl::DescriptorBinding
-                                        {
-                                            .binding = 1,
-                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-                                            .stage = "FRAGMENT",
-                                            .resource = "ui_color"
-                                        }
-                                    }
-                                }
-                            },
-                            .depthState =
-                            {
-                                .testEnable = false,
-                                .writeEnable = false
-                            },
-                            .rasterState =
-                            {
-                                .cullMode = VK_CULL_MODE_NONE
-                            },
-                            .enableBlending = true
-                        }
-                    }
-                }
-            }
+            hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "post_color", "ui_color" })
         };
 
         hl::ResourceContext resourceContext
