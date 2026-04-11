@@ -33,6 +33,7 @@ namespace hl
 
 		VkBuffer _buffer{ VK_NULL_HANDLE };
 		VkDeviceMemory _memory{ VK_NULL_HANDLE };
+	public:
 		void * _mappedMemory{ VK_NULL_HANDLE };
 	};
 

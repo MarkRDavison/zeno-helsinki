@@ -4,8 +4,6 @@
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 
-#define VERTEX_COUNT 6
-
 namespace ui
 {
 
@@ -14,14 +12,17 @@ namespace ui
         const hl::EngineConfiguration& engineConfig
     ) :
         EngineScene(engine),
-        _engineConfig(engineConfig)
+        _engineConfig(engineConfig),
+        _uiRoot(engine.getInputManager())
     {
         _camera = new hl::Camera2D();
         _engine.getEventBus().AddListener(this);
+        _engine.getEventBus().AddListener(&_uiRoot);
     }
 
     UserInterfaceStartEngineScene::~UserInterfaceStartEngineScene()
     {
+        _engine.getEventBus().RemoveListener(&_uiRoot);
         _engine.getEventBus().RemoveListener(this);
     }
 
@@ -37,6 +38,7 @@ namespace ui
     {
         std::vector<hl::RenderpassInfo> renderpasses = 
         {
+            // TODO: Move to render graph helpers
             hl::RenderpassInfo
             {
                 .name = "ui_renderpass",
@@ -49,13 +51,7 @@ namespace ui
                         .name = "ui_color",
                         .type = hl::ResourceType::Color,
                         .format = "VK_FORMAT_B8G8R8A8_SRGB",
-                        .clear = VkClearValue{.color = { 0.0f, 0.2f, 0.8f, 1.0f}}
-                    },
-                    hl::ResourceInfo
-                    {
-                        .name = "ui_depth",
-                        .type = hl::ResourceType::Depth,
-                        .format = "VK_FORMAT_D32_SFLOAT"
+                        .clear = VkClearValue{ .color = { 0.0f, 0.2f, 0.8f, 1.0f} }
                     }
                 },
                 .pipelineGroups =
@@ -90,10 +86,16 @@ namespace ui
                                         .name = "inPosition",
                                         .format = hl::VertexAttributeFormat::Vec2,
                                         .location = 0,
-                                        .offset = offsetof(hl::Vertex2, pos)
+                                        .offset = offsetof(hl::VertexUi, pos)
+                                    },
+                                    {
+                                        .name = "inColor",
+                                        .format = hl::VertexAttributeFormat::Vec3,
+                                        .location = 1,
+                                        .offset = offsetof(hl::VertexUi, color)
                                     }
                                 },
-                                .stride = sizeof(hl::Vertex2)
+                                .stride = sizeof(hl::VertexUi)
                             },
                             .depthState =
                             {
@@ -138,73 +140,23 @@ namespace ui
             materialSystem,
             renderpasses);
 
-        for (auto i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-        {
-            _mappedBuffers.emplace_back(device);
-            _mappedBuffers.back().create(sizeof(hl::Vertex2) * 1024, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-        }
+        _uiRoot.initialise(device);
 
-        registerPipelineDraw(
-            "ui_pipeline",
-            [&](hl::PipelineDrawData& pdd) -> void
-            {
-                VkBuffer vertexBuffers[] = { _mappedBuffers[pdd.currentFrame].getBuffer() };
-                VkDeviceSize offsets[] = { 0 };
-                vkCmdBindVertexBuffers(
-                    pdd.commandBuffer,
-                    0,
-                    1,
-                    vertexBuffers,
-                    offsets);
-
-                auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
-                vkCmdBindDescriptorSets(
-                    pdd.commandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pdd.pipeline->getPipelineLayout(),
-                    0,
-                    1,
-                    &descriptorSet,
-                    0,
-                    nullptr);
-
-                vkCmdDraw(pdd.commandBuffer, VERTEX_COUNT, 1, 0, 0);
-            });
+        registerPipelineDraw("ui_pipeline", [&](hl::PipelineDrawData& pdd) -> void { _uiRoot.draw(pdd); });
     }
 
     void UserInterfaceStartEngineScene::update(uint32_t currentFrame, float delta)
     {
-
+        _uiRoot.update(delta);
     }
     void UserInterfaceStartEngineScene::updateGpuResources(uint32_t currentFrame)
     {
-        const auto mouse = _engine.getInputManager().getMousePosition();
-
-        std::array<hl::Vertex2, VERTEX_COUNT> verts
-        {
-            hl::Vertex2{.pos = { -50.0f + mouse.x, +50.0f + mouse.y } },
-            hl::Vertex2{.pos = { +50.0f + mouse.x, +50.0f + mouse.y } },
-            hl::Vertex2{.pos = { +50.0f + mouse.x, -50.0f + mouse.y } },
-
-            hl::Vertex2{.pos = { -50.0f + mouse.x, +50.0f + mouse.y } },
-            hl::Vertex2{.pos = { +50.0f + mouse.x, -50.0f + mouse.y } },
-            hl::Vertex2{.pos = { -50.0f + mouse.x, -50.0f + mouse.y } },
-        };
-
-        // TODO: Calculate the gpu resources in update and map them here?
-        // Or is that wasteful cos I can update more than I render
-
-        _mappedBuffers[currentFrame].write(verts.data(), sizeof(hl::Vertex2) * VERTEX_COUNT);
+        _uiRoot.updateGpuResources(currentFrame);
     }
 
     void UserInterfaceStartEngineScene::additionalCleanup()
     {
-        for (auto& mb : _mappedBuffers)
-        {
-            mb.destroy();
-        }
-
-        _mappedBuffers.clear();
+        _uiRoot.destroy();
     }
 
     void UserInterfaceStartEngineScene::OnEvent(const hl::Event& event)
