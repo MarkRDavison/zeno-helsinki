@@ -9,18 +9,10 @@
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <helsinki/System/Infrastructure/Camera.hpp>
 #include <helsinki/Engine/Scene/Scene.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
 
 namespace hl
 {
-
-	struct PipelineDrawData
-	{
-		uint32_t currentFrame;
-		VkCommandBuffer commandBuffer;
-		hl::VulkanRenderGraphPipelineResources* pipeline;
-		Scene* scene;
-	};
-
 	class Engine;
 	class EngineScene : NonCopyable
 	{

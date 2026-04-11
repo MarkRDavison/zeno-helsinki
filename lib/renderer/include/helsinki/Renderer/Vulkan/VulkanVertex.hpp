@@ -11,6 +11,12 @@ namespace hl
         glm::vec2 pos;
     };
 
+    struct VertexUi
+    {
+        glm::vec2 pos;
+        glm::vec3 color;
+    };
+
     struct Vertex2D
     {
         glm::vec3 pos;

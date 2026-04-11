@@ -2,7 +2,7 @@
 
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
-#include <helsinki/Renderer/Vulkan/VulkanMappedBuffer.hpp>
+#include <Candidates/UiRoot.hpp>
 
 namespace ui
 {
@@ -35,7 +35,7 @@ namespace ui
 
 	private:
 		const hl::EngineConfiguration& _engineConfig;
-		std::vector<hl::VulkanMappedBuffer> _mappedBuffers;
+		hl::UiRoot _uiRoot;
 	};
 
 }
