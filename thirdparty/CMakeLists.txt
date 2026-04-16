@@ -134,15 +134,6 @@ FetchContent_MakeAvailable(freetype)
 
 add_library(Freetype::Freetype ALIAS freetype)
 
-
-FetchContent_Declare(
-  tinyxml2
-  GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
-  GIT_TAG        11.0.0
-)
-
-FetchContent_MakeAvailable(tinyxml2)
-
 set(MSDFGEN_DYNAMIC_RUNTIME ON CACHE BOOL "" FORCE)
 set(MSDFGEN_BUILD_STANDALONE OFF CACHE BOOL "" FORCE)
 set(MSDFGEN_USE_VCPKG OFF CACHE BOOL "" FORCE)

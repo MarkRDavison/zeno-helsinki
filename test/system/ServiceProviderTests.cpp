@@ -142,7 +142,7 @@ namespace hl
             IServiceC& c;
         };
 
-        TEST_CASE("ServiceProvider basic registration and retrieval", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::ServiceProvider basic registration and retrieval", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -201,7 +201,7 @@ namespace hl
             }
         }
 
-        TEST_CASE("Singleton service shared across nested scopes", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Singleton service shared across nested scopes", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
             root.registerService<IServiceB, ServiceB>(ServiceLifetime::Singleton);
@@ -217,7 +217,7 @@ namespace hl
             REQUIRE(&b1 == &b3);
         }
 
-        TEST_CASE("Scoped services are unique per nested scope", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Scoped services are unique per nested scope", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
             root.registerService<IServiceC, ServiceC>(ServiceLifetime::Scoped);
@@ -231,7 +231,7 @@ namespace hl
             REQUIRE(&c1 != &c2);
         }
 
-        TEST_CASE("Singleton cannot depend on shorter-lived service", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Singleton cannot depend on shorter-lived service", "[ServiceProvider]")
         {
             struct ShortLived {};
             struct LongLived
@@ -250,7 +250,7 @@ namespace hl
             );
         }
 
-        TEST_CASE("Transient services are always new across scopes", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Transient services are always new across scopes", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
             root.registerService<IServiceC, ServiceC>(ServiceLifetime::Transient);
@@ -267,7 +267,7 @@ namespace hl
             REQUIRE(t2 != t3);
         }
 
-        TEST_CASE("Scoped services are isolated from parent and sibling scopes", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Scoped services are isolated from parent and sibling scopes", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
             root.registerService<IServiceC, ServiceC>(ServiceLifetime::Scoped);
@@ -286,7 +286,7 @@ namespace hl
         }
 
 
-        TEST_CASE("Scoped service can depend on another scoped service", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Scoped service can depend on another scoped service", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -308,7 +308,7 @@ namespace hl
             REQUIRE(&e2.getC() == &d2);
         }
 
-        TEST_CASE("Transient service creates new instances but receives proper dependencies", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Transient service creates new instances but receives proper dependencies", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -332,7 +332,7 @@ namespace hl
             REQUIRE(&f3->getC() == &scope2.get<IServiceC>());
         }
 
-        TEST_CASE("Scoped services with multi-level dependencies respect lifetimes", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Scoped services with multi-level dependencies respect lifetimes", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -360,7 +360,7 @@ namespace hl
             REQUIRE(&h1.getB() == &h2.getB());
         }
 
-        TEST_CASE("Transient services in multi-level dependency chain", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Transient services in multi-level dependency chain", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -389,7 +389,7 @@ namespace hl
             REQUIRE(&j3->getC() == &scope2.get<IServiceC>());
         }
 
-        TEST_CASE("Transient depending on transient", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Transient depending on transient", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -417,7 +417,7 @@ namespace hl
             REQUIRE(&k3->getC() == &scope2.get<IServiceC>());
         }
 
-        TEST_CASE("Scoped service depends on singleton", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Scoped service depends on singleton", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -438,7 +438,7 @@ namespace hl
             REQUIRE(&a1.getC() != &a2.getC());
         }
 
-        TEST_CASE("Transient services produce new instances with correct dependency lifetimes", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Transient services produce new instances with correct dependency lifetimes", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -465,7 +465,7 @@ namespace hl
             REQUIRE(&t3->getC() == &scope2.get<IServiceC>());
         }
 
-        TEST_CASE("Nested scopes isolate scoped services but share singletons", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Nested scopes isolate scoped services but share singletons", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 
@@ -493,7 +493,7 @@ namespace hl
             REQUIRE(&childA.getC() != &siblingA.getC());
         }
 
-        TEST_CASE("Registering concrete service without interface works", "[ServiceProvider]")
+        TEST_CASE("System::ServiceProvider::Registering concrete service without interface works", "[ServiceProvider]")
         {
             hl::ServiceProvider root;
 

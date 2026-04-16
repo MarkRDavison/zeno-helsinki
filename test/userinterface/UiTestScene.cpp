@@ -1,0 +1,497 @@
+#include <catch2/catch_test_macros.hpp>
+#include <fakeit.hpp>
+#include <helsinki/UserInterface/UiScene.hpp>
+#include "../TestHelpers.hpp"
+
+namespace hl
+{
+	namespace tests
+	{
+
+        /** A simple widget that records the callbacks it receives. */
+        class TrackingWidget : public IWidget
+        {
+        public:
+            int ConstructCount{ 0 };
+            int DestroyCount{ 0 };
+            int PaintCount{ 0 };
+
+            int PointerEnterCount{ 0 };
+            int PointerExitCount{ 0 };
+            int PressedCount{ 0 };
+            int ReleasedCount{ 0 };
+            int FocusReceivedCount{ 0 };
+            int FocusLostCount{ 0 };
+
+            bool Focusable{ false };
+            bool ConsumePress{ false };
+
+            void OnConstruct(UiScene&) override { ++ConstructCount; }
+            void OnDestroy(UiScene&) override { ++DestroyCount; }
+            void OnPaint(UiScene&, DrawList&) override { ++PaintCount; }
+
+            bool IsFocusable(UiScene&) const override { return Focusable; }
+            void OnFocusReceived(UiScene&) override { ++FocusReceivedCount; }
+            void OnFocusLost(UiScene&) override { ++FocusLostCount; }
+
+            void OnPointerEnter(UiScene&, const PointerEvent&) override { ++PointerEnterCount; }
+            void OnPointerExit(UiScene&, const PointerEvent&) override { ++PointerExitCount; }
+
+            bool OnPressed(UiScene&, const ButtonEvent&) override { ++PressedCount;  return ConsumePress; }
+            bool OnReleased(UiScene&, const ButtonEvent&) override { ++ReleasedCount; return ConsumePress; }
+        };
+
+        /** Builds a mouse PointerEvent at the given position. */
+        static InputEvent MakeMouseMove(Vec2f a_Pos)
+        {
+            return InputEvent{
+                .Device = EDeviceID::Mouse,
+                .Payload = PointerEvent{.Position = a_Pos, .Type = EPointerType::Mouse }
+            };
+        }
+
+        /** Builds a mouse button-press InputEvent. */
+        static InputEvent MakeMousePress(bool a_Pressed)
+        {
+            return InputEvent{
+                .Device = EDeviceID::Mouse,
+                .Payload = ButtonEvent{.Button = EButtonID::MouseLeft, .Pressed = a_Pressed, .Released = !a_Pressed }
+            };
+        }
+
+
+        TEST_CASE("UserInterface::UiScene::CreateRootWidget sets RootWidget and calls OnConstruct", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID id = scene.CreateRootWidget<TrackingWidget>();
+
+            REQUIRE(id != c_InvalidPoolID);
+            REQUIRE(scene.RootWidget == id);
+
+            TrackingWidget* w = scene.GetWidget<TrackingWidget>(id);
+            REQUIRE(w != nullptr);
+            REQUIRE(w->ConstructCount == 1);
+        }
+
+        TEST_CASE("UserInterface::UiScene::CreateWidget attaches child to parent layout node", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
+
+            IWidget* root = scene.GetWidget(rootID);
+            IWidget* child = scene.GetWidget(childID);
+            REQUIRE(root != nullptr);
+            REQUIRE(child != nullptr);
+
+            LayoutNode* rootNode = scene.Layouts.Get(root->GetLayoutID());
+            LayoutNode* childNode = scene.Layouts.Get(child->GetLayoutID());
+            REQUIRE(rootNode != nullptr);
+            REQUIRE(childNode != nullptr);
+
+            REQUIRE(rootNode->FirstChild == childNode);
+            REQUIRE(childNode->Parent == rootNode);
+            REQUIRE(rootNode->NumChildren == 1);
+        }
+
+        TEST_CASE("UserInterface::UiScene::CreateWidget calls OnConstruct on each created widget", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
+
+            REQUIRE(scene.GetWidget<TrackingWidget>(rootID)->ConstructCount == 1);
+            REQUIRE(scene.GetWidget<TrackingWidget>(childID)->ConstructCount == 1);
+        }
+
+        TEST_CASE("UserInterface::UiScene::GetWidget returns nullptr for invalid ID", "[uiscene]")
+        {
+            UiScene scene;
+            REQUIRE(scene.GetWidget(c_InvalidPoolID) == nullptr);
+        }
+
+        TEST_CASE("UserInterface::UiScene::GetWidget<Type> returns typed pointer for matching type", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID id = scene.CreateRootWidget<TrackingWidget>();
+
+            TrackingWidget* typed = scene.GetWidget<TrackingWidget>(id);
+            REQUIRE(typed != nullptr);
+            REQUIRE(typed->GetID() == id);
+        }
+
+        TEST_CASE("UserInterface::UiScene::DestroyWidget calls OnDestroy and invalidates the ID", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID id = scene.CreateRootWidget<TrackingWidget>();
+            TrackingWidget* raw = scene.GetWidget<TrackingWidget>(id);
+            REQUIRE(raw != nullptr);
+
+            bool destroyed = scene.DestroyWidget(id);
+            REQUIRE(destroyed);
+            REQUIRE(scene.GetWidget(id) == nullptr);
+        }
+
+        TEST_CASE("UserInterface::UiScene::DestroyWidget returns false for an invalid ID", "[uiscene]")
+        {
+            UiScene scene;
+            REQUIRE(scene.DestroyWidget(c_InvalidPoolID) == false);
+        }
+
+        TEST_CASE("UserInterface::UiScene::DestroyWidget recursively destroys child widgets", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
+
+            scene.DestroyWidget(rootID);
+
+            REQUIRE(scene.GetWidget(rootID) == nullptr);
+            REQUIRE(scene.GetWidget(childID) == nullptr);
+        }
+
+        TEST_CASE("UserInterface::UiScene::ForEachChildWidget iterates each direct child widget", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID1 = scene.CreateWidget<TrackingWidget>(rootID);
+            WidgetID childID2 = scene.CreateWidget<TrackingWidget>(rootID);
+
+            std::vector<WidgetID> seen{};
+            scene.ForEachChildWidget(rootID, [&](IWidget& w) { seen.push_back(w.GetID()); });
+
+            REQUIRE(seen.size() == 2);
+            REQUIRE(seen[0] == childID1);
+            REQUIRE(seen[1] == childID2);
+        }
+
+        TEST_CASE("UserInterface::UiScene::UpdateLayout assigns a non-zero FinalRect to the root when root is fixed-sized", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+
+            LayoutNode* rootNode = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
+            REQUIRE(rootNode != nullptr);
+            rootNode->Style.WidthMode = ESizingMode::Fixed;
+            rootNode->Style.HeightMode = ESizingMode::Fixed;
+            rootNode->Style.FixedWidth = 800.0f;
+            rootNode->Style.FixedHeight = 600.0f;
+
+            scene.UpdateLayout(Vec2f{ 800.0f, 600.0f });
+
+            const Rectf& rect = rootNode->Layout.FinalRect;
+            REQUIRE(rect.Size[0] == Catch::Approx(800.0f).epsilon(1e-5f));
+            REQUIRE(rect.Size[1] == Catch::Approx(600.0f).epsilon(1e-5f));
+        }
+        
+        TEST_CASE("UserInterface::UiScene::UpdateLayout positions child widgets in a horizontal layout", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID1 = scene.CreateWidget<TrackingWidget>(rootID);
+            WidgetID childID2 = scene.CreateWidget<TrackingWidget>(rootID);
+
+            LayoutNode* rootNode = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
+            rootNode->Style.LayoutType = ELayoutType::Horizontal;
+            rootNode->Style.WidthMode = ESizingMode::Fixed;
+            rootNode->Style.HeightMode = ESizingMode::Fixed;
+            rootNode->Style.FixedWidth = 200.0f;
+            rootNode->Style.FixedHeight = 100.0f;
+
+            LayoutNode* child1Node = scene.Layouts.Get(scene.GetWidget(childID1)->GetLayoutID());
+            child1Node->Style.WidthMode = ESizingMode::Fixed;
+            child1Node->Style.HeightMode = ESizingMode::Fixed;
+            child1Node->Style.FixedWidth = 80.0f;
+            child1Node->Style.FixedHeight = 60.0f;
+
+            LayoutNode* child2Node = scene.Layouts.Get(scene.GetWidget(childID2)->GetLayoutID());
+            child2Node->Style.WidthMode = ESizingMode::Fixed;
+            child2Node->Style.HeightMode = ESizingMode::Fixed;
+            child2Node->Style.FixedWidth = 60.0f;
+            child2Node->Style.FixedHeight = 40.0f;
+
+            scene.UpdateLayout(Vec2f{ 200.0f, 100.0f });
+
+            // First child starts at origin
+            REQUIRE(child1Node->Layout.FinalRect.Origin[0] == Catch::Approx(0.0f).epsilon(1e-5f));
+            REQUIRE(child1Node->Layout.FinalRect.Size[0] == Catch::Approx(80.0f).epsilon(1e-5f));
+
+            // Second child starts right after the first
+            REQUIRE(child2Node->Layout.FinalRect.Origin[0] == Catch::Approx(80.0f).epsilon(1e-5f));
+            REQUIRE(child2Node->Layout.FinalRect.Size[0] == Catch::Approx(60.0f).epsilon(1e-5f));
+        }
+
+        TEST_CASE("UserInterface::UiScene::UpdateLayout with no root widget is a no-op", "[uiscene]")
+        {
+            UiScene scene;
+            scene.UpdateLayout(Vec2f{ 800.0f, 600.0f }); // should not crash
+        }
+
+        TEST_CASE("UserInterface::UiScene::GetFocusedWidget returns invalid ID when nothing is focused", "[uiscene][focus]")
+        {
+            UiScene scene;
+            REQUIRE(scene.GetFocusedWidget() == c_InvalidPoolID);
+        }
+
+        TEST_CASE("UserInterface::UiScene::SetFocus calls OnFocusReceived on newly focused widget", "[uiscene][focus]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            TrackingWidget* w = scene.GetWidget<TrackingWidget>(rootID);
+            w->Focusable = true;
+
+            scene.SetFocus(rootID);
+
+            REQUIRE(scene.GetFocusedWidget() == rootID);
+            REQUIRE(w->FocusReceivedCount == 1);
+            REQUIRE(w->FocusLostCount == 0);
+        }
+
+        TEST_CASE("UserInterface::UiScene::SetFocus calls OnFocusLost on the previously focused widget", "[uiscene][focus]")
+        {
+            UiScene scene;
+            WidgetID id1 = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID id2 = scene.CreateWidget<TrackingWidget>(id1);
+
+            TrackingWidget* w1 = scene.GetWidget<TrackingWidget>(id1);
+            TrackingWidget* w2 = scene.GetWidget<TrackingWidget>(id2);
+            w1->Focusable = true;
+            w2->Focusable = true;
+
+            scene.SetFocus(id1);
+            scene.SetFocus(id2);
+
+            REQUIRE(w1->FocusLostCount == 1);
+            REQUIRE(w2->FocusReceivedCount == 1);
+            REQUIRE(scene.GetFocusedWidget() == id2);
+        }
+
+        TEST_CASE("UserInterface::UiScene::ClearFocus removes the current focused widget", "[uiscene][focus]")
+        {
+            UiScene scene;
+            WidgetID id = scene.CreateRootWidget<TrackingWidget>();
+            scene.GetWidget<TrackingWidget>(id)->Focusable = true;
+
+            scene.SetFocus(id);
+            REQUIRE(scene.GetFocusedWidget() == id);
+
+            scene.ClearFocus();
+            REQUIRE(scene.GetFocusedWidget() == c_InvalidPoolID);
+        }
+
+        TEST_CASE("UserInterface::UiScene::SetFocus is idempotent when called twice with the same ID", "[uiscene][focus]")
+        {
+            UiScene scene;
+            WidgetID id = scene.CreateRootWidget<TrackingWidget>();
+            scene.GetWidget<TrackingWidget>(id)->Focusable = true;
+
+            scene.SetFocus(id);
+            scene.SetFocus(id); // second call should be a no-op
+
+            REQUIRE(scene.GetWidget<TrackingWidget>(id)->FocusReceivedCount == 1);
+        }
+
+        TEST_CASE("UserInterface::UiScene::DispatchInputEvent pointer over root triggers OnPointerEnter", "[uiscene][input]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+
+            LayoutNode* node = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
+            node->Style.WidthMode = ESizingMode::Fixed;
+            node->Style.HeightMode = ESizingMode::Fixed;
+            node->Style.FixedWidth = 200.0f;
+            node->Style.FixedHeight = 200.0f;
+            scene.UpdateLayout(Vec2f{ 200.0f, 200.0f });
+
+            scene.DispatchInputEvent(MakeMouseMove(Vec2f{ 50.0f, 50.0f }));
+
+            TrackingWidget* w = scene.GetWidget<TrackingWidget>(rootID);
+            REQUIRE(w->PointerEnterCount == 1);
+            REQUIRE(w->PointerExitCount == 0);
+        }
+
+        TEST_CASE("UserInterface::UiScene::DispatchInputEvent pointer leaving widget triggers OnPointerExit", "[uiscene][input]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+
+            LayoutNode* node = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
+            node->Style.WidthMode = ESizingMode::Fixed;
+            node->Style.HeightMode = ESizingMode::Fixed;
+            node->Style.FixedWidth = 100.0f;
+            node->Style.FixedHeight = 100.0f;
+            // UpdateLayout allocates the root the full available rect {0,0,100,100}
+            scene.UpdateLayout(Vec2f{ 100.0f, 100.0f });
+
+            // Move inside the 100x100 viewport
+            scene.DispatchInputEvent(MakeMouseMove(Vec2f{ 50.0f, 50.0f }));
+            // Move outside the 100x100 viewport
+            scene.DispatchInputEvent(MakeMouseMove(Vec2f{ 200.0f, 200.0f }));
+
+            TrackingWidget* w = scene.GetWidget<TrackingWidget>(rootID);
+            REQUIRE(w->PointerExitCount == 1);
+        }
+
+        TEST_CASE("UserInterface::UiScene::DispatchInputEvent button press dispatches to hovered widget", "[uiscene][input]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+
+            LayoutNode* node = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
+            node->Style.WidthMode = ESizingMode::Fixed;
+            node->Style.HeightMode = ESizingMode::Fixed;
+            node->Style.FixedWidth = 200.0f;
+            node->Style.FixedHeight = 200.0f;
+            scene.UpdateLayout(Vec2f{ 200.0f, 200.0f });
+
+            // Hover over root
+            scene.DispatchInputEvent(MakeMouseMove(Vec2f{ 50.0f, 50.0f }));
+
+            // Press
+            scene.DispatchInputEvent(MakeMousePress(true));
+
+            TrackingWidget* w = scene.GetWidget<TrackingWidget>(rootID);
+            REQUIRE(w->PressedCount == 1);
+        }
+
+        TEST_CASE("UserInterface::UiScene::DispatchInputEvent button press dispatches to focused widget when nothing hovered", "[uiscene][input]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            TrackingWidget* w = scene.GetWidget<TrackingWidget>(rootID);
+            w->Focusable = true;
+
+            // Focus the widget but don't hover it
+            scene.SetFocus(rootID);
+
+            scene.DispatchInputEvent(MakeMousePress(true));
+
+            REQUIRE(w->PressedCount == 1);
+        }
+
+        TEST_CASE("UserInterface::UiScene::GetCurrentNavScope returns RootWidget when nav stack is empty", "[uiscene][nav]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            REQUIRE(scene.GetCurrentNavScope() == rootID);
+        }
+
+        TEST_CASE("UserInterface::UiScene::PushNavScope adds a scope to the nav stack", "[uiscene][nav]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
+
+            scene.PushNavScope(childID);
+
+            REQUIRE(scene.GetCurrentNavScope() == childID);
+        }
+
+        TEST_CASE("UserInterface::UiScene::PopNavScope removes the top scope and restores previous focus", "[uiscene][nav]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
+
+            scene.GetWidget<TrackingWidget>(rootID)->Focusable = true;
+            scene.SetFocus(rootID);
+
+            scene.PushNavScope(childID);
+            REQUIRE(scene.GetCurrentNavScope() == childID);
+
+            scene.PopNavScope();
+            REQUIRE(scene.GetCurrentNavScope() == rootID);
+            REQUIRE(scene.GetFocusedWidget() == rootID);
+        }
+
+        TEST_CASE("UserInterface::UiScene::PopNavScope on empty nav stack is a no-op", "[uiscene][nav]")
+        {
+            UiScene scene;
+            scene.CreateRootWidget<TrackingWidget>();
+            scene.PopNavScope(); // should not crash
+            REQUIRE(scene.GetCurrentNavScope() == scene.RootWidget);
+        }
+        
+        TEST_CASE("UserInterface::UiScene::Navigate focuses the first focusable child when no widget is focused", "[uiscene][nav]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
+
+            scene.GetWidget<TrackingWidget>(childID)->Focusable = true;
+
+            scene.Navigate(ENavAction::MoveRight);
+
+            REQUIRE(scene.GetFocusedWidget() == childID);
+        }
+
+        TEST_CASE("UserInterface::UiScene::Navigate MoveRight advances focus from first to second sibling", "[uiscene][nav]")
+        {
+            // Place two children side-by-side so MoveRight can find the second one.
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID1 = scene.CreateWidget<TrackingWidget>(rootID);
+            WidgetID childID2 = scene.CreateWidget<TrackingWidget>(rootID);
+
+            scene.GetWidget<TrackingWidget>(childID1)->Focusable = true;
+            scene.GetWidget<TrackingWidget>(childID2)->Focusable = true;
+
+            LayoutNode* rootNode = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
+            rootNode->Style.LayoutType = ELayoutType::Horizontal;
+            rootNode->Style.WidthMode = ESizingMode::Fixed;
+            rootNode->Style.HeightMode = ESizingMode::Fixed;
+            rootNode->Style.FixedWidth = 200.0f;
+            rootNode->Style.FixedHeight = 50.0f;
+
+            LayoutNode* node1 = scene.Layouts.Get(scene.GetWidget(childID1)->GetLayoutID());
+            node1->Style.WidthMode = ESizingMode::Fixed;
+            node1->Style.HeightMode = ESizingMode::Fixed;
+            node1->Style.FixedWidth = 80.0f;
+            node1->Style.FixedHeight = 50.0f;
+
+            LayoutNode* node2 = scene.Layouts.Get(scene.GetWidget(childID2)->GetLayoutID());
+            node2->Style.WidthMode = ESizingMode::Fixed;
+            node2->Style.HeightMode = ESizingMode::Fixed;
+            node2->Style.FixedWidth = 80.0f;
+            node2->Style.FixedHeight = 50.0f;
+
+            scene.UpdateLayout(Vec2f{ 200.0f, 50.0f });
+
+            scene.SetFocus(childID1);
+            scene.Navigate(ENavAction::MoveRight);
+
+            REQUIRE(scene.GetFocusedWidget() == childID2);
+        }
+
+        TEST_CASE("UserInterface::UiScene::Navigate Cancel pops the nav scope", "[uiscene][nav]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
+
+            scene.PushNavScope(childID);
+            REQUIRE(scene.GetCurrentNavScope() == childID);
+
+            scene.Navigate(ENavAction::Cancel);
+            REQUIRE(scene.GetCurrentNavScope() == rootID);
+        }
+
+        TEST_CASE("UserInterface::UiScene::Reset clears all widgets and resets state", "[uiscene]")
+        {
+            UiScene scene;
+            WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
+            WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
+
+            scene.GetWidget<TrackingWidget>(rootID)->Focusable = true;
+            scene.SetFocus(rootID);
+
+            scene.Reset();
+
+            REQUIRE(scene.RootWidget == c_InvalidPoolID);
+            REQUIRE(scene.GetFocusedWidget() == c_InvalidPoolID);
+            REQUIRE(scene.GetWidget(rootID) == nullptr);
+            REQUIRE(scene.GetWidget(childID) == nullptr);
+            REQUIRE(scene.GetCurrentNavScope() == c_InvalidPoolID);
+        }
+	}
+}

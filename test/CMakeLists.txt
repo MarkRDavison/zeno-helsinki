@@ -20,3 +20,4 @@ endfunction()
 
 ADD_SUBDIRECTORY(system)
 ADD_SUBDIRECTORY(renderer)
+ADD_SUBDIRECTORY(userinterface)

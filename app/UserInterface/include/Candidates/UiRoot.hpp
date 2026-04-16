@@ -4,6 +4,8 @@
 #include <helsinki/System/Events/EventListener.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanMappedBuffer.hpp>
+#include <helsinki/UserInterface/UiScene.hpp>
+#include <Candidates/UiRect.hpp>
 
 namespace hl
 {
@@ -14,6 +16,7 @@ namespace hl
 	{
 	public:
 		UiRoot(InputManager& inputManager);
+		~UiRoot();
 
 		void initialise(VulkanDevice& device);
 		void update(float delta);
@@ -28,6 +31,9 @@ namespace hl
 		size_t getVertexCount() const;
 
 	private:
+		void RenderFillRoundedRect(Rectf rect, CornerRounding rounding, Vec4f colour, Mat3f transform);
+
+	private:
 		InputManager& _inputManager;
 
 		std::vector<hl::VertexUi> _vertices;
@@ -35,6 +41,9 @@ namespace hl
 
 		uint32_t _width{ 0 };
 		uint32_t _height{ 0 };
+
+		UiScene _scene;
+		DrawList _drawlist;
 	};
 
 }

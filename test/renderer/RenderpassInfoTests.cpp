@@ -297,7 +297,7 @@ namespace hl
             return renderpasses;
         }
 
-        TEST_CASE("Renderpass info can generate DAG", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::Renderpass info can generate DAG", "[RenderPassInfo]")
         {
             const auto& renderpasses = createTestsRenderpasses();
 
@@ -326,7 +326,7 @@ namespace hl
             REQUIRE(counts[2] == 1); // composite_pass  
         }
 
-        TEST_CASE("When input specified that no one creates throws exception", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::When input specified that no one creates throws exception", "[RenderPassInfo]")
         {
             std::vector<hl::RenderpassInfo> renderpasses;
 
@@ -362,7 +362,7 @@ namespace hl
                 std::runtime_error);
         }
 
-        TEST_CASE("RenderGraph detects cycles", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph detects cycles", "[RenderPassInfo]")
         {
             // A → B → C → A
             std::vector<hl::RenderpassInfo> renderpasses;
@@ -394,7 +394,7 @@ namespace hl
                 std::runtime_error);
         }
 
-        TEST_CASE("RenderGraph detects disconnected branches", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph detects disconnected branches", "[RenderPassInfo]")
         {
             std::vector<hl::RenderpassInfo> renderpasses;
 
@@ -427,7 +427,7 @@ namespace hl
                 std::runtime_error);
         }
 
-        TEST_CASE("RenderGraph handles diamond dependency", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph handles diamond dependency", "[RenderPassInfo]")
         {
             std::vector<hl::RenderpassInfo> renderpasses;
 
@@ -486,7 +486,7 @@ namespace hl
             REQUIRE(topLayerCount == 1);
         }
 
-        TEST_CASE("RenderGraph detects self-cycle", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph detects self-cycle", "[RenderPassInfo]")
         {
             std::vector<hl::RenderpassInfo> renderpasses;
 
@@ -501,7 +501,7 @@ namespace hl
                 std::runtime_error);
         }
 
-        TEST_CASE("RenderGraph handles long linear chain", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph handles long linear chain", "[RenderPassInfo]")
         {
             std::vector<hl::RenderpassInfo> renderpasses;
 
@@ -545,7 +545,7 @@ namespace hl
             REQUIRE(topLayerCount == 1);
         }
 
-        TEST_CASE("RenderGraph handles parallel branches with varying depth", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph handles parallel branches with varying depth", "[RenderPassInfo]")
         {
             std::vector<hl::RenderpassInfo> renderpasses;
 
@@ -599,7 +599,7 @@ namespace hl
             REQUIRE(topLayerCount == 1);
         }
 
-        TEST_CASE("RenderGraph handles multi-merge DAG with intermediate convergence", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph handles multi-merge DAG with intermediate convergence", "[RenderPassInfo]")
         {
             std::vector<hl::RenderpassInfo> renderpasses;
 
@@ -665,7 +665,7 @@ namespace hl
             REQUIRE(topLayerCount == 1);
         }
 
-        TEST_CASE("RenderGraph handles deeply nested diamond pattern", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph handles deeply nested diamond pattern", "[RenderPassInfo]")
         {
             std::vector<hl::RenderpassInfo> renderpasses;
 
@@ -737,7 +737,7 @@ namespace hl
             REQUIRE(topLayerCount == 1);
         }
 
-        TEST_CASE("RenderGraph handles many parallel chains converging to final node", "[RenderPassInfo]")
+        TEST_CASE("Renderer::RenderPassInfo::RenderGraph handles many parallel chains converging to final node", "[RenderPassInfo]")
         {
             const int numChains = 10;
             const int chainLength = 5;

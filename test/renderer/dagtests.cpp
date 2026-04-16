@@ -183,7 +183,7 @@ namespace hl
 
 		};
 
-		TEST_CASE("Immutable RenderGraph DAG with accessors", "[DAG]")
+		TEST_CASE("Renderer::DAG::Immutable RenderGraph DAG with accessors", "[DAG]")
 		{
 			std::vector<RenderPassDef> defs = {
 				{.name = "scene_pass", .inputs = {}, .outputs = {"scene_color"} },
@@ -223,7 +223,7 @@ namespace hl
 			REQUIRE((finalDeps[1] == "postprocess_pass" || finalDeps[1] == "ui_pass"));
 		}
 
-		TEST_CASE("RenderGraph getReadyPasses", "[DAG]")
+		TEST_CASE("Renderer::DAG::RenderGraph getReadyPasses", "[DAG]")
 		{
 			std::vector<RenderPassDef> defs = {
 				{.name = "scene_pass", .inputs = {}, .outputs = {"scene_color"} },
