@@ -9,14 +9,12 @@ namespace hl
     class RectWidget : public IWidget
     {
     public:
-        RectWidget(Vec4f a_Color, std::string a_Name, CornerRounding a_Rounding = CornerRounding::Uniform(10))
+        RectWidget(Vec4f a_Color, CornerRounding a_Rounding = CornerRounding::Uniform(10))
             : Color(a_Color)
-            , Name(a_Name)
             , Rounding(a_Rounding)
         {
         }
 
-        std::string Name;
         Vec4f Color;
         CornerRounding Rounding;
 

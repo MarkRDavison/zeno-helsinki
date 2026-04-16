@@ -47,7 +47,7 @@ namespace hl
 			mainPanelNode->Style.WidthMode = ESizingMode::Flex;
 			mainPanelNode->Style.HeightMode = ESizingMode::Flex;
 
-			WidgetID mainPanelTopRect = _scene.CreateWidget<RectWidget>(mainPanel, hl::Vec4f(0.4f, 0.4f, 0.4f, 1.0f), "leftPanelTopRect");
+			WidgetID mainPanelTopRect = _scene.CreateWidget<RectWidget>(mainPanel, hl::Vec4f(0.4f, 0.4f, 0.4f, 1.0f));
 			LayoutNode* mainPanelTopRectNode = _scene.Layouts.Get(_scene.GetWidget(mainPanelTopRect)->GetLayoutID());
 			mainPanelTopRectNode->Style.LayoutType = ELayoutType::Vertical;
 			mainPanelTopRectNode->Style.WidthMode = ESizingMode::Flex;
@@ -60,7 +60,7 @@ namespace hl
 			mainPanelContentRectNode->Style.WidthMode = ESizingMode::Flex;
 			mainPanelContentRectNode->Style.HeightMode = ESizingMode::Flex;
 
-			WidgetID mainPanelBottomRect = _scene.CreateWidget<RectWidget>(mainPanel, hl::Vec4f(0.4f, 0.4f, 0.4f, 1.0f), "leftPanelBottomRect");
+			WidgetID mainPanelBottomRect = _scene.CreateWidget<RectWidget>(mainPanel, hl::Vec4f(0.4f, 0.4f, 0.4f, 1.0f));
 			LayoutNode* mainPanelBottomRectNode = _scene.Layouts.Get(_scene.GetWidget(mainPanelBottomRect)->GetLayoutID());
 			mainPanelBottomRectNode->Style.LayoutType = ELayoutType::Vertical;
 			mainPanelBottomRectNode->Style.WidthMode = ESizingMode::Flex;
@@ -76,12 +76,14 @@ namespace hl
 			sidePanelNode->Style.FixedWidth = 240.0f;
 			sidePanelNode->Style.HeightMode = ESizingMode::Flex;
 
-			WidgetID sidePanelRect = _scene.CreateWidget<RectWidget>(sidePanel, hl::Vec4f(0.7f, 0.7f, 0.7f, 1.0f), "leftPanelRect");
+			WidgetID sidePanelRect = _scene.CreateWidget<RectWidget>(sidePanel, hl::Vec4f(0.7f, 0.7f, 0.7f, 1.0f));
 			LayoutNode* sidePanelRectNode = _scene.Layouts.Get(_scene.GetWidget(sidePanelRect)->GetLayoutID());
 			sidePanelRectNode->Style.LayoutType = ELayoutType::Vertical;
 			sidePanelRectNode->Style.WidthMode = ESizingMode::Flex;
 			sidePanelRectNode->Style.HeightMode = ESizingMode::Flex;
 		}
+
+		_scene.UpdateLayout({ (float)_width, (float)_height });
 	}
 
 	static void addQuad(std::vector<hl::VertexUi>& vertices, float x, float y, float w, float h, glm::vec3 colour)
@@ -102,8 +104,7 @@ namespace hl
 		//_scene.DispatchInputEvent(ie);
 
 		// TODO: Handle events rather than polling... ^^
-
-		_scene.UpdateLayout({ (float)_width, (float)_height });
+		
 		_drawlist = {};
 		_scene.Render(_drawlist); // TODO: Do this here or in updateGpuResources???
 	}
@@ -176,6 +177,8 @@ namespace hl
 		{
 			_width = wre->GetWidth();
 			_height = wre->GetHeight();
+
+			_scene.UpdateLayout({ (float)_width, (float)_height });
 		}
 	}
 
