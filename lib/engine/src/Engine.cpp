@@ -3,6 +3,7 @@
 #include <helsinki/System/HelsinkiTracy.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
+#include <helsinki/System/Events/MouseEvents.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
 #define GLFW_INCLUDE_VULKAN
@@ -34,6 +35,27 @@ namespace hl
 	{
 		auto app = reinterpret_cast<Engine*>(glfwGetWindowUserPointer(window));
 		ScrollEvent event((int)xOffset, (int)yOffset);
+		app->sendEvent(event);
+	}
+	static void mouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*/)
+	{
+		auto app = reinterpret_cast<Engine*>(glfwGetWindowUserPointer(window));
+		if (action == GLFW_PRESS)
+		{
+			MouseButtonPressEvent event(button);
+			app->sendEvent(event);
+		}
+		else
+		{
+			MouseButtonReleaseEvent event(button);
+			app->sendEvent(event);
+		}
+	}
+	static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
+	{
+		// TODO: Add previous position so we can get the delta???
+		auto app = reinterpret_cast<Engine*>(glfwGetWindowUserPointer(window));
+		MousePositionEvent event((int)xpos, (int)ypos);
 		app->sendEvent(event);
 	}
 
@@ -287,6 +309,9 @@ namespace hl
 		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
 		glfwSetKeyCallback(_window, keyCallback);
 		glfwSetScrollCallback(_window, scrollCallback);
+		glfwSetMouseButtonCallback(_window, mouseButtonCallback);
+		glfwSetCursorPosCallback(_window, cursorPositionCallback);
+		
 		_inputManager.setWindow(_window);
 	}
 	void Engine::initVulkan(const char* title)

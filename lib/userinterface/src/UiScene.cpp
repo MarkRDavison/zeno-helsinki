@@ -129,7 +129,7 @@ namespace hl
 
         std::vector<LayoutNode*> focusableNodes{};
 
-        while (true)
+        while (currentChild != nullptr)
         {
             if (currentChild != nullptr)
             {
@@ -268,12 +268,16 @@ namespace hl
         if (hovered != m_HoveredWidget)
         {
             if (IWidget* prevHovered = GetWidget(m_HoveredWidget))
+            {
                 prevHovered->OnPointerExit(*this, a_Event);
+            }
 
             m_HoveredWidget = hovered;
 
             if (IWidget* newHovered = GetWidget(m_HoveredWidget))
+            {
                 newHovered->OnPointerEnter(*this, a_Event);
+            }
         }
 
         return false;

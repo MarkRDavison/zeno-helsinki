@@ -4,6 +4,8 @@
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
 #include <helsinki/UserInterface/Widgets/RectWidget.hpp>
 #include <helsinki/UserInterface/Widgets/ContainerWidget.hpp>
+#include <helsinki/UserInterface/Widgets/ButtonBaseWidget.hpp>
+#include <helsinki/System/Events/MouseEvents.hpp>
 #include <iostream>
 
 constexpr auto MAX_UI_VERTEXES = 1024;
@@ -81,6 +83,24 @@ namespace hl
 			sidePanelRectNode->Style.LayoutType = ELayoutType::Vertical;
 			sidePanelRectNode->Style.WidthMode = ESizingMode::Flex;
 			sidePanelRectNode->Style.HeightMode = ESizingMode::Flex;
+
+			WidgetID buttonBase = _scene.CreateWidget<ButtonBaseWidget>(sidePanelRect);
+			LayoutNode* buttonBaseNode = _scene.Layouts.Get(_scene.GetWidget(buttonBase)->GetLayoutID());
+			buttonBaseNode->Style.LayoutType = ELayoutType::Overlay;
+			buttonBaseNode->Style.WidthMode = ESizingMode::Content;
+			buttonBaseNode->Style.HeightMode = ESizingMode::Content;
+
+			WidgetID buttonBaseRect = _scene.CreateWidget<RectWidget>(buttonBase, hl::Vec4f(0.0f, 0.0f, 1.0f, 1.0f));
+			LayoutNode* buttonBaseRectNode = _scene.Layouts.Get(_scene.GetWidget(buttonBaseRect)->GetLayoutID());
+			buttonBaseRectNode->Style.LayoutType = ELayoutType::Vertical;
+			buttonBaseRectNode->Style.WidthMode = ESizingMode::Fixed;
+			buttonBaseRectNode->Style.FixedWidth = 100.0f;
+			buttonBaseRectNode->Style.HeightMode = ESizingMode::Fixed;
+			buttonBaseRectNode->Style.FixedHeight = 100.0f;
+
+			std::cout << "ButtonBaseRectId: " << buttonBaseRect.Packed << std::endl; // TODO: Hit test is getting the button base widget.
+
+
 		}
 
 		_scene.UpdateLayout({ (float)_width, (float)_height });
@@ -173,12 +193,71 @@ namespace hl
 	
 	void UiRoot::OnEvent(const hl::Event& event)
 	{
+		static bool dispatchPointerEvents = false;
+		const auto buttonToName =
+			[](int _button) -> std::string
+			{
+				switch (_button)
+				{
+				case 0:
+					return "Left";
+				case 1:
+					return "Right";
+				default:
+					return "Unknown";
+				}
+			};
 		if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
 		{
 			_width = wre->GetWidth();
 			_height = wre->GetHeight();
 
 			_scene.UpdateLayout({ (float)_width, (float)_height });
+		}
+		else if (auto ke = dynamic_cast<const hl::MouseButtonPressEvent*>(&event))
+		{
+			_scene.DispatchInputEvent(InputEvent
+				{
+					.Device = EDeviceID::Mouse,
+					.Payload = ButtonEvent
+					{
+						.Button = (EButtonID)(ke->GetKeyCode() + 1),
+						.Pressed = true,
+						.Released = false,
+						.Held = false
+					}
+				});
+
+			dispatchPointerEvents = !dispatchPointerEvents;
+		}
+		else if (auto ke = dynamic_cast<const hl::MouseButtonReleaseEvent*>(&event))
+		{
+			_scene.DispatchInputEvent(InputEvent
+				{
+					.Device = EDeviceID::Mouse,
+					.Payload = ButtonEvent
+					{
+						.Button = (EButtonID)(ke->GetKeyCode() + 1),
+						.Pressed = false,
+						.Released = true,
+						.Held = false
+					}
+				});
+		}
+		else if (auto ke = dynamic_cast<const hl::MousePositionEvent*>(&event))
+		{
+			if (dispatchPointerEvents)
+			{
+				_scene.DispatchInputEvent(InputEvent
+					{
+						.Device = EDeviceID::Mouse,
+						.Payload = PointerEvent
+						{
+							.Position = Vec2f{ (float)ke->getX(), (float)ke->getY() },
+							.Type = EPointerType::Mouse
+						}
+					});
+			}
 		}
 	}
 

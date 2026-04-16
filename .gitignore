@@ -36,3 +36,6 @@ out/
 /.idea
 
 UserInterfaceConfig.hpp
+/app/Pong/PongConfig.hpp
+/app/Skeleton/SkeletonConfig.hpp
+/app/TwoDimensional/TwoDimensionalConfig.hpp

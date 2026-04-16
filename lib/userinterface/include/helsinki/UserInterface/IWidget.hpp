@@ -49,6 +49,7 @@ namespace hl
         /** @brief Called when an input button is released while this widget is focused. */
         virtual bool OnReleased(UiScene& /*a_Scene*/, const ButtonEvent& /*a_Event*/) { return false; }
 
+        void PaintChildren(UiScene& a_Scene, DrawList& a_DrawList) const;
     protected:
         friend UiScene;
         WidgetID m_ID{};

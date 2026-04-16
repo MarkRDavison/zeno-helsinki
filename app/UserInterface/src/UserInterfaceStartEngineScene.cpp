@@ -1,6 +1,5 @@
 #include "UserInterfaceStartEngineScene.hpp"
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
-#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 
