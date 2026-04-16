@@ -83,24 +83,23 @@ namespace hl
 			sidePanelRectNode->Style.LayoutType = ELayoutType::Vertical;
 			sidePanelRectNode->Style.WidthMode = ESizingMode::Flex;
 			sidePanelRectNode->Style.HeightMode = ESizingMode::Flex;
+			sidePanelRectNode->Style.Padding = Edges{ 16.0f };
 
-			WidgetID buttonBase = _scene.CreateWidget<ButtonBaseWidget>(sidePanelRect);
+			WidgetID buttonBase = _scene.CreateWidget<ButtonBaseWidget>(sidePanelRect, hl::Vec4f(0.0f, 0.0f, 1.0f, 1.0f));
 			LayoutNode* buttonBaseNode = _scene.Layouts.Get(_scene.GetWidget(buttonBase)->GetLayoutID());
-			buttonBaseNode->Style.LayoutType = ELayoutType::Overlay;
-			buttonBaseNode->Style.WidthMode = ESizingMode::Content;
-			buttonBaseNode->Style.HeightMode = ESizingMode::Content;
+			buttonBaseNode->Style.LayoutType = ELayoutType::Grid;
+			buttonBaseNode->Style.WidthMode = ESizingMode::Fixed;
+			buttonBaseNode->Style.FixedWidth = 128.0f;
+			buttonBaseNode->Style.HeightMode = ESizingMode::Fixed;
+			buttonBaseNode->Style.FixedHeight = 48.0f;
+			buttonBaseNode->Style.PositionMode = EPositioningMode::Anchored;
+			buttonBaseNode->Style.Anchor = Anchor::TopCenter();
 
-			WidgetID buttonBaseRect = _scene.CreateWidget<RectWidget>(buttonBase, hl::Vec4f(0.0f, 0.0f, 1.0f, 1.0f));
-			LayoutNode* buttonBaseRectNode = _scene.Layouts.Get(_scene.GetWidget(buttonBaseRect)->GetLayoutID());
-			buttonBaseRectNode->Style.LayoutType = ELayoutType::Vertical;
-			buttonBaseRectNode->Style.WidthMode = ESizingMode::Fixed;
-			buttonBaseRectNode->Style.FixedWidth = 100.0f;
-			buttonBaseRectNode->Style.HeightMode = ESizingMode::Fixed;
-			buttonBaseRectNode->Style.FixedHeight = 100.0f;
-
-			std::cout << "ButtonBaseRectId: " << buttonBaseRect.Packed << std::endl; // TODO: Hit test is getting the button base widget.
-
-
+			_scene.GetWidget<ButtonBaseWidget>(buttonBase)->OnClick = 
+				[]() -> void 
+				{
+					std::cout << "Button is clicked!!!!" << std::endl;
+				};
 		}
 
 		_scene.UpdateLayout({ (float)_width, (float)_height });
@@ -193,7 +192,6 @@ namespace hl
 	
 	void UiRoot::OnEvent(const hl::Event& event)
 	{
-		static bool dispatchPointerEvents = false;
 		const auto buttonToName =
 			[](int _button) -> std::string
 			{
@@ -227,8 +225,6 @@ namespace hl
 						.Held = false
 					}
 				});
-
-			dispatchPointerEvents = !dispatchPointerEvents;
 		}
 		else if (auto ke = dynamic_cast<const hl::MouseButtonReleaseEvent*>(&event))
 		{
@@ -246,18 +242,15 @@ namespace hl
 		}
 		else if (auto ke = dynamic_cast<const hl::MousePositionEvent*>(&event))
 		{
-			if (dispatchPointerEvents)
-			{
-				_scene.DispatchInputEvent(InputEvent
+			_scene.DispatchInputEvent(InputEvent
+				{
+					.Device = EDeviceID::Mouse,
+					.Payload = PointerEvent
 					{
-						.Device = EDeviceID::Mouse,
-						.Payload = PointerEvent
-						{
-							.Position = Vec2f{ (float)ke->getX(), (float)ke->getY() },
-							.Type = EPointerType::Mouse
-						}
-					});
-			}
+						.Position = Vec2f{ (float)ke->getX(), (float)ke->getY() },
+						.Type = EPointerType::Mouse
+					}
+				});
 		}
 	}
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <helsinki/UserInterface/IWidget.hpp>
+#include <functional>
 #include <iostream>
 
 namespace hl
@@ -8,27 +9,56 @@ namespace hl
     class ButtonBaseWidget : public IWidget
     {
     public:
-
-        void OnPaint(UiScene& a_Scene, DrawList& a_DrawList) override
+        ButtonBaseWidget(Vec4f a_Color, CornerRounding a_Rounding = CornerRounding::Uniform(10))
+            : Color(a_Color)
+            , Rounding(a_Rounding)
         {
-            PaintChildren(a_Scene, a_DrawList);
         }
 
-        /** @brief Called when an input button is released while this widget is focused. */
+        Vec4f Color;
+        CornerRounding Rounding;
+
+        void OnPaint(UiScene& a_Scene, DrawList& a_DrawList) override;
+        virtual void PaintContent(UiScene& /*a_Scene*/, DrawList& /*a_DrawList*/) {};
+
+        bool OnPressed(UiScene& /*a_Scene*/, const ButtonEvent& /*a_Event*/) override
+        {
+            _pressStarted = true;
+            return true;
+        }
+
         bool OnReleased(UiScene& /*a_Scene*/, const ButtonEvent& /*a_Event*/) override
         {
-            std::cout << "ButtonBaseWidget::OnReleased" << std::endl;
+            if (_pressStarted)
+            {
+                OnClick();
+                _pressStarted = false;
+                return true;
+            }
+
             return false;
         }
-        
+
         void OnPointerEnter(UiScene& /*a_Scene*/, const PointerEvent& /*a_Event*/) override
         {
-            std::cout << "ButtonBaseWidget::OnpointerEnter" << std::endl;
+            _hovered = true;
+        }
+
+        void OnPointerExit(UiScene& /*a_Scene*/, const PointerEvent& /*a_Event*/) override
+        {
+            _pressStarted = false;
+            _hovered = false;
         }
 
         bool IsFocusable(UiScene& /*a_Scene*/) const override
         {
             return true;
         }
+
+        std::function<void()> OnClick;
+
+    private:
+        bool _pressStarted{ false };
+        bool _hovered{ false };
     };
 }
