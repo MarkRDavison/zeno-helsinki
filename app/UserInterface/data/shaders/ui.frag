@@ -19,15 +19,26 @@ void main()
 	else if (renderType == 1)
 	{
 		// TODO: Proper Text rendering....
-		float dist = texCol.r;
 
-		// Edge depends on how my sdf is normalize
-		float edge = 0.15;
-		float width = fwidth(dist);
+		float c = texCol.r * 4.0;
+		c = clamp(c, 0.0, 1.0);
 
-		float alpha = smoothstep(edge - width, edge + width, dist);
+		float g = fwidth(c);
 
-		outFragColor = vec4(fragColor * alpha, alpha);
+		float edge = abs(c - 0.5);
+		float line = 1.0 - smoothstep(g * 1.5, g * 3.0, edge);
+
+		float thickness = 0.02;
+		float threshold = 0.65;
+
+		float fill = smoothstep(threshold - thickness, threshold + thickness, c);
+
+		vec3 outlineColor = vec3(0.0);
+		vec3 col = mix(outlineColor, fragColor, fill);
+
+		float alpha = max(fill, line);
+
+		outFragColor = vec4(col * alpha, alpha);
 	}
 	else 
 	{
