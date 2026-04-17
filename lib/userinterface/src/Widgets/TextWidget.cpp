@@ -44,6 +44,7 @@ namespace hl
             layoutNode->Parent->Style.WidthMode != ESizingMode::Fixed ||
             layoutNode->Parent->Style.HeightMode != ESizingMode::Fixed))
         {
+            // OR we can regen text on the fly in the OnPaint method  if it no longer fits or more can fit....
             std::cout << "Text must be within fixed size parent" << std::endl;
         }
 
