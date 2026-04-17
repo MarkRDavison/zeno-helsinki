@@ -1,4 +1,5 @@
 #include <helsinki/UserInterface/LayoutEngine.hpp>
+#include <iostream>
 
 namespace hl
 {
@@ -96,6 +97,11 @@ namespace hl
         desired[0] = std::clamp(desired[0], s.SizeConstraints.MinSize[0], s.SizeConstraints.MaxSize[0]);
         desired[1] = std::clamp(desired[1], s.SizeConstraints.MinSize[1], s.SizeConstraints.MaxSize[1]);
 
+        if (a_Node.Style.SelfAlign == EAlignment::CenterRight)
+        {
+            std::cout << "ASDADAS" << std::endl;
+        }
+
         a_Node.Layout.DesiredSize = desired;
         return desired;
     }
@@ -133,6 +139,23 @@ namespace hl
         const bool stretchY = anchor.Min[1] != anchor.Max[1];
 
         Vec2f origin{}; // Top left corner of the node's final rect
+
+        // Handle flex layouts with anchor positioning where max size < parent size
+        // TODO: Handle min size stuff
+        if (a_Node.Layout.DesiredSize.x() == 0.0f && a_Node.Layout.DesiredSize.y() == 0.0f)
+        {
+            if (a_Node.Style.SizeConstraints.MaxSize[0] > 0.0f &&
+                a_Node.Style.SizeConstraints.MaxSize[0] <= parentSz.x())
+            {
+                a_Node.Layout.DesiredSize.data[0] = a_Node.Style.SizeConstraints.MaxSize[0];
+            }
+            if (a_Node.Style.SizeConstraints.MaxSize[1] > 0.0f &&
+                a_Node.Style.SizeConstraints.MaxSize[1] <= parentSz.y())
+            {
+                a_Node.Layout.DesiredSize.data[1] = a_Node.Style.SizeConstraints.MaxSize[1];
+            }
+        }
+        
         Vec2f size = a_Node.Layout.DesiredSize;
 
         // X axis
@@ -148,6 +171,8 @@ namespace hl
             // Point anchor - place pivot at anchor point, then nudge by offset
             f32 anchorX = a_Container.Origin[0] + parentSz[0] * anchor.Min[0];
             origin[0] = anchorX - size[0] * anchor.Pivot[0] + anchor.Offset[0];
+
+            //if (a_Node.Style.SizeConstraints.MaxSize[0])
         }
 
         // Y axis
@@ -211,7 +236,8 @@ namespace hl
                 if (child.Style.PositionMode == EPositioningMode::Anchored) return;
                 if (!child.Layout.Visibility.AffectsLayout())               return;
 
-                totalFixed += isHz ? child.Layout.DesiredSize[0] + child.Style.Margin.Horizontal()
+                totalFixed += isHz 
+                    ? child.Layout.DesiredSize[0] + child.Style.Margin.Horizontal()
                     : child.Layout.DesiredSize[1] + child.Style.Margin.Vertical();
                 totalGrow += child.Style.FlexGrow;
                 numFlow++;
@@ -270,10 +296,24 @@ namespace hl
 
                     // TODO: Iterative clamped distribution - if a child hits MaxSize, remaining
                     // leftover should redistribute to uncapped siblings. Not worth doing until needed.
+
+                    if (c.MaxSize[0] == 128.0f)
+                    {
+                        std::cout << "ADADADSAASD" << std::endl;
+                    }
+                    if (c.MaxSize[1] == 32.0f)
+                    {
+                        std::cout << "ADADADSAASD" << std::endl;
+                    }
+
                     if (isHz)
+                    {
                         childSize[0] = std::clamp(childSize[0] + share, c.MinSize[0], c.MaxSize[0]);
+                    }
                     else
+                    {
                         childSize[1] = std::clamp(childSize[1] + share, c.MinSize[1], c.MaxSize[1]);
+                    }
                 }
 
                 // Fill on the cross axis - always expand regardless of grow
@@ -347,7 +387,7 @@ namespace hl
             break;
 
         case ELayoutType::Grid:
-            // TODO: Implement grid layout arrangement logic
+            // TODO: Implement grid layout arrangement logic            
             break;
         }
     }

@@ -32,7 +32,9 @@ namespace hl
         a_DrawList.AddRect(col, rect, Rounding);
 
         a_DrawList.PushClipRect(rect);
-        PaintContent(a_Scene, a_DrawList);
+        
+        PaintChildren(a_Scene, a_DrawList);
+
         a_DrawList.PopClipRect();
     }
 }

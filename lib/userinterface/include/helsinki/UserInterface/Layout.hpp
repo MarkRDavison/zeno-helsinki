@@ -220,6 +220,7 @@ namespace hl
 
         f32 FlexGrow{ 0.0f };          ///< Determines how much of the remaining space the element should occupy relative to its siblings.
         Constraints SizeConstraints{}; ///< The size constraints to consider when laying out the element.
+        bool StopsHitTests{ false };
     };
 
     struct LayoutResult

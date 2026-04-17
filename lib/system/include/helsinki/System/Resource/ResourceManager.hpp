@@ -71,9 +71,9 @@ namespace hl
         }
 
         template<typename T>
-        T* GetResource(const std::string& resourceId)
+        T* GetResource(const std::string& resourceId) const
         {
-            auto& typeResources = resources[std::type_index(typeid(T))];
+            const auto& typeResources = resources.at(std::type_index(typeid(T)));
             auto it = typeResources.find(resourceId);
 
             if (it != typeResources.end())
@@ -85,12 +85,12 @@ namespace hl
         }
 
         template<typename T>
-        std::vector<T*> GetAllResources()
+        std::vector<T*> GetAllResources() const
         {
             std::vector<T*> local;
 
-            auto& typeResources = resources[std::type_index(typeid(T))];
-            for (auto& [name, res] : typeResources)
+            const auto& typeResources = resources.at(std::type_index(typeid(T)));
+            for (const auto& [name, res] : typeResources)
             {
                 local.push_back(static_cast<T*>(res.get()));
             }

@@ -7,7 +7,7 @@
 
 namespace hl
 {
-
+    class ResourceManager;
     using LayoutNodePool = Pool<LayoutNode>;
     using WidgetPool = Pool<std::unique_ptr<IWidget>>;
 
@@ -33,7 +33,7 @@ namespace hl
     class UiScene
     {
     public:
-        UiScene() = default;
+        UiScene(const ResourceManager& resourceManager);
         ~UiScene() = default;
         UiScene(const UiScene&) = delete;
         UiScene& operator=(const UiScene) = delete;
@@ -99,10 +99,14 @@ namespace hl
         /** @brief Clears the scene */
         void Reset();
 
+        const ResourceManager& getResourceManager() { return _resourceManager; }
+
     protected:
         bool ProcessPointerEvent(const PointerEvent& a_Event);
         bool ProcessButtonEvent(const ButtonEvent& a_Event);
         WidgetID HitTest(WidgetID a_ID, Vec2f a_LogicalPos);
+
+        const ResourceManager& _resourceManager;
 
         WidgetID m_FocusedWidget{ c_InvalidPoolID };
         WidgetID m_HoveredWidget{ c_InvalidPoolID };

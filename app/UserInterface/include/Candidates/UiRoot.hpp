@@ -5,20 +5,24 @@
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanMappedBuffer.hpp>
 #include <helsinki/UserInterface/UiScene.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
 #include <Candidates/UiRect.hpp>
 
 namespace hl
 {
 	class PipelineDrawData;
 	class InputManager;
+	class ResourceManager;
 
 	class UiRoot : public NonCopyable, public EventListener
 	{
 	public:
-		UiRoot(InputManager& inputManager);
+		UiRoot(
+			InputManager& inputManager,
+			ResourceManager& resourceManager);
 		~UiRoot();
 
-		void initialise(VulkanDevice& device);
+		void initialise(VulkanDevice& device, GeneratedRenderGraph& renderGraph, ResourceManager& resourceManager);
 		void update(float delta);
 		void updateGpuResources(uint32_t currentFrame);
 		void draw(PipelineDrawData& pdd) const;

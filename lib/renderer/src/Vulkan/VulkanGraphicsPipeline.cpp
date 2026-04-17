@@ -89,7 +89,8 @@ namespace hl
         if (!shader.parse(&DefaultTBuiltInResource, 0, false, messages))
         {
             std::cerr
-                << "GLSL link failed: " << std::endl
+                << (vertex ? "Vertex" : "Fragment")
+                << " GLSL parse failed: " << std::endl
                 << shader.getInfoDebugLog() << std::endl
                 << shader.getInfoLog() << std::endl;
             return {};
@@ -99,8 +100,9 @@ namespace hl
         program.addShader(&shader);
         if (!program.link(messages))
         {
-            std::cerr 
-                << "GLSL link failed: " << std::endl 
+            std::cerr
+                << (vertex ? "Vertex" : "Fragment")
+                << " GLSL link failed: " << std::endl 
                 << program.getInfoLog() << std::endl
                 << shader.getInfoLog() << std::endl;
             return {};

@@ -14,7 +14,9 @@ namespace hl
     struct VertexUi
     {
         glm::vec2 pos;
+        glm::vec2 texCoord;
         glm::vec3 color;
+        uint32_t renderType;
     };
 
     struct Vertex2D

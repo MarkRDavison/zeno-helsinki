@@ -35,6 +35,7 @@ namespace hl
 		// TODO: Between this and the material system, we have 2 different approaches
 		TextSystem& getTextSystem() { return _textSystem; }
 		InputManager& getInputManager() { return _inputManager; }
+		ResourceManager& getResourceManager() { return _resourceManager; }
 		EventBus& getEventBus() { return _eventBus; }
 
 	private:

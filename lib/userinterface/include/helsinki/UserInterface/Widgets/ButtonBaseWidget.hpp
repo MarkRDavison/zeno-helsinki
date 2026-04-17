@@ -19,7 +19,6 @@ namespace hl
         CornerRounding Rounding;
 
         void OnPaint(UiScene& a_Scene, DrawList& a_DrawList) override;
-        virtual void PaintContent(UiScene& /*a_Scene*/, DrawList& /*a_DrawList*/) {};
 
         bool OnPressed(UiScene& /*a_Scene*/, const ButtonEvent& /*a_Event*/) override
         {

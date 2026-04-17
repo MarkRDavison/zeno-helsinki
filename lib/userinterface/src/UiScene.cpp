@@ -1,8 +1,16 @@
 #include <helsinki/UserInterface/UiScene.hpp>
 #include <helsinki/UserInterface/LayoutEngine.hpp>
+#include <helsinki/System/Resource/ResourceManager.hpp>
 
 namespace hl
 {
+    UiScene::UiScene(
+        const ResourceManager& resourceManager
+    ) :
+        _resourceManager(resourceManager)
+    {
+
+    }
 
     bool UiScene::DispatchInputEvent(const InputEvent& a_Event)
     {
@@ -245,12 +253,16 @@ namespace hl
 
         // Check children first (front-to-back, last child wins)
         WidgetID result = a_ID; // self is the fallback
-        node->ForEachChild([&](LayoutNode& child)
-            {
-                WidgetID childHit = HitTest(child.WidgetID, a_LogicalPos);
-                if (childHit != c_InvalidPoolID)
-                    result = childHit; // deepest child takes priority
-            });
+
+        if (!node->Style.StopsHitTests)
+        {
+            node->ForEachChild([&](LayoutNode& child)
+                {
+                    WidgetID childHit = HitTest(child.WidgetID, a_LogicalPos);
+                    if (childHit != c_InvalidPoolID)
+                        result = childHit; // deepest child takes priority
+                });
+        }
 
         return result;
     }

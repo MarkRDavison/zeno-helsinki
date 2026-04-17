@@ -2,6 +2,9 @@
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
+#include <helsinki/Renderer/Resource/SignedDistanceFieldFontResource.hpp>
+
+#define MAX_UI_TEXTURES 64
 
 namespace ui
 {
@@ -12,7 +15,7 @@ namespace ui
     ) :
         EngineScene(engine),
         _engineConfig(engineConfig),
-        _uiRoot(engine.getInputManager())
+        _uiRoot(engine.getInputManager(), engine.getResourceManager())
     {
         _camera = new hl::Camera2D();
         _engine.getEventBus().AddListener(this);
@@ -25,6 +28,18 @@ namespace ui
         _engine.getEventBus().RemoveListener(this);
     }
 
+    struct NewUiSceneVertexInputAttributes
+    {
+        hl::Vec2f position;
+        hl::Vec2f uv;
+        hl::Vec4f colour;
+    };
+
+    struct alignas(16) NewUiScenePushConstants
+    {
+        uint32_t texId{ 0 };
+        uint32_t RenderType{ 0 };
+    };
 
     void UserInterfaceStartEngineScene::initialise(
         const std::string& cameraMatrixResourceId,
@@ -73,6 +88,13 @@ namespace ui
                                             .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                             .stage = "VERTEX",
                                             .resource = cameraMatrixResourceId
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .count = MAX_UI_TEXTURES
                                         }
                                     }
                                 }
@@ -88,10 +110,22 @@ namespace ui
                                         .offset = offsetof(hl::VertexUi, pos)
                                     },
                                     {
+                                        .name = "inTexUv",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 1,
+                                        .offset = offsetof(hl::VertexUi, texCoord)
+                                    },
+                                    {
                                         .name = "inColor",
                                         .format = hl::VertexAttributeFormat::Vec3,
-                                        .location = 1,
+                                        .location = 2,
                                         .offset = offsetof(hl::VertexUi, color)
+                                    },
+                                    {
+                                        .name = "inRenderType",
+                                        .format = hl::VertexAttributeFormat::Uint,
+                                        .location = 3,
+                                        .offset = offsetof(hl::VertexUi, renderType)
                                     }
                                 },
                                 .stride = sizeof(hl::VertexUi)
@@ -105,7 +139,7 @@ namespace ui
                             {
                                 .cullMode = VK_CULL_MODE_NONE
                             },
-                            .enableBlending = false,
+                            .enableBlending = true,
                         }
                     }
                 }
@@ -128,6 +162,12 @@ namespace ui
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "white",
             resourceContext);
+        resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>(
+            "roboto",
+            resourceContext);
+        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+            "roboto",
+            resourceContext);
 
         EngineScene::initialise(
             cameraMatrixResourceId,
@@ -139,7 +179,7 @@ namespace ui
             materialSystem,
             renderpasses);
 
-        _uiRoot.initialise(device);
+        _uiRoot.initialise(device, *_renderGraph, resourceManager);
 
         registerPipelineDraw("ui_pipeline", [&](hl::PipelineDrawData& pdd) -> void { _uiRoot.draw(pdd); });
     }

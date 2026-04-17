@@ -68,10 +68,10 @@ namespace hl
 		ResourceManager* _resourceManager;
 		MaterialSystem* _materialSystem;
 		BaseCamera* _camera; // TODO: We may want multiple cameras
+		GeneratedRenderGraph* _renderGraph{ nullptr };
 
 	private:
 		std::vector<FrameResources> _frameResources;
-		GeneratedRenderGraph* _renderGraph{ nullptr };
 		ResourceHandle<UniformBufferResource> _cameraMatrixPushConstantHandle;
 		std::unordered_map<std::string, std::function<void(PipelineDrawData&)>> _pipelineDraws;
 	};

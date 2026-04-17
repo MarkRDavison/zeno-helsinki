@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <fakeit.hpp>
 #include <helsinki/UserInterface/UiScene.hpp>
+#include <helsinki/System/Resource/ResourceManager.hpp>
 #include "../TestHelpers.hpp"
 
 namespace hl
@@ -62,7 +63,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::CreateRootWidget sets RootWidget and calls OnConstruct", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID id = scene.CreateRootWidget<TrackingWidget>();
 
             REQUIRE(id != c_InvalidPoolID);
@@ -75,7 +77,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::CreateWidget attaches child to parent layout node", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
 
@@ -96,7 +99,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::CreateWidget calls OnConstruct on each created widget", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
 
@@ -106,13 +110,15 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::GetWidget returns nullptr for invalid ID", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             REQUIRE(scene.GetWidget(c_InvalidPoolID) == nullptr);
         }
 
         TEST_CASE("UserInterface::UiScene::GetWidget<Type> returns typed pointer for matching type", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID id = scene.CreateRootWidget<TrackingWidget>();
 
             TrackingWidget* typed = scene.GetWidget<TrackingWidget>(id);
@@ -122,7 +128,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::DestroyWidget calls OnDestroy and invalidates the ID", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID id = scene.CreateRootWidget<TrackingWidget>();
             TrackingWidget* raw = scene.GetWidget<TrackingWidget>(id);
             REQUIRE(raw != nullptr);
@@ -134,13 +141,15 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::DestroyWidget returns false for an invalid ID", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             REQUIRE(scene.DestroyWidget(c_InvalidPoolID) == false);
         }
 
         TEST_CASE("UserInterface::UiScene::DestroyWidget recursively destroys child widgets", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
 
@@ -152,7 +161,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::ForEachChildWidget iterates each direct child widget", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID1 = scene.CreateWidget<TrackingWidget>(rootID);
             WidgetID childID2 = scene.CreateWidget<TrackingWidget>(rootID);
@@ -167,7 +177,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::UpdateLayout assigns a non-zero FinalRect to the root when root is fixed-sized", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
 
             LayoutNode* rootNode = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
@@ -186,7 +197,8 @@ namespace hl
         
         TEST_CASE("UserInterface::UiScene::UpdateLayout positions child widgets in a horizontal layout", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID1 = scene.CreateWidget<TrackingWidget>(rootID);
             WidgetID childID2 = scene.CreateWidget<TrackingWidget>(rootID);
@@ -223,19 +235,22 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::UpdateLayout with no root widget is a no-op", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             scene.UpdateLayout(Vec2f{ 800.0f, 600.0f }); // should not crash
         }
 
         TEST_CASE("UserInterface::UiScene::GetFocusedWidget returns invalid ID when nothing is focused", "[uiscene][focus]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             REQUIRE(scene.GetFocusedWidget() == c_InvalidPoolID);
         }
 
         TEST_CASE("UserInterface::UiScene::SetFocus calls OnFocusReceived on newly focused widget", "[uiscene][focus]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             TrackingWidget* w = scene.GetWidget<TrackingWidget>(rootID);
             w->Focusable = true;
@@ -249,7 +264,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::SetFocus calls OnFocusLost on the previously focused widget", "[uiscene][focus]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID id1 = scene.CreateRootWidget<TrackingWidget>();
             WidgetID id2 = scene.CreateWidget<TrackingWidget>(id1);
 
@@ -268,7 +284,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::ClearFocus removes the current focused widget", "[uiscene][focus]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID id = scene.CreateRootWidget<TrackingWidget>();
             scene.GetWidget<TrackingWidget>(id)->Focusable = true;
 
@@ -281,7 +298,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::SetFocus is idempotent when called twice with the same ID", "[uiscene][focus]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID id = scene.CreateRootWidget<TrackingWidget>();
             scene.GetWidget<TrackingWidget>(id)->Focusable = true;
 
@@ -293,7 +311,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::DispatchInputEvent pointer over root triggers OnPointerEnter", "[uiscene][input]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
 
             LayoutNode* node = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
@@ -312,7 +331,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::DispatchInputEvent pointer leaving widget triggers OnPointerExit", "[uiscene][input]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
 
             LayoutNode* node = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
@@ -334,7 +354,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::DispatchInputEvent button press dispatches to hovered widget", "[uiscene][input]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
 
             LayoutNode* node = scene.Layouts.Get(scene.GetWidget(rootID)->GetLayoutID());
@@ -356,7 +377,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::DispatchInputEvent button press dispatches to focused widget when nothing hovered", "[uiscene][input]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             TrackingWidget* w = scene.GetWidget<TrackingWidget>(rootID);
             w->Focusable = true;
@@ -371,14 +393,16 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::GetCurrentNavScope returns RootWidget when nav stack is empty", "[uiscene][nav]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             REQUIRE(scene.GetCurrentNavScope() == rootID);
         }
 
         TEST_CASE("UserInterface::UiScene::PushNavScope adds a scope to the nav stack", "[uiscene][nav]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
 
@@ -389,7 +413,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::PopNavScope removes the top scope and restores previous focus", "[uiscene][nav]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
 
@@ -406,7 +431,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::PopNavScope on empty nav stack is a no-op", "[uiscene][nav]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             scene.CreateRootWidget<TrackingWidget>();
             scene.PopNavScope(); // should not crash
             REQUIRE(scene.GetCurrentNavScope() == scene.RootWidget);
@@ -414,7 +440,8 @@ namespace hl
         
         TEST_CASE("UserInterface::UiScene::Navigate focuses the first focusable child when no widget is focused", "[uiscene][nav]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
 
@@ -428,7 +455,8 @@ namespace hl
         TEST_CASE("UserInterface::UiScene::Navigate MoveRight advances focus from first to second sibling", "[uiscene][nav]")
         {
             // Place two children side-by-side so MoveRight can find the second one.
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID1 = scene.CreateWidget<TrackingWidget>(rootID);
             WidgetID childID2 = scene.CreateWidget<TrackingWidget>(rootID);
@@ -465,7 +493,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::Navigate Cancel pops the nav scope", "[uiscene][nav]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
 
@@ -478,7 +507,8 @@ namespace hl
 
         TEST_CASE("UserInterface::UiScene::Reset clears all widgets and resets state", "[uiscene]")
         {
-            UiScene scene;
+            ResourceManager r;
+            UiScene scene(r);
             WidgetID rootID = scene.CreateRootWidget<TrackingWidget>();
             WidgetID childID = scene.CreateWidget<TrackingWidget>(rootID);
 

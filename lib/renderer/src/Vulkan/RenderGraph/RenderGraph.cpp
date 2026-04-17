@@ -1047,6 +1047,8 @@ namespace hl
 			return VK_FORMAT_R32G32B32_SFLOAT;
 		case VertexAttributeFormat::Vec4:
 			return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case VertexAttributeFormat::Uint:
+			return VK_FORMAT_R32_UINT;
 		default:
 			throw std::runtime_error("Invalid vertex attribute format");
 		}

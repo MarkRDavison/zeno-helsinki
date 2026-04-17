@@ -49,6 +49,14 @@ namespace hl
             f32 Thickness;
         };
 
+        struct TextCmd
+        {
+            Vec4f Color;
+            Vec2f Offset;
+            std::vector<Vec4f> PosTexVertices;
+            uint32_t FontTextureId;
+        };
+
         struct CircleCmd
         {
             Vec4f Color;
@@ -72,6 +80,7 @@ namespace hl
         std::variant<
             RectCmd,
             RectBorderCmd,
+            TextCmd,
             CircleCmd,
             CircleBorderCmd,
             CustomCmd
@@ -133,6 +142,23 @@ namespace hl
         {
             assert(!ClipStack.empty() && "Called PopClipRect too many times: no clip rect to pop.");
             ClipStack.pop_back();
+            return *this;
+        }
+
+        DrawList& AddText(Vec4f a_Color, Vec2f a_Offset, const std::vector<Vec4f>& posTexVertices, uint32_t fontTextureId)
+        {
+            Commands.push_back(DrawCmd
+                {
+                    .Transform = CurrentTransform(),
+                    .ClipRect = CurrentClipRect(),
+                    .Payload = DrawCmd::TextCmd
+                    {
+                        .Color = a_Color, 
+                        .Offset = a_Offset,
+                        .PosTexVertices = posTexVertices, 
+                        .FontTextureId = fontTextureId 
+                    }
+                });
             return *this;
         }
 
