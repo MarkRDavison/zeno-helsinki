@@ -1151,10 +1151,16 @@ namespace hl
 			}
 		}
 
-		if (topLayerCount != 1)
+		if (topLayerCount > 1)
 		{
 			throw std::runtime_error(
 				"RenderGraph is invalid: multiple nodes exist at the top layer");
+		}
+
+		if (topLayerCount == 0)
+		{
+			throw std::runtime_error(
+				"RenderGraph is invalid: No nodes exist.");
 		}
 
 		return nodes;
