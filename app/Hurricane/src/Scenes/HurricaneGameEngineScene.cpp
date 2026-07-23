@@ -216,10 +216,11 @@ namespace hur
 
                     const auto& transform = entity->GetComponent<hl::TransformComponent>();
                     const auto& sprite = entity->GetComponent<hl::SpriteComponent>();
+                    const auto& ec = entity->GetComponent<EntityComponent>();
 
                     auto modelTransform = transform->GetTransformMatrix();
 
-                    const auto indexSizeData = _spriteToIndexAndSize["playerShip1_blue"];
+                    const auto& indexSizeData = _spriteToIndexAndSize[ec->SpriteName];
 
                     auto pc = hl::SpritePushConstantObject
                     {
@@ -273,6 +274,7 @@ namespace hur
         entity->AddTag("PLAYER");
         entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(64.0f, 128.0f, 0.0f));
         entity->AddComponent<hl::SpriteComponent>();
+        entity->AddComponent<EntityComponent>()->SpriteName = "playerShip1_blue";
 
         setGameState(GameState::PLAYING);
     }

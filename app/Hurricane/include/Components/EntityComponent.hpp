@@ -10,7 +10,7 @@ namespace hur
 	class EntityComponent : public hl::Component
 	{
 	public:
-		std::string VertexBufferResourceName;
+		std::string SpriteName;
 	private:
 
 	};
