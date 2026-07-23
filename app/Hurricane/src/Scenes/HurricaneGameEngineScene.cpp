@@ -1,5 +1,6 @@
 #include "Scenes/HurricaneGameEngineScene.hpp"
 #include "EntityPushConstantObject.hpp"
+#include <Components/EntityComponent.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
@@ -7,6 +8,11 @@
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
+#include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
+#include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
+#include <helsinki/System/Utils/Xml.hpp>
+#include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
 #include <GLFW/glfw3.h>
 
 namespace hur
@@ -40,7 +46,7 @@ namespace hur
 
         auto sceneRenderpassInfo = hl::RenderpassInfo
         {
-            .name = "scene_pass",
+            .name = "sprite_pass",
             .useMultiSampling = false,
             .inputs = {},
             .outputs =
@@ -49,7 +55,8 @@ namespace hur
                 {
                     .name = "scene_color",
                     .type = hl::ResourceType::Color,
-                    .format = "VK_FORMAT_B8G8R8A8_SRGB"
+                    .format = "VK_FORMAT_B8G8R8A8_SRGB",
+                    .clear = VkClearValue{.color = { 0.0f, 0.2f, 0.8f, 1.0f}}
                 },
                 hl::ResourceInfo
                 {
@@ -63,14 +70,13 @@ namespace hur
                 {
                     hl::PipelineInfo
                     {
-                        .name = "entity_pipeline",
-                        .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/entity.vert"),
-                        .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/entity.frag"),
+                        .name = "sprite_pipeline",
+                        .shaderVert = _engineConfig.RootPath + "/data/shaders/sprites.vert",
+                        .shaderFrag = _engineConfig.RootPath + "/data/shaders/sprites.frag",
                         .descriptorSets =
                         {
                             hl::DescriptorSetInfo
                             {
-                                .name = "",
                                 .bindings =
                                 {
                                     hl::DescriptorBinding
@@ -79,34 +85,30 @@ namespace hur
                                         .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                         .stage = "VERTEX",
                                         .resource = cameraMatrixResourceId
+                                    },
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 1,
+                                        .type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+                                        .stage = "VERTEX",
+                                        .resource = "spritesheet_frame_ssbo"
+                                    },
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 2,
+                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                        .stage = "FRAGMENT",
+                                        .resource = "sheet"
                                     }
                                 }
                             }
-                        },
-                        .vertexInputInfo = hl::VertexInputInfo
-                        {
-                            .attributes =
-                            {
-                                {
-                                    .name = "inPosition",
-                                    .format = hl::VertexAttributeFormat::Vec2,
-                                    .location = 0,
-                                    .offset = offsetof(hl::Vertex2, pos)
-                                }
-                            },
-                            .stride = sizeof(hl::Vertex2)
-                        },
-                        .depthState =
-                        {
-                            .writeEnable = true,
-                            .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
                         },
                         .rasterState =
                         {
                             .cullMode = VK_CULL_MODE_NONE
                         },
-                        .enableBlending = false,
-                        .pushConstantSize = sizeof(EntityPushConstantObject)
+                        .enableBlending = true,
+                        .pushConstantSize = sizeof(hl::SpritePushConstantObject)
                     }
                 }
             }
@@ -134,6 +136,49 @@ namespace hur
             hl::MaterialSystem::FallbackTextureName,
             resourceContext);
 
+
+        {
+
+            const auto& doc = hl::Xml::parseFromFile(_engineConfig.RootPath + "/data/spritesheet/sheet.xml");
+
+            std::vector<hl::FrameDataStorageBufferObject> frameData;
+
+            const auto& subTextures = doc.selectMany("TextureAtlas/SubTexture");
+
+            const constexpr float TEX_SIZE = 1024.0f;
+            std::size_t idx = 0;
+            for (const auto& subTexture : subTextures)
+            {
+                const auto name = hl::String::ReplaceAll(subTexture->attributes["name"], ".png", "");
+                const auto x = std::stoi(subTexture->attributes["x"]);
+                const auto y = std::stoi(subTexture->attributes["y"]);
+                const auto w = std::stoi(subTexture->attributes["width"]);
+                const auto h = std::stoi(subTexture->attributes["height"]);
+
+                frameData.push_back({ .uvRect = glm::vec4((float)x, (float)y, (float)(x + w), (float)(y + h)) / TEX_SIZE });
+                _spriteToIndexAndSize.insert({ name, {idx, glm::vec2((float)w, (float)h)}});
+
+                idx++;
+            }
+
+            _spriteSheetSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
+                "spritesheet_frame_ssbo",
+                resourceContext,
+                sizeof(hl::FrameDataStorageBufferObject),
+                512);
+
+            auto ssbo = _spriteSheetSSBOResourceHandle.Get();
+
+            for (uint32_t i = 0; i < (uint32_t)frameData.size(); ++i)
+            {
+                ssbo->writeToBuffer(&frameData[i], i);
+            }
+        }
+
+        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+            "sheet",
+            resourceContext);
+
         {
             auto entity = _scene.addEntity("game_state");
             entity->AddTag("TEXT");
@@ -143,7 +188,7 @@ namespace hur
                 _engine.getTextSystem(),
                 "Start",
                 "roboto",
-                64);
+                32);
             entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 1.0f, 1.0f, 0.2f));
         }
 
@@ -157,11 +202,54 @@ namespace hur
             materialSystem,
             renderpasses);
 
+
         registerPipelineDraw(
-            "entity_pipeline",
+            "sprite_pipeline",
             [&](hl::PipelineDrawData& pdd) -> void
             {
+                for (const auto& entity : pdd.scene->getEntities())
+                {
+                    if (!entity->HasComponents<hl::TransformComponent, hl::SpriteComponent>())
+                    {
+                        continue;
+                    }
 
+                    const auto& transform = entity->GetComponent<hl::TransformComponent>();
+                    const auto& sprite = entity->GetComponent<hl::SpriteComponent>();
+
+                    auto modelTransform = transform->GetTransformMatrix();
+
+                    const auto indexSizeData = _spriteToIndexAndSize["playerShip1_blue"];
+
+                    auto pc = hl::SpritePushConstantObject
+                    {
+                        .model = modelTransform,
+                        .size = indexSizeData.second,
+                        .frameIndex = (int)indexSizeData.first
+                    };
+
+                    vkCmdPushConstants(
+                        pdd.commandBuffer,
+                        pdd.pipeline->getPipelineLayout(),
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        sizeof(hl::SpritePushConstantObject),
+                        &pc
+                    );
+
+                    auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
+                    vkCmdBindDescriptorSets(
+                        pdd.commandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pdd.pipeline->getPipelineLayout(),
+                        0,
+                        1,
+                        &descriptorSet,
+                        0,
+                        nullptr);
+
+                    vkCmdDraw(pdd.commandBuffer, 6, 1, 0, 0);
+                }
             });
 
         setGameState(GameState::INIT);
@@ -171,8 +259,23 @@ namespace hur
 
 	void HurricaneGameEngineScene::update(uint32_t currentFrame, float delta)
 	{
-
+        if (_state == GameState::INIT)
+        {
+            transitionFromInitToPlaying();
+        }
 	}
+
+    void HurricaneGameEngineScene::transitionFromInitToPlaying()
+    {
+        auto entity = _scene.addEntity("Player");
+        entity->AddTag("SPRITE");
+        entity->AddTag("ENTITY");
+        entity->AddTag("PLAYER");
+        entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(64.0f, 128.0f, 0.0f));
+        entity->AddComponent<hl::SpriteComponent>();
+
+        setGameState(GameState::PLAYING);
+    }
 
 	void HurricaneGameEngineScene::OnEvent(const hl::Event& event)
 	{
@@ -193,26 +296,7 @@ namespace hur
 
 	void HurricaneGameEngineScene::handleWindowSizeChange(int width, int height)
 	{
-        // TODO: Replace these with flags/enum for anchor/alignment, left, right, top, bottom, center -> 9 possibilities.
-        const auto& centerTextAt = [&](const std::string& entityName, float yOffset) -> void
-            {
-                auto desiredCenter = glm::vec2(((float)width) / 2.0f, ((float)height) / 4.0f + yOffset);
 
-                auto entity = _scene.getEntity(entityName);
-
-                const auto& size = _engine
-                    .getTextSystem()
-                    .getTextSize(
-                        entity->GetComponent<hl::TextComponent>()->getTextSystemId());
-
-                desiredCenter.x += size.x - size.z / 2.0f;
-                desiredCenter.y += size.y - size.w / 2.0f;
-
-                entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredCenter, 0.0f));
-            };
-
-
-        centerTextAt("game_state", 0.0f);
 	}
 
     void HurricaneGameEngineScene::setGameState(GameState state)
@@ -227,7 +311,7 @@ namespace hur
                 _engine.getTextSystem(), 
                 "INIT",
                 "roboto",
-                64);
+                32);
         }
         else if (state == GameState::PLAYING)
         {
@@ -235,7 +319,7 @@ namespace hur
                 _engine.getTextSystem(),
                 "PLAYING",
                 "roboto",
-                64);
+                32);
         }
         else if (state == GameState::GAME_OVER)
         {
@@ -243,7 +327,7 @@ namespace hur
                 _engine.getTextSystem(),
                 "GAME_OVER",
                 "roboto",
-                64);
+                32);
         }
         else
         {
@@ -254,7 +338,7 @@ namespace hur
                 64);
         }
 
-        state = state;
+        _state = state;
         
         handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
     }
