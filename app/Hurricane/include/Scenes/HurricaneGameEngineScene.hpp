@@ -3,6 +3,7 @@
 #include <HurricaneConstants.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
+#include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 
 namespace hur
 {
@@ -32,10 +33,13 @@ namespace hur
 		void handleWindowSizeChange(int width, int height);
 
 		void setGameState(GameState state);
+		void transitionFromInitToPlaying();
 
 	private:
 		const hl::EngineConfiguration& _engineConfig;
 		GameState _state{ GameState::INIT };
+		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;
+		std::unordered_map<std::string, std::pair<std::size_t, glm::vec2>> _spriteToIndexAndSize;
 	};
 
 }

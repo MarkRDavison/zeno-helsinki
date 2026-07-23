@@ -143,7 +143,7 @@ namespace td
             "consolab",
             resourceContext);
 
-        frameSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
+        _spriteSheetSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
             "spritesheet_frame_ssbo",
             resourceContext,
             sizeof(hl::FrameDataStorageBufferObject),
@@ -152,7 +152,7 @@ namespace td
         {
             const constexpr float TEX_SIZE = 1024.0f;
             const constexpr float CELL_SIZE = 64.0f;
-            auto ssbo = frameSSBOResourceHandle.Get();
+            auto ssbo = _spriteSheetSSBOResourceHandle.Get();
             std::vector<hl::FrameDataStorageBufferObject> frameData
             {
                 {.uvRect = glm::vec4(CELL_SIZE * 0, CELL_SIZE * 0, CELL_SIZE * 1, CELL_SIZE * 1) / TEX_SIZE },

@@ -22,7 +22,7 @@ namespace td
 		void update(uint32_t currentFrame, float delta) override;
 	private:
 		const hl::EngineConfiguration& _engineConfig;
-		hl::ResourceHandle<hl::StorageBufferResource> frameSSBOResourceHandle;
+		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;
 	};
 
 }
