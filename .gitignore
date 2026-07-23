@@ -36,3 +36,4 @@ out/
 /.idea
 
 UserInterfaceConfig.hpp
+/app/Hurricane/HurricaneConfig.hpp
