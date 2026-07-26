@@ -8,7 +8,7 @@ namespace hl
         transformDirty = true;
     }
 
-    void TransformComponent::SetRotation(const glm::quat& rot)
+    void TransformComponent::SetRotation(const glm::vec3& rot)
     {
         rotation = rot;
         transformDirty = true;
@@ -26,7 +26,7 @@ namespace hl
         {
             // Calculate transformation matrix
             glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), position);
-            glm::mat4 rotationMatrix = glm::mat4_cast(rotation);
+            glm::mat4 rotationMatrix = glm::mat4_cast(glm::quat(glm::vec3(glm::radians(rotation.x), glm::radians(rotation.y), glm::radians(rotation.z))));
             glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
 
             transformMatrix = translationMatrix * rotationMatrix * scaleMatrix;

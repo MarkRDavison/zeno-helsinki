@@ -36,11 +36,12 @@ namespace hl
 	}
 	EngineScene::~EngineScene()
 	{
-        if (_camera != nullptr)
+        for (auto& [name, camera] : _cameras)
         {
-            delete _camera;
-            _camera = nullptr;
+            delete camera;
         }
+
+        _cameras.clear();
 	}
 
 	void EngineScene::initialise(
@@ -124,7 +125,10 @@ namespace hl
 			}
 		}
 
-        _camera->notifyFramebufferChangeSize((uint32_t)swapChain._swapChainExtent.width, (uint32_t)swapChain._swapChainExtent.height);
+        for (auto& [name, camera] : _cameras)
+        {
+            camera->notifyFramebufferChangeSize((uint32_t)swapChain._swapChainExtent.width, (uint32_t)swapChain._swapChainExtent.height);
+        }        
 	}
 
 	void EngineScene::initialise(
@@ -307,7 +311,12 @@ namespace hl
 	void EngineScene::recreate(uint32_t width, uint32_t height)
 	{
 		_renderGraph->recreate(width, height);
-        _camera->notifyFramebufferChangeSize(width, height);
+
+
+        for (auto& [name, camera] : _cameras)
+        {
+            camera->notifyFramebufferChangeSize(width, height);
+        }
 	}
 	void EngineScene::updateAllDescriptorSets()
 	{
@@ -321,15 +330,38 @@ namespace hl
     {
         _pipelineDraws.insert({ pipelineName, pipelineDraw });
     }
+    std::size_t EngineScene::getCameraIndex(const std::string& cameraName) const
+    {
+        std::size_t idx = 0;
+        for (auto& [name, camera] : _cameras)
+        {
+            if (name == cameraName)
+            {
+                return idx;
+            }
+
+            idx++;
+        }
+
+        // TODO: ERROR?
+        return 0;
+    }
     void EngineScene::updateCameraUniformBuffer(VulkanUniformBuffer& uniformBuffer)
     {
-        CameraUniformBufferObject ubo{};
-        ubo.view = _camera->getViewMatrix();
-        ubo.proj = _camera->getProjectionMatrix();
+        std::size_t idx = 0;
+        for (auto& [name, camera] : _cameras)
+        {
+            CameraUniformBufferObject ubo{};
 
-        ubo.proj[1][1] *= -1;
+            ubo.view = camera->getViewMatrix();
+            ubo.proj = camera->getProjectionMatrix();
 
-        uniformBuffer.writeToBuffer(&ubo);
+            ubo.proj[1][1] *= -1;
+
+            uniformBuffer.writeToBuffer(&ubo, idx);
+
+            idx++;
+        }
     }
     void EngineScene::renderPipelineDraw(
         VkCommandBuffer commandBuffer,

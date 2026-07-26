@@ -43,7 +43,8 @@ namespace hl
                                         .binding = 0,
                                         .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                         .stage = "VERTEX",
-                                        .resource = cameraMatrixResourceId
+                                        .resource = cameraMatrixResourceId,
+                                        .count = MAX_CAMERAS
                                     },
                                     hl::DescriptorBinding
                                     {
@@ -102,7 +103,8 @@ namespace hl
                                         .binding = 0,
                                         .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                         .stage = "VERTEX",
-                                        .resource = cameraMatrixResourceId
+                                        .resource = cameraMatrixResourceId,
+                                        .count = MAX_CAMERAS
                                     },
                                     hl::DescriptorBinding
                                     {

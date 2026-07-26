@@ -333,7 +333,7 @@ namespace hl
 					resourceContext,
 					sizeof(CameraUniformBufferObject),
 					MAX_FRAMES_IN_FLIGHT,
-					1);
+					MAX_CAMERAS);
 			}
 		}
 	}

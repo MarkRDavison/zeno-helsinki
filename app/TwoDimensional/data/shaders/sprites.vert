@@ -5,6 +5,7 @@
 layout(push_constant) uniform PushConstants {
     mat4 model;
     vec2 size;
+    vec2 offset;
     int frameIndex;
 } pc; 
 
@@ -39,7 +40,7 @@ void main() {
 
     vec2 local = corners[ci]; 
 
-    vec2 pos2D = local * pc.size;
+    vec2 pos2D = local * pc.size + pc.offset;
 
     // Position in model space (Z = 0) 
     vec4 worldPos = pc.model * vec4(pos2D.x, pos2D.y, 0.0, 1.0); 

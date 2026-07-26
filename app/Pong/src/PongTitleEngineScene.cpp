@@ -23,7 +23,7 @@ namespace pong
 		EngineScene(engine),
 		_engineConfig(engineConfig)
 	{
-		_camera = new hl::Camera2D();
+        _cameras.insert({ "Default", new hl::Camera2D() });
 		_engine.getEventBus().AddListener(this);
 	}
 
