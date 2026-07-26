@@ -23,11 +23,12 @@ namespace sk
         _engineConfig(engineConfig)
     {
         // TODO: Better way of doing this...
-        _camera = new hl::Camera(
+
+        _cameras.insert({ "Default", new hl::Camera(
             glm::vec3(2.0f, 0.5f, -2.0f),
             glm::vec3(0.0f, 1.0f, 0.0f),
             135.0f,
-            -5.0f);
+            -5.0f) });
     }
 	void SkeletonEngineScene::initialise(
         const std::string& cameraMatrixResourceId,
@@ -359,7 +360,7 @@ namespace sk
                 e->HasTag("ROTATE"))
             {
                 auto transform = e->GetComponent<hl::TransformComponent>();
-                transform->SetRotation(glm::quat(glm::vec3(0.0, glm::radians(angle), 0.0)));
+                transform->SetRotation(glm::vec3(0.0, angle, 0.0f));
             }
         }
     }

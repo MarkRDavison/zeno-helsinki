@@ -1,19 +1,23 @@
 #include "Scenes/HurricaneGameEngineScene.hpp"
 #include "EntityPushConstantObject.hpp"
 #include <Components/EntityComponent.hpp>
-#include <helsinki/System/Infrastructure/Camera2D.hpp>
+#include <GameCamera.hpp>
+#include <UiCamera.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
+#include <helsinki/Engine/ECS/Components/KinematicComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/System/Utils/Xml.hpp>
 #include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
+#include <Systems/PlayerControlSystem.hpp>
 #include <GLFW/glfw3.h>
+
 
 namespace hur
 {
@@ -25,13 +29,13 @@ namespace hur
 		EngineScene(engine),
 		_engineConfig(engineConfig)
 	{
-		_camera = new hl::Camera2D();
+        _cameras.insert({ "Ui", new UiCamera() });
+        _cameras.insert({ "Game", new GameCamera() });
 		_engine.getEventBus().AddListener(this);
 	}
 	HurricaneGameEngineScene::~HurricaneGameEngineScene()
 	{
 		_engine.getEventBus().RemoveListener(this);
-
 	}
 
 	void HurricaneGameEngineScene::initialise(
@@ -84,7 +88,8 @@ namespace hur
                                         .binding = 0,
                                         .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                         .stage = "VERTEX",
-                                        .resource = cameraMatrixResourceId
+                                        .resource = cameraMatrixResourceId,
+                                        .count = MAX_CAMERAS
                                     },
                                     hl::DescriptorBinding
                                     {
@@ -202,7 +207,6 @@ namespace hur
             materialSystem,
             renderpasses);
 
-
         registerPipelineDraw(
             "sprite_pipeline",
             [&](hl::PipelineDrawData& pdd) -> void
@@ -226,7 +230,9 @@ namespace hur
                     {
                         .model = modelTransform,
                         .size = indexSizeData.second,
-                        .frameIndex = (int)indexSizeData.first
+                        .offset = glm::vec2(-indexSizeData.second.x * 0.5f, -indexSizeData.second.y * 0.5f),
+                        .frameIndex = (int)indexSizeData.first,
+                        .cameraIndex = (int)getCameraIndex("Game")
                     };
 
                     vkCmdPushConstants(
@@ -255,6 +261,11 @@ namespace hur
 
         setGameState(GameState::INIT);
 
+        _scene.addSystem(new PlayerControlSystem(
+            _engine.getInputManager(),
+            _engine.getEventBus(),
+            this->_scene));
+
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 	}
 
@@ -264,6 +275,10 @@ namespace hur
         {
             transitionFromInitToPlaying();
         }
+        else if (_state == GameState::PLAYING)
+        {
+            _scene.update(delta);
+        }
 	}
 
     void HurricaneGameEngineScene::transitionFromInitToPlaying()
@@ -272,7 +287,7 @@ namespace hur
         entity->AddTag("SPRITE");
         entity->AddTag("ENTITY");
         entity->AddTag("PLAYER");
-        entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(64.0f, 128.0f, 0.0f));
+        entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(128.0f, 128.0f, 0.0f));
         entity->AddComponent<hl::SpriteComponent>();
         entity->AddComponent<EntityComponent>()->SpriteName = "playerShip1_blue";
 

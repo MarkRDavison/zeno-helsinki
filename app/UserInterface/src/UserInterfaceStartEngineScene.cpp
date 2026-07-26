@@ -15,7 +15,7 @@ namespace ui
         _engineConfig(engineConfig),
         _uiRoot(engine.getInputManager())
     {
-        _camera = new hl::Camera2D();
+        _cameras.insert({ "Default", new hl::Camera2D() });
         _engine.getEventBus().AddListener(this);
         _engine.getEventBus().AddListener(&_uiRoot);
     }
@@ -73,7 +73,8 @@ namespace ui
                                             .binding = 0,
                                             .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                             .stage = "VERTEX",
-                                            .resource = cameraMatrixResourceId
+                                            .resource = cameraMatrixResourceId,
+                                            .count = MAX_CAMERAS
                                         }
                                     }
                                 }

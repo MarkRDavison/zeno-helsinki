@@ -30,10 +30,12 @@ layout(push_constant) uniform PushConstants {
     int pad[3];
 } pc; 
 
-layout(binding = 0) uniform UniformBufferObject { 
-    mat4 view; 
-    mat4 proj; 
-} ubo;
+
+layout(binding = 0) uniform CameraBuffer
+{
+    mat4 view;
+    mat4 proj;
+} ubo[4];
 
 layout(location = 0) in vec2 inPosition;
 layout(location = 1) in vec2 inTexCoord;
@@ -44,7 +46,7 @@ layout(location = 2) out vec4 textColor;
 
 void main()
 {
-    gl_Position = ubo.proj * ubo.view * pc.model * vec4(inPosition, 0.0, 1.0);
+    gl_Position = ubo[0].proj * ubo[0].view * pc.model * vec4(inPosition, 0.0, 1.0);
     fragTexCoord = inTexCoord;
     atlasIndex = pc.atlasIndex;
     textColor = pc.colour;

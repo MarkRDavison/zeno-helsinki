@@ -158,18 +158,34 @@ namespace hl
                     {
                         std::vector<VkWriteDescriptorSet> descriptorWrites;
 
-                        size_t bindingCount = 0;
+                        size_t imageInfoCount = 0;
+                        size_t bufferInfoCount = 0;
 
                         for (auto& ds : p.descriptorSets)
                         {
-                            bindingCount += ds.bindings.size();
+                            for (auto& b : ds.bindings)
+                            {
+                                if (b.type == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER")
+                                {
+                                    bufferInfoCount += 1;
+                                }
+                                else if (b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER" ||
+                                    b.type == "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC")
+                                {
+                                    bufferInfoCount += b.count;
+                                }
+                                else if (b.type == "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER")
+                                {
+                                    imageInfoCount += b.count;
+                                }
+                            }
                         }
 
                         std::vector<VkDescriptorImageInfo> imageInfos;
                         std::vector<VkDescriptorBufferInfo> bufferInfos;
 
-                        imageInfos.reserve(bindingCount);
-                        bufferInfos.reserve(bindingCount);
+                        imageInfos.reserve(imageInfoCount);
+                        bufferInfos.reserve(bufferInfoCount);
 
                         for (auto& ds : p.descriptorSets)
                         {
@@ -210,12 +226,17 @@ namespace hl
                                                 b.resource.value())
                                             ->getUniformBuffer(i);
 
-                                        bufferInfos.push_back(VkDescriptorBufferInfo
-                                            {
-                                                .buffer = ub._buffer._buffer,
-                                                .offset = 0,
-                                                .range = ub._size / ub._multiple
-                                            });
+                                        auto bufferInfoStart = bufferInfos.size();
+
+                                        for (uint32_t descriptorBufferIndex = 0; descriptorBufferIndex < b.count; ++descriptorBufferIndex)
+                                        {
+                                            bufferInfos.push_back(
+                                                VkDescriptorBufferInfo{
+                                                    .buffer = ub._buffer._buffer,
+                                                    .offset = descriptorBufferIndex * ub._size,
+                                                    .range = ub._size
+                                                });
+                                        }
 
                                         descriptorWrites.emplace_back(VkWriteDescriptorSet
                                             {
@@ -223,9 +244,9 @@ namespace hl
                                                 .dstSet = getDescriptorSet(r.name, p.name, i),
                                                 .dstBinding = b.binding,
                                                 .dstArrayElement = 0,
-                                                .descriptorCount = 1,
-                                                .descriptorType = RenderGraph::extractDescriptorType(b.type),
-                                                .pBufferInfo = &bufferInfos.back()
+                                                .descriptorCount = b.count,
+                                                .descriptorType = RenderGraph::extractDescriptorType(b.type),   
+                                                .pBufferInfo = &bufferInfos[bufferInfoStart]
                                             });
                                     }
                                     else if (b.type == "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER")

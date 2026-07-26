@@ -51,6 +51,8 @@ namespace hl
 
 		void registerPipelineDraw(const std::string& pipelineName, std::function<void(PipelineDrawData&)> pipelineDraw);
 
+		std::size_t getCameraIndex(const std::string& cameraName) const;
+
 	private:
 		void updateCameraUniformBuffer(VulkanUniformBuffer& uniformBuffer);
 
@@ -67,7 +69,7 @@ namespace hl
 		VulkanSwapChain* _swapChain;
 		ResourceManager* _resourceManager;
 		MaterialSystem* _materialSystem;
-		BaseCamera* _camera; // TODO: We may want multiple cameras
+		std::unordered_map<std::string, BaseCamera*> _cameras;
 
 	private:
 		std::vector<FrameResources> _frameResources;
