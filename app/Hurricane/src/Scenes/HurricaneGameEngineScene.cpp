@@ -294,7 +294,9 @@ namespace hur
         entity->AddTag("PLAYER");
         entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(128.0f, 128.0f, 0.0f));
         entity->AddComponent<hl::SpriteComponent>();
-        entity->AddComponent<EntityComponent>()->SpriteName = "playerShip1_blue";
+        auto sc = entity->AddComponent<EntityComponent>(); 
+        sc->SpriteName = "playerShip1_blue";
+        sc->Size = _spriteToIndexAndSize[sc->SpriteName].second;
 
         setGameState(GameState::PLAYING);
     }
