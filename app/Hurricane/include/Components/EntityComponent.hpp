@@ -11,6 +11,7 @@ namespace hur
 	{
 	public:
 		std::string SpriteName;
+		glm::vec2 Size;
 	private:
 
 	};
