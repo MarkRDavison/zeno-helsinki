@@ -29,6 +29,12 @@ namespace hl
 	{
 		_descriptorSets = descriptorSets;
 	}
+	void VulkanRenderGraphPipelineResources::addViewportInfo(ViewportMode mode, uint32_t width, uint32_t height)
+	{
+		_mode = mode;
+		_width = width;
+		_height = height;
+	}
 
 	VkDescriptorSet VulkanRenderGraphPipelineResources::getDescriptorSet(uint32_t index)
 	{

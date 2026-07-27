@@ -286,6 +286,8 @@ namespace hl
 
 							auto& pipeline = r->addPipeline(p.name);
 
+							pipeline.addViewportInfo(p.viewport.mode, p.viewport.width, p.viewport.height);
+
 							std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 
 							for (const auto& dsi : p.descriptorSets)
