@@ -21,10 +21,15 @@ namespace hl
 		void addPipelineLayout(VkPipelineLayout pipelineLayout);
 		void addPipeline(VkPipeline pipeline);
 		void addDescriptorSets(std::vector<VkDescriptorSet> descriptorSets);
+		void addViewportInfo(ViewportMode mode, uint32_t width, uint32_t height);
 
 		VkDescriptorSet getDescriptorSet(uint32_t index);
 		VkPipeline getPipeline() const;
 		VkPipelineLayout getPipelineLayout() const;
+
+		ViewportMode getViewportMode() const { return _mode; }
+		uint32_t getViewportWidth() const { return _width; }
+		uint32_t getViewportHeight() const { return _height; }
 
 		void destroy();
 
@@ -34,6 +39,9 @@ namespace hl
 		VkPipelineLayout _pipelineLayout{ VK_NULL_HANDLE };
 		VkPipeline _pipeline{ VK_NULL_HANDLE };
 		std::vector<VkDescriptorSet> _descriptorSets;
+		ViewportMode _mode{}; 
+		uint32_t _width;
+		uint32_t _height;
 	};
 
 }

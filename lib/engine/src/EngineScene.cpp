@@ -265,13 +265,78 @@ namespace hl
                     for (const auto& p : pg)
                     {
                         vkCmdBindPipeline(secondaryBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p->getPipeline());
+
+                        const auto viewportConfigWidth = p->getViewportWidth();
+                        const auto viewportConfigHeight = p->getViewportHeight();
+                        // TODO: Use them to change view port and scissor
+
+                        float viewportX = 0.0f;
+                        float viewportY = 0.0f;
+                        float viewportWidth = 0.0f;
+                        float viewportHeight = 0.0f;
+
+
+                        switch (p->getViewportMode())
+                        {
+                        case ViewportMode::FixedAspect:
+                            {
+                                const auto extent =
+                                    getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent);
+
+                                const float windowWidth = static_cast<float>(extent.width);
+                                const float windowHeight = static_cast<float>(extent.height);
+
+                                const auto windowAspectRatio =
+                                    windowWidth / windowHeight;
+
+                                const auto viewportAspectRatio =
+                                    static_cast<float>(viewportConfigWidth) /
+                                    static_cast<float>(viewportConfigHeight);
+
+                                if (windowAspectRatio > viewportAspectRatio)
+                                {
+                                    viewportHeight = windowHeight;
+                                    viewportWidth = viewportHeight * viewportAspectRatio;
+
+                                    const float unusedWidth = windowWidth - viewportWidth;
+
+                                    viewportX = unusedWidth / 2.0f;
+                                    viewportY = 0.0f;
+                                }
+                                else
+                                {
+                                    viewportWidth = windowWidth;
+                                    viewportHeight = viewportWidth / viewportAspectRatio;
+
+                                    const float unusedHeight = windowHeight - viewportHeight;
+
+                                    viewportX = 0.0f;
+                                    viewportY = unusedHeight / 2.0f;
+                                }
+                            }
+                            break;
+                        case ViewportMode::FixedResolution:
+                            throw std::runtime_error("TODO");
+                            break;
+                        case ViewportMode::Custom:
+                            throw std::runtime_error("TODO");
+                            break;
+                        case ViewportMode::Fill:
+                        default:
+                            viewportX = 0;
+                            viewportY = 0;
+                            viewportWidth = (float)getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent).width;
+                            viewportHeight = (float)getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent).height;
+                            break;
+                        }
+
                         {   //  TODO: This can be wasteful if nothing has changed.
                             VkViewport viewport
                             {
-                                .x = 0.0f,
-                                .y = 0.0f,
-                                .width = (float)getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent).width,
-                                .height = (float)getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent).height,
+                                .x = viewportX,
+                                .y = viewportY,
+                                .width = viewportWidth,
+                                .height = viewportHeight,
                                 .minDepth = 0.0f,
                                 .maxDepth = 1.0f
                             };
@@ -279,8 +344,16 @@ namespace hl
 
                             VkRect2D scissor
                             {
-                                .offset = { 0, 0 } ,
-                                .extent = getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent)
+                                .offset =
+                                {
+                                    static_cast<int32_t>(viewportX),
+                                    static_cast<int32_t>(viewportY)
+                                },
+                                .extent =
+                                {
+                                    static_cast<uint32_t>(viewportWidth),
+                                    static_cast<uint32_t>(viewportHeight)
+                                }
                             };
                             vkCmdSetScissor(secondaryBuffer, 0, 1, &scissor);
                         }

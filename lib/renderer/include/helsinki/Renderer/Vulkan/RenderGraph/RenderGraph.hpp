@@ -88,6 +88,21 @@ namespace hl
     {
         VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
         VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    }; 
+    
+    enum class ViewportMode
+    {
+        Fill,
+        FixedAspect, 
+        FixedResolution, 
+        Custom
+    };
+    
+    struct ViewportInfo
+    {
+        ViewportMode mode{ ViewportMode::Fill };
+        uint32_t width;
+        uint32_t height;
     };
 
     struct PipelineInfo
@@ -101,6 +116,7 @@ namespace hl
         RasterState rasterState;
         bool enableBlending = false;
         uint32_t pushConstantSize;
+        ViewportInfo viewport;
     };
 
     struct RenderpassInfo

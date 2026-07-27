@@ -6,7 +6,8 @@ namespace hur
 	{
 		HurricaneConstants() = delete;
 	public:
-
+		static const constexpr int Width = 800;
+		static const constexpr int Height = 600;
 	};
 
 	enum class GameState

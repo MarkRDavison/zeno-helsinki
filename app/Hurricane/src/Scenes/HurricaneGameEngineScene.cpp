@@ -113,7 +113,12 @@ namespace hur
                             .cullMode = VK_CULL_MODE_NONE
                         },
                         .enableBlending = true,
-                        .pushConstantSize = sizeof(hl::SpritePushConstantObject)
+                        .pushConstantSize = sizeof(hl::SpritePushConstantObject),
+                        .viewport = {
+                            .mode = hl::ViewportMode::FixedAspect,
+                            .width = 800,
+                            .height = 600,
+                        }
                     }
                 }
             }
