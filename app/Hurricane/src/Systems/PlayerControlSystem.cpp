@@ -1,5 +1,6 @@
 #include <Systems/PlayerControlSystem.hpp>
 #include <Components/EntityComponent.hpp>
+#include <Events/ShootEvent.hpp>
 #include <HurricaneConstants.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <GLFW/glfw3.h>
@@ -22,19 +23,27 @@ namespace hur
 
 	void PlayerControlSystem::update(float delta)
 	{
-		auto b = _scene.getEntity("Player");
+		auto player = _scene.getEntity("Player");
 
-		if (b == nullptr)
+		if (player == nullptr)
 		{
 			return;
 		}
 
-		auto tc = b->GetComponent<hl::TransformComponent>();
-		auto sc = b->GetComponent<EntityComponent>();
+		auto tc = player->GetComponent<hl::TransformComponent>();
+		auto sc = player->GetComponent<EntityComponent>();
 
 		glm::vec2 movement{};
 
 		const float SPEED = 512.0f;
+
+		if (_inputManager.isKeyReleased(GLFW_KEY_SPACE))
+		{
+			// TODO: Id/lookup?  Entity may die ...
+			ShootEvent shootEvent(player);
+			std::cout << "Publishing shoot event for player" << std::endl;
+			_eventBus.PublishEvent(shootEvent);
+		}
 
 		if (_inputManager.isKeyDown(GLFW_KEY_A))
 		{
