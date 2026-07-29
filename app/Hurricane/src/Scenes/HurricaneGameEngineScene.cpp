@@ -16,6 +16,7 @@
 #include <helsinki/System/Utils/Xml.hpp>
 #include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
 #include <Systems/PlayerControlSystem.hpp>
+#include <Systems/WeaponFiringSystem.hpp>
 #include <GLFW/glfw3.h>
 
 
@@ -268,6 +269,10 @@ namespace hur
 
         _scene.addSystem(new PlayerControlSystem(
             _engine.getInputManager(),
+            _engine.getEventBus(),
+            this->_scene));
+
+        _scene.addSystem(new WeaponFiringSystem(
             _engine.getEventBus(),
             this->_scene));
 

@@ -41,7 +41,6 @@ namespace hur
 		{
 			// TODO: Id/lookup?  Entity may die ...
 			ShootEvent shootEvent(player);
-			std::cout << "Publishing shoot event for player" << std::endl;
 			_eventBus.PublishEvent(shootEvent);
 		}
 
