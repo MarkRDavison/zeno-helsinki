@@ -8,14 +8,14 @@ namespace hur
 	class ShootEvent : public hl::Event
 	{
 	public:
-		ShootEvent(hl::Entity* shooter) : _shooter(shooter) {}
+		ShootEvent(int shooterId) : _shooterId(shooterId) {}
 
-		hl::Entity* getShooter() const { return _shooter; }
+		int getShooterId() const { return _shooterId; }
 
 		DEFINE_EVENT_TYPE(ShootEvent)
 
 	private:
-		hl::Entity* _shooter;
+		int _shooterId;
 	};
 
 }

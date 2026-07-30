@@ -12,6 +12,10 @@ namespace hl
     class Entity
     {
     public:
+        Entity(int id) : Id(id) {}
+
+        const int Id;
+
         void setName(const std::string& name) { _name = name; }
         const std::string& getName() const { return _name; }
 

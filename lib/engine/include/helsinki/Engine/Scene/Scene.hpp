@@ -4,6 +4,7 @@
 #include <helsinki/Engine/ECS/System.hpp>
 #include <algorithm>
 #include <iterator>
+#include <unordered_set>
 
 namespace hl
 {
@@ -27,11 +28,16 @@ namespace hl
 		}
 
 	public:
+		Entity* addEntity();
 		Entity* addEntity(const std::string& name);
 
 		Entity* getEntity(const std::string& name);
+		Entity* getEntity(int id);
 
 		void removeEntity(const std::string& name);
+		void removeEntity(int id);
+
+		void update();
 
 		void addSystem(System* system);
 
@@ -72,8 +78,10 @@ namespace hl
 		void update(float delta);
 
 	private:
+		int _nextId = 1;
 		std::vector<std::unique_ptr<Entity>> _entities;
 		std::vector<std::unique_ptr<System>> _systems;
+		std::unordered_set<int> _entitiesToRemove;
 	};
 
 }

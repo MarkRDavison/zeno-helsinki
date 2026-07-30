@@ -156,6 +156,7 @@ namespace hl
         update(currentFrame, delta);
         updateCameraUniformBuffer(_cameraMatrixPushConstantHandle.Get()->getUniformBuffer(currentFrame));
         _engine.getInputManager().updateEndOfFrame();
+        _scene.update();
     }
 	void EngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)
 	{
