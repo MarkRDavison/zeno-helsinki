@@ -1,6 +1,7 @@
 #include <Systems/CollisionResolutionSystem.hpp>
 #include <Events/CollisionEvent.hpp>
-#include <iostream>
+#include <Events/EntityDeathEvent.hpp>
+#include <Components/HealthComponent.hpp>
 
 namespace hur
 {
@@ -36,22 +37,41 @@ namespace hur
 				return;
 			}
 
-			auto projectileIsA = entityA->HasTag("PROJECTILE");
+			auto projectileIsA = entityA->HasTag("PROJECTILE"); // TODO: CONSTANTS
 			auto projectileIsB = entityB->HasTag("PROJECTILE");
 
 			if (projectileIsA)
 			{
 				_scene.removeEntity(entityA->Id);
 
-				// TODO: DAMAGE/HEALTH
-				_scene.removeEntity(entityB->Id);
+				auto bHealth = entityB->GetComponent<HealthComponent>();
+
+				const auto currentBHealth = bHealth->getCurrentHealth();
+				const int damage = 3;
+
+				bHealth->setCurrentHealth(std::max(currentBHealth - damage, 0));
+
+				if (bHealth->getCurrentHealth() <= 0)
+				{
+					_eventBus.PublishEvent(EntityDeathEvent(entityB->Id));
+				}
+
 			}
 			else if (projectileIsB)
 			{
 				_scene.removeEntity(entityB->Id);
 
-				// TODO: DAMAGE/HEALTH
-				_scene.removeEntity(entityA->Id);
+				auto aHealth = entityA->GetComponent<HealthComponent>();
+
+				const auto currentAHealth = aHealth->getCurrentHealth();
+				const int damage = 3;
+
+				aHealth->setCurrentHealth(std::max(currentAHealth - damage, 0));
+
+				if (aHealth->getCurrentHealth() <= 0)
+				{
+					_eventBus.PublishEvent(EntityDeathEvent(entityA->Id));
+				}
 			}
 			else
 			{
