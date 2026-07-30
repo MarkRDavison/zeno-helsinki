@@ -1,7 +1,6 @@
 #pragma once
 
 #include <helsinki/System/Events/Event.hpp>
-#include <helsinki/Engine/ECS/Entity.hpp>
 
 namespace hur
 {

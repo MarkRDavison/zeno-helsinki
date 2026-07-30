@@ -1,6 +1,7 @@
 #include "Scenes/HurricaneGameEngineScene.hpp"
 #include "EntityPushConstantObject.hpp"
 #include <Components/EntityComponent.hpp>
+#include <Components/CollisionComponent.hpp>
 #include <GameCamera.hpp>
 #include <UiCamera.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
@@ -18,6 +19,8 @@
 #include <Systems/PlayerControlSystem.hpp>
 #include <Systems/WeaponFiringSystem.hpp>
 #include <Systems/ProjectileUpdateSystem.hpp>
+#include <Systems/CollisionDetectionSystem.hpp>
+#include <Systems/CollisionResolutionSystem.hpp>
 #include <GLFW/glfw3.h>
 
 
@@ -281,6 +284,14 @@ namespace hur
             _engine.getEventBus(),
             this->_scene));
 
+        _scene.addSystem(new CollisionDetectionSystem(
+            _engine.getEventBus(),
+            this->_scene));
+
+        _scene.addSystem(new CollisionResolutionSystem(
+            _engine.getEventBus(),
+            this->_scene));
+
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 	}
 
@@ -298,18 +309,43 @@ namespace hur
 
     void HurricaneGameEngineScene::transitionFromInitToPlaying()
     {
-        auto entity = _scene.addEntity("Player");
-        entity->AddTag("SPRITE");
-        entity->AddTag("ENTITY");
-        entity->AddTag("PLAYER");
-        auto sc = entity->AddComponent<EntityComponent>();
-        sc->SpriteName = "playerShip1_blue";
-        sc->Size = _spriteToIndexAndSize[sc->SpriteName].second;
-        entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
-            HurricaneConstants::Width / 2.0f, 
-            HurricaneConstants::Height - sc->Size.y / 2.0f, 
-            0.0f));
-        entity->AddComponent<hl::SpriteComponent>();
+        {
+            auto entity = _scene.addEntity("Player");
+            entity->AddTag("SPRITE");
+            entity->AddTag("ENTITY");
+            entity->AddTag("COLLIDER");
+            entity->AddTag("PLAYER");
+            auto sc = entity->AddComponent<EntityComponent>();
+            sc->SpriteName = "playerShip1_blue";
+            sc->Size = _spriteToIndexAndSize[sc->SpriteName].second;
+            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
+                HurricaneConstants::Width / 2.0f,
+                HurricaneConstants::Height - sc->Size.y / 2.0f,
+                0.0f));
+            entity->AddComponent<hl::SpriteComponent>();
+            auto cc = entity->AddComponent<CollisionComponent>();
+            cc->layer = CollisionLayer::Player;
+            cc->mask = CollisionLayer::EnemyBullet;
+        }
+
+        {
+            auto enemy = _scene.addEntity();
+            enemy->AddTag("SPRITE");
+            enemy->AddTag("ENTITY");
+            enemy->AddTag("COLLIDER");
+            enemy->AddTag("ENEMY");
+            enemy->AddComponent<hl::SpriteComponent>();
+            auto cc = enemy->AddComponent<CollisionComponent>();
+            cc->layer = CollisionLayer::Enemy;
+            cc->mask = CollisionLayer::PlayerBullet;
+            auto sc = enemy->AddComponent<EntityComponent>();
+            sc->SpriteName = "enemyBlack1";
+            sc->Size = _spriteToIndexAndSize[sc->SpriteName].second;
+            enemy->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
+                HurricaneConstants::Width / 2.0f,
+                sc->Size.y / 2.0f + 16.0f,
+                0.0f));
+        }
 
         setGameState(GameState::PLAYING);
     }
