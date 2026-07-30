@@ -27,6 +27,7 @@ namespace hur
 
 	void CollisionResolutionSystem::OnEvent(const hl::Event& event)
 	{
+		// TODO: What happens if projectile hits multiple enemies in one frame?
 		if (auto ce = dynamic_cast<const CollisionEvent*>(&event))
 		{
 			auto entityA = _scene.getEntity(ce->getEntityAId());

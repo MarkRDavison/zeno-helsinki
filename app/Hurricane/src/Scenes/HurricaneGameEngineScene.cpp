@@ -3,6 +3,7 @@
 #include <Components/EntityComponent.hpp>
 #include <Components/CollisionComponent.hpp>
 #include <Components/HealthComponent.hpp>
+#include <Events/EnemySpawnEvent.hpp>
 #include <GameCamera.hpp>
 #include <UiCamera.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
@@ -23,6 +24,7 @@
 #include <Systems/CollisionDetectionSystem.hpp>
 #include <Systems/CollisionResolutionSystem.hpp>
 #include <Systems/EntityDeathSystem.hpp>
+#include <Systems/EnemySpawnSystem.hpp>
 #include <GLFW/glfw3.h>
 
 
@@ -173,7 +175,7 @@ namespace hur
                 const auto h = std::stoi(subTexture->attributes["height"]);
 
                 frameData.push_back({ .uvRect = glm::vec4((float)x, (float)y, (float)(x + w), (float)(y + h)) / TEX_SIZE });
-                _spriteToIndexAndSize.insert({ name, {idx, glm::vec2((float)w, (float)h)}});
+                _resourceService.addSpriteIndexAndSize(name, idx, glm::vec2((float)w, (float)h));
 
                 idx++;
             }
@@ -236,14 +238,14 @@ namespace hur
 
                     auto modelTransform = transform->GetTransformMatrix();
 
-                    const auto& indexSizeData = _spriteToIndexAndSize[ec->SpriteName];
+                    const auto size = _resourceService.getSize(ec->SpriteName);
 
                     auto pc = hl::SpritePushConstantObject
                     {
                         .model = modelTransform,
-                        .size = indexSizeData.second,
-                        .offset = glm::vec2(-indexSizeData.second.x * 0.5f, -indexSizeData.second.y * 0.5f),
-                        .frameIndex = (int)indexSizeData.first,
+                        .size = size,
+                        .offset = glm::vec2(-size.x * 0.5f, -size.y * 0.5f),
+                        .frameIndex = (int)_resourceService.getIndex(ec->SpriteName),
                         .cameraIndex = (int)getCameraIndex("Game")
                     };
 
@@ -298,6 +300,11 @@ namespace hur
             _engine.getEventBus(),
             this->_scene));
 
+        _scene.addSystem(new EnemySpawnSystem(
+            _engine.getEventBus(),
+            this->_scene,
+            _resourceService));
+        
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 	}
 
@@ -323,7 +330,7 @@ namespace hur
             entity->AddTag("PLAYER");
             auto sc = entity->AddComponent<EntityComponent>();
             sc->SpriteName = "playerShip1_blue";
-            sc->Size = _spriteToIndexAndSize[sc->SpriteName].second;
+            sc->Size = _resourceService.getSize(sc->SpriteName);
             entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
                 HurricaneConstants::Width / 2.0f,
                 HurricaneConstants::Height - sc->Size.y / 2.0f,
@@ -335,25 +342,7 @@ namespace hur
             cc->mask = CollisionLayer::EnemyBullet;
         }
 
-        {
-            auto enemy = _scene.addEntity();
-            enemy->AddTag("SPRITE");
-            enemy->AddTag("ENTITY");
-            enemy->AddTag("COLLIDER");
-            enemy->AddTag("ENEMY");
-            enemy->AddComponent<hl::SpriteComponent>();
-            enemy->AddComponent< HealthComponent>(10, 10);
-            auto cc = enemy->AddComponent<CollisionComponent>();
-            cc->layer = CollisionLayer::Enemy;
-            cc->mask = CollisionLayer::PlayerBullet;
-            auto sc = enemy->AddComponent<EntityComponent>();
-            sc->SpriteName = "enemyBlack1";
-            sc->Size = _spriteToIndexAndSize[sc->SpriteName].second;
-            enemy->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
-                HurricaneConstants::Width / 2.0f,
-                sc->Size.y / 2.0f + 16.0f,
-                0.0f));
-        }
+        _engine.getEventBus().PublishEvent(EnemySpawnEvent());
 
         setGameState(GameState::PLAYING);
     }
@@ -366,7 +355,7 @@ namespace hur
 
             if (code == GLFW_KEY_ENTER)
             {
-                std::cout << "ENTER PRESSED!" << std::endl;
+                _engine.getEventBus().PublishEvent(EnemySpawnEvent());
             }
         }
 		else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
