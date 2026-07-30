@@ -2,6 +2,14 @@
 
 namespace hl
 {
+	Entity* Scene::addEntity()
+	{
+		_entities.emplace_back(std::make_unique<Entity>(_nextId++));
+
+		auto& ePtr = _entities.back();
+
+		return ePtr.get();
+	}
 
 	Entity* Scene::addEntity(const std::string& name)
 	{
@@ -10,12 +18,9 @@ namespace hl
 			return e;
 		}
 
-		_entities.emplace_back(std::make_unique<Entity>());
-		
-		auto& ePtr = _entities.back();
-		ePtr->setName(name);
-
-		return ePtr.get();
+		auto e = addEntity();
+		e->setName(name);
+		return e;
 	}
 
 	Entity* Scene::getEntity(const std::string& name)
@@ -36,14 +41,50 @@ namespace hl
 		return (*it).get();
 	}
 
+	Entity* Scene::getEntity(int id)
+	{
+		auto it = std::find_if(
+			_entities.begin(),
+			_entities.end(),
+			[&id](const std::unique_ptr<Entity>& e)
+			{
+				return id == e->Id;
+			});
+
+		if (it == _entities.end())
+		{
+			return nullptr;
+		}
+
+		return (*it).get();
+	}
+
 	void Scene::removeEntity(const std::string& name)
 	{
 		if (auto e = getEntity(name); e != nullptr)
 		{
+			_entitiesToRemove.insert(e->Id);
+		}
+	}
+
+	void Scene::removeEntity(int id)
+	{
+		if (auto e = getEntity(id); e != nullptr)
+		{
+			_entitiesToRemove.insert(id);
+		}
+	}
+
+	void Scene::update()
+	{
+		if (!_entitiesToRemove.empty())
+		{
 			std::erase_if(_entities, [&](const std::unique_ptr<Entity>& e)
 				{
-					return e->getName() == name;
+					return _entitiesToRemove.contains(e->Id);
 				});
+
+			_entitiesToRemove.clear();
 		}
 	}
 

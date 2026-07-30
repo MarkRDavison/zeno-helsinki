@@ -17,6 +17,7 @@
 #include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
 #include <Systems/PlayerControlSystem.hpp>
 #include <Systems/WeaponFiringSystem.hpp>
+#include <Systems/ProjectileUpdateSystem.hpp>
 #include <GLFW/glfw3.h>
 
 
@@ -117,8 +118,8 @@ namespace hur
                         .pushConstantSize = sizeof(hl::SpritePushConstantObject),
                         .viewport = {
                             .mode = hl::ViewportMode::FixedAspect,
-                            .width = 800,
-                            .height = 600,
+                            .width = HurricaneConstants::Width,
+                            .height = HurricaneConstants::Height,
                         }
                     }
                 }
@@ -276,6 +277,10 @@ namespace hur
             _engine.getEventBus(),
             this->_scene));
 
+        _scene.addSystem(new ProjectileUpdateSystem(
+            _engine.getEventBus(),
+            this->_scene));
+
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 	}
 
@@ -297,11 +302,14 @@ namespace hur
         entity->AddTag("SPRITE");
         entity->AddTag("ENTITY");
         entity->AddTag("PLAYER");
-        entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(128.0f, 128.0f, 0.0f));
-        entity->AddComponent<hl::SpriteComponent>();
-        auto sc = entity->AddComponent<EntityComponent>(); 
+        auto sc = entity->AddComponent<EntityComponent>();
         sc->SpriteName = "playerShip1_blue";
         sc->Size = _spriteToIndexAndSize[sc->SpriteName].second;
+        entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
+            HurricaneConstants::Width / 2.0f, 
+            HurricaneConstants::Height - sc->Size.y / 2.0f, 
+            0.0f));
+        entity->AddComponent<hl::SpriteComponent>();
 
         setGameState(GameState::PLAYING);
     }

@@ -35,12 +35,11 @@ namespace hur
 
 		glm::vec2 movement{};
 
-		const float SPEED = 512.0f;
+		const float SPEED = 256.0f;
 
 		if (_inputManager.isKeyReleased(GLFW_KEY_SPACE))
 		{
-			// TODO: Id/lookup?  Entity may die ...
-			ShootEvent shootEvent(player);
+			ShootEvent shootEvent(player->Id);
 			_eventBus.PublishEvent(shootEvent);
 		}
 
