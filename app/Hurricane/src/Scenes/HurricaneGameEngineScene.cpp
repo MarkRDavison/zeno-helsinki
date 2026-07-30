@@ -346,7 +346,7 @@ namespace hur
             entity->AddComponent< HealthComponent>(10, 10);
             auto cc = entity->AddComponent<CollisionComponent>();
             cc->layer = CollisionLayer::Player;
-            cc->mask = CollisionLayer::EnemyBullet;
+            cc->mask = CollisionLayer::EnemyBullet | CollisionLayer::Enemy;
         }
 
         _engine.getEventBus().PublishEvent(EnemySpawnEvent());

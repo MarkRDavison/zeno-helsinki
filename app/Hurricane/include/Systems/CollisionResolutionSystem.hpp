@@ -3,6 +3,7 @@
 #include <helsinki/Engine/ECS/System.hpp>
 #include <helsinki/Engine/Scene/Scene.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
+#include <Events/EntityDeathEvent.hpp>
 
 namespace hur
 {
@@ -16,6 +17,9 @@ namespace hur
 		~CollisionResolutionSystem();
 		void update(float delta) override;
 		void OnEvent(const hl::Event& event) override;
+
+	private:
+		void applyDamageToEntity(hl::Entity* entity, int damage, DeathType type);
 
 	private:
 		hl::EventBus& _eventBus;
