@@ -5,6 +5,7 @@
 #include <Components/HealthComponent.hpp>
 #include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
+#include <helsinki/Engine/ECS/Components/KinematicComponent.hpp>
 #include <HurricaneConstants.hpp>
 
 namespace hur
@@ -48,6 +49,7 @@ namespace hur
 		enemy->AddTag("ENEMY");
 		enemy->AddComponent<hl::SpriteComponent>();
 		enemy->AddComponent< HealthComponent>(10, 10);
+		enemy->AddComponent<hl::KinematicComponent>()->velocity = glm::vec3(0.0f, 128.0f, 0.0f);
 		auto cc = enemy->AddComponent<CollisionComponent>();
 		cc->layer = CollisionLayer::Enemy;
 		cc->mask = CollisionLayer::PlayerBullet;
