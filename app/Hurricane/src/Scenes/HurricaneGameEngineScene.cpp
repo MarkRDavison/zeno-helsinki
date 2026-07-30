@@ -25,6 +25,7 @@
 #include <Systems/CollisionResolutionSystem.hpp>
 #include <Systems/EntityDeathSystem.hpp>
 #include <Systems/EnemySpawnSystem.hpp>
+#include <Systems/EnemyUpdateSystem.hpp>
 #include <GLFW/glfw3.h>
 
 
@@ -288,6 +289,10 @@ namespace hur
             _engine.getEventBus(),
             this->_scene));
 
+        _scene.addSystem(new EnemyUpdateSystem(
+            _engine.getEventBus(),
+            this->_scene));
+
         _scene.addSystem(new CollisionDetectionSystem(
             _engine.getEventBus(),
             this->_scene));
@@ -304,6 +309,8 @@ namespace hur
             _engine.getEventBus(),
             this->_scene,
             _resourceService));
+
+        
         
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 	}
