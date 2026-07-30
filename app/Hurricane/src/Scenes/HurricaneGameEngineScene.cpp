@@ -2,6 +2,7 @@
 #include "EntityPushConstantObject.hpp"
 #include <Components/EntityComponent.hpp>
 #include <Components/CollisionComponent.hpp>
+#include <Components/HealthComponent.hpp>
 #include <GameCamera.hpp>
 #include <UiCamera.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
@@ -21,6 +22,7 @@
 #include <Systems/ProjectileUpdateSystem.hpp>
 #include <Systems/CollisionDetectionSystem.hpp>
 #include <Systems/CollisionResolutionSystem.hpp>
+#include <Systems/EntityDeathSystem.hpp>
 #include <GLFW/glfw3.h>
 
 
@@ -292,6 +294,10 @@ namespace hur
             _engine.getEventBus(),
             this->_scene));
 
+        _scene.addSystem(new EntityDeathSystem(
+            _engine.getEventBus(),
+            this->_scene));
+
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 	}
 
@@ -323,6 +329,7 @@ namespace hur
                 HurricaneConstants::Height - sc->Size.y / 2.0f,
                 0.0f));
             entity->AddComponent<hl::SpriteComponent>();
+            entity->AddComponent< HealthComponent>(10, 10);
             auto cc = entity->AddComponent<CollisionComponent>();
             cc->layer = CollisionLayer::Player;
             cc->mask = CollisionLayer::EnemyBullet;
@@ -335,6 +342,7 @@ namespace hur
             enemy->AddTag("COLLIDER");
             enemy->AddTag("ENEMY");
             enemy->AddComponent<hl::SpriteComponent>();
+            enemy->AddComponent< HealthComponent>(10, 10);
             auto cc = enemy->AddComponent<CollisionComponent>();
             cc->layer = CollisionLayer::Enemy;
             cc->mask = CollisionLayer::PlayerBullet;
