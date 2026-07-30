@@ -52,7 +52,7 @@ namespace hur
 		enemy->AddComponent<hl::KinematicComponent>()->velocity = glm::vec3(0.0f, 128.0f, 0.0f);
 		auto cc = enemy->AddComponent<CollisionComponent>();
 		cc->layer = CollisionLayer::Enemy;
-		cc->mask = CollisionLayer::PlayerBullet;
+		cc->mask = CollisionLayer::PlayerBullet | CollisionLayer::Player;
 		auto sc = enemy->AddComponent<EntityComponent>();
 		sc->SpriteName = "enemyBlack1";
 		sc->Size = _resourceService.getSize(sc->SpriteName);

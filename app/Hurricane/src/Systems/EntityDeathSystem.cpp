@@ -27,8 +27,18 @@ namespace hur
 	{
 		if (auto ede = dynamic_cast<const EntityDeathEvent*>(&event))
 		{
+			auto entity = _scene.getEntity(ede->getId());
+
+			const auto deathType = ede->getDeathType();
+
+			if (entity->HasTag("PLAYER")) // TODO: CONSTANT
+			{
+				// TODO: WHAT DO WE DO NOW?
+				// STATE CHANGE EVENT?
+			}
+
 			// TODO: Other on death stuff, drops, decrease lives etc...
-			_scene.removeEntity(ede->getId());
+			_scene.removeEntity(entity->Id);
 		}
 	}
 }

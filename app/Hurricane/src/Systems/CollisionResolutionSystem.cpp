@@ -1,6 +1,5 @@
 #include <Systems/CollisionResolutionSystem.hpp>
 #include <Events/CollisionEvent.hpp>
-#include <Events/EntityDeathEvent.hpp>
 #include <Components/HealthComponent.hpp>
 
 namespace hur
@@ -45,39 +44,54 @@ namespace hur
 			{
 				_scene.removeEntity(entityA->Id);
 
-				auto bHealth = entityB->GetComponent<HealthComponent>();
-
-				const auto currentBHealth = bHealth->getCurrentHealth();
 				const int damage = 3;
-
-				bHealth->setCurrentHealth(std::max(currentBHealth - damage, 0));
-
-				if (bHealth->getCurrentHealth() <= 0)
-				{
-					_eventBus.PublishEvent(EntityDeathEvent(entityB->Id));
-				}
+				applyDamageToEntity(entityB, damage, DeathType::DROP);
 
 			}
 			else if (projectileIsB)
 			{
 				_scene.removeEntity(entityB->Id);
 
-				auto aHealth = entityA->GetComponent<HealthComponent>();
-
-				const auto currentAHealth = aHealth->getCurrentHealth();
 				const int damage = 3;
-
-				aHealth->setCurrentHealth(std::max(currentAHealth - damage, 0));
-
-				if (aHealth->getCurrentHealth() <= 0)
-				{
-					_eventBus.PublishEvent(EntityDeathEvent(entityA->Id));
-				}
+				applyDamageToEntity(entityA, damage, DeathType::DROP);
 			}
 			else
 			{
-				return;
+				const auto aIsPlayer = entityA->HasTag("PLAYER");// TODO: CONSTANT
+				const auto bIsPlayer = entityB->HasTag("PLAYER");// TODO: CONSTANT
+
+				const auto aIsEnemy = entityA->HasTag("ENEMY");// TODO: CONSTANT
+				const auto bIsEnemy = entityB->HasTag("ENEMY");// TODO: CONSTANT
+
+				if (aIsPlayer && bIsEnemy)
+				{
+					const int damage = 5;
+					applyDamageToEntity(entityA, damage, DeathType::NO_DROP); // PLAYER DOESNT DROP
+
+					_eventBus.PublishEvent(EntityDeathEvent(entityB->Id, DeathType::NO_DROP));
+				}
+				else if (bIsPlayer && aIsEnemy)
+				{
+					const int damage = 5;
+					applyDamageToEntity(entityB, damage, DeathType::NO_DROP); // PLAYER DOESNT DROP
+
+					_eventBus.PublishEvent(EntityDeathEvent(entityA->Id, DeathType::NO_DROP));
+				}
 			}
+		}
+	}
+
+	void CollisionResolutionSystem::applyDamageToEntity(hl::Entity* entity, int damage, DeathType type)
+	{
+		auto aHealth = entity->GetComponent<HealthComponent>();
+
+		const auto currentAHealth = aHealth->getCurrentHealth();
+
+		aHealth->setCurrentHealth(std::max(currentAHealth - damage, 0));
+
+		if (aHealth->getCurrentHealth() <= 0)
+		{
+			_eventBus.PublishEvent(EntityDeathEvent(entity->Id, type));
 		}
 	}
 }

@@ -19,9 +19,22 @@ namespace hur
 	{
 	public:
         // TODO: Store AABB here?
-        CollisionLayer layer;
-        CollisionLayer mask;
+        CollisionLayer layer{ CollisionLayer::None };
+        CollisionLayer mask{ CollisionLayer::None };
+
 	};
+
+    constexpr CollisionLayer operator|(CollisionLayer lhs, CollisionLayer rhs)
+    {
+        return static_cast<CollisionLayer>(
+            static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+    }
+
+    constexpr CollisionLayer operator&(CollisionLayer lhs, CollisionLayer rhs)
+    {
+        return static_cast<CollisionLayer>(
+            static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+    }
 
     static bool ShouldTest(const CollisionComponent& a, const CollisionComponent& b)
     {
