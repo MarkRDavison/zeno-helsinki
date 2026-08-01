@@ -3,6 +3,7 @@
 #include <helsinki/Engine/ECS/System.hpp>
 #include <helsinki/Engine/Scene/Scene.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
+#include <Services/GameStateService.hpp>
 
 namespace hur
 {
