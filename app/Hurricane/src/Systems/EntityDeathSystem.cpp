@@ -1,5 +1,6 @@
 #include <Systems/EntityDeathSystem.hpp>
 #include <Events/EntityDeathEvent.hpp>
+#include <Events/PlayerLifeLostEvent.hpp>
 
 namespace hur
 {
@@ -13,6 +14,7 @@ namespace hur
 	{
 		_eventBus.AddListener(this);
 	}
+
 	EntityDeathSystem::~EntityDeathSystem()
 	{
 		_eventBus.RemoveListener(this);
@@ -23,6 +25,7 @@ namespace hur
 
 	}
 
+	// TODO: Make systems that dont actually update services???
 	void EntityDeathSystem::OnEvent(const hl::Event& event)
 	{
 		if (auto ede = dynamic_cast<const EntityDeathEvent*>(&event))
@@ -33,8 +36,7 @@ namespace hur
 
 			if (entity->HasTag("PLAYER")) // TODO: CONSTANT
 			{
-				// TODO: WHAT DO WE DO NOW?
-				// STATE CHANGE EVENT?
+				_eventBus.PublishEvent(PlayerLifeLostEvent());
 			}
 
 			// TODO: Other on death stuff, drops, decrease lives etc...

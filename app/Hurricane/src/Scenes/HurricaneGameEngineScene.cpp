@@ -4,6 +4,7 @@
 #include <Components/CollisionComponent.hpp>
 #include <Components/HealthComponent.hpp>
 #include <Events/EnemySpawnEvent.hpp>
+#include <Events/PlayerLifeLostEvent.hpp>
 #include <GameCamera.hpp>
 #include <UiCamera.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
@@ -310,8 +311,6 @@ namespace hur
             this->_scene,
             _resourceService));
 
-        
-        
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 	}
 
@@ -351,6 +350,8 @@ namespace hur
 
         _engine.getEventBus().PublishEvent(EnemySpawnEvent());
 
+        _gameStateService.setLivesRemaining(3);
+
         setGameState(GameState::PLAYING);
     }
 
@@ -365,10 +366,26 @@ namespace hur
                 _engine.getEventBus().PublishEvent(EnemySpawnEvent());
             }
         }
-		else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
-		{
-			handleWindowSizeChange(wre->GetWidth(), wre->GetHeight());
-		}
+        else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
+        {
+            handleWindowSizeChange(wre->GetWidth(), wre->GetHeight());
+        }
+        else if (auto plle = dynamic_cast<const PlayerLifeLostEvent*>(&event))
+        {
+            const auto lives = _gameStateService.getLivesRemaining() - 1;
+
+            if (lives < 0)
+            {
+                setGameState(GameState::GAME_OVER);
+            }
+            else
+            {
+                _gameStateService.setLivesRemaining(lives);
+                // TODO: 
+                // Clear out enemies, restart wave/enemy spawning?
+                // Spawn player again
+            }
+        }
 	}
 
 	void HurricaneGameEngineScene::handleWindowSizeChange(int width, int height)

@@ -5,6 +5,7 @@
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <Services/ResourceService.hpp>
+#include <Services/GameStateService.hpp>
 
 namespace hur
 {
@@ -40,7 +41,9 @@ namespace hur
 		const hl::EngineConfiguration& _engineConfig;
 		GameState _state{ GameState::INIT };
 		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;
-		ResourceService _resourceService;
+		GameStateService _gameStateService; // TODO: Move to service provider and inject???
+		ResourceService _resourceService; // TODO: Move to service provider and inject???
+		// TODO: Maybe also inject systems?
 	};
 
 }
