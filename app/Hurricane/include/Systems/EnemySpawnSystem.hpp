@@ -26,6 +26,7 @@ namespace hur
 		hl::EventBus& _eventBus;
 		hl::Scene& _scene;
 		const ResourceService& _resourceService;
+		float _elapsed{ 0.0f };
 	};
 
 }
