@@ -29,7 +29,19 @@ namespace hur
 
 	void EnemySpawnSystem::update(float delta)
 	{
+		_elapsed += delta;
 
+		if (_elapsed > 2.0f)
+		{
+			_elapsed -= 2.0f;
+
+			const auto enemyCount = _scene.getEntitiesByTag("ENEMY").size();
+
+			if (enemyCount < 3)
+			{
+				spawnDefaultEnemy();
+			}
+		}
 	}
 
 	void EnemySpawnSystem::OnEvent(const hl::Event& event)
@@ -56,8 +68,11 @@ namespace hur
 		auto sc = enemy->AddComponent<EntityComponent>();
 		sc->SpriteName = "enemyBlack1";
 		sc->Size = _resourceService.getSize(sc->SpriteName);
+
+		const float x = sc->Size.x / 2.0f + static_cast<float>(rand() % 1000) / 1000.0f * (HurricaneConstants::Width - sc->Size.x);
+
 		enemy->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
-			HurricaneConstants::Width / 2.0f,
+			x,
 			sc->Size.y / 2.0f + 16.0f,
 			0.0f));
 	}
