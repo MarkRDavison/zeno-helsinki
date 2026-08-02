@@ -1,6 +1,7 @@
 #include <Systems/EntityDeathSystem.hpp>
 #include <Events/EntityDeathEvent.hpp>
 #include <Events/PlayerLifeLostEvent.hpp>
+#include <Events/PlayerScoreEvent.hpp>
 
 namespace hur
 {
@@ -28,6 +29,8 @@ namespace hur
 	// TODO: Make systems that dont actually update services???
 	void EntityDeathSystem::OnEvent(const hl::Event& event)
 	{
+		// TODO: Should this just fire entity death events?
+
 		if (auto ede = dynamic_cast<const EntityDeathEvent*>(&event))
 		{
 			auto entity = _scene.getEntity(ede->getId());
@@ -37,6 +40,11 @@ namespace hur
 			if (entity->HasTag("PLAYER")) // TODO: CONSTANT
 			{
 				_eventBus.PublishEvent(PlayerLifeLostEvent());
+			}
+			else
+			{
+				// TODO: Different for enemy and world/environment???
+				_eventBus.PublishEvent(PlayerScoreEvent(1));
 			}
 
 			// TODO: Other on death stuff, drops, decrease lives etc...

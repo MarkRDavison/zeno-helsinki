@@ -36,6 +36,8 @@ namespace hur
 
 		void setGameState(GameState state);
 		void transitionFromInitToPlaying();
+		void spawnPlayer();
+		void transitionFromGameOverToInit();
 
 	private:
 		const hl::EngineConfiguration& _engineConfig;

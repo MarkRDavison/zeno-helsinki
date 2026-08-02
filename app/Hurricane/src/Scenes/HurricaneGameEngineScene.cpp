@@ -5,6 +5,7 @@
 #include <Components/HealthComponent.hpp>
 #include <Events/EnemySpawnEvent.hpp>
 #include <Events/PlayerLifeLostEvent.hpp>
+#include <Events/PlayerScoreEvent.hpp>
 #include <GameCamera.hpp>
 #include <UiCamera.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
@@ -326,31 +327,69 @@ namespace hur
         }
 	}
 
-    void HurricaneGameEngineScene::transitionFromInitToPlaying()
+    void HurricaneGameEngineScene::spawnPlayer()
     {
+        auto existing = _scene.getEntity("Player");
+
+        if (existing != nullptr)
         {
-            auto entity = _scene.addEntity("Player");
-            entity->AddTag("SPRITE");
-            entity->AddTag("ENTITY");
-            entity->AddTag("COLLIDER");
-            entity->AddTag("PLAYER");
-            auto sc = entity->AddComponent<EntityComponent>();
-            sc->SpriteName = "playerShip1_blue";
-            sc->Size = _resourceService.getSize(sc->SpriteName);
-            entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
-                HurricaneConstants::Width / 2.0f,
-                HurricaneConstants::Height - sc->Size.y / 2.0f,
-                0.0f));
-            entity->AddComponent<hl::SpriteComponent>();
-            entity->AddComponent< HealthComponent>(10, 10);
-            auto cc = entity->AddComponent<CollisionComponent>();
-            cc->layer = CollisionLayer::Player;
-            cc->mask = CollisionLayer::EnemyBullet | CollisionLayer::Enemy;
+            return;
         }
 
+        if (_gameStateService.getLivesRemaining() < 0)
+        {
+            return;
+        }
+
+        auto entity = _scene.addEntity("Player");
+        entity->AddTag("SPRITE");
+        entity->AddTag("ENTITY");
+        entity->AddTag("COLLIDER");
+        entity->AddTag("PLAYER");
+        auto sc = entity->AddComponent<EntityComponent>();
+        sc->SpriteName = "playerShip1_blue";
+        sc->Size = _resourceService.getSize(sc->SpriteName);
+        entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(
+            HurricaneConstants::Width / 2.0f,
+            HurricaneConstants::Height - sc->Size.y / 2.0f,
+            0.0f));
+        entity->AddComponent<hl::SpriteComponent>();
+        entity->AddComponent< HealthComponent>(10, 10);
+        auto cc = entity->AddComponent<CollisionComponent>();
+        cc->layer = CollisionLayer::Player;
+        cc->mask = CollisionLayer::EnemyBullet | CollisionLayer::Enemy;
+    }
+
+    void HurricaneGameEngineScene::transitionFromGameOverToInit()
+    {
+        if (_state != GameState::GAME_OVER)
+        {
+            return;
+        }
+
+        // TODO: MOVE _state to game state service???
+
+        for (const auto& e : _scene.getEntities())
+        {
+            if (e->getName() != "game_state")
+            {
+                _scene.removeEntity(e->Id);
+            }
+        }
+
+        // TODO: BETTER RESET METHOD?
+        _scene.update();
+
+        setGameState(GameState::INIT);
+    }
+
+    void HurricaneGameEngineScene::transitionFromInitToPlaying()
+    {
+        spawnPlayer();
         _engine.getEventBus().PublishEvent(EnemySpawnEvent());
 
         _gameStateService.setLivesRemaining(3);
+        _gameStateService.setScore(0);
 
         setGameState(GameState::PLAYING);
     }
@@ -364,6 +403,14 @@ namespace hur
             if (code == GLFW_KEY_ENTER)
             {
                 _engine.getEventBus().PublishEvent(EnemySpawnEvent());
+            }
+            else if (code == GLFW_KEY_R)
+            {
+                spawnPlayer();
+            }
+            else if (code == GLFW_KEY_B)
+            {
+                transitionFromGameOverToInit();
             }
         }
         else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
@@ -384,7 +431,14 @@ namespace hur
                 // TODO: 
                 // Clear out enemies, restart wave/enemy spawning?
                 // Spawn player again
+                std::cout << "LIVES: " << _gameStateService.getLivesRemaining() << std::endl;
             }
+        }
+        else if (auto pse = dynamic_cast<const PlayerScoreEvent*>(&event))
+        {
+            _gameStateService.incrementScore(pse->getAmount());
+
+            std::cout << "SCORE: " << _gameStateService.getScore() << std::endl;
         }
 	}
 
