@@ -54,6 +54,7 @@ namespace hl
 			_mappedBuffers[currentFrame].write(getData(), size);
 		}
 	}
+
 	void UiRoot::draw(PipelineDrawData& pdd) const
 	{
 		const auto vertexCount = getVertexCount();

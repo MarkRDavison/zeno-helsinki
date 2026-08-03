@@ -30,6 +30,7 @@
 #include <Systems/EnemyUpdateSystem.hpp>
 #include <GLFW/glfw3.h>
 #include <Ui/UiLayout.hpp>
+#include <Ui/Elements/UiPanel.hpp>
 
 constexpr auto MAX_UI_VERTEXES = 1024;
 
@@ -390,26 +391,35 @@ namespace hur
 
         _uiRoot.initialise(device);
 
-        _elements.push_back(UiElement
-            {
-                .size = {256.0f, 48.0f},
-                .offset = {16.0f, 16.0f},
-                .anchor = UiAnchor::TopLeft
-            });
+        {
+            auto lives = new UiPanel();
+            lives->size = { 256.0f, 48.0f };
+            lives->offset = { 16.0f, 16.0f };
+            lives->anchor = UiAnchor::TopLeft;
+            lives->colour = { 1.0f, 0.0f, 0.0f };
 
-        _elements.push_back(UiElement
-            {
-                .size = {128.0f, 48.0f},
-                .offset = {16.0f, 16.0f},
-                .anchor = UiAnchor::TopRight
-            });
+            _elements.push_back(lives);
+        }
 
-        _elements.push_back(UiElement
-            {
-                .size = {384.0f, 32.0f},
-                .offset = {16.0f, 16.0f},
-                .anchor = UiAnchor::BottomLeft
-            });
+        {
+            auto score = new UiPanel();
+            score->size = { 128.0f, 48.0f };
+            score->offset = { 16.0f, 16.0f };
+            score->anchor = UiAnchor::TopRight;
+            score->colour = { 0.0f, 1.0f, 0.0f };
+
+            _elements.push_back(score);
+        }
+
+        {
+            auto something = new UiPanel();
+            something->size = { 384.0f, 32.0f };
+            something->offset = { 16.0f, 16.0f };
+            something->anchor = UiAnchor::BottomLeft;
+            something->colour = { 0.0f, 0.0f, 1.0f };
+
+            _elements.push_back(something);
+        }
 	}
 
 	void HurricaneGameEngineScene::update(uint32_t currentFrame, float delta)
@@ -494,12 +504,12 @@ namespace hur
     {
         for (auto& e : _elements)
         {
-            e.calculatedRect = UiLayout::Calculate(e, { _width, _height });
+            e->calculatedRect = UiLayout::Calculate(*e, { _width, _height });
         }
 
-        for (const auto& e : _elements)
+        for (auto& e : _elements)
         {
-            _uiRoot.addQuad(e.calculatedRect, { 1.0f, 0.0f, 0.0f, 0.0f });
+            e->draw(_uiRoot, { _width, _height });
         }
     }
 

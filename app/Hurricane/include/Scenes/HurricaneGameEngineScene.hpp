@@ -55,7 +55,7 @@ namespace hur
 		// TODO: Maybe also inject systems?
 
 		hl::UiRoot _uiRoot;
-		std::vector<UiElement> _elements;
+		std::vector<UiElement*> _elements;
 
 		int _width;
 		int _height;

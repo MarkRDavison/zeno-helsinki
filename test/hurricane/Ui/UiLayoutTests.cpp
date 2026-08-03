@@ -3,11 +3,20 @@
 
 namespace hur
 {
+    class TestUiElement : public UiElement
+    {
+    public:
+        void draw(hl::UiRoot& root, glm::vec2 screenSize) override
+        {
+
+        }
+    };
+
 	namespace Test
 	{
         TEST_CASE("Top left UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
@@ -21,7 +30,7 @@ namespace hur
 
         TEST_CASE("Top center UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
@@ -35,7 +44,7 @@ namespace hur
 
         TEST_CASE("Top right UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
@@ -49,7 +58,7 @@ namespace hur
 
         TEST_CASE("Center left UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
@@ -63,7 +72,7 @@ namespace hur
 
         TEST_CASE("Centered UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
@@ -77,7 +86,7 @@ namespace hur
 
         TEST_CASE("Center right UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
@@ -91,7 +100,7 @@ namespace hur
 
         TEST_CASE("Bottom left UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
@@ -105,7 +114,7 @@ namespace hur
 
         TEST_CASE("Bottom center UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
@@ -119,7 +128,7 @@ namespace hur
 
         TEST_CASE("Bottom right UI element", "[Hurricane][UiLayout]")
         {
-            UiElement element;
+            TestUiElement element;
 
             element.size = { 100, 50 };
             element.offset = { 10, 20 };
