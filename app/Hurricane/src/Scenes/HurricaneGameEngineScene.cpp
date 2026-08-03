@@ -29,7 +29,9 @@
 #include <Systems/EnemySpawnSystem.hpp>
 #include <Systems/EnemyUpdateSystem.hpp>
 #include <GLFW/glfw3.h>
+#include <Ui/UiLayout.hpp>
 
+constexpr auto MAX_UI_VERTEXES = 1024;
 
 namespace hur
 {
@@ -39,14 +41,17 @@ namespace hur
 		const hl::EngineConfiguration& engineConfig
 	) :
 		EngineScene(engine),
-		_engineConfig(engineConfig)
+		_engineConfig(engineConfig),
+        _uiRoot(engine.getInputManager())
 	{
         _cameras.insert({ "Ui", new UiCamera() });
         _cameras.insert({ "Game", new GameCamera() });
 		_engine.getEventBus().AddListener(this);
+        _engine.getEventBus().AddListener(&_uiRoot);
 	}
 	HurricaneGameEngineScene::~HurricaneGameEngineScene()
 	{
+        _engine.getEventBus().RemoveListener(&_uiRoot);
 		_engine.getEventBus().RemoveListener(this);
 	}
 
@@ -59,7 +64,79 @@ namespace hur
 		hl::ResourceManager& resourceManager,
 		hl::MaterialSystem& materialSystem)
 	{
-
+        auto uiRenderpassinfo = hl::RenderpassInfo
+        {
+            .name = "ui_renderpass",
+            .useMultiSampling = false,
+            .inputs = {},
+            .outputs =
+            {
+                hl::ResourceInfo
+                {
+                    .name = "ui_color",
+                    .type = hl::ResourceType::Color,
+                    .format = "VK_FORMAT_B8G8R8A8_SRGB",
+                    .clear = VkClearValue{.color = { 0.0f, 0.0f, 0.0f, 0.0f} }
+                }
+            },
+            .pipelineGroups =
+            {
+                {
+                    hl::PipelineInfo
+                    {
+                        .name = "ui_pipeline",
+                        .shaderVert = _engineConfig.RootPath + "/data/shaders/ui.vert",
+                        .shaderFrag = _engineConfig.RootPath + "/data/shaders/ui.frag",
+                        .descriptorSets =
+                        {
+                            hl::DescriptorSetInfo
+                            {
+                                .bindings =
+                                {
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 0,
+                                        .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                        .stage = "VERTEX",
+                                        .resource = cameraMatrixResourceId,
+                                        .count = MAX_CAMERAS
+                                    }
+                                }
+                            }
+                        },
+                        .vertexInputInfo = hl::VertexInputInfo
+                        {
+                            .attributes =
+                            {
+                                {
+                                    .name = "inPosition",
+                                    .format = hl::VertexAttributeFormat::Vec2,
+                                    .location = 0,
+                                    .offset = offsetof(hl::VertexUi, pos)
+                                },
+                                {
+                                    .name = "inColor",
+                                    .format = hl::VertexAttributeFormat::Vec3,
+                                    .location = 1,
+                                    .offset = offsetof(hl::VertexUi, color)
+                                }
+                            },
+                            .stride = sizeof(hl::VertexUi)
+                        },
+                        .depthState =
+                        {
+                            .testEnable = false,
+                            .writeEnable = false
+                        },
+                        .rasterState =
+                        {
+                            .cullMode = VK_CULL_MODE_NONE
+                        },
+                        .enableBlending = false,
+                    }
+                }
+            }
+        };
         auto sceneRenderpassInfo = hl::RenderpassInfo
         {
             .name = "sprite_pass",
@@ -136,12 +213,14 @@ namespace hur
             }
         };
 
+
+
         std::vector<hl::RenderpassInfo> renderpasses =
         {
+            uiRenderpassinfo,
             sceneRenderpassInfo,
-            hl::RenderGraphHelpers::createTextRenderpassInfo(cameraMatrixResourceId),
             // TODO: ref vars for the outputs???
-            hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "scene_color", "text_color" })
+            hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "scene_color", "ui_color" })
         };
 
         hl::ResourceContext resourceContext
@@ -200,19 +279,6 @@ namespace hur
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "sheet",
             resourceContext);
-
-        {
-            auto entity = _scene.addEntity("game_state");
-            entity->AddTag("TEXT");
-            entity->AddComponent<hl::TransformComponent>();
-            // TODO: Dont like having to pass text system here...
-            entity->AddComponent<hl::TextComponent>()->setString(
-                _engine.getTextSystem(),
-                "Start",
-                "roboto",
-                32);
-            entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 1.0f, 1.0f, 0.2f));
-        }
 
         EngineScene::initialise(
             cameraMatrixResourceId,
@@ -276,6 +342,14 @@ namespace hur
                 }
             });
 
+
+        registerPipelineDraw(
+            "ui_pipeline", 
+            [&](hl::PipelineDrawData& pdd) -> void 
+            {
+                _uiRoot.draw(pdd);
+            });
+
         setGameState(GameState::INIT);
 
         _scene.addSystem(new PlayerControlSystem(
@@ -313,10 +387,14 @@ namespace hur
             _resourceService));
 
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
+
+        _uiRoot.initialise(device);
 	}
 
 	void HurricaneGameEngineScene::update(uint32_t currentFrame, float delta)
 	{
+        _uiRoot.update(delta);
+
         if (_state == GameState::INIT)
         {
             transitionFromInitToPlaying();
@@ -324,8 +402,19 @@ namespace hur
         else if (_state == GameState::PLAYING)
         {
             _scene.update(delta);
+            updateUi();
         }
 	}
+
+    void HurricaneGameEngineScene::updateGpuResources(uint32_t currentFrame)
+    {
+        _uiRoot.updateGpuResources(currentFrame);
+    }
+
+    void HurricaneGameEngineScene::additionalCleanup()
+    {
+        _uiRoot.destroy();
+    }
 
     void HurricaneGameEngineScene::spawnPlayer()
     {
@@ -371,16 +460,26 @@ namespace hur
 
         for (const auto& e : _scene.getEntities())
         {
-            if (e->getName() != "game_state")
-            {
-                _scene.removeEntity(e->Id);
-            }
+            _scene.removeEntity(e->Id);
         }
 
         // TODO: BETTER RESET METHOD?
         _scene.update();
 
         setGameState(GameState::INIT);
+    }
+
+    void HurricaneGameEngineScene::updateUi()
+    {
+        for (auto& e : _elements)
+        {
+            e.calculatedRect = UiLayout::Calculate(e, { _width, _height });
+        }
+
+        for (const auto& e : _elements)
+        {
+            _uiRoot.addQuad(e.calculatedRect, { 1.0f, 0.0f, 0.0f, 0.0f });
+        }
     }
 
     void HurricaneGameEngineScene::transitionFromInitToPlaying()
@@ -444,48 +543,12 @@ namespace hur
 
 	void HurricaneGameEngineScene::handleWindowSizeChange(int width, int height)
 	{
-
+        _width = width;
+        _height = height;
 	}
 
     void HurricaneGameEngineScene::setGameState(GameState state)
     {
-        auto entity = _scene.getEntity("game_state");
-
-        auto tc = entity->GetComponent<hl::TextComponent>();
-
-        if (state == GameState::INIT)
-        {
-            tc->setString(
-                _engine.getTextSystem(), 
-                "INIT",
-                "roboto",
-                32);
-        }
-        else if (state == GameState::PLAYING)
-        {
-            tc->setString(
-                _engine.getTextSystem(),
-                "PLAYING",
-                "roboto",
-                32);
-        }
-        else if (state == GameState::GAME_OVER)
-        {
-            tc->setString(
-                _engine.getTextSystem(),
-                "GAME_OVER",
-                "roboto",
-                32);
-        }
-        else
-        {
-            tc->setString(
-                _engine.getTextSystem(),
-                "INVALID_STATE",
-                "roboto",
-                64);
-        }
-
         _state = state;
         
         handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);

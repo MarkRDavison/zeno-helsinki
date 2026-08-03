@@ -6,6 +6,10 @@
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <Services/ResourceService.hpp>
 #include <Services/GameStateService.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanMappedBuffer.hpp>
+#include <Ui/UiRoot.hpp>
+#include <Ui/UiElement.hpp>
 
 namespace hur
 {
@@ -28,6 +32,8 @@ namespace hur
 			hl::MaterialSystem& materialSystem) override;
 
 		void update(uint32_t currentFrame, float delta) override;
+		void updateGpuResources(uint32_t currentFrame) override;
+		void additionalCleanup() override;
 
 		void OnEvent(const hl::Event& event) override;
 
@@ -38,6 +44,7 @@ namespace hur
 		void transitionFromInitToPlaying();
 		void spawnPlayer();
 		void transitionFromGameOverToInit();
+		void updateUi();
 
 	private:
 		const hl::EngineConfiguration& _engineConfig;
@@ -46,6 +53,12 @@ namespace hur
 		GameStateService _gameStateService; // TODO: Move to service provider and inject???
 		ResourceService _resourceService; // TODO: Move to service provider and inject???
 		// TODO: Maybe also inject systems?
+
+		hl::UiRoot _uiRoot;
+		std::vector<UiElement> _elements;
+
+		int _width;
+		int _height;
 	};
 
 }
