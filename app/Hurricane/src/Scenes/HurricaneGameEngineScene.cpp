@@ -389,6 +389,27 @@ namespace hur
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 
         _uiRoot.initialise(device);
+
+        _elements.push_back(UiElement
+            {
+                .size = {256.0f, 48.0f},
+                .offset = {16.0f, 16.0f},
+                .anchor = UiAnchor::TopLeft
+            });
+
+        _elements.push_back(UiElement
+            {
+                .size = {128.0f, 48.0f},
+                .offset = {16.0f, 16.0f},
+                .anchor = UiAnchor::TopRight
+            });
+
+        _elements.push_back(UiElement
+            {
+                .size = {384.0f, 32.0f},
+                .offset = {16.0f, 16.0f},
+                .anchor = UiAnchor::BottomLeft
+            });
 	}
 
 	void HurricaneGameEngineScene::update(uint32_t currentFrame, float delta)
