@@ -36,17 +36,13 @@ namespace hl
 	}
 
 	void UiRoot::addQuad(const hur::UiRect& rect, glm::vec4 colour)
-	{
-		_vertices = std::vector<hl::VertexUi>
-		{
-			hl::VertexUi{.pos = { rect.position.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } },
-			hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } },
-			hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } },
-
-			hl::VertexUi{.pos = { rect.position.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } },
-			hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } },
-			hl::VertexUi{.pos = { rect.position.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } }
-		};
+	{		
+		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } });
+		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } });
+		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } });
+		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } });
+		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } });
+		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } });
 	}
 
 	void UiRoot::updateGpuResources(uint32_t currentFrame)
