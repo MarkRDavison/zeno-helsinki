@@ -37,6 +37,7 @@ namespace hl
 		InputManager& getInputManager() { return _inputManager; }
 		EventBus& getEventBus() { return _eventBus; }
 
+		GLFWwindow* _window; // TODO: BADDDDDDD
 	private:
 		void mainLoop();
 		void cleanup();
@@ -55,7 +56,6 @@ namespace hl
 	private:
 		EventBus& _eventBus;
 		InputManager& _inputManager;
-		GLFWwindow* _window;
 		VulkanInstance _instance;
 		VulkanSurface _surface;
 		VulkanDevice _device;

@@ -1,14 +1,15 @@
 #pragma once
 
+#include <string>
 #include <Ui/UiElement.hpp>
 
 namespace hur
 {
 
-	class UiPanel : public UiElement
+	class UiIcon : public UiElement
 	{
 	public:
-		glm::vec3 colour;
+		std::string icon;
 
 		void draw(hl::UiRoot& root, glm::vec2 screenSize) override;
 	};

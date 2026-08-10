@@ -6,6 +6,11 @@
 #include <helsinki/Renderer/Vulkan/VulkanMappedBuffer.hpp>
 #include <Ui/UiRect.hpp>
 
+namespace hur
+{
+	class UiElement;
+}
+
 namespace hl
 {
 	class PipelineDrawData;
@@ -18,10 +23,14 @@ namespace hl
 
 		void initialise(VulkanDevice& device);
 		void update(float delta);
+		void drawUi();
 		void addQuad(const hur::UiRect& rect, glm::vec4 colour);
+		void addQuad(const hur::UiRect& rect, glm::vec4 colour, glm::vec4 texCoords);
 		void updateGpuResources(uint32_t currentFrame);
 		void draw(PipelineDrawData& pdd) const;
 		void destroy();
+
+		void addElement(hur::UiElement* element);
 
 		void OnEvent(const hl::Event& event) override;
 
@@ -29,11 +38,13 @@ namespace hl
 		size_t getDataSize() const;
 		size_t getVertexCount() const;
 
+
 	private:
 		InputManager& _inputManager;
 
-		std::vector<hl::VertexUi> _vertices;
+		std::vector<hl::VertexUi2> _vertices;
 		std::vector<VulkanMappedBuffer> _mappedBuffers;
+		std::vector<hur::UiElement*> _elements;
 
 		uint32_t _width{ 0 };
 		uint32_t _height{ 0 };

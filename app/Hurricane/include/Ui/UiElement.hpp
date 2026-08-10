@@ -11,12 +11,13 @@ namespace hur
 	class UiElement 
 	{
 	public:
-		glm::vec2 size;
-		glm::vec2 offset;
+		glm::vec2 size{};
+		glm::vec2 offset{};
 
 		UiAnchor anchor;
 		UiRect calculatedRect;
 
+		virtual void update(float delta) {}
 		virtual void draw(hl::UiRoot& root, glm::vec2 screenSize) = 0;
 	};
 

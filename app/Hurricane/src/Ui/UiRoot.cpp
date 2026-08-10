@@ -1,10 +1,13 @@
 #include <Ui/UiRoot.hpp>
+
+#include <Ui/UiElement.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
 #include <iostream>
+#include <Ui/UiLayout.hpp>
 
-constexpr auto MAX_UI_VERTEXES = 1024;
+constexpr auto MAX_UI_VERTEXES = 4096;
 
 namespace hl
 {
@@ -26,23 +29,70 @@ namespace hl
 		for (auto i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 		{
 			_mappedBuffers.emplace_back(device);
-			_mappedBuffers.back().create(sizeof(hl::VertexUi) * MAX_UI_VERTEXES, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+			_mappedBuffers.back().create(sizeof(hl::VertexUi2) * MAX_UI_VERTEXES, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		}
-
 	}
+
 	void UiRoot::update(float delta)
 	{
 		_vertices.clear();
+
+		for (auto& e : _elements)
+		{
+			e->calculatedRect = hur::UiLayout::Calculate(*e, { _width, _height });
+		}
+
+		for (auto& e : _elements)
+		{
+			e->update(delta);
+		}
+	}
+
+	void UiRoot::drawUi()
+	{
+		for (auto& e : _elements)
+		{
+			e->draw(*this, { _width, _height });
+		}
 	}
 
 	void UiRoot::addQuad(const hur::UiRect& rect, glm::vec4 colour)
 	{		
-		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } });
-		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } });
-		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } });
-		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x, rect.position.y }, .color = { colour.r, colour.g, colour.b } });
-		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x + rect.size.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } });
-		_vertices.push_back(hl::VertexUi{.pos = { rect.position.x, rect.position.y + rect.size.y }, .color = { colour.r, colour.g, colour.b } });
+		const float pixel = 6.0f;
+		const float TEX_SIZE = 1024.0f;
+
+		auto texCoords = glm::vec4{ pixel, pixel, 1, 1} / TEX_SIZE;
+
+		addQuad(rect, colour, texCoords);
+	}
+
+	void UiRoot::addQuad(const hur::UiRect& rect, glm::vec4 colour, glm::vec4 texCoords)
+	{
+		_vertices.push_back(hl::VertexUi2{
+			.pos = { rect.position.x, rect.position.y },
+			.color = { colour.r, colour.g, colour.b },
+			.texCoord = glm::vec2{ texCoords.x, texCoords.y } });
+		_vertices.push_back(hl::VertexUi2{
+			.pos = { rect.position.x + rect.size.x, rect.position.y },
+			.color = { colour.r, colour.g, colour.b },
+			.texCoord = glm::vec2{ texCoords.x + texCoords.z, texCoords.y } });
+		_vertices.push_back(hl::VertexUi2{
+			.pos = { rect.position.x + rect.size.x, rect.position.y + rect.size.y },
+			.color = { colour.r, colour.g, colour.b },
+			.texCoord = glm::vec2{ texCoords.x + texCoords.z, texCoords.y + texCoords.w } });
+
+		_vertices.push_back(hl::VertexUi2{
+			.pos = { rect.position.x, rect.position.y },
+			.color = { colour.r, colour.g, colour.b },
+			.texCoord = glm::vec2{ texCoords.x, texCoords.y } });
+		_vertices.push_back(hl::VertexUi2{
+			.pos = { rect.position.x + rect.size.x, rect.position.y + rect.size.y },
+			.color = { colour.r, colour.g, colour.b },
+			.texCoord = glm::vec2{ texCoords.x + texCoords.z, texCoords.y + texCoords.w } });
+		_vertices.push_back(hl::VertexUi2{
+			.pos = { rect.position.x, rect.position.y + rect.size.y },
+			.color = { colour.r, colour.g, colour.b },
+			.texCoord = glm::vec2{ texCoords.x, texCoords.y + texCoords.w } });
 	}
 
 	void UiRoot::updateGpuResources(uint32_t currentFrame)
@@ -94,6 +144,11 @@ namespace hl
 		_mappedBuffers.clear();
 	}
 
+	void UiRoot::addElement(hur::UiElement* element)
+	{
+		_elements.push_back(element);
+	}
+
 	void UiRoot::OnEvent(const hl::Event& event)
 	{
 		if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
@@ -109,7 +164,7 @@ namespace hl
 	}
 	size_t UiRoot::getDataSize() const
 	{
-		return _vertices.size() * sizeof(hl::VertexUi);
+		return _vertices.size() * sizeof(hl::VertexUi2);
 	}
 	size_t UiRoot::getVertexCount() const
 	{

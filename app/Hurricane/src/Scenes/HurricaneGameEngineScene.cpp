@@ -31,6 +31,8 @@
 #include <GLFW/glfw3.h>
 #include <Ui/UiLayout.hpp>
 #include <Ui/Elements/UiPanel.hpp>
+#include <Ui/Elements/UiButton.hpp>
+#include <Ui/Elements/UiIcon.hpp>
 
 constexpr auto MAX_UI_VERTEXES = 1024;
 
@@ -101,6 +103,13 @@ namespace hur
                                         .stage = "VERTEX",
                                         .resource = cameraMatrixResourceId,
                                         .count = MAX_CAMERAS
+                                    },
+                                    hl::DescriptorBinding
+                                    {
+                                        .binding = 1,
+                                        .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                        .stage = "FRAGMENT",
+                                        .resource = "sheet"
                                     }
                                 }
                             }
@@ -113,16 +122,22 @@ namespace hur
                                     .name = "inPosition",
                                     .format = hl::VertexAttributeFormat::Vec2,
                                     .location = 0,
-                                    .offset = offsetof(hl::VertexUi, pos)
+                                    .offset = offsetof(hl::VertexUi2, pos)
                                 },
                                 {
                                     .name = "inColor",
                                     .format = hl::VertexAttributeFormat::Vec3,
                                     .location = 1,
-                                    .offset = offsetof(hl::VertexUi, color)
+                                    .offset = offsetof(hl::VertexUi2, color)
+                                },
+                                {
+                                    .name = "inTexCoord",
+                                    .format = hl::VertexAttributeFormat::Vec2,
+                                    .location = 2,
+                                    .offset = offsetof(hl::VertexUi2, texCoord)
                                 }
                             },
-                            .stride = sizeof(hl::VertexUi)
+                            .stride = sizeof(hl::VertexUi2)
                         },
                         .depthState =
                         {
@@ -392,23 +407,13 @@ namespace hur
         _uiRoot.initialise(device);
 
         {
-            auto lives = new UiPanel();
-            lives->size = { 256.0f, 48.0f };
-            lives->offset = { 16.0f, 16.0f };
-            lives->anchor = UiAnchor::TopLeft;
-            lives->colour = { 1.0f, 0.0f, 0.0f };
-
-            _elements.push_back(lives);
-        }
-
-        {
             auto score = new UiPanel();
             score->size = { 128.0f, 48.0f };
             score->offset = { 16.0f, 16.0f };
             score->anchor = UiAnchor::TopRight;
             score->colour = { 0.0f, 1.0f, 0.0f };
 
-            _elements.push_back(score);
+         //   _uiRoot.addElement(score);
         }
 
         {
@@ -418,7 +423,24 @@ namespace hur
             something->anchor = UiAnchor::BottomLeft;
             something->colour = { 0.0f, 0.0f, 1.0f };
 
-            _elements.push_back(something);
+       //     _uiRoot.addElement(something);
+        }
+        {
+            auto lives = new UiIcon();
+            lives->size = { 64.0f, 64.0f };
+            lives->offset = { 16.0f, 16.0f };
+            lives->anchor = UiAnchor::TopLeft;
+            lives->icon = "playerLife1_blue";
+
+           // _uiRoot.addElement(lives);
+        }
+        {
+            auto button = new UiButton(this->_engine._window);
+            button->size = { 256.0f, 64.0f };
+            button->anchor = UiAnchor::Center;
+            button->onClick = []() -> void { std::cout << "CLICK BUTTON" << std::endl; };
+
+            _uiRoot.addElement(button);
         }
 	}
 
@@ -502,15 +524,7 @@ namespace hur
 
     void HurricaneGameEngineScene::updateUi()
     {
-        for (auto& e : _elements)
-        {
-            e->calculatedRect = UiLayout::Calculate(*e, { _width, _height });
-        }
-
-        for (auto& e : _elements)
-        {
-            e->draw(_uiRoot, { _width, _height });
-        }
+        _uiRoot.drawUi();
     }
 
     void HurricaneGameEngineScene::transitionFromInitToPlaying()
