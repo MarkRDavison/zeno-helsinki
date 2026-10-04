@@ -21,6 +21,7 @@ namespace hl
 		void endPipelineGroup();
 		VulkanRenderGraphPipelineResources& addPipeline(const std::string& name);
 		void addDescriptorPool(VkDescriptorPool descriptorPool);
+		void addPipelineGroupDescriptorSetLayout(VkDescriptorSetLayout layout);
 		void destroy();
 		void recreate(
 			const RenderpassInfo& info,
@@ -51,6 +52,7 @@ namespace hl
 		VkRenderPass _renderpass{ VK_NULL_HANDLE };
 		std::vector<VkFramebuffer> _framebuffers;
 		std::vector<std::vector<VulkanRenderGraphPipelineResources*>> _pipelineGroups;
+		std::vector<VkDescriptorSetLayout> _pipelineGroupDescriptorSetLayouts;
 		VkDescriptorPool _descriptorPool{ VK_NULL_HANDLE };
 		std::vector<VkClearValue> _clearValues;
 		VkExtent2D _extent{};

@@ -36,6 +36,7 @@ namespace hl
 
 		void removeEntity(const std::string& name);
 		void removeEntity(int id);
+		bool isPendingRemoval(int id) const;
 
 		void update();
 

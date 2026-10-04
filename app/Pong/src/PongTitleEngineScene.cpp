@@ -12,6 +12,9 @@
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
+#include <helsinki/System/Resource/ResourceDefinition.hpp>
+#include <helsinki/Renderer/Resource/TextSystem.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 
 namespace pong
 {
@@ -38,8 +41,7 @@ namespace pong
 		hl::VulkanSwapChain& swapChain,
 		hl::VulkanCommandPool& graphicsCommandPool,
 		hl::VulkanCommandPool& transferCommandPool,
-		hl::ResourceManager& resourceManager,
-		hl::MaterialSystem& materialSystem)
+		hl::ResourceManager& resourceManager)
 	{
 		std::vector<hl::RenderpassInfo> renderpasses
 		{
@@ -51,12 +53,12 @@ namespace pong
 			.device = &device,
 			.pool = &transferCommandPool,
 			.resourceManager = &resourceManager,
-			.materialSystem = &materialSystem,
+			.materialSystem = &_engine.getMaterialSystem(),
 			.rootPath = _engineConfig.RootPath
 		};
 
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "white",
+            hl::MaterialSystem::FallbackTextureName,
             resourceContext);
         resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>(
             "roboto", 
@@ -64,6 +66,29 @@ namespace pong
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "roboto",
             resourceContext);
+
+        resourceManager.LoadLogical(
+            hl::ResourceDefinition
+            {
+                .name = hl::TextSystem::RasterAtlasName,
+                .type = "logical",
+                .resources = { { .name = hl::MaterialSystem::FallbackTextureName, .type = "texture" } }
+            },
+            [&](const hl::ResourceDefinition::Child& child)
+            {
+                return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+            });
+        resourceManager.LoadLogical(
+            hl::ResourceDefinition
+            {
+                .name = hl::TextSystem::SdfAtlasName,
+                .type = "logical",
+                .resources = { { .name = "roboto", .type = "texture" } }
+            },
+            [&](const hl::ResourceDefinition::Child& child)
+            {
+                return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+            });
 
         {
             auto entity = _scene.addEntity("title");
@@ -131,7 +156,6 @@ namespace pong
 			graphicsCommandPool,
 			transferCommandPool,
 			resourceManager,
-			materialSystem,
 			renderpasses);
 	}
 

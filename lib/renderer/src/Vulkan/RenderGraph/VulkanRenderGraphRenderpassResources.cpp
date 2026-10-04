@@ -62,9 +62,14 @@ namespace hl
 		_descriptorPool = descriptorPool;
 	}
 
+	void VulkanRenderGraphRenderpassResources::addPipelineGroupDescriptorSetLayout(VkDescriptorSetLayout layout)
+	{
+		_pipelineGroupDescriptorSetLayouts.push_back(layout);
+	}
+
 	void VulkanRenderGraphRenderpassResources::destroy()
 	{
-		vkDestroyDescriptorPool(_device._device, _descriptorPool, nullptr);
+		vkDestroyDescriptorPool(_device.handle(), _descriptorPool, nullptr);
 
 		for (auto& pg : _pipelineGroups)
 		{
@@ -77,21 +82,28 @@ namespace hl
 
 		_pipelineGroups.clear();
 
+		for (auto layout : _pipelineGroupDescriptorSetLayouts)
+		{
+			vkDestroyDescriptorSetLayout(_device.handle(), layout, nullptr);
+		}
+
+		_pipelineGroupDescriptorSetLayouts.clear();
+
 		for (auto& fb : _framebuffers)
 		{
-			vkDestroyFramebuffer(_device._device, fb, nullptr);
+			vkDestroyFramebuffer(_device.handle(), fb, nullptr);
 		}
 
 		_framebuffers.clear();
 
-		vkDestroyRenderPass(_device._device, _renderpass, nullptr);
+		vkDestroyRenderPass(_device.handle(), _renderpass, nullptr);
 		_renderpass = VK_NULL_HANDLE;
 
 		for (auto& a : getAttachments())
 		{
 			if (a.sampler != VK_NULL_HANDLE)
 			{
-				vkDestroySampler(_device._device, a.sampler, nullptr);
+				vkDestroySampler(_device.handle(), a.sampler, nullptr);
 				a.sampler = VK_NULL_HANDLE;
 			}
 
@@ -118,7 +130,7 @@ namespace hl
 		// Destroy
 		for (auto& fb : _framebuffers)
 		{
-			vkDestroyFramebuffer(_device._device, fb, nullptr);
+			vkDestroyFramebuffer(_device.handle(), fb, nullptr);
 		}
 
 		_framebuffers.clear();
@@ -127,7 +139,7 @@ namespace hl
 		{
 			if (a.sampler != VK_NULL_HANDLE)
 			{
-				vkDestroySampler(_device._device, a.sampler, nullptr);
+				vkDestroySampler(_device.handle(), a.sampler, nullptr);
 				a.sampler = VK_NULL_HANDLE;
 			}
 

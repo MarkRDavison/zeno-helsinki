@@ -20,8 +20,9 @@ namespace hl
     struct VertexUi2
     {
         glm::vec2 pos;
-        glm::vec3 color;
+        glm::vec4 color;
         glm::vec2 texCoord;
+        float texIndex;
     };
 
     struct Vertex2D

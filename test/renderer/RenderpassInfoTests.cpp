@@ -18,7 +18,6 @@ namespace hl
                 hl::RenderpassInfo
                 {
                     .name = "scene_pass",
-                    .useMultiSampling = true,
                     .inputs = {},
                     .outputs =
                     {
@@ -26,13 +25,15 @@ namespace hl
                         {
                             .name = "scene_color",
                             .type = hl::ResourceType::Color,
-                            .format = "VK_FORMAT_B8G8R8A8_SRGB"
+                            .format = "VK_FORMAT_B8G8R8A8_SRGB",
+                            .useMultiSampling = true
                         },
                         hl::ResourceInfo
                         {
                             .name = "scene_depth",
                             .type = hl::ResourceType::Depth,
-                            .format = "VK_FORMAT_D32_SFLOAT"
+                            .format = "VK_FORMAT_D32_SFLOAT",
+                            .useMultiSampling = true
                         }
                     },
                     .pipelineGroups =
@@ -144,7 +145,6 @@ namespace hl
                 hl::RenderpassInfo
                 {
                     .name = "postprocess_pass",
-                    .useMultiSampling = false,
                     .inputs = { "scene_color" },
                     .outputs =
                     {
@@ -197,7 +197,6 @@ namespace hl
                 hl::RenderpassInfo
                 {
                     .name = "ui_pass",
-                    .useMultiSampling = false,
                     .inputs = {},
                     .outputs =
                     {
@@ -235,7 +234,6 @@ namespace hl
                 hl::RenderpassInfo
                 {
                     .name = "composite_pass",
-                    .useMultiSampling = false,
                     .inputs = { "post_color", "ui_color" },
                     .outputs =
                     {

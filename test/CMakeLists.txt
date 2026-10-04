@@ -19,5 +19,5 @@ function(testsubmodule MODULE_NAME MODULE_LIBS)
 endfunction()
 
 ADD_SUBDIRECTORY(system)
+ADD_SUBDIRECTORY(ui)
 ADD_SUBDIRECTORY(renderer)
-ADD_SUBDIRECTORY(hurricane)

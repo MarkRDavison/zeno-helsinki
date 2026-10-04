@@ -23,7 +23,7 @@ namespace hl
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		vkMapMemory(
-			_device._device, 
+			_device.handle(), 
 			_buffer._memory, 
 			0, 
 			_buffer._size, 

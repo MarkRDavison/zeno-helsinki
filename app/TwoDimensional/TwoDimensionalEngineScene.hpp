@@ -16,8 +16,7 @@ namespace td
 			hl::VulkanSwapChain& swapChain,
 			hl::VulkanCommandPool& graphicsCommandPool,
 			hl::VulkanCommandPool& transferCommandPool,
-			hl::ResourceManager& resourceManager,
-			hl::MaterialSystem& materialSystem) override;
+			hl::ResourceManager& resourceManager) override;
 
 		void update(uint32_t currentFrame, float delta) override;
 	private:

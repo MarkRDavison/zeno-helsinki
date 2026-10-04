@@ -36,11 +36,11 @@ namespace hl
 		pipelineLayoutInfo.pushConstantRangeCount = 1;
 		pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
-		CHECK_VK_RESULT(vkCreatePipelineLayout(_device._device, &pipelineLayoutInfo, nullptr, &_pipelineLayout));
+		CHECK_VK_RESULT(vkCreatePipelineLayout(_device.handle(), &pipelineLayoutInfo, nullptr, &_pipelineLayout));
 	}
 
 	void VulkanPipelineLayout::destroy()
 	{
-		vkDestroyPipelineLayout(_device._device, _pipelineLayout, nullptr);
+		vkDestroyPipelineLayout(_device.handle(), _pipelineLayout, nullptr);
 	}	
 }

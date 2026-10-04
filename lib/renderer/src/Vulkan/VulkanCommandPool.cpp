@@ -13,19 +13,19 @@ namespace hl
 
 	void VulkanCommandPool::create()
 	{		
-		auto queueFamilyIndices = hl::VulkanQueue::findQueueFamilies(_device._physicalDevice, _device._surface._surface);
+		auto queueFamilyIndices = hl::VulkanQueue::findQueueFamilies(_device.physicalDevice(), _device.surface().handle());
 
 		VkCommandPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 
-		CHECK_VK_RESULT(vkCreateCommandPool(_device._device, &poolInfo, nullptr, &_commandPool));
+		CHECK_VK_RESULT(vkCreateCommandPool(_device.handle(), &poolInfo, nullptr, &_commandPool));
 	}
 
 	void VulkanCommandPool::createTransferPool()
 	{
-		auto queueFamilyIndices = hl::VulkanQueue::findQueueFamilies(_device._physicalDevice, _device._surface._surface);
+		auto queueFamilyIndices = hl::VulkanQueue::findQueueFamilies(_device.physicalDevice(), _device.surface().handle());
 
 		VkCommandPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -39,12 +39,12 @@ namespace hl
 			poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 		}
 
-		CHECK_VK_RESULT(vkCreateCommandPool(_device._device, &poolInfo, nullptr, &_commandPool));
+		CHECK_VK_RESULT(vkCreateCommandPool(_device.handle(), &poolInfo, nullptr, &_commandPool));
 	}
 
 	void VulkanCommandPool::destroy()
 	{
-		vkDestroyCommandPool(_device._device, _commandPool, nullptr);
+		vkDestroyCommandPool(_device.handle(), _commandPool, nullptr);
 	}
 
 	VulkanCommandBuffer VulkanCommandPool::createSingleTimeCommands()
@@ -57,7 +57,7 @@ namespace hl
 		allocInfo.commandPool = _commandPool;
 		allocInfo.commandBufferCount = 1;
 
-		vkAllocateCommandBuffers(_device._device, &allocInfo, &buffer._commandBuffer);
+		vkAllocateCommandBuffers(_device.handle(), &allocInfo, &buffer._commandBuffer);
 
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -77,10 +77,10 @@ namespace hl
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer._commandBuffer;
 
-		vkQueueSubmit(_device._graphicsQueue._queue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(_device._graphicsQueue._queue);
+		vkQueueSubmit(_device.graphicsQueue()._queue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(_device.graphicsQueue()._queue);
 
-		vkFreeCommandBuffers(_device._device, _commandPool, 1, &commandBuffer._commandBuffer);
+		vkFreeCommandBuffers(_device.handle(), _commandPool, 1, &commandBuffer._commandBuffer);
 	}
 
 }

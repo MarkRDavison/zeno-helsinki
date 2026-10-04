@@ -10,6 +10,7 @@ namespace hur
 	class EntityComponent : public hl::Component
 	{
 	public:
+		std::string Type;
 		std::string SpriteName;
 		glm::vec2 Size;
 	private:

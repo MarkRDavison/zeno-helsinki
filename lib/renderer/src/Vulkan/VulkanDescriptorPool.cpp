@@ -26,11 +26,11 @@ namespace hl
 		poolInfo.pPoolSizes = poolSizes.data();
 		poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-		CHECK_VK_RESULT(vkCreateDescriptorPool(_device._device, &poolInfo, nullptr, &_descriptorPool));
+		CHECK_VK_RESULT(vkCreateDescriptorPool(_device.handle(), &poolInfo, nullptr, &_descriptorPool));
 	}
 
 	void VulkanDescriptorPool::destroy()
 	{
-		vkDestroyDescriptorPool(_device._device, _descriptorPool, nullptr);
+		vkDestroyDescriptorPool(_device.handle(), _descriptorPool, nullptr);
 	}
 }

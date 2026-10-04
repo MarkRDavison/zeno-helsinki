@@ -1,6 +1,7 @@
 #pragma once
 
 #include <helsinki/System/Resource/Resource.hpp>
+#include <helsinki/System/Resource/LogicalResource.hpp>
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
@@ -15,6 +16,37 @@ namespace hl
     class ResourceManager
     {
     public:
+
+        template<typename Loader>
+        ResourceHandle<LogicalResource> LoadLogical(
+            const ResourceDefinition& definition,
+            Loader&& loader)
+        {
+            auto& typeResources = resources[std::type_index(typeid(LogicalResource))];
+            auto it = typeResources.find(definition.name);
+
+            if (it != typeResources.end())
+            {
+                refCounts[definition.name]++;
+                return ResourceHandle<LogicalResource>(definition.name, this);
+            }
+
+            auto resource = std::make_shared<LogicalResource>(
+                definition,
+                *this,
+                std::forward<Loader>(loader));
+
+            if (!resource->Load())
+            {
+                return ResourceHandle<LogicalResource>();
+            }
+
+            typeResources[definition.name] = resource;
+            refCounts[definition.name] = 1;
+
+            return ResourceHandle<LogicalResource>(definition.name, this);
+        }
+
         template<typename T, typename... Args>
         ResourceHandle<T> Load(const std::string& resourceId, Args&&... args)
         {

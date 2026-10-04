@@ -7,6 +7,7 @@
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/KinematicComponent.hpp>
 #include <HurricaneConstants.hpp>
+#include <EntityCatalog.hpp>
 
 namespace hur
 {
@@ -39,35 +40,54 @@ namespace hur
 
 			if (enemyCount < 3)
 			{
-				spawnDefaultEnemy();
+				if (const EntityDefinition* def = rollSpawnDefinition())
+				{
+					spawnEnemy(*def);
+				}
 			}
 		}
 	}
 
 	void EnemySpawnSystem::OnEvent(const hl::Event& event)
 	{
-		if (auto ede = dynamic_cast<const EnemySpawnEvent*>(&event))
+		if (dynamic_cast<const EnemySpawnEvent*>(&event) != nullptr)
 		{
-			spawnDefaultEnemy();
+			if (const EntityDefinition* def = rollSpawnDefinition())
+			{
+				spawnEnemy(*def);
+			}
 		}
 	}
 
-	void EnemySpawnSystem::spawnDefaultEnemy()
+	void EnemySpawnSystem::spawnEnemy(const EntityDefinition& def)
 	{
 		auto enemy = _scene.addEntity();
 		enemy->AddTag("SPRITE");
 		enemy->AddTag("ENTITY");
 		enemy->AddTag("COLLIDER");
 		enemy->AddTag("ENEMY");
-		enemy->AddComponent<hl::SpriteComponent>();
-		enemy->AddComponent< HealthComponent>(10, 10);
-		enemy->AddComponent<hl::KinematicComponent>()->velocity = glm::vec3(0.0f, 128.0f, 0.0f);
+		auto sc = enemy->AddComponent<EntityComponent>();
+		sc->Type = def.id;
+		sc->SpriteName = def.sprite;
+		sc->Size = _resourceService.getSize(sc->SpriteName);
+		enemy->AddComponent<hl::SpriteComponent>()->setFrameDataIndex(
+			static_cast<int>(_resourceService.getIndex(sc->SpriteName)));
+		enemy->AddComponent< HealthComponent>(def.health, def.health);
+		enemy->AddComponent<hl::KinematicComponent>()->velocity = glm::vec3(0.0f, def.speedY, 0.0f);
 		auto cc = enemy->AddComponent<CollisionComponent>();
 		cc->layer = CollisionLayer::Enemy;
 		cc->mask = CollisionLayer::PlayerBullet | CollisionLayer::Player;
-		auto sc = enemy->AddComponent<EntityComponent>();
-		sc->SpriteName = "enemyBlack1";
-		sc->Size = _resourceService.getSize(sc->SpriteName);
+
+		if (def.weaponId != nullptr && def.weaponId[0] != '\0')
+		{
+			auto* weapon = enemy->AddComponent<WeaponComponent>();
+			applyWeapon(*weapon, def.weaponId);
+			if (weapon->secondsPerShot > 0.0f)
+			{
+				weapon->fireCooldownRemaining =
+					static_cast<float>(rand() % 1000) / 1000.0f * weapon->secondsPerShot;
+			}
+		}
 
 		const float x = sc->Size.x / 2.0f + static_cast<float>(rand() % 1000) / 1000.0f * (HurricaneConstants::Width - sc->Size.x);
 

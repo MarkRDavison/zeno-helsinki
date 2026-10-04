@@ -1,202 +1,141 @@
 #include "Scenes/HurricaneTitleEngineScene.hpp"
-#include "Scenes/HurricaneGameEngineScene.hpp"
+#include <Scenes/SceneHost.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
-#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
-#include <helsinki/Renderer/Resource/TextureResource.hpp>
-#include <helsinki/Renderer/Resource/SignedDistanceFieldFontResource.hpp>
-#include <helsinki/System/Events/KeyEvents.hpp>
-#include <helsinki/System/Events/WindowResizeEvent.hpp>
-#include <GLFW/glfw3.h>
-#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
-#include <helsinki/Engine/ECS/Components/TextComponent.hpp>
+#include <helsinki/Renderer/Resource/FontResource.hpp>
+#include <helsinki/Renderer/Resource/ResourceContext.hpp>
+#include <helsinki/System/Resource/ResourceDefinition.hpp>
+#include <helsinki/Ui/Widget.hpp>
 
 namespace hur
 {
-
 	HurricaneTitleEngineScene::HurricaneTitleEngineScene(
 		hl::Engine& engine,
-		const hl::EngineConfiguration& engineConfig
+		const hl::EngineConfiguration& engineConfig,
+		SceneHost& sceneHost
 	) :
 		EngineScene(engine),
+		_sceneHost(sceneHost),
 		_engineConfig(engineConfig)
 	{
-        _cameras.insert({ "Default", new hl::Camera2D() });
+		_cameras.insert({ "Default", new hl::Camera2D() });
 		_engine.getEventBus().AddListener(this);
 	}
 
 	HurricaneTitleEngineScene::~HurricaneTitleEngineScene()
 	{
 		_engine.getEventBus().RemoveListener(this);
+		_sceneHost.onSceneDestroyed();
 	}
 
-    void HurricaneTitleEngineScene::initialise(
-        const std::string& cameraMatrixResourceId,
-        hl::VulkanDevice& device,
-        hl::VulkanSwapChain& swapChain,
-        hl::VulkanCommandPool& graphicsCommandPool,
-        hl::VulkanCommandPool& transferCommandPool,
-        hl::ResourceManager& resourceManager,
-        hl::MaterialSystem& materialSystem)
-    {
-        std::vector<hl::RenderpassInfo> renderpasses
-        {
-            hl::RenderGraphHelpers::createTextRenderpassInfo(cameraMatrixResourceId)
-        };
+	void HurricaneTitleEngineScene::initialise(
+		const std::string& cameraMatrixResourceId,
+		hl::VulkanDevice& device,
+		hl::VulkanSwapChain& swapChain,
+		hl::VulkanCommandPool& graphicsCommandPool,
+		hl::VulkanCommandPool& transferCommandPool,
+		hl::ResourceManager& resourceManager)
+	{
+		hl::ResourceContext resourceContext
+		{
+			.device = &device,
+			.pool = &transferCommandPool,
+			.resourceManager = &resourceManager,
+			.materialSystem = &_engine.getMaterialSystem(),
+			.rootPath = _engineConfig.RootPath
+		};
 
-        hl::ResourceContext resourceContext
-        {
-            .device = &device,
-            .pool = &transferCommandPool,
-            .resourceManager = &resourceManager,
-            .materialSystem = &materialSystem,
-            .rootPath = _engineConfig.RootPath
-        };
+		loadMenuUiSheet(
+			resourceManager,
+			resourceContext,
+			"title_ui_sheet",
+			{
+				hl::ResourceDefinition::Child{ .name = "white", .type = "texture" },
+				hl::ResourceDefinition::Child{ .name = "roboto", .type = "texture" }
+			});
 
-        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "white",
-            resourceContext);
-        resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>(
-            "roboto",
-            resourceContext);
-        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "roboto",
-            resourceContext);
+		EngineScene::initialise(
+			cameraMatrixResourceId,
+			device,
+			swapChain,
+			graphicsCommandPool,
+			transferCommandPool,
+			resourceManager,
+			{ makeMenuUiRenderpass(cameraMatrixResourceId, "title_ui_sheet") });
 
-        {
-            auto entity = _scene.addEntity("title");
-            entity->AddTag("TEXT");
-            entity->AddComponent<hl::TransformComponent>();
-            // TODO: Dont like having to pass text system here...
-            entity->AddComponent<hl::TextComponent>()->setString(
-                _engine.getTextSystem(),
-                "Hurricane",
-                "roboto",
-                128);
-            entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 0.5f, 0.0f, 1.0f));
-        }
-        {
-            auto entity = _scene.addEntity("start");
-            entity->AddTag("TEXT");
-            entity->AddComponent<hl::TransformComponent>();
-            // TODO: Dont like having to pass text system here...
-            entity->AddComponent<hl::TextComponent>()->setString(
-                _engine.getTextSystem(),
-                "Start",
-                "roboto",
-                64);
-        }
-        {
-            auto entity = _scene.addEntity("quit");
-            entity->AddTag("TEXT");
-            entity->AddComponent<hl::TransformComponent>();
-            // TODO: Dont like having to pass text system here...
-            entity->AddComponent<hl::TextComponent>()->setString(
-                _engine.getTextSystem(),
-                "Quit",
-                "roboto",
-                64);
-        }
+		buildMenu(resourceManager.GetResource<hl::FontResource>("roboto"));
+		_uiBatch.initialise(device);
 
-        handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
+		registerPipelineDraw("ui_pipeline", [&](hl::PipelineDrawData& pdd) -> void { _uiBatch.draw(pdd); });
+	}
 
-        EngineScene::initialise(
-            cameraMatrixResourceId,
-            device,
-            swapChain,
-            graphicsCommandPool,
-            transferCommandPool,
-            resourceManager,
-            materialSystem,
-            renderpasses);
-    }
+	void HurricaneTitleEngineScene::buildMenu(hl::FontResource* font)
+	{
+		_typeface = std::make_unique<FontTypeface>(font);
+		_layoutRoot = std::make_unique<hl::ui::Node>();
+		_layoutRoot->setFillParent();
 
-    void HurricaneTitleEngineScene::update(uint32_t currentFrame, float delta)
-    {
-        const auto mouse = _engine.getInputManager().getMousePosition();
-        const auto checkClick = _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1);
+		auto& column = _layoutRoot->addChild();
+		column.kind = hl::ui::Kind::Column;
+		column.gap = 40.0f;
+		column.crossAlign = hl::ui::Align::Center;
+		column.setCenter({ 0.0f, 0.0f });
 
-        for (auto& e : _scene.getEntitiesWithComponents<hl::TransformComponent, hl::TextComponent>("TEXT"))
-        {
-            auto tc = e->GetComponent<hl::TransformComponent>();
-            auto textComponent = e->GetComponent<hl::TextComponent>();
-            const auto tcp = tc->GetPosition();
+		_title = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
+		_title->setText("Hurricane", 128);
+		_title->color = { 1.0f, 0.5f, 0.0f };
 
-            const auto& size = _engine.getTextSystem().getTextSize(textComponent->getTextSystemId());
+		_start = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_start->setText("Start", 64);
+		_start->onClick = [this]()
+		{
+			_sceneHost.goGame();
+		};
 
-            if ((tcp.x + size.x <= mouse.x) && (mouse.x <= tcp.x + size.z) &&
-                (tcp.y + size.y <= mouse.y) && (mouse.y <= tcp.y + size.w))
-            {
-                textComponent->setColour(glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+		_settings = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_settings->setText("Settings", 64);
+		_settings->onClick = [this]()
+		{
+			_sceneHost.goSettings();
+		};
 
-                if (checkClick)
-                {
-                    handleTextClicked(e->getName());
-                }
-            }
-            else
-            {
-                textComponent->setColour(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-            }
-        }
-    }
+		_quit = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_quit->setText("Quit", 64);
+		_quit->onClick = [this]()
+		{
+			_engine.stop();
+		};
+	}
 
-    void HurricaneTitleEngineScene::OnEvent(const hl::Event& event)
-    {
-        if (auto ke = dynamic_cast<const hl::KeyPressEvent*>(&event))
-        {
-            const auto code = ke->GetKeyCode();
+	void HurricaneTitleEngineScene::rebuildAndDraw(float /*delta*/)
+	{
+		hl::ui::prepareTree(*_layoutRoot);
 
-            if (code == GLFW_KEY_ENTER)
-            {
-                std::cout << "ENTER PRESSED!" << std::endl;
-            }
-        }
-        else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
-        {
-            handleWindowSizeChange(wre->GetWidth(), wre->GetHeight());
-        }
-    }
+		const auto fb = _engine.getInputManager().getFramebufferSize();
+		hl::ui::layout(*_layoutRoot, hl::ui::Box{ 0.0f, 0.0f, fb.x, fb.y });
 
-    void HurricaneTitleEngineScene::handleWindowSizeChange(int width, int height)
-    {
-        // TODO: Replace these with flags/enum for anchor/alignment, left, right, top, bottom, center -> 9 possibilities.
-        const auto& centerTextAt = [&](const std::string& entityName, float yOffset) -> void
-            {
-                auto desiredCenter = glm::vec2(((float)width) / 2.0f, ((float)height) / 4.0f + yOffset);
+		hl::ui::dispatch(*_layoutRoot, readMenuPointer(_engine));
 
-                auto entity = _scene.getEntity(entityName);
+		_uiBatch.begin();
+		UiBatchPaint paint(_uiBatch);
+		hl::ui::paintTree(*_layoutRoot, paint);
+	}
 
-                const auto& size = _engine
-                    .getTextSystem()
-                    .getTextSize(
-                        entity->GetComponent<hl::TextComponent>()->getTextSystemId());
+	void HurricaneTitleEngineScene::update(uint32_t /*currentFrame*/, float delta)
+	{
+		rebuildAndDraw(delta);
+	}
 
-                desiredCenter.x += size.x - size.z / 2.0f;
-                desiredCenter.y += size.y - size.w / 2.0f;
+	void HurricaneTitleEngineScene::updateGpuResources(uint32_t currentFrame)
+	{
+		_uiBatch.updateGpuResources(currentFrame);
+	}
 
-                entity->GetComponent<hl::TransformComponent>()->SetPosition(glm::vec3(desiredCenter, 0.0f));
-            };
+	void HurricaneTitleEngineScene::additionalCleanup()
+	{
+		_uiBatch.destroy();
+	}
 
-
-        centerTextAt("title", 0.0f);
-        centerTextAt("start", 1.0f * height / 6.0f);
-        centerTextAt("quit", 2.0f * height / 6.0f);
-    }
-
-    void HurricaneTitleEngineScene::handleTextClicked(const std::string& name)
-    {
-        if (name == "quit")
-        {
-            _engine.stop();
-            // end credits scene?
-        }
-        else if (name == "start")
-        {
-            _engine.setScene(new HurricaneGameEngineScene(_engine, _engineConfig));
-        }
-        else
-        {
-            std::cout << "Clicked on " << name << std::endl;
-        }
-    }
+	void HurricaneTitleEngineScene::OnEvent(const hl::Event&)
+	{
+	}
 }

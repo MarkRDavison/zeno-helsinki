@@ -25,22 +25,22 @@ namespace hl
 		bufferInfo.usage = usage;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		CHECK_VK_RESULT(vkCreateBuffer(_device._device, &bufferInfo, nullptr, &_buffer));
+		CHECK_VK_RESULT(vkCreateBuffer(_device.handle(), &bufferInfo, nullptr, &_buffer));
 
 		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(_device._device, _buffer, &memRequirements);
+		vkGetBufferMemoryRequirements(_device.handle(), _buffer, &memRequirements);
 
 		VkMemoryAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex = _device.findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
-		CHECK_VK_RESULT(vkAllocateMemory(_device._device, &allocInfo, nullptr, &_memory));
+		CHECK_VK_RESULT(vkAllocateMemory(_device.handle(), &allocInfo, nullptr, &_memory));
 
-		CHECK_VK_RESULT(vkBindBufferMemory(_device._device, _buffer, _memory, 0));
+		CHECK_VK_RESULT(vkBindBufferMemory(_device.handle(), _buffer, _memory, 0));
 
 		CHECK_VK_RESULT(vkMapMemory(
-			_device._device,
+			_device.handle(),
 			_memory,
 			0,
 			VK_WHOLE_SIZE,
@@ -72,12 +72,12 @@ namespace hl
 	{
 		if (_mappedMemory)
 		{
-			vkUnmapMemory(_device._device, _memory);
+			vkUnmapMemory(_device.handle(), _memory);
 			_mappedMemory = nullptr;
 		}
 
-		vkDestroyBuffer(_device._device, _buffer, nullptr);
-		vkFreeMemory(_device._device, _memory, nullptr);
+		vkDestroyBuffer(_device.handle(), _buffer, nullptr);
+		vkFreeMemory(_device.handle(), _memory, nullptr);
 		_size = 0;
 	}
 }

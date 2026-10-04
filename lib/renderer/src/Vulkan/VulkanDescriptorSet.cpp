@@ -23,7 +23,7 @@ namespace hl
 		allocInfo.pSetLayouts = layouts.data();
 
 		_descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-        CHECK_VK_RESULT(vkAllocateDescriptorSets(_device._device, &allocInfo, _descriptorSets.data()));
+        CHECK_VK_RESULT(vkAllocateDescriptorSets(_device.handle(), &allocInfo, _descriptorSets.data()));
 	}
 
 	void VulkanDescriptorSet::update(size_t index, VulkanUniformBuffer& uniform, VulkanTexture& texture)
@@ -57,7 +57,7 @@ namespace hl
         descriptorWrites[1].pImageInfo = &imageInfo;
 
         vkUpdateDescriptorSets(
-            _device._device,
+            _device.handle(),
             static_cast<uint32_t>(descriptorWrites.size()),
             descriptorWrites.data(),
             0,
@@ -80,7 +80,7 @@ namespace hl
         write.pImageInfo = &imageInfo;
 
         vkUpdateDescriptorSets(
-            _device._device, 
+            _device.handle(), 
             1, 
             &write, 
             0, 

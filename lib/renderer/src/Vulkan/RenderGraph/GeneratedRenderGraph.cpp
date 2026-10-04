@@ -4,6 +4,7 @@
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <helsinki/Renderer/Resource/OffscreenImageResource.hpp>
+#include <helsinki/System/Resource/LogicalResource.hpp>
 #include <stdexcept>
 #include <iostream>
 
@@ -25,9 +26,9 @@ namespace hl
 		_resources = hl::RenderGraph::create(
 			renderpasses,
 			device,
-			swapChain._swapChainExtent.width,
-			swapChain._swapChainExtent.height,
-			swapChain._swapChainImageViews,
+			swapChain.extent().width,
+			swapChain.extent().height,
+			swapChain.imageViews(),
             resourceManager);
 
         for (uint32_t layer = 0;; ++layer)
@@ -138,8 +139,8 @@ namespace hl
                 info,
                 width,
                 height,
-                _swapChain._swapChainImageViews,
-                (uint32_t)(isLastRenderpass ? _swapChain._swapChainImageViews.size() : MAX_FRAMES_IN_FLIGHT),
+                _swapChain.imageViews(),
+                (uint32_t)(isLastRenderpass ? _swapChain.imageViews().size() : MAX_FRAMES_IN_FLIGHT),
                 isLastRenderpass);
 
             updateAllOutputResources();
@@ -165,6 +166,11 @@ namespace hl
                         {
                             for (auto& b : ds.bindings)
                             {
+                                if (!shouldWriteDescriptorBinding(b.updateFrequency, _staticDescriptorsWritten))
+                                {
+                                    continue;
+                                }
+
                                 if (b.type == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER")
                                 {
                                     bufferInfoCount += 1;
@@ -191,6 +197,11 @@ namespace hl
                         {
                             for (auto& b : ds.bindings)
                             {
+                                if (!shouldWriteDescriptorBinding(b.updateFrequency, _staticDescriptorsWritten))
+                                {
+                                    continue;
+                                }
+
                                 if (b.resource.has_value())
                                 {
                                     if (b.type == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER")
@@ -251,33 +262,80 @@ namespace hl
                                     }
                                     else if (b.type == "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER")
                                     {
-                                        auto info = _resourceManager
-                                            .GetResource<ImageSamplerResource>(
-                                                b.resource.value())
-                                            ->getDescriptorInfo(i);
-
                                         if (b.count > 1)
                                         {
-                                            throw std::runtime_error("Cannot handle hard coded image sampler arrays");
+                                            auto* logical = _resourceManager
+                                                .GetResource<LogicalResource>(b.resource.value());
+
+                                            if (logical == nullptr)
+                                            {
+                                                throw std::runtime_error("Cannot handle hard coded image sampler arrays");
+                                            }
+
+                                            const auto imageInfoStart = imageInfos.size();
+
+                                            for (const auto& childName : logical->GetChildren())
+                                            {
+                                                const auto info = _resourceManager
+                                                    .GetResource<ImageSamplerResource>(childName)
+                                                    ->getDescriptorInfo(i);
+
+                                                imageInfos.push_back(VkDescriptorImageInfo
+                                                    {
+                                                        .sampler = info.first,
+                                                        .imageView = info.second,
+                                                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                                    });
+                                            }
+
+                                            if (imageInfos.size() == imageInfoStart)
+                                            {
+                                                throw std::runtime_error("Logical resource has no children for sampler array binding");
+                                            }
+
+                                            const auto& fallbackInfo = imageInfos[imageInfoStart];
+
+                                            while (imageInfos.size() - imageInfoStart < b.count)
+                                            {
+                                                imageInfos.push_back(fallbackInfo);
+                                            }
+
+                                            descriptorWrites.emplace_back(VkWriteDescriptorSet
+                                                {
+                                                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                                    .dstSet = getDescriptorSet(r.name, p.name, i),
+                                                    .dstBinding = b.binding,
+                                                    .dstArrayElement = 0,
+                                                    .descriptorCount = b.count,
+                                                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                    .pImageInfo = &imageInfos[imageInfoStart]
+                                                });
                                         }
+                                        else
+                                        {
+                                            const auto info = _resourceManager
+                                                .GetResource<ImageSamplerResource>(
+                                                    b.resource.value())
+                                                ->getDescriptorInfo(i);
 
-                                        imageInfos.push_back(VkDescriptorImageInfo
-                                            {
-                                                .sampler = info.first,
-                                                .imageView = info.second,
-                                                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                                            });
+                                            imageInfos.push_back(VkDescriptorImageInfo
+                                                {
+                                                    .sampler = info.first,
+                                                    .imageView = info.second,
+                                                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                                });
 
-                                        descriptorWrites.emplace_back(VkWriteDescriptorSet
-                                            {
-                                                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                                .dstSet = getDescriptorSet(r.name, p.name, i),
-                                                .dstBinding = b.binding,
-                                                .dstArrayElement = 0,
-                                                .descriptorCount = 1,
-                                                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                .pImageInfo = &imageInfos.back()
-                                            });
+                                            descriptorWrites.emplace_back(VkWriteDescriptorSet
+                                                {
+                                                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                                    .dstSet = getDescriptorSet(r.name, p.name, i),
+                                                    .dstBinding = b.binding,
+                                                    .dstArrayElement = 0,
+                                                    .descriptorCount = 1,
+                                                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                    .pImageInfo = &imageInfos.back()
+                                                });
+                                        }
                                     }
                                     else
                                     {
@@ -287,16 +345,21 @@ namespace hl
                             }
                         }
 
-                        vkUpdateDescriptorSets(
-                            _device._device,
-                            static_cast<uint32_t>(descriptorWrites.size()),
-                            descriptorWrites.data(),
-                            0,
-                            nullptr);
+                        if (!descriptorWrites.empty())
+                        {
+                            vkUpdateDescriptorSets(
+                                _device.handle(),
+                                static_cast<uint32_t>(descriptorWrites.size()),
+                                descriptorWrites.data(),
+                                0,
+                                nullptr);
+                        }
                     }
                 }
             }
         }
+
+        _staticDescriptorsWritten = true;
 	}
 
     void GeneratedRenderGraph::updateAllOutputResources()
@@ -359,7 +422,7 @@ namespace hl
                                                     samplerInfo.minLod = 0.0f;
                                                     samplerInfo.maxLod = 0.0f;
 
-                                                    CHECK_VK_RESULT(vkCreateSampler(_device._device, &samplerInfo, nullptr, &grpra.sampler));
+                                                    CHECK_VK_RESULT(vkCreateSampler(_device.handle(), &samplerInfo, nullptr, &grpra.sampler));
 
                                                     _device.setDebugName(
                                                         reinterpret_cast<uint64_t>(grpra.sampler),

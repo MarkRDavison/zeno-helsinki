@@ -44,6 +44,7 @@ namespace hl
 		std::unordered_map<uint32_t, std::vector<std::string>> _nodesByLayer;
 		std::vector<VulkanRenderGraphRenderpassResources*> _resources;
 		ResourceManager& _resourceManager;
+		bool _staticDescriptorsWritten{ false };
 	};
 
 }

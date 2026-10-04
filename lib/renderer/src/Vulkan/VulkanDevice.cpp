@@ -51,7 +51,7 @@ namespace hl
 	void VulkanDevice::pickPhysicalDevice()
 	{
         uint32_t deviceCount = 0;
-        vkEnumeratePhysicalDevices(_instance._instance, &deviceCount, nullptr);
+        vkEnumeratePhysicalDevices(_instance.handle(), &deviceCount, nullptr);
 
         if (deviceCount == 0)
         {
@@ -59,11 +59,11 @@ namespace hl
         }
 
         std::vector<VkPhysicalDevice> devices(deviceCount);
-        vkEnumeratePhysicalDevices(_instance._instance, &deviceCount, devices.data());
+        vkEnumeratePhysicalDevices(_instance.handle(), &deviceCount, devices.data());
 
         for (const auto& d : devices)
         {
-            if (isDeviceSuitable(d, _surface._surface))
+            if (isDeviceSuitable(d, _surface.handle()))
             {
                 _physicalDevice = d;
                 _msaaSamples = getMaxUsableSampleCount(_physicalDevice);
@@ -79,7 +79,7 @@ namespace hl
 
 	void VulkanDevice::createLogicalDevice()
 	{
-        auto queueIndices = VulkanQueue::findQueueFamilies(_physicalDevice, _surface._surface);
+        auto queueIndices = VulkanQueue::findQueueFamilies(_physicalDevice, _surface.handle());
 
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = { queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value() };

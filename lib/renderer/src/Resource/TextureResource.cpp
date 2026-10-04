@@ -1,4 +1,6 @@
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <cstdint>
 #include <format>
 
 namespace hl
@@ -14,7 +16,14 @@ namespace hl
 	}
 
 	bool TextureResource::Load()
-	{		
+	{
+		if (GetId() == MaterialSystem::FallbackTextureName)
+		{
+			constexpr uint8_t kWhitePixel[] = { 255, 255, 255, 255 };
+			_texture.create(*_resourceContext.pool, kWhitePixel, 1, 1);
+			return Resource::Load();
+		}
+
 		std::string path = std::format("{}/data/textures/{}.png", _resourceContext.rootPath, GetId());
 
 		_texture.create(

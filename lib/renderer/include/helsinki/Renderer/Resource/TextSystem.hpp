@@ -1,8 +1,10 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
+#include <vector>
+#include <stdexcept>
 #include <queue>
+#include <unordered_map>
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
@@ -14,9 +16,25 @@
 namespace hl
 {
 
+	inline uint32_t fontAtlasIndex(const std::vector<std::string>& children, const std::string& fontId)
+	{
+		for (uint32_t i = 0; i < children.size(); ++i)
+		{
+			if (children[i] == fontId)
+			{
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Font '" + fontId + "' is not in the atlas sheet");
+	}
+
 	class TextSystem : NonCopyable
 	{
 	public:
+		static constexpr const char RasterAtlasName[] = "text_raster_atlas";
+		static constexpr const char SdfAtlasName[] = "text_sdf_atlas";
+
 		TextSystem(
 			VulkanDevice& device,
 			VulkanCommandPool& transferPool,
@@ -30,9 +48,7 @@ namespace hl
 		const Text& getText(int id) const;
 		glm::vec4 getTextSize(int id) const;
 
-		std::unordered_map<std::string, uint32_t> bindFontsDescriptor(
-			FontType fontType, 
-			VkDescriptorSet descriptorSet) const;
+		uint32_t getFontAtlasIndex(FontType fontType, const std::string& fontId) const;
 
 		void processDeferredTextDestruction(int count = -1);
 

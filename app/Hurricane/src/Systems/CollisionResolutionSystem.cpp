@@ -1,6 +1,12 @@
 #include <Systems/CollisionResolutionSystem.hpp>
 #include <Events/CollisionEvent.hpp>
+#include <Events/MissileExplodeEvent.hpp>
 #include <Components/HealthComponent.hpp>
+#include <Components/PickupComponent.hpp>
+#include <Components/PickupKind.hpp>
+#include <Components/PlayerLoadoutComponent.hpp>
+#include <Components/ProjectileComponent.hpp>
+#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 
 namespace hur
 {
@@ -26,7 +32,6 @@ namespace hur
 
 	void CollisionResolutionSystem::OnEvent(const hl::Event& event)
 	{
-		// TODO: What happens if projectile hits multiple enemies in one frame?
 		if (auto ce = dynamic_cast<const CollisionEvent*>(&event))
 		{
 			auto entityA = _scene.getEntity(ce->getEntityAId());
@@ -37,23 +42,103 @@ namespace hur
 				return;
 			}
 
+			if (_scene.isPendingRemoval(entityA->Id) || _scene.isPendingRemoval(entityB->Id))
+			{
+				return;
+			}
+
+			const auto pickupIsA = entityA->HasTag("PICKUP");
+			const auto pickupIsB = entityB->HasTag("PICKUP");
+			if (pickupIsA || pickupIsB)
+			{
+				const auto aIsPlayer = entityA->HasTag("PLAYER");
+				const auto bIsPlayer = entityB->HasTag("PLAYER");
+
+				hl::Entity* player = nullptr;
+				hl::Entity* pickup = nullptr;
+				if (pickupIsA && bIsPlayer)
+				{
+					pickup = entityA;
+					player = entityB;
+				}
+				else if (pickupIsB && aIsPlayer)
+				{
+					pickup = entityB;
+					player = entityA;
+				}
+
+				if (player == nullptr || pickup == nullptr)
+				{
+					return;
+				}
+
+				if (auto* pickupComp = pickup->GetComponent<PickupComponent>())
+				{
+					const PickupKind kind = pickupKindFromId(pickupComp->pickupId);
+					if (auto* loadout = player->GetComponent<PlayerLoadoutComponent>())
+					{
+						applyPickup(
+							*loadout,
+							player->GetComponent<WeaponComponent>(),
+							kind);
+					}
+				}
+
+				_scene.removeEntity(pickup->Id);
+				return;
+			}
+
 			auto projectileIsA = entityA->HasTag("PROJECTILE"); // TODO: CONSTANTS
 			auto projectileIsB = entityB->HasTag("PROJECTILE");
+			const auto missileIsA = entityA->HasTag("MISSILE");
+			const auto missileIsB = entityB->HasTag("MISSILE");
+
+			if (missileIsA || missileIsB)
+			{
+				hl::Entity* missile = missileIsA ? entityA : entityB;
+				hl::Entity* other = missileIsA ? entityB : entityA;
+				if (!other->HasTag("ENEMY"))
+				{
+					return;
+				}
+
+				glm::vec3 explodeAt{};
+				if (auto* transform = missile->GetComponent<hl::TransformComponent>())
+				{
+					explodeAt = transform->GetPosition();
+				}
+
+				_scene.removeEntity(missile->Id);
+				_eventBus.PublishEvent(MissileExplodeEvent(explodeAt));
+				return;
+			}
 
 			if (projectileIsA)
 			{
 				_scene.removeEntity(entityA->Id);
 
-				const int damage = 3;
-				applyDamageToEntity(entityB, damage, DeathType::DROP);
+				int damage = 3;
+				if (auto* projectile = entityA->GetComponent<ProjectileComponent>())
+				{
+					damage = projectile->damage;
+				}
+				const DeathType deathType =
+					entityB->HasTag("PLAYER") ? DeathType::NO_DROP : DeathType::DROP;
+				applyDamageToEntity(entityB, damage, deathType);
 
 			}
 			else if (projectileIsB)
 			{
 				_scene.removeEntity(entityB->Id);
 
-				const int damage = 3;
-				applyDamageToEntity(entityA, damage, DeathType::DROP);
+				int damage = 3;
+				if (auto* projectile = entityB->GetComponent<ProjectileComponent>())
+				{
+					damage = projectile->damage;
+				}
+				const DeathType deathType =
+					entityA->HasTag("PLAYER") ? DeathType::NO_DROP : DeathType::DROP;
+				applyDamageToEntity(entityA, damage, deathType);
 			}
 			else
 			{
@@ -83,7 +168,23 @@ namespace hur
 
 	void CollisionResolutionSystem::applyDamageToEntity(hl::Entity* entity, int damage, DeathType type)
 	{
+		if (entity->HasTag("PLAYER"))
+		{
+			if (auto* loadout = entity->GetComponent<PlayerLoadoutComponent>())
+			{
+				if (loadout->shieldLayers > 0)
+				{
+					--loadout->shieldLayers;
+					return;
+				}
+			}
+		}
+
 		auto aHealth = entity->GetComponent<HealthComponent>();
+		if (aHealth == nullptr)
+		{
+			return;
+		}
 
 		const auto currentAHealth = aHealth->getCurrentHealth();
 

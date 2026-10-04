@@ -13,6 +13,9 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <algorithm>
+#include <future>
+#include <stdexcept>
 
 namespace hl
 {
@@ -51,13 +54,12 @@ namespace hl
 		VulkanCommandPool& graphicsCommandPool,
         VulkanCommandPool& /*transferCommandPool*/,
 		ResourceManager& resourceManager,
-        MaterialSystem& materialSystem,
 		const std::vector<RenderpassInfo>& renderpassInfo)
 	{
         _device = &device;
         _swapChain = &swapChain;
         _resourceManager = &resourceManager;
-        _materialSystem = &materialSystem;
+		_graphicsCommandPool = &graphicsCommandPool;
 
         _cameraMatrixPushConstantHandle = ResourceHandle<UniformBufferResource>(cameraMatrixResourceId, _resourceManager);
 
@@ -67,17 +69,38 @@ namespace hl
 			renderpassInfo,
 			resourceManager);
 
+		size_t maxPipelineGroups = 0;
+		for (uint32_t layer = 0; layer < _renderGraph->getNumberLayers(); layer++)
+		{
+			for (const auto& renderpassName : _renderGraph->getSortedNodesByNameForLayer(layer))
+			{
+				const auto& renderpass = _renderGraph->getRenderpassByName(renderpassName);
+				maxPipelineGroups = std::max(maxPipelineGroups, renderpass->getPipelineGroups().size());
+			}
+		}
+
+		if (maxPipelineGroups > 1)
+		{
+			_secondaryRecordPools.reserve(maxPipelineGroups - 1);
+			for (size_t i = 1; i < maxPipelineGroups; ++i)
+			{
+				auto pool = std::make_unique<VulkanCommandPool>(device);
+				pool->create();
+				_secondaryRecordPools.push_back(std::move(pool));
+			}
+		}
+
 		_frameResources.resize(MAX_FRAMES_IN_FLIGHT);
 
 		VkCommandBufferAllocateInfo primaryAllocInfo{};
 		primaryAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		primaryAllocInfo.commandPool = graphicsCommandPool._commandPool;
+		primaryAllocInfo.commandPool = graphicsCommandPool.handle();
 		primaryAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		primaryAllocInfo.commandBufferCount = (uint32_t)_frameResources.size();
 
 		std::vector<VkCommandBuffer> perFrameCommandBuffers(MAX_FRAMES_IN_FLIGHT);
 
-		CHECK_VK_RESULT(vkAllocateCommandBuffers(device._device, &primaryAllocInfo, perFrameCommandBuffers.data()));
+		CHECK_VK_RESULT(vkAllocateCommandBuffers(device.handle(), &primaryAllocInfo, perFrameCommandBuffers.data()));
 
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 		{
@@ -106,13 +129,17 @@ namespace hl
 					uint32_t groupIndex = 0;
 					for (auto& secondaryCommand : secondaryCommandsForGroups)
 					{
+						VkCommandPool commandPool = groupIndex == 0
+							? graphicsCommandPool.handle()
+							: _secondaryRecordPools[groupIndex - 1]->handle();
+
 						VkCommandBufferAllocateInfo secondaryAllocInfo{};
 						secondaryAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 						secondaryAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-						secondaryAllocInfo.commandPool = graphicsCommandPool._commandPool;
+						secondaryAllocInfo.commandPool = commandPool;
 						secondaryAllocInfo.commandBufferCount = 1;
 
-						vkAllocateCommandBuffers(device._device, &secondaryAllocInfo, &secondaryCommand);
+						CHECK_VK_RESULT(vkAllocateCommandBuffers(device.handle(), &secondaryAllocInfo, &secondaryCommand));
 
 						device.setDebugName(
 							reinterpret_cast<uint64_t>(secondaryCommand),
@@ -127,7 +154,7 @@ namespace hl
 
         for (auto& [name, camera] : _cameras)
         {
-            camera->notifyFramebufferChangeSize((uint32_t)swapChain._swapChainExtent.width, (uint32_t)swapChain._swapChainExtent.height);
+            camera->notifyFramebufferChangeSize((uint32_t)swapChain.extent().width, (uint32_t)swapChain.extent().height);
         }        
 	}
 
@@ -137,10 +164,9 @@ namespace hl
 		VulkanSwapChain& swapChain,
         VulkanCommandPool& graphicsCommandPool,
         VulkanCommandPool& transferCommandPool,
-		ResourceManager& resourceManager,
-        MaterialSystem& materialSystem)
+		ResourceManager& resourceManager)
 	{
-		initialise(cameraMatrixResourceId, device, swapChain, graphicsCommandPool, transferCommandPool, resourceManager, materialSystem, {});
+		initialise(cameraMatrixResourceId, device, swapChain, graphicsCommandPool, transferCommandPool, resourceManager, {});
 	}
 	void EngineScene::cleanup()
 	{
@@ -148,6 +174,13 @@ namespace hl
 		_renderGraph->destroy();
 		delete _renderGraph;
 		_renderGraph = nullptr;
+
+		for (auto& pool : _secondaryRecordPools)
+		{
+			pool->destroy();
+		}
+		_secondaryRecordPools.clear();
+		_graphicsCommandPool = nullptr;
 	}
 
     void EngineScene::updateBase(uint32_t currentFrame, float delta)
@@ -197,22 +230,6 @@ namespace hl
 
             const auto& secondaryBuffersPerRenderpass = frame.secondaryCommandsByLayerAndPipelineGroup.at(layer);
 
-            // FUTURE WORK: Multithreaded secondary command buffer recording
-            //
-            // Current design records all pipeline groups in each renderpass sequentially.
-            // Potential optimization: record pipeline groups in parallel on worker threads.
-            //
-            // Plan:
-            // 1. For each renderpass, if it has >1 pipeline group, dispatch each group to a worker thread.
-            // 2. Each thread records its secondary command buffer independently.
-            // 3. Wait for all threads to finish.
-            // 4. Accumulate all secondary command buffers and call vkCmdExecuteCommands once to submit them to the primary command buffer.
-            //
-            // Notes:
-            // - Only safe for independent pipeline groups within a renderpass (no ordering dependencies).
-            //      - This should be fine since renderpasses in the same layer should be independant
-            // - Avoid multithreading overhead if there is only one pipeline group.
-            // - Later extension: consider parallel renderpasses if layers or renderpasses are independent.
             size_t renderpassIndex = 0;
             for (const auto& renderpassName : _renderGraph->getSortedNodesByNameForLayer(layer))
             {
@@ -231,7 +248,7 @@ namespace hl
                     .renderArea =
                     {
                         .offset = { 0,0 },
-                        .extent = getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent),
+                        .extent = getExtent(renderpass->getExtent(), _swapChain->extent()),
                     },
                     .clearValueCount = (uint32_t)clearValues.size(),
                     .pClearValues = clearValues.data()
@@ -254,121 +271,58 @@ namespace hl
                 secondaryBeginInfo.pInheritanceInfo = &inheritanceInfo;
 
                 const auto& secondaryBuffersForGroup = secondaryBuffersPerRenderpass[renderpassIndex];
+                const auto& pipelineGroups = renderpass->getPipelineGroups();
 
-                size_t pipelineGroupIndex = 0;
-                for (const auto& pg : renderpass->getPipelineGroups())
+                if (pipelineGroups.size() > 1)
                 {
-                    // TODO: Here create a job and put it into a worker thread queue to be picked up
-                    const auto secondaryBuffer = secondaryBuffersForGroup[pipelineGroupIndex];
-
-                    CHECK_VK_RESULT(vkBeginCommandBuffer(secondaryBuffer, &secondaryBeginInfo));
-
-                    for (const auto& p : pg)
+                    std::vector<std::future<void>> futures;
+                    futures.reserve(pipelineGroups.size() - 1);
+                    for (size_t groupIndex = 1; groupIndex < pipelineGroups.size(); ++groupIndex)
                     {
-                        vkCmdBindPipeline(secondaryBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p->getPipeline());
-
-                        const auto viewportConfigWidth = p->getViewportWidth();
-                        const auto viewportConfigHeight = p->getViewportHeight();
-                        // TODO: Use them to change view port and scissor
-
-                        float viewportX = 0.0f;
-                        float viewportY = 0.0f;
-                        float viewportWidth = 0.0f;
-                        float viewportHeight = 0.0f;
-
-
-                        switch (p->getViewportMode())
-                        {
-                        case ViewportMode::FixedAspect:
+                        futures.push_back(std::async(
+                            std::launch::async,
+                            [this, &secondaryBeginInfo, renderpass, &secondaryBuffersForGroup, &renderpassName, currentFrame, groupIndex]()
                             {
-                                const auto extent =
-                                    getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent);
-
-                                const float windowWidth = static_cast<float>(extent.width);
-                                const float windowHeight = static_cast<float>(extent.height);
-
-                                const auto windowAspectRatio =
-                                    windowWidth / windowHeight;
-
-                                const auto viewportAspectRatio =
-                                    static_cast<float>(viewportConfigWidth) /
-                                    static_cast<float>(viewportConfigHeight);
-
-                                if (windowAspectRatio > viewportAspectRatio)
-                                {
-                                    viewportHeight = windowHeight;
-                                    viewportWidth = viewportHeight * viewportAspectRatio;
-
-                                    const float unusedWidth = windowWidth - viewportWidth;
-
-                                    viewportX = unusedWidth / 2.0f;
-                                    viewportY = 0.0f;
-                                }
-                                else
-                                {
-                                    viewportWidth = windowWidth;
-                                    viewportHeight = viewportWidth / viewportAspectRatio;
-
-                                    const float unusedHeight = windowHeight - viewportHeight;
-
-                                    viewportX = 0.0f;
-                                    viewportY = unusedHeight / 2.0f;
-                                }
-                            }
-                            break;
-                        case ViewportMode::FixedResolution:
-                            throw std::runtime_error("TODO");
-                            break;
-                        case ViewportMode::Custom:
-                            throw std::runtime_error("TODO");
-                            break;
-                        case ViewportMode::Fill:
-                        default:
-                            viewportX = 0;
-                            viewportY = 0;
-                            viewportWidth = (float)getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent).width;
-                            viewportHeight = (float)getExtent(renderpass->getExtent(), _swapChain->_swapChainExtent).height;
-                            break;
-                        }
-
-                        {   //  TODO: This can be wasteful if nothing has changed.
-                            VkViewport viewport
-                            {
-                                .x = viewportX,
-                                .y = viewportY,
-                                .width = viewportWidth,
-                                .height = viewportHeight,
-                                .minDepth = 0.0f,
-                                .maxDepth = 1.0f
-                            };
-                            vkCmdSetViewport(secondaryBuffer, 0, 1, &viewport);
-
-                            VkRect2D scissor
-                            {
-                                .offset =
-                                {
-                                    static_cast<int32_t>(viewportX),
-                                    static_cast<int32_t>(viewportY)
-                                },
-                                .extent =
-                                {
-                                    static_cast<uint32_t>(viewportWidth),
-                                    static_cast<uint32_t>(viewportHeight)
-                                }
-                            };
-                            vkCmdSetScissor(secondaryBuffer, 0, 1, &scissor);
-                        }
-
-                        renderPipelineDraw(secondaryBuffer, renderpassName, p, currentFrame);
+                                recordPipelineGroup(
+                                    secondaryBuffersForGroup[groupIndex],
+                                    secondaryBeginInfo,
+                                    *renderpass,
+                                    groupIndex,
+                                    renderpassName,
+                                    currentFrame);
+                            }));
                     }
 
-                    CHECK_VK_RESULT(vkEndCommandBuffer(secondaryBuffer));
+                    recordPipelineGroup(
+                        secondaryBuffersForGroup[0],
+                        secondaryBeginInfo,
+                        *renderpass,
+                        0,
+                        renderpassName,
+                        currentFrame);
 
-                    // TODO: Join/wait for all the thread jobs to complete here
-                    // TODO: Accumulate all the secondary buffers and call vkCmdExecuteCommands just before vkCmdEndRenderPass
-                    vkCmdExecuteCommands(frame.primaryCmd, 1, &secondaryBuffer);
+                    for (auto& future : futures)
+                    {
+                        future.get();
+                    }
+                }
+                else if (pipelineGroups.size() == 1)
+                {
+                    recordPipelineGroup(
+                        secondaryBuffersForGroup[0],
+                        secondaryBeginInfo,
+                        *renderpass,
+                        0,
+                        renderpassName,
+                        currentFrame);
+                }
 
-                    pipelineGroupIndex++;
+                if (!secondaryBuffersForGroup.empty())
+                {
+                    vkCmdExecuteCommands(
+                        frame.primaryCmd,
+                        static_cast<uint32_t>(secondaryBuffersForGroup.size()),
+                        secondaryBuffersForGroup.data());
                 }
 
                 vkCmdEndRenderPass(frame.primaryCmd);
@@ -386,11 +340,25 @@ namespace hl
 	{
 		_renderGraph->recreate(width, height);
 
-
         for (auto& [name, camera] : _cameras)
         {
             camera->notifyFramebufferChangeSize(width, height);
         }
+
+		syncCameraUniformBuffers();
+	}
+	void EngineScene::syncCameraUniformBuffers()
+	{
+		auto* cameras = _cameraMatrixPushConstantHandle.Get();
+		if (cameras == nullptr)
+		{
+			return;
+		}
+
+		for (uint32_t frame = 0; frame < MAX_FRAMES_IN_FLIGHT; ++frame)
+		{
+			updateCameraUniformBuffer(cameras->getUniformBuffer(frame));
+		}
 	}
 	void EngineScene::updateAllDescriptorSets()
 	{
@@ -437,6 +405,117 @@ namespace hl
             idx++;
         }
     }
+    void EngineScene::recordPipelineGroup(
+        VkCommandBuffer secondaryBuffer,
+        const VkCommandBufferBeginInfo& secondaryBeginInfo,
+        VulkanRenderGraphRenderpassResources& renderpass,
+        size_t pipelineGroupIndex,
+        const std::string& renderpassName,
+        uint32_t currentFrame)
+    {
+        CHECK_VK_RESULT(vkBeginCommandBuffer(secondaryBuffer, &secondaryBeginInfo));
+
+        const auto& pg = renderpass.getPipelineGroups()[pipelineGroupIndex];
+        for (const auto& p : pg)
+        {
+            vkCmdBindPipeline(secondaryBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p->getPipeline());
+
+            const auto viewportConfigWidth = p->getViewportWidth();
+            const auto viewportConfigHeight = p->getViewportHeight();
+
+            float viewportX = 0.0f;
+            float viewportY = 0.0f;
+            float viewportWidth = 0.0f;
+            float viewportHeight = 0.0f;
+
+            switch (p->getViewportMode())
+            {
+            case ViewportMode::FixedAspect:
+                {
+                    const auto extent =
+                        getExtent(renderpass.getExtent(), _swapChain->extent());
+
+                    const float windowWidth = static_cast<float>(extent.width);
+                    const float windowHeight = static_cast<float>(extent.height);
+
+                    const auto windowAspectRatio =
+                        windowWidth / windowHeight;
+
+                    const auto viewportAspectRatio =
+                        static_cast<float>(viewportConfigWidth) /
+                        static_cast<float>(viewportConfigHeight);
+
+                    if (windowAspectRatio > viewportAspectRatio)
+                    {
+                        viewportHeight = windowHeight;
+                        viewportWidth = viewportHeight * viewportAspectRatio;
+
+                        const float unusedWidth = windowWidth - viewportWidth;
+
+                        viewportX = unusedWidth / 2.0f;
+                        viewportY = 0.0f;
+                    }
+                    else
+                    {
+                        viewportWidth = windowWidth;
+                        viewportHeight = viewportWidth / viewportAspectRatio;
+
+                        const float unusedHeight = windowHeight - viewportHeight;
+
+                        viewportX = 0.0f;
+                        viewportY = unusedHeight / 2.0f;
+                    }
+                }
+                break;
+            case ViewportMode::FixedResolution:
+                throw std::runtime_error("TODO");
+                break;
+            case ViewportMode::Custom:
+                throw std::runtime_error("TODO");
+                break;
+            case ViewportMode::Fill:
+            default:
+                viewportX = 0;
+                viewportY = 0;
+                viewportWidth = (float)getExtent(renderpass.getExtent(), _swapChain->extent()).width;
+                viewportHeight = (float)getExtent(renderpass.getExtent(), _swapChain->extent()).height;
+                break;
+            }
+
+            {
+                VkViewport viewport
+                {
+                    .x = viewportX,
+                    .y = viewportY,
+                    .width = viewportWidth,
+                    .height = viewportHeight,
+                    .minDepth = 0.0f,
+                    .maxDepth = 1.0f
+                };
+                vkCmdSetViewport(secondaryBuffer, 0, 1, &viewport);
+
+                VkRect2D scissor
+                {
+                    .offset =
+                    {
+                        static_cast<int32_t>(viewportX),
+                        static_cast<int32_t>(viewportY)
+                    },
+                    .extent =
+                    {
+                        static_cast<uint32_t>(viewportWidth),
+                        static_cast<uint32_t>(viewportHeight)
+                    }
+                };
+                vkCmdSetScissor(secondaryBuffer, 0, 1, &scissor);
+            }
+
+            renderPipelineDraw(secondaryBuffer, renderpassName, p, currentFrame);
+        }
+
+        CHECK_VK_RESULT(vkEndCommandBuffer(secondaryBuffer));
+    }
+
     void EngineScene::renderPipelineDraw(
         VkCommandBuffer commandBuffer,
         const std::string& renderpassName, 
@@ -493,7 +572,7 @@ namespace hl
 
                 for (const auto& mesh : meshes)
                 {
-                    pc.materialIndex = _materialSystem->getMaterialIndex(mesh.materialName);
+                    pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(mesh.materialName);
                     // TODO: Somehow need to know if this material isn't loaded, and use a fallback material index, 
                     // When I use textures as part of materials...
 
@@ -590,11 +669,6 @@ namespace hl
                 ? hl::FontType::Rasterised
                 : hl::FontType::SignedDistanceField;
 
-            // TODO: Need to not do this every frame...
-            const auto& fontToindexMap = textSystem.bindFontsDescriptor(
-                fontType,
-                _renderGraph->getDescriptorSet(renderpassName, pipeline->Name, currentFrame));
-
             for (const auto& entity : _scene.getEntities())
             {
                 if (!entity->HasComponents<hl::TransformComponent, hl::TextComponent>())
@@ -618,7 +692,7 @@ namespace hl
                 {
                     .model = modelTransform,
                     .colour = text->getColour(),
-                    .fontAtlasIndex = fontToindexMap.at(text->getFont())
+                    .fontAtlasIndex = textSystem.getFontAtlasIndex(fontType, text->getFont())
                 };
 
                 vkCmdPushConstants(

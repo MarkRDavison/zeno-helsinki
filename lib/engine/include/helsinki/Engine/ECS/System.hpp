@@ -8,6 +8,7 @@ namespace hl
 	class System
 	{
 	public:
+		virtual ~System() = default;
 		virtual void update(float delta) = 0;
 
 	private:

@@ -28,7 +28,8 @@ namespace hur
 
 			tc->SetPosition(newPosition);
 
-			if (newPosition.y < -ec->Size.y)
+			if (newPosition.y < -ec->Size.y
+				|| newPosition.y - ec->Size.y / 2.0f > HurricaneConstants::Height)
 			{
 				_scene.removeEntity(e->Id);
 			}

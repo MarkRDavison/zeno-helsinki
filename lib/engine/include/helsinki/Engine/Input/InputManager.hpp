@@ -15,6 +15,7 @@ namespace hl
 		glm::vec2 getMousePosition() const;
 		bool hasMouseMoved() const;
 		glm::vec2 getWindowSize() const;
+		glm::vec2 getFramebufferSize() const;
 		bool isKeyDown(int _key) const;
 		bool isButtonDown(int _button) const;
 

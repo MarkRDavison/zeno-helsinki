@@ -1,0 +1,8 @@
+#pragma once
+
+namespace hl
+{
+
+	static constexpr const char RendererShaderRoot[] = "${HELSINKI_RENDERER_SHADER_ROOT}";
+
+}

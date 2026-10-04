@@ -29,7 +29,12 @@ namespace hl
 		static VkFormat findSupportedFormat(VkPhysicalDevice p, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 		static VkFormat findDepthFormat(VkPhysicalDevice p);
 
-	public: //private: TODO: TO PRIVATE
+		VkSwapchainKHR handle() const { return _swapChain; }
+		VkExtent2D extent() const { return _swapChainExtent; }
+		VkFormat format() const { return _swapChainImageFormat; }
+		const std::vector<VkImageView>& imageViews() const { return _swapChainImageViews; }
+
+	private:
 		VulkanDevice& _device;
 		VulkanSurface& _surface;
 

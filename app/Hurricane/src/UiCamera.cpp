@@ -1,4 +1,5 @@
 #include <UiCamera.hpp>
+#include <HurricaneConstants.hpp>
 
 namespace hur
 {
@@ -10,8 +11,14 @@ namespace hur
 
 	glm::mat4x4 UiCamera::getProjectionMatrix() const
 	{
-		glm::mat4 proj = glm::ortho(0.0f, (float)_width, 0.0f, (float)_height, 0.0f, 1.0f);
-		proj[1][1] *= -1.0f; // flip Y to match Vulkan NDC
+		glm::mat4 proj = glm::ortho(
+			0.0f,
+			(float)HurricaneConstants::Width,
+			0.0f,
+			(float)HurricaneConstants::Height,
+			0.0f,
+			1.0f);
+		proj[1][1] *= -1.0f;
 		return proj;
 	}
 

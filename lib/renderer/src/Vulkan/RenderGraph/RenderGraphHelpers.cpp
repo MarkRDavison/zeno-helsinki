@@ -1,7 +1,9 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
-#include <helsinki/Renderer/Resource/WellKnownResources.hpp>
+#include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <helsinki/Renderer/Resource/TextSystem.hpp>
+#include <string>
 
 namespace hl
 {
@@ -12,7 +14,6 @@ namespace hl
 		return RenderpassInfo
 		{
             .name = "text_pass",
-            .useMultiSampling = false,
             .inputs = {},
             .outputs =
             {
@@ -30,8 +31,8 @@ namespace hl
                     hl::PipelineInfo
                     {
                         .name = "text_pipeline",
-                        .shaderVert = WellKnownResources::TextVertexShader_Name,
-                        .shaderFrag = WellKnownResources::TextFragmentShader_Name,
+                        .shaderVert = std::string(RendererShaderRoot) + "/text.vert",
+                        .shaderFrag = std::string(RendererShaderRoot) + "/text.frag",
                         .descriptorSets =
                         {
                             hl::DescriptorSetInfo
@@ -44,14 +45,17 @@ namespace hl
                                         .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                         .stage = "VERTEX",
                                         .resource = cameraMatrixResourceId,
-                                        .count = MAX_CAMERAS
+                                        .count = MAX_CAMERAS,
+                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static
                                     },
                                     hl::DescriptorBinding
                                     {
                                         .binding = 1,
                                         .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                         .stage = "VERTEX&FRAGMENT",
-                                        .count = 64
+                                        .resource = TextSystem::RasterAtlasName,
+                                        .count = MAX_FONTS,
+                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static
                                     }
                                 }
                             }
@@ -90,8 +94,8 @@ namespace hl
                     hl::PipelineInfo
                     {
                         .name = "sdf_text_pipeline",
-                        .shaderVert = WellKnownResources::TextVertexShader_Name,
-                        .shaderFrag = WellKnownResources::SdfFragmentShader_Name,
+                        .shaderVert = std::string(RendererShaderRoot) + "/text.vert",
+                        .shaderFrag = std::string(RendererShaderRoot) + "/sdf.frag",
                         .descriptorSets =
                         {
                             hl::DescriptorSetInfo
@@ -104,14 +108,17 @@ namespace hl
                                         .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                         .stage = "VERTEX",
                                         .resource = cameraMatrixResourceId,
-                                        .count = MAX_CAMERAS
+                                        .count = MAX_CAMERAS,
+                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static
                                     },
                                     hl::DescriptorBinding
                                     {
                                         .binding = 1,
                                         .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                         .stage = "VERTEX&FRAGMENT",
-                                        .count = 64 // TODO: Constant? MAX_FONTS????
+                                        .resource = TextSystem::SdfAtlasName,
+                                        .count = MAX_FONTS,
+                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static
                                     }
                                 }
                             }
@@ -161,7 +168,6 @@ namespace hl
         return hl::RenderpassInfo
         {
             .name = "composite_pass",
-            .useMultiSampling = false,
             .inputs = { inputs[0], inputs[1]},
             .outputs =
             {
@@ -178,8 +184,8 @@ namespace hl
                     hl::PipelineInfo
                     {
                         .name = "composite_pipeline",
-                        .shaderVert = WellKnownResources::FullscreenSampleVertexShader_Name,
-                        .shaderFrag = WellKnownResources::CompositeFragmentShader_Name,
+                        .shaderVert = std::string(RendererShaderRoot) + "/fullscreen_sample.vert",
+                        .shaderFrag = std::string(RendererShaderRoot) + "/composite.frag",
                         .descriptorSets =
                         {
                             hl::DescriptorSetInfo

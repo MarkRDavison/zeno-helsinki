@@ -23,10 +23,10 @@ namespace hl
     void VulkanSwapChain::create(bool useVsync)
     {
         {
-            auto swapChainSupport = hl::VulkanSwapChain::querySwapChainSupport(_device._physicalDevice, _surface._surface);
+            auto swapChainSupport = hl::VulkanSwapChain::querySwapChainSupport(_device.physicalDevice(), _surface.handle());
             auto surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
             auto presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, useVsync);
-            auto extent = chooseSwapExtent(swapChainSupport.capabilities, _surface._window);
+            auto extent = chooseSwapExtent(swapChainSupport.capabilities, _surface.window());
 
             uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
             if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
@@ -36,7 +36,7 @@ namespace hl
 
             VkSwapchainCreateInfoKHR createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            createInfo.surface = _surface._surface;
+            createInfo.surface = _surface.handle();
 
             createInfo.minImageCount = imageCount;
             createInfo.imageFormat = surfaceFormat.format;
@@ -45,7 +45,7 @@ namespace hl
             createInfo.imageArrayLayers = 1;
             createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-            auto queueIndices = hl::VulkanQueue::findQueueFamilies(_device._physicalDevice, _surface._surface);
+            auto queueIndices = hl::VulkanQueue::findQueueFamilies(_device.physicalDevice(), _surface.handle());
             uint32_t queueFamilyIndices[] = { queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value() };
 
             if (queueIndices.graphicsFamily != queueIndices.presentFamily)
@@ -64,11 +64,11 @@ namespace hl
             createInfo.presentMode = presentMode;
             createInfo.clipped = VK_TRUE;
 
-            CHECK_VK_RESULT(vkCreateSwapchainKHR(_device._device, &createInfo, nullptr, &_swapChain));
+            CHECK_VK_RESULT(vkCreateSwapchainKHR(_device.handle(), &createInfo, nullptr, &_swapChain));
 
-            CHECK_VK_RESULT(vkGetSwapchainImagesKHR(_device._device, _swapChain, &imageCount, nullptr));
+            CHECK_VK_RESULT(vkGetSwapchainImagesKHR(_device.handle(), _swapChain, &imageCount, nullptr));
             _swapChainImages.resize(imageCount);
-            CHECK_VK_RESULT(vkGetSwapchainImagesKHR(_device._device, _swapChain, &imageCount, _swapChainImages.data()));
+            CHECK_VK_RESULT(vkGetSwapchainImagesKHR(_device.handle(), _swapChain, &imageCount, _swapChainImages.data()));
 
             _swapChainImageFormat = surfaceFormat.format;
             _swapChainExtent = extent;
@@ -91,7 +91,7 @@ namespace hl
                 viewInfo.subresourceRange.baseArrayLayer = 0;
                 viewInfo.subresourceRange.layerCount = 1;
 
-                CHECK_VK_RESULT(vkCreateImageView(_device._device, &viewInfo, nullptr, &_swapChainImageViews[i]));
+                CHECK_VK_RESULT(vkCreateImageView(_device.handle(), &viewInfo, nullptr, &_swapChainImageViews[i]));
 
                 _device.setDebugName(
                     reinterpret_cast<uint64_t>(_swapChainImageViews[i]),
@@ -106,10 +106,10 @@ namespace hl
 
         for (auto imageView : _swapChainImageViews)
         {
-            vkDestroyImageView(_device._device, imageView, nullptr);
+            vkDestroyImageView(_device.handle(), imageView, nullptr);
         }
 
-        vkDestroySwapchainKHR(_device._device, _swapChain, nullptr);
+        vkDestroySwapchainKHR(_device.handle(), _swapChain, nullptr);
     }
 
 	VulkanSwapChainSupportDetails VulkanSwapChain::querySwapChainSupport(VkPhysicalDevice p, VkSurfaceKHR s)
@@ -156,18 +156,19 @@ namespace hl
 
     VkPresentModeKHR VulkanSwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes, bool useVsync)
     {
-        for (const auto& availablePresentMode : availablePresentModes)
+        if (!useVsync)
         {
-            if (useVsync)
+            for (const auto& availablePresentMode : availablePresentModes)
             {
-                if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR)
+                if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
                 {
                     return availablePresentMode;
                 }
             }
-            else
+
+            for (const auto& availablePresentMode : availablePresentModes)
             {
-                if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+                if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
                 {
                     return availablePresentMode;
                 }

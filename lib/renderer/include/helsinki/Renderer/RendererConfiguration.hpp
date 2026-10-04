@@ -7,6 +7,8 @@
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 constexpr int MAX_CAMERAS = 4; // TODO: KEEP IN SYNC WITH CORE SHADERS
+constexpr int MAX_UI_TEXTURES = 64; // TODO: KEEP IN SYNC WITH ui_constants.glsl
+constexpr int MAX_FONTS = 64;
 
 #ifdef HELSINKI_DEBUG
 const bool enableValidationLayers = true;

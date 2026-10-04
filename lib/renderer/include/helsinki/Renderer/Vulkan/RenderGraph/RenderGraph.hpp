@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace hl
 {
@@ -45,7 +46,21 @@ namespace hl
         std::string format; // e.g., "VK_FORMAT_R8G8B8A8_UNORM"
         std::optional<std::string> source; // optional, used if this resource comes from a previous pass
         std::optional<VkClearValue> clear;
+        bool useMultiSampling{ false };
     };
+
+    enum class DescriptorUpdateFrequency
+    {
+        Static,
+        PerFrame
+    };
+
+    inline bool shouldWriteDescriptorBinding(
+        DescriptorUpdateFrequency frequency,
+        bool staticDescriptorsWritten)
+    {
+        return !(frequency == DescriptorUpdateFrequency::Static && staticDescriptorsWritten);
+    }
 
     struct DescriptorBinding
     {
@@ -54,7 +69,7 @@ namespace hl
         std::string stage;          // "VERTEX", "FRAGMENT"
         std::optional<std::string> resource; // name of the resource bound to this descriptor
         uint32_t count{ 1 };
-        // TODO: Something to indicate how often it should be updated???
+        DescriptorUpdateFrequency updateFrequency{ DescriptorUpdateFrequency::PerFrame };
     };
 
     struct DescriptorSetInfo
@@ -62,6 +77,44 @@ namespace hl
         std::string name;
         std::vector<DescriptorBinding> bindings;
     };
+
+    inline bool descriptorBindingsLayoutEqual(const DescriptorBinding& a, const DescriptorBinding& b)
+    {
+        return a.binding == b.binding
+            && a.type == b.type
+            && a.stage == b.stage
+            && a.count == b.count;
+    }
+
+    inline bool descriptorSetLayoutsCompatible(
+        const std::vector<DescriptorSetInfo>& a,
+        const std::vector<DescriptorSetInfo>& b)
+    {
+        if (a.size() != b.size())
+        {
+            return false;
+        }
+
+        for (size_t setIndex = 0; setIndex < a.size(); ++setIndex)
+        {
+            const auto& left = a[setIndex].bindings;
+            const auto& right = b[setIndex].bindings;
+            if (left.size() != right.size())
+            {
+                return false;
+            }
+
+            for (size_t bindingIndex = 0; bindingIndex < left.size(); ++bindingIndex)
+            {
+                if (!descriptorBindingsLayoutEqual(left[bindingIndex], right[bindingIndex]))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
 
     struct VertexAttributeInfo
     {
@@ -122,12 +175,31 @@ namespace hl
     struct RenderpassInfo
     {
         std::string name;
-        bool useMultiSampling;// TODO: Move this to the outputs ResourceInfo type
         std::vector<std::string> inputs;
         std::vector<ResourceInfo> outputs;
         std::vector<std::vector<PipelineInfo>> pipelineGroups;
         VkExtent2D extent{};
     };
+
+    inline bool passUsesMultiSampling(const RenderpassInfo& pass)
+    {
+        if (pass.outputs.empty())
+        {
+            return false;
+        }
+
+        const bool first = pass.outputs.front().useMultiSampling;
+        for (const auto& output : pass.outputs)
+        {
+            if (output.useMultiSampling != first)
+            {
+                throw std::runtime_error(
+                    "Pass '" + pass.name + "' has mixed useMultiSampling on outputs");
+            }
+        }
+
+        return first;
+    }
 
     struct RenderpassAttachment
     {

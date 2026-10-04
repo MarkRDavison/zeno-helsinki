@@ -30,14 +30,16 @@ namespace hl
 
 		void setScene(EngineScene* scene);
 		void stop();
+		void setFullscreen(bool fullscreen);
+		bool isFullscreen() const;
+		void setVsync(bool enable);
+		bool isVsync() const;
 
-		// CONSOLIDATE
-		// TODO: Between this and the material system, we have 2 different approaches
 		TextSystem& getTextSystem() { return _textSystem; }
+		MaterialSystem& getMaterialSystem() { return _materialSystem; }
 		InputManager& getInputManager() { return _inputManager; }
 		EventBus& getEventBus() { return _eventBus; }
 
-		GLFWwindow* _window; // TODO: BADDDDDDD
 	private:
 		void mainLoop();
 		void cleanup();
@@ -75,6 +77,12 @@ namespace hl
 
 		std::unique_ptr<EngineScene> _currentEngineScene;
 		EngineScene* _nextEngineScene{nullptr};
+
+		GLFWwindow* _window{ nullptr };
+		int _windowedX = 100;
+		int _windowedY = 100;
+		int _windowedWidth = 800;
+		int _windowedHeight = 600;
 
 
 	};

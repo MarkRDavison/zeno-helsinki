@@ -28,7 +28,7 @@ namespace hl
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = imageFormat;
         colorAttachment.samples = multiSample
-            ? _device._msaaSamples
+            ? _device.msaaSamples()
             : VK_SAMPLE_COUNT_1_BIT;
         colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -42,9 +42,9 @@ namespace hl
                 : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         VkAttachmentDescription depthAttachment{};
-        depthAttachment.format = hl::VulkanSwapChain::findDepthFormat(_device._physicalDevice);
+        depthAttachment.format = hl::VulkanSwapChain::findDepthFormat(_device.physicalDevice());
         depthAttachment.samples = multiSample
-            ? _device._msaaSamples
+            ? _device.msaaSamples()
             : VK_SAMPLE_COUNT_1_BIT;
         depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -118,11 +118,11 @@ namespace hl
         renderPassInfo.dependencyCount = 1;
         renderPassInfo.pDependencies = &dependency;
 
-        CHECK_VK_RESULT(vkCreateRenderPass(_device._device, &renderPassInfo, nullptr, &_renderPass));
+        CHECK_VK_RESULT(vkCreateRenderPass(_device.handle(), &renderPassInfo, nullptr, &_renderPass));
     }
 
 	void VulkanRenderpass::destroy()
 	{
-		vkDestroyRenderPass(_device._device, _renderPass, nullptr);
+		vkDestroyRenderPass(_device.handle(), _renderPass, nullptr);
 	}
 }

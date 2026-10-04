@@ -51,19 +51,19 @@ namespace hl
             imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
 
-        CHECK_VK_RESULT(vkCreateImage(_device._device, &imageInfo, nullptr, &_image));
+        CHECK_VK_RESULT(vkCreateImage(_device.handle(), &imageInfo, nullptr, &_image));
 
         VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(_device._device, _image, &memRequirements);
+        vkGetImageMemoryRequirements(_device.handle(), _image, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = _device.findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        CHECK_VK_RESULT(vkAllocateMemory(_device._device, &allocInfo, nullptr, &_imageMemory));
+        CHECK_VK_RESULT(vkAllocateMemory(_device.handle(), &allocInfo, nullptr, &_imageMemory));
 
-        vkBindImageMemory(_device._device, _image, _imageMemory, 0);
+        vkBindImageMemory(_device.handle(), _image, _imageMemory, 0);
 
         _created = true;
     }
@@ -87,10 +87,15 @@ namespace hl
 
         if (_layers == 6)
         {
+            // TODO: 6 layers does NOT mean cubemap always.
             viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
         }
+        else if (_layers > 1)
+        {
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        }
 
-        CHECK_VK_RESULT(vkCreateImageView(_device._device, &viewInfo, nullptr, &_imageView));
+        CHECK_VK_RESULT(vkCreateImageView(_device.handle(), &viewInfo, nullptr, &_imageView));
     }
 
     void VulkanImage::destroy()
@@ -102,11 +107,11 @@ namespace hl
 
             if (_imageView != VK_NULL_HANDLE)
             {
-                vkDestroyImageView(_device._device, _imageView, nullptr);
+                vkDestroyImageView(_device.handle(), _imageView, nullptr);
             }
 
-            vkDestroyImage(_device._device, _image, nullptr);
-            vkFreeMemory(_device._device, _imageMemory, nullptr);
+            vkDestroyImage(_device.handle(), _image, nullptr);
+            vkFreeMemory(_device.handle(), _imageMemory, nullptr);
         }
     }
 
@@ -120,7 +125,7 @@ namespace hl
         // Check if image format supports linear blitting
         // TODO: Cache
         VkFormatProperties formatProperties;
-        vkGetPhysicalDeviceFormatProperties(_device._physicalDevice, imageFormat, &formatProperties);
+        vkGetPhysicalDeviceFormatProperties(_device.physicalDevice(), imageFormat, &formatProperties);
 
         if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
         {

@@ -36,15 +36,13 @@ namespace sk
 		hl::VulkanSwapChain& swapChain,
 		hl::VulkanCommandPool& graphicsCommandPool,
         hl::VulkanCommandPool& transferCommandPool,
-		hl::ResourceManager& resourceManager,
-        hl::MaterialSystem& materialSystem)
+        hl::ResourceManager& resourceManager)
 	{
         std::vector<hl::RenderpassInfo> renderpasses =
         {
             hl::RenderpassInfo
             {
                 .name = "scene_pass",
-                .useMultiSampling = true,
                 .inputs = {},
                 .outputs =
                 {
@@ -52,13 +50,15 @@ namespace sk
                     {
                         .name = "scene_color",
                         .type = hl::ResourceType::Color,
-                        .format = "VK_FORMAT_B8G8R8A8_SRGB"
+                        .format = "VK_FORMAT_B8G8R8A8_SRGB",
+                        .useMultiSampling = true
                     },
                     hl::ResourceInfo
                     {
                         .name = "scene_depth",
                         .type = hl::ResourceType::Depth,
-                        .format = "VK_FORMAT_D32_SFLOAT"
+                        .format = "VK_FORMAT_D32_SFLOAT",
+                        .useMultiSampling = true
                     }
                 },
                 .pipelineGroups =
@@ -187,7 +187,6 @@ namespace sk
             hl::RenderpassInfo
             {
                 .name = "postprocess_pass",
-                .useMultiSampling = false,
                 .inputs = { "scene_color" },
                 .outputs =
                 {
@@ -240,7 +239,6 @@ namespace sk
             hl::RenderpassInfo
             {
                 .name = "ui_pass",
-                .useMultiSampling = false,
                 .inputs = {},
                 .outputs =
                 {
@@ -283,15 +281,12 @@ namespace sk
             .device = &device,
             .pool = &transferCommandPool,
             .resourceManager = &resourceManager,
-            .materialSystem = &materialSystem,
+            .materialSystem = &_engine.getMaterialSystem(),
             .rootPath = _engineConfig.RootPath
         };
 
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             hl::MaterialSystem::FallbackTextureName,
-            resourceContext);
-        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "white",
             resourceContext);
         resourceManager.LoadAs<hl::CubemapTextureResource, hl::ImageSamplerResource>(
             "skybox_texture",
@@ -344,7 +339,6 @@ namespace sk
             graphicsCommandPool, 
             transferCommandPool,
             resourceManager, 
-            materialSystem, 
             renderpasses);
 	}
 

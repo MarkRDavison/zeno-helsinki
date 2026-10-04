@@ -13,12 +13,18 @@
 #include <helsinki/Renderer/Resource/BasicModelResource.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
+#include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <iostream>
+#include <string>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
+#include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <helsinki/Renderer/Resource/TextSystem.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <helsinki/System/Resource/ResourceDefinition.hpp>
 
 namespace td
 {
@@ -39,15 +45,13 @@ namespace td
         hl::VulkanSwapChain& swapChain,
         hl::VulkanCommandPool& graphicsCommandPool,
         hl::VulkanCommandPool& transferCommandPool,
-        hl::ResourceManager& resourceManager,
-        hl::MaterialSystem& materialSystem)
+        hl::ResourceManager& resourceManager)
     {
         std::vector<hl::RenderpassInfo> renderpasses
         {
             hl::RenderpassInfo
             {
                 .name = "sprite_pass",
-                .useMultiSampling = false,
                 .inputs = {},
                 .outputs =
                 {
@@ -72,7 +76,7 @@ namespace td
                         {
                             .name = "sprite_pipeline",
                             .shaderVert = _engineConfig.RootPath + "/data/shaders/sprites.vert",
-                            .shaderFrag = _engineConfig.RootPath + "/data/shaders/sprites.frag",
+                            .shaderFrag = std::string(hl::RendererShaderRoot) + "/sprites.frag",
                             .descriptorSets =
                             {
                                 hl::DescriptorSetInfo
@@ -124,7 +128,7 @@ namespace td
             .device = &device,
             .pool = &transferCommandPool,
             .resourceManager = &resourceManager,
-            .materialSystem = &materialSystem,
+            .materialSystem = &_engine.getMaterialSystem(),
             .rootPath = _engineConfig.RootPath
         };
 
@@ -132,7 +136,7 @@ namespace td
             "spritesheet",
             resourceContext);
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "white",
+            hl::MaterialSystem::FallbackTextureName,
             resourceContext);
 
         resourceManager.LoadAs<hl::RasterisedFontResource, hl::FontResource>("consolab", resourceContext);
@@ -143,6 +147,29 @@ namespace td
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             "consolab",
             resourceContext);
+
+        resourceManager.LoadLogical(
+            hl::ResourceDefinition
+            {
+                .name = hl::TextSystem::RasterAtlasName,
+                .type = "logical",
+                .resources = { { .name = "consolab", .type = "texture" } }
+            },
+            [&](const hl::ResourceDefinition::Child& child)
+            {
+                return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+            });
+        resourceManager.LoadLogical(
+            hl::ResourceDefinition
+            {
+                .name = hl::TextSystem::SdfAtlasName,
+                .type = "logical",
+                .resources = { { .name = "consola", .type = "texture" } }
+            },
+            [&](const hl::ResourceDefinition::Child& child)
+            {
+                return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+            });
 
         _spriteSheetSSBOResourceHandle = resourceManager.Load<hl::StorageBufferResource>(
             "spritesheet_frame_ssbo",
@@ -209,7 +236,6 @@ namespace td
             graphicsCommandPool,
             transferCommandPool,
             resourceManager,
-            materialSystem,
             renderpasses);
 
         registerPipelineDraw(

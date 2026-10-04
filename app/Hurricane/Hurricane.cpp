@@ -1,7 +1,9 @@
 #include "HurricaneConfig.hpp"
-#include "Scenes/HurricaneTitleEngineScene.hpp"
+#include "Scenes/SceneHost.hpp"
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/Utils/ServiceProvider.hpp>
+#include <Services/GameStateService.hpp>
+#include <Services/ResourceService.hpp>
 
 static void registerServices(hl::ServiceProvider& services)
 {
@@ -9,6 +11,8 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<hl::InputManager, hl::InputManager>(hl::ServiceLifetime::Singleton);
 	services.registerService<hl::Engine, hl::Engine, hl::EventBus, hl::InputManager>(hl::ServiceLifetime::Singleton);
 	services.registerService<hl::EngineConfiguration, hl::EngineConfiguration>(hl::ServiceLifetime::Singleton);
+	services.registerService<hur::GameStateService, hur::GameStateService>(hl::ServiceLifetime::Scoped);
+	services.registerService<hur::ResourceService, hur::ResourceService>(hl::ServiceLifetime::Scoped);
 }
 
 int main()
@@ -23,7 +27,9 @@ int main()
 	engineConfig.applyConfig("/data/config.json", std::string(hur::HurricaneConfig::RootPath));
 
 	engine.init(engineConfig);
-	engine.setScene(new hur::HurricaneTitleEngineScene(engine, engineConfig));
+
+	hur::SceneHost sceneHost(engine, serviceProvider);
+	sceneHost.goTitle();
 	engine.run();
 
 	return EXIT_SUCCESS;

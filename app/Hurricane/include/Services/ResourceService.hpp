@@ -10,12 +10,20 @@ namespace hur
 	class ResourceService
 	{
 	public:
-		void addSpriteIndexAndSize(const std::string& name, std::size_t index, glm::vec2 size);
+		void addSpriteIndexAndSize(const std::string& name, std::size_t index, glm::vec2 size, glm::vec4 uvRect);
 		std::size_t getIndex(const std::string& name) const;
 		glm::vec2 getSize(const std::string& name) const;
+		glm::vec4 getUvRect(const std::string& name) const;
 
 	private:
-		std::unordered_map<std::string, std::pair<std::size_t, glm::vec2>> _spriteToIndexAndSize;
+		struct SpriteData
+		{
+			std::size_t index;
+			glm::vec2 size;
+			glm::vec4 uvRect;
+		};
+
+		std::unordered_map<std::string, SpriteData> _sprites;
 
 	};
 

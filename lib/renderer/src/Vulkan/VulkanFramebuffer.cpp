@@ -27,11 +27,11 @@ namespace hl
         framebufferInfo.height = height;
         framebufferInfo.layers = 1;
 
-		CHECK_VK_RESULT(vkCreateFramebuffer(_device._device, &framebufferInfo, nullptr, &_framebuffer));
+		CHECK_VK_RESULT(vkCreateFramebuffer(_device.handle(), &framebufferInfo, nullptr, &_framebuffer));
 	}
 
 	void VulkanFramebuffer::destroy()
 	{
-		vkDestroyFramebuffer(_device._device, _framebuffer, nullptr);
+		vkDestroyFramebuffer(_device.handle(), _framebuffer, nullptr);
 	}
 }

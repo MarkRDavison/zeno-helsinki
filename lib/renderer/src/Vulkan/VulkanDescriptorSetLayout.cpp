@@ -20,12 +20,12 @@ namespace hl
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
         layoutInfo.pBindings = bindings.data();
 
-		CHECK_VK_RESULT(vkCreateDescriptorSetLayout(_device._device, &layoutInfo, nullptr, &_descriptorSetLayout));
+		CHECK_VK_RESULT(vkCreateDescriptorSetLayout(_device.handle(), &layoutInfo, nullptr, &_descriptorSetLayout));
 	}
 
 	void VulkanDescriptorSetLayout::destroy()
 	{
-		vkDestroyDescriptorSetLayout(_device._device, _descriptorSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(_device.handle(), _descriptorSetLayout, nullptr);
 	}
 
 }

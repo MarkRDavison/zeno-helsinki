@@ -25,6 +25,12 @@ namespace hl
 		glfwGetWindowSize(m_Window, &w, &h);
 		return glm::vec2(w, h);
 	}
+	glm::vec2 InputManager::getFramebufferSize() const
+	{
+		int w, h;
+		glfwGetFramebufferSize(m_Window, &w, &h);
+		return glm::vec2(w, h);
+	}
 	bool InputManager::isKeyDown(int _key) const
 	{
 		return glfwGetKey(m_Window, _key) == GLFW_PRESS;

@@ -23,7 +23,9 @@ namespace hl
 		VulkanCommandBuffer createSingleTimeCommands();
 		void endSingleTimeCommands(VulkanCommandBuffer commandBuffer);
 
-	public: // private: TODO: to private
+		VkCommandPool handle() const { return _commandPool; }
+
+	private:
 		VulkanDevice& _device;
 
 		VkCommandPool _commandPool{ VK_NULL_HANDLE };

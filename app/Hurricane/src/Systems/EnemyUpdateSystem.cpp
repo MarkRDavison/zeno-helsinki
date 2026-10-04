@@ -31,7 +31,6 @@ namespace hur
 			if (newPosition.y + ec->Size.y / 2.0f > HurricaneConstants::Height)
 			{
 				_scene.removeEntity(e->Id);
-				// TODO: ON EMENY REACHED END?>??
 			}
 		}
 	}

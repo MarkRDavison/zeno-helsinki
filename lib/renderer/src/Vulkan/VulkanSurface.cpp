@@ -14,12 +14,12 @@ namespace hl
 	{
 		_window = window;
 
-		CHECK_VK_RESULT(glfwCreateWindowSurface(_instance._instance, window, nullptr, &_surface));
+		CHECK_VK_RESULT(glfwCreateWindowSurface(_instance.handle(), window, nullptr, &_surface));
 	}
 
 	void VulkanSurface::destroy()
 	{
-		vkDestroySurfaceKHR(_instance._instance, _surface, nullptr);
+		vkDestroySurfaceKHR(_instance.handle(), _surface, nullptr);
 	}
 
 }

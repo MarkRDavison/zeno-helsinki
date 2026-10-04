@@ -4,12 +4,14 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/FrameResources.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
-#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <helsinki/System/Infrastructure/Camera.hpp>
 #include <helsinki/Engine/Scene/Scene.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
+#include <memory>
+#include <vector>
 
 namespace hl
 {
@@ -27,7 +29,6 @@ namespace hl
 			VulkanCommandPool& graphicsCommandPool,
 			VulkanCommandPool& transferCommandPool,
 			ResourceManager& resourceManager,
-			MaterialSystem& materialSystem,
 			const std::vector<RenderpassInfo>& renderpassInfo);
 		virtual void initialise(
 			const std::string& cameraMatrixResourceId,
@@ -35,8 +36,7 @@ namespace hl
 			VulkanSwapChain& swapChain,
 			VulkanCommandPool& graphicsCommandPool,
 			hl::VulkanCommandPool& transferCommandPool,
-			ResourceManager& resourceManager,
-			MaterialSystem& materialSystem);
+			ResourceManager& resourceManager);
 		void cleanup();
 		virtual void additionalCleanup() {}
 
@@ -48,6 +48,7 @@ namespace hl
 		void recreate(uint32_t width, uint32_t height);
 		void updateAllDescriptorSets();
 		void updateAllOutputResources();
+		void syncCameraUniformBuffers();
 
 		void registerPipelineDraw(const std::string& pipelineName, std::function<void(PipelineDrawData&)> pipelineDraw);
 
@@ -61,6 +62,13 @@ namespace hl
 			const std::string& renderpassName,
 			hl::VulkanRenderGraphPipelineResources* pipeline, 
 			uint32_t currentFrame);
+		void recordPipelineGroup(
+			VkCommandBuffer secondaryBuffer,
+			const VkCommandBufferBeginInfo& secondaryBeginInfo,
+			VulkanRenderGraphRenderpassResources& renderpass,
+			size_t pipelineGroupIndex,
+			const std::string& renderpassName,
+			uint32_t currentFrame);
 
 	protected:
 		hl::Engine& _engine;
@@ -68,7 +76,6 @@ namespace hl
 		VulkanDevice* _device;
 		VulkanSwapChain* _swapChain;
 		ResourceManager* _resourceManager;
-		MaterialSystem* _materialSystem;
 		std::unordered_map<std::string, BaseCamera*> _cameras;
 
 	private:
@@ -76,6 +83,8 @@ namespace hl
 		GeneratedRenderGraph* _renderGraph{ nullptr };
 		ResourceHandle<UniformBufferResource> _cameraMatrixPushConstantHandle;
 		std::unordered_map<std::string, std::function<void(PipelineDrawData&)>> _pipelineDraws;
+		VulkanCommandPool* _graphicsCommandPool{ nullptr };
+		std::vector<std::unique_ptr<VulkanCommandPool>> _secondaryRecordPools;
 	};
 
 }

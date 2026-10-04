@@ -22,6 +22,14 @@ namespace hl
 
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
+		VkDevice handle() const { return _device; }
+		VkPhysicalDevice physicalDevice() const { return _physicalDevice; }
+		VulkanSurface& surface() { return _surface; }
+		const VulkanSurface& surface() const { return _surface; }
+		VulkanQueue& graphicsQueue() { return _graphicsQueue; }
+		VulkanQueue& presentQueue() { return _presentQueue; }
+		VkSampleCountFlagBits msaaSamples() const { return _msaaSamples; }
+
 		inline void setDebugName(uint64_t handle, VkObjectType type, const char* name)
 		{
 			VkDebugUtilsObjectNameInfoEXT nameInfo{};
@@ -53,7 +61,6 @@ namespace hl
 		static VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice p);
 
 		// TODO: Split logical and physical???
-	public: // private: TODO to private
 		VulkanInstance& _instance;
 		VulkanSurface& _surface;
 		VkPhysicalDevice _physicalDevice{ VK_NULL_HANDLE };

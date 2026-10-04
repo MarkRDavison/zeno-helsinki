@@ -5,6 +5,8 @@
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
+#include <helsinki/Renderer/Resource/TextureResource.hpp>
+#include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -43,7 +45,6 @@ namespace hl
 	) :
 		_eventBus(eventBus),
 		_inputManager(inputManager),
-		_window(nullptr),
 		_instance(),
 		_surface(_instance),
 		_device(_instance, _surface),
@@ -101,6 +102,73 @@ namespace hl
 	void Engine::stop()
 	{
 		_running = false;
+	}
+
+	bool Engine::isFullscreen() const
+	{
+		return _window != nullptr && glfwGetWindowMonitor(_window) != nullptr;
+	}
+
+	void Engine::setFullscreen(bool fullscreen)
+	{
+		if (_window == nullptr || fullscreen == isFullscreen())
+		{
+			return;
+		}
+
+		if (fullscreen)
+		{
+			glfwGetWindowPos(_window, &_windowedX, &_windowedY);
+			glfwGetWindowSize(_window, &_windowedWidth, &_windowedHeight);
+
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			if (monitor == nullptr)
+			{
+				return;
+			}
+
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			if (mode == nullptr)
+			{
+				return;
+			}
+
+			glfwSetWindowMonitor(
+				_window,
+				monitor,
+				0,
+				0,
+				mode->width,
+				mode->height,
+				mode->refreshRate);
+		}
+		else
+		{
+			glfwSetWindowMonitor(
+				_window,
+				nullptr,
+				_windowedX,
+				_windowedY,
+				_windowedWidth,
+				_windowedHeight,
+				0);
+		}
+	}
+
+	bool Engine::isVsync() const
+	{
+		return _config.EnableVsync;
+	}
+
+	void Engine::setVsync(bool enable)
+	{
+		if (enable == _config.EnableVsync)
+		{
+			return;
+		}
+
+		_config.EnableVsync = enable;
+		_framebufferResized = true;
 	}
 
 	void Engine::mainLoop()
@@ -192,6 +260,13 @@ namespace hl
 	{
 		ZoneScopedN("Draw");
 
+		if (_framebufferResized)
+		{
+			ZoneScopedN("Recreate swapchain");
+			_framebufferResized = false;
+			recreateSwapChain();
+		}
+
 		{
 			ZoneScopedN("Wait fence");
 			_syncContext.getFence(_currentFrame).wait();
@@ -202,8 +277,8 @@ namespace hl
 		{
 			ZoneScopedN("Acquire next image");
 			result = vkAcquireNextImageKHR(
-				_device._device,
-				_swapChain._swapChain,
+				_device.handle(),
+				_swapChain.handle(),
 				UINT64_MAX,
 				_syncContext.getImageAvailableSemaphore(_currentFrame)._semaphore,
 				VK_NULL_HANDLE,
@@ -243,13 +318,13 @@ namespace hl
 		{
 			ZoneScopedN("Submit render queue");
 			CHECK_VK_RESULT(vkQueueSubmit(
-				_device._graphicsQueue._queue, 
+				_device.graphicsQueue()._queue, 
 				1, 
 				&submitInfo, 
 				_syncContext.getFence(_currentFrame)._fence));
 		}
 
-		VkSwapchainKHR swapChains[] = { _swapChain._swapChain };
+		VkSwapchainKHR swapChains[] = { _swapChain.handle() };
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.waitSemaphoreCount = 1;
@@ -260,7 +335,7 @@ namespace hl
 
 		{
 			ZoneScopedN("Present queue");
-			result = vkQueuePresentKHR(_device._presentQueue._queue, &presentInfo);
+			result = vkQueuePresentKHR(_device.presentQueue()._queue, &presentInfo);
 		}
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || _framebufferResized)
@@ -288,6 +363,8 @@ namespace hl
 		glfwSetKeyCallback(_window, keyCallback);
 		glfwSetScrollCallback(_window, scrollCallback);
 		_inputManager.setWindow(_window);
+		glfwGetWindowPos(_window, &_windowedX, &_windowedY);
+		glfwGetWindowSize(_window, &_windowedWidth, &_windowedHeight);
 	}
 	void Engine::initVulkan(const char* title)
 	{
@@ -328,6 +405,10 @@ namespace hl
 
 				_materialSystem.create(_config.MaxMaterials);
 
+				_resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+					hl::MaterialSystem::FallbackTextureName,
+					resourceContext);
+
 				_resourceManager.Load<hl::UniformBufferResource>(
 					"camera_matrix_ubo",// TODO: To constant
 					resourceContext,
@@ -367,8 +448,7 @@ namespace hl
 			_swapChain,
 			_graphicsCommandPool,
 			_transferCommandPool,
-			_resourceManager,
-			_materialSystem);
+			_resourceManager);
 	}
 	void Engine::destroyScene()
 	{

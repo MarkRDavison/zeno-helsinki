@@ -18,12 +18,12 @@ namespace hl
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		CHECK_VK_RESULT(vkCreateSemaphore(_device._device, &semaphoreInfo, nullptr, &_semaphore));
+		CHECK_VK_RESULT(vkCreateSemaphore(_device.handle(), &semaphoreInfo, nullptr, &_semaphore));
 	}
 
 	void VulkanSemaphore::destroy()
 	{
-		vkDestroySemaphore(_device._device, _semaphore, nullptr);
+		vkDestroySemaphore(_device.handle(), _semaphore, nullptr);
 	}
 
 }

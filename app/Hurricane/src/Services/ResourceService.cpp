@@ -3,18 +3,23 @@
 namespace hur
 {
 
-	void ResourceService::addSpriteIndexAndSize(const std::string& name, std::size_t index, glm::vec2 size)
+	void ResourceService::addSpriteIndexAndSize(const std::string& name, std::size_t index, glm::vec2 size, glm::vec4 uvRect)
 	{
-		_spriteToIndexAndSize.insert({ name, { index, size } });
+		_sprites.insert({ name, { index, size, uvRect } });
 	}
 
 	std::size_t ResourceService::getIndex(const std::string& name) const
 	{
-		return _spriteToIndexAndSize.at(name).first;
+		return _sprites.at(name).index;
 	}
 
 	glm::vec2 ResourceService::getSize(const std::string& name) const
 	{
-		return _spriteToIndexAndSize.at(name).second;
+		return _sprites.at(name).size;
+	}
+
+	glm::vec4 ResourceService::getUvRect(const std::string& name) const
+	{
+		return _sprites.at(name).uvRect;
 	}
 }

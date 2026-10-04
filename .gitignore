@@ -30,10 +30,13 @@
 *.out
 *.app
 
+build/
 out/
 .vs/
 *.spv
 /.idea
 
+
 UserInterfaceConfig.hpp
 /app/Hurricane/HurricaneConfig.hpp
+/lib/renderer/include/helsinki/Renderer/RendererShaderRoot.hpp

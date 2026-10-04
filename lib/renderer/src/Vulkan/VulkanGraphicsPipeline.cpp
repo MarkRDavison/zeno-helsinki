@@ -119,7 +119,7 @@ namespace hl
 
 	void VulkanGraphicsPipeline::destroy()
 	{
-		vkDestroyPipeline(_device._device, _graphicsPipeline, nullptr);
+		vkDestroyPipeline(_device.handle(), _graphicsPipeline, nullptr);
 		_pipelineLayout.destroy();
 	}
 }

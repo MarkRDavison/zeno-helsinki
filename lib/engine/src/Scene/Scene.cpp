@@ -75,6 +75,11 @@ namespace hl
 		}
 	}
 
+	bool Scene::isPendingRemoval(int id) const
+	{
+		return _entitiesToRemove.contains(id);
+	}
+
 	void Scene::update()
 	{
 		if (!_entitiesToRemove.empty())

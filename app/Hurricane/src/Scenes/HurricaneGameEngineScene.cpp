@@ -1,8 +1,10 @@
 #include "Scenes/HurricaneGameEngineScene.hpp"
+#include <Scenes/SceneHost.hpp>
 #include "EntityPushConstantObject.hpp"
 #include <Components/EntityComponent.hpp>
 #include <Components/CollisionComponent.hpp>
 #include <Components/HealthComponent.hpp>
+#include <Components/PlayerLoadoutComponent.hpp>
 #include <Events/EnemySpawnEvent.hpp>
 #include <Events/PlayerLifeLostEvent.hpp>
 #include <Events/PlayerScoreEvent.hpp>
@@ -11,14 +13,18 @@
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
+#include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/KinematicComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
+#include <string>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/System/Utils/Xml.hpp>
+#include <helsinki/System/Resource/ResourceDefinition.hpp>
+#include <helsinki/System/Resource/LogicalResource.hpp>
 #include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
 #include <Systems/PlayerControlSystem.hpp>
 #include <Systems/WeaponFiringSystem.hpp>
@@ -26,36 +32,47 @@
 #include <Systems/CollisionDetectionSystem.hpp>
 #include <Systems/CollisionResolutionSystem.hpp>
 #include <Systems/EntityDeathSystem.hpp>
+#include <Systems/SpriteClipSystem.hpp>
 #include <Systems/EnemySpawnSystem.hpp>
 #include <Systems/EnemyUpdateSystem.hpp>
+#include <Systems/PickupUpdateSystem.hpp>
+#include <Systems/BombSystem.hpp>
 #include <GLFW/glfw3.h>
-#include <Ui/UiLayout.hpp>
-#include <Ui/Elements/UiPanel.hpp>
-#include <Ui/Elements/UiButton.hpp>
-#include <Ui/Elements/UiIcon.hpp>
-
-constexpr auto MAX_UI_VERTEXES = 1024;
+#include <helsinki/Renderer/Resource/SignedDistanceFieldFontResource.hpp>
+#include <helsinki/Renderer/Resource/FontResource.hpp>
+#include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <helsinki/Renderer/RendererConfiguration.hpp>
+#include <algorithm>
+#include <cmath>
+#include <format>
+#include <string>
+#include <vector>
+#include <helsinki/Ui/Widget.hpp>
 
 namespace hur
 {
 
 	HurricaneGameEngineScene::HurricaneGameEngineScene(
 		hl::Engine& engine,
-		const hl::EngineConfiguration& engineConfig
+		const hl::EngineConfiguration& engineConfig,
+		GameStateService& gameStateService,
+		ResourceService& resourceService,
+		SceneHost& sceneHost
 	) :
 		EngineScene(engine),
 		_engineConfig(engineConfig),
-        _uiRoot(engine.getInputManager())
+		_gameStateService(gameStateService),
+		_resourceService(resourceService),
+		_sceneHost(sceneHost)
 	{
         _cameras.insert({ "Ui", new UiCamera() });
         _cameras.insert({ "Game", new GameCamera() });
 		_engine.getEventBus().AddListener(this);
-        _engine.getEventBus().AddListener(&_uiRoot);
 	}
 	HurricaneGameEngineScene::~HurricaneGameEngineScene()
 	{
-        _engine.getEventBus().RemoveListener(&_uiRoot);
 		_engine.getEventBus().RemoveListener(this);
+		_sceneHost.onSceneDestroyed();
 	}
 
 	void HurricaneGameEngineScene::initialise(
@@ -64,13 +81,11 @@ namespace hur
 		hl::VulkanSwapChain& swapChain,
 		hl::VulkanCommandPool& graphicsCommandPool,
 		hl::VulkanCommandPool& transferCommandPool,
-		hl::ResourceManager& resourceManager,
-		hl::MaterialSystem& materialSystem)
+		hl::ResourceManager& resourceManager)
 	{
         auto uiRenderpassinfo = hl::RenderpassInfo
         {
             .name = "ui_renderpass",
-            .useMultiSampling = false,
             .inputs = {},
             .outputs =
             {
@@ -88,8 +103,8 @@ namespace hur
                     hl::PipelineInfo
                     {
                         .name = "ui_pipeline",
-                        .shaderVert = _engineConfig.RootPath + "/data/shaders/ui.vert",
-                        .shaderFrag = _engineConfig.RootPath + "/data/shaders/ui.frag",
+                        .shaderVert = std::string(hl::RendererShaderRoot) + "/ui.vert",
+                        .shaderFrag = std::string(hl::RendererShaderRoot) + "/ui.frag",
                         .descriptorSets =
                         {
                             hl::DescriptorSetInfo
@@ -102,14 +117,17 @@ namespace hur
                                         .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                         .stage = "VERTEX",
                                         .resource = cameraMatrixResourceId,
-                                        .count = MAX_CAMERAS
+                                        .count = MAX_CAMERAS,
+                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static
                                     },
                                     hl::DescriptorBinding
                                     {
                                         .binding = 1,
                                         .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                         .stage = "FRAGMENT",
-                                        .resource = "sheet"
+                                        .resource = "ui_sheet",
+                                        .count = static_cast<uint32_t>(MAX_UI_TEXTURES),
+                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static
                                     }
                                 }
                             }
@@ -126,7 +144,7 @@ namespace hur
                                 },
                                 {
                                     .name = "inColor",
-                                    .format = hl::VertexAttributeFormat::Vec3,
+                                    .format = hl::VertexAttributeFormat::Vec4,
                                     .location = 1,
                                     .offset = offsetof(hl::VertexUi2, color)
                                 },
@@ -135,6 +153,12 @@ namespace hur
                                     .format = hl::VertexAttributeFormat::Vec2,
                                     .location = 2,
                                     .offset = offsetof(hl::VertexUi2, texCoord)
+                                },
+                                {
+                                    .name = "inTexIndex",
+                                    .format = hl::VertexAttributeFormat::Float,
+                                    .location = 3,
+                                    .offset = offsetof(hl::VertexUi2, texIndex)
                                 }
                             },
                             .stride = sizeof(hl::VertexUi2)
@@ -148,7 +172,12 @@ namespace hur
                         {
                             .cullMode = VK_CULL_MODE_NONE
                         },
-                        .enableBlending = false,
+                        .enableBlending = true,
+                        .viewport = {
+                            .mode = hl::ViewportMode::FixedAspect,
+                            .width = HurricaneConstants::Width,
+                            .height = HurricaneConstants::Height,
+                        }
                     }
                 }
             }
@@ -156,7 +185,6 @@ namespace hur
         auto sceneRenderpassInfo = hl::RenderpassInfo
         {
             .name = "sprite_pass",
-            .useMultiSampling = false,
             .inputs = {},
             .outputs =
             {
@@ -181,7 +209,7 @@ namespace hur
                     {
                         .name = "sprite_pipeline",
                         .shaderVert = _engineConfig.RootPath + "/data/shaders/sprites.vert",
-                        .shaderFrag = _engineConfig.RootPath + "/data/shaders/sprites.frag",
+                        .shaderFrag = std::string(hl::RendererShaderRoot) + "/sprites.frag",
                         .descriptorSets =
                         {
                             hl::DescriptorSetInfo
@@ -212,6 +240,11 @@ namespace hur
                                     }
                                 }
                             }
+                        },
+                        .depthState =
+                        {
+                            .testEnable = false,
+                            .writeEnable = false
                         },
                         .rasterState =
                         {
@@ -244,11 +277,10 @@ namespace hur
             .device = &device,
             .pool = &transferCommandPool,
             .resourceManager = &resourceManager,
-            .materialSystem = &materialSystem,
+            .materialSystem = &_engine.getMaterialSystem(),
             .rootPath = _engineConfig.RootPath
         };
 
-        // TODO: Move to base and generate texture programatically
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             hl::MaterialSystem::FallbackTextureName,
             resourceContext);
@@ -272,8 +304,9 @@ namespace hur
                 const auto w = std::stoi(subTexture->attributes["width"]);
                 const auto h = std::stoi(subTexture->attributes["height"]);
 
-                frameData.push_back({ .uvRect = glm::vec4((float)x, (float)y, (float)(x + w), (float)(y + h)) / TEX_SIZE });
-                _resourceService.addSpriteIndexAndSize(name, idx, glm::vec2((float)w, (float)h));
+                const auto uvRect = glm::vec4((float)x, (float)y, (float)(x + w), (float)(y + h)) / TEX_SIZE;
+                frameData.push_back({ .uvRect = uvRect });
+                _resourceService.addSpriteIndexAndSize(name, idx, glm::vec2((float)w, (float)h), uvRect);
 
                 idx++;
             }
@@ -292,9 +325,47 @@ namespace hur
             }
         }
 
-        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            "sheet",
+        resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>(
+            "roboto",
             resourceContext);
+
+        _uiSheetDefinition = hl::ResourceDefinition
+        {
+            .name = "ui_sheet",
+            .type = "logical",
+            .resources =
+            {
+                hl::ResourceDefinition::Child
+                {
+                    .name = "white",
+                    .type = "texture"
+                },
+                hl::ResourceDefinition::Child
+                {
+                    .name = "roboto",
+                    .type = "texture"
+                },
+                hl::ResourceDefinition::Child
+                {
+                    .name = "sheet",
+                    .type = "texture"
+                }
+            }
+        };
+
+        _uiSheetHandle = resourceManager.LoadLogical(_uiSheetDefinition, [&](const hl::ResourceDefinition::Child& child)
+            {
+                if (child.type != "texture")
+                {
+                    return false;
+                }
+
+                resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+                    child.name,
+                    resourceContext);
+
+                return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+            });
 
         EngineScene::initialise(
             cameraMatrixResourceId,
@@ -303,7 +374,6 @@ namespace hur
             graphicsCommandPool,
             transferCommandPool,
             resourceManager,
-            materialSystem,
             renderpasses);
 
         registerPipelineDraw(
@@ -312,7 +382,7 @@ namespace hur
             {
                 for (const auto& entity : pdd.scene->getEntities())
                 {
-                    if (!entity->HasComponents<hl::TransformComponent, hl::SpriteComponent>())
+                    if (!entity->HasComponents<hl::TransformComponent, hl::SpriteComponent, EntityComponent>())
                     {
                         continue;
                     }
@@ -323,14 +393,14 @@ namespace hur
 
                     auto modelTransform = transform->GetTransformMatrix();
 
-                    const auto size = _resourceService.getSize(ec->SpriteName);
+                    const auto size = ec->Size;
 
                     auto pc = hl::SpritePushConstantObject
                     {
                         .model = modelTransform,
                         .size = size,
                         .offset = glm::vec2(-size.x * 0.5f, -size.y * 0.5f),
-                        .frameIndex = (int)_resourceService.getIndex(ec->SpriteName),
+                        .frameIndex = sprite->getFrameDataIndex(),
                         .cameraIndex = (int)getCameraIndex("Game")
                     };
 
@@ -360,10 +430,10 @@ namespace hur
 
 
         registerPipelineDraw(
-            "ui_pipeline", 
-            [&](hl::PipelineDrawData& pdd) -> void 
+            "ui_pipeline",
+            [&](hl::PipelineDrawData& pdd) -> void
             {
-                _uiRoot.draw(pdd);
+                _uiBatch.draw(pdd);
             });
 
         setGameState(GameState::INIT);
@@ -371,17 +441,23 @@ namespace hur
         _scene.addSystem(new PlayerControlSystem(
             _engine.getInputManager(),
             _engine.getEventBus(),
-            this->_scene));
+            this->_scene,
+            _resourceService));
 
         _scene.addSystem(new WeaponFiringSystem(
             _engine.getEventBus(),
-            this->_scene));
+            this->_scene,
+            _resourceService));
 
         _scene.addSystem(new ProjectileUpdateSystem(
             _engine.getEventBus(),
             this->_scene));
 
         _scene.addSystem(new EnemyUpdateSystem(
+            _engine.getEventBus(),
+            this->_scene));
+
+        _scene.addSystem(new PickupUpdateSystem(
             _engine.getEventBus(),
             this->_scene));
 
@@ -395,6 +471,15 @@ namespace hur
 
         _scene.addSystem(new EntityDeathSystem(
             _engine.getEventBus(),
+            this->_scene,
+            _resourceService));
+
+        _scene.addSystem(new BombSystem(
+            _engine.getEventBus(),
+            this->_scene,
+            _resourceService));
+
+        _scene.addSystem(new SpriteClipSystem(
             this->_scene));
 
         _scene.addSystem(new EnemySpawnSystem(
@@ -404,69 +489,49 @@ namespace hur
 
 		handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
 
-        _uiRoot.initialise(device);
+        _uiBatch.initialise(device);
 
-        {
-            auto score = new UiPanel();
-            score->size = { 128.0f, 48.0f };
-            score->offset = { 16.0f, 16.0f };
-            score->anchor = UiAnchor::TopRight;
-            score->colour = { 0.0f, 1.0f, 0.0f };
-
-         //   _uiRoot.addElement(score);
-        }
-
-        {
-            auto something = new UiPanel();
-            something->size = { 384.0f, 32.0f };
-            something->offset = { 16.0f, 16.0f };
-            something->anchor = UiAnchor::BottomLeft;
-            something->colour = { 0.0f, 0.0f, 1.0f };
-
-       //     _uiRoot.addElement(something);
-        }
-        {
-            auto lives = new UiIcon();
-            lives->size = { 64.0f, 64.0f };
-            lives->offset = { 16.0f, 16.0f };
-            lives->anchor = UiAnchor::TopLeft;
-            lives->icon = "playerLife1_blue";
-
-           // _uiRoot.addElement(lives);
-        }
-        {
-            auto button = new UiButton(this->_engine._window);
-            button->size = { 256.0f, 64.0f };
-            button->anchor = UiAnchor::Center;
-            button->onClick = []() -> void { std::cout << "CLICK BUTTON" << std::endl; };
-
-            _uiRoot.addElement(button);
-        }
+        buildHud(resourceManager.GetResource<hl::FontResource>("roboto"));
 	}
 
 	void HurricaneGameEngineScene::update(uint32_t currentFrame, float delta)
 	{
-        _uiRoot.update(delta);
+        _uiBatch.begin();
 
         if (_state == GameState::INIT)
         {
             transitionFromInitToPlaying();
+            return;
         }
-        else if (_state == GameState::PLAYING)
+
+        if (_state == GameState::PLAYING && _respawnTimer <= 0.0f)
         {
             _scene.update(delta);
-            updateUi();
         }
+
+        applyPendingDeath();
+
+        if (_state == GameState::PLAYING && _respawnTimer > 0.0f)
+        {
+            _respawnTimer -= delta;
+            if (_respawnTimer <= 0.0f)
+            {
+                _respawnTimer = 0.0f;
+                spawnPlayer();
+            }
+        }
+
+        updateUi();
 	}
 
     void HurricaneGameEngineScene::updateGpuResources(uint32_t currentFrame)
     {
-        _uiRoot.updateGpuResources(currentFrame);
+        _uiBatch.updateGpuResources(currentFrame);
     }
 
     void HurricaneGameEngineScene::additionalCleanup()
     {
-        _uiRoot.destroy();
+        _uiBatch.destroy();
     }
 
     void HurricaneGameEngineScene::spawnPlayer()
@@ -478,7 +543,7 @@ namespace hur
             return;
         }
 
-        if (_gameStateService.getLivesRemaining() < 0)
+        if (_gameStateService.getLivesRemaining() <= 0)
         {
             return;
         }
@@ -495,45 +560,175 @@ namespace hur
             HurricaneConstants::Width / 2.0f,
             HurricaneConstants::Height - sc->Size.y / 2.0f,
             0.0f));
-        entity->AddComponent<hl::SpriteComponent>();
+        entity->AddComponent<hl::SpriteComponent>()->setFrameDataIndex(
+            static_cast<int>(_resourceService.getIndex(sc->SpriteName)));
         entity->AddComponent< HealthComponent>(10, 10);
+        entity->AddComponent<PlayerLoadoutComponent>();
+        auto* weapon = entity->AddComponent<WeaponComponent>();
+        applyWeapon(*weapon, WeaponTypeSingleLaser);
         auto cc = entity->AddComponent<CollisionComponent>();
         cc->layer = CollisionLayer::Player;
-        cc->mask = CollisionLayer::EnemyBullet | CollisionLayer::Enemy;
+        cc->mask = CollisionLayer::EnemyBullet | CollisionLayer::Enemy | CollisionLayer::Pickup;
     }
 
-    void HurricaneGameEngineScene::transitionFromGameOverToInit()
+    void HurricaneGameEngineScene::buildHud(hl::FontResource* font)
     {
-        if (_state != GameState::GAME_OVER)
+        _typeface = std::make_unique<FontTypeface>(font);
+
+        _layoutRoot = std::make_unique<hl::ui::Node>();
+        _layoutRoot->setFillParent();
+
+        _lives = std::make_unique<hl::ui::IconRow>(_layoutRoot->addChild());
+        _lives->iconSize = _resourceService.getSize("playerLife1_blue");
+        _lives->gap = 8.0f;
+        _lives->uvRect = _resourceService.getUvRect("playerLife1_blue");
+        _lives->color = { 1.0f, 1.0f, 1.0f };
+
+        _bombs = std::make_unique<hl::ui::IconRow>(_layoutRoot->addChild());
+        _bombs->iconSize = _resourceService.getSize("star3");
+        _bombs->gap = 8.0f;
+        _bombs->uvRect = _resourceService.getUvRect("star3");
+        _bombs->color = { 1.0f, 1.0f, 1.0f };
+
+        _score = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
+        _score->color = { 1.0f, 1.0f, 1.0f };
+        _score->setText("Score: 0", 24);
+
+        _status = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
+        _status->color = { 1.0f, 1.0f, 1.0f };
+        _status->setText("", 24);
+
+        _overlayRoot = std::make_unique<hl::ui::Node>();
+        _overlayRoot->setFillParent();
+
+        auto& dimNode = _overlayRoot->addChild();
+        dimNode.setFillParent();
+        _dim = std::make_unique<hl::ui::Panel>(dimNode);
+        _dim->color = { 0.0f, 0.0f, 0.0f };
+        _dim->opacity = 0.55f;
+        _dim->hitTestEnabled = false;
+
+        auto& column = _overlayRoot->addChild();
+        column.kind = hl::ui::Kind::Column;
+        column.gap = 24.0f;
+        column.padding = { 32.0f, 24.0f, 32.0f, 24.0f };
+        column.crossAlign = hl::ui::Align::Center;
+        column.setCenter({ 0.0f, 0.0f });
+
+        _overlayPanel = std::make_unique<hl::ui::Panel>(column);
+        _overlayPanel->color = { 0.08f, 0.09f, 0.12f };
+        _overlayPanel->hitTestEnabled = false;
+
+        _overlayHeading = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
+        _overlayHeading->color = { 1.0f, 0.5f, 0.0f };
+
+        _overlayScore = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
+        _overlayScore->color = { 1.0f, 1.0f, 1.0f };
+
+        _resume = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+        _resume->setText("Resume", 48);
+        _resume->onClick = [this]()
         {
-            return;
-        }
+            setGameState(GameState::PLAYING);
+        };
 
-        // TODO: MOVE _state to game state service???
-
-        for (const auto& e : _scene.getEntities())
+        _titleButton = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+        _titleButton->setText("Title", 48);
+        _titleButton->onClick = [this]()
         {
-            _scene.removeEntity(e->Id);
+            goToTitle();
+        };
+    }
+
+    namespace
+    {
+        void pinHudCorner(hl::ui::Node& node, bool topRight, glm::vec2 inset)
+        {
+            const glm::vec2 size = node.intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+            if (topRight)
+            {
+                node.setTopRight(size);
+                node.relative = { -inset.x, inset.y };
+            }
+            else
+            {
+                node.setTopLeft(size);
+                node.relative = inset;
+            }
+            node.intrinsicSize.reset();
         }
-
-        // TODO: BETTER RESET METHOD?
-        _scene.update();
-
-        setGameState(GameState::INIT);
     }
 
     void HurricaneGameEngineScene::updateUi()
     {
-        _uiRoot.drawUi();
+        _score->setText("Score: " + std::to_string(_gameStateService.getScore()), 24);
+        _lives->setCount(std::max(0, _gameStateService.getLivesRemaining()));
+
+        int bombCount = 0;
+        if (auto* player = _scene.getEntity("Player"))
+        {
+            if (auto* loadout = player->GetComponent<PlayerLoadoutComponent>())
+            {
+                bombCount = std::max(0, loadout->bombs);
+            }
+        }
+        _bombs->setCount(bombCount);
+
+        if (_respawnTimer > 0.0f)
+        {
+            _status->setText(std::format("Respawn in {:.0f}", std::ceil(_respawnTimer)), 24);
+        }
+        else
+        {
+            _status->setText("", 24);
+        }
+
+        hl::ui::prepareTree(*_layoutRoot);
+        pinHudCorner(_score->node(), true, { 16.0f, 16.0f });
+        pinHudCorner(_lives->node(), false, { 16.0f, 16.0f });
+        pinHudCorner(_bombs->node(), false, { 16.0f, 16.0f + _lives->iconSize.y + 8.0f });
+
+        const glm::vec2 statusSize = _status->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+        _status->node().setTopCenter(statusSize);
+        _status->node().relative = { 0.0f, 16.0f };
+        _status->node().intrinsicSize.reset();
+
+        const hl::ui::Box playfield{
+            0.0f,
+            0.0f,
+            static_cast<float>(HurricaneConstants::Width),
+            static_cast<float>(HurricaneConstants::Height) };
+
+        hl::ui::layout(*_layoutRoot, playfield);
+
+        UiBatchPaint paint(_uiBatch);
+
+        if (overlayVisible())
+        {
+            refreshOverlay();
+            hl::ui::prepareTree(*_overlayRoot);
+            hl::ui::layout(*_overlayRoot, playfield);
+            hl::ui::dispatch(
+                *_overlayRoot,
+                readPlayfieldPointer(
+                    _engine,
+                    static_cast<float>(HurricaneConstants::Width),
+                    static_cast<float>(HurricaneConstants::Height)));
+            hl::ui::paintTree(*_overlayRoot, paint);
+        }
+
+        hl::ui::paintTree(*_layoutRoot, paint);
     }
 
     void HurricaneGameEngineScene::transitionFromInitToPlaying()
     {
-        spawnPlayer();
-        _engine.getEventBus().PublishEvent(EnemySpawnEvent());
-
         _gameStateService.setLivesRemaining(3);
         _gameStateService.setScore(0);
+        _pendingDeath = false;
+        _respawnTimer = 0.0f;
+
+        spawnPlayer();
+        _engine.getEventBus().PublishEvent(EnemySpawnEvent());
 
         setGameState(GameState::PLAYING);
     }
@@ -544,45 +739,29 @@ namespace hur
         {
             const auto code = ke->GetKeyCode();
 
-            if (code == GLFW_KEY_ENTER)
+            if (code == GLFW_KEY_ESCAPE)
             {
-                _engine.getEventBus().PublishEvent(EnemySpawnEvent());
-            }
-            else if (code == GLFW_KEY_R)
-            {
-                spawnPlayer();
-            }
-            else if (code == GLFW_KEY_B)
-            {
-                transitionFromGameOverToInit();
+                if (_state == GameState::PLAYING)
+                {
+                    setGameState(GameState::PAUSED);
+                }
+                else if (_state == GameState::PAUSED)
+                {
+                    setGameState(GameState::PLAYING);
+                }
             }
         }
         else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
         {
             handleWindowSizeChange(wre->GetWidth(), wre->GetHeight());
         }
-        else if (auto plle = dynamic_cast<const PlayerLifeLostEvent*>(&event))
+        else if (dynamic_cast<const PlayerLifeLostEvent*>(&event) != nullptr)
         {
-            const auto lives = _gameStateService.getLivesRemaining() - 1;
-
-            if (lives < 0)
-            {
-                setGameState(GameState::GAME_OVER);
-            }
-            else
-            {
-                _gameStateService.setLivesRemaining(lives);
-                // TODO: 
-                // Clear out enemies, restart wave/enemy spawning?
-                // Spawn player again
-                std::cout << "LIVES: " << _gameStateService.getLivesRemaining() << std::endl;
-            }
+            _pendingDeath = true;
         }
         else if (auto pse = dynamic_cast<const PlayerScoreEvent*>(&event))
         {
             _gameStateService.incrementScore(pse->getAmount());
-
-            std::cout << "SCORE: " << _gameStateService.getScore() << std::endl;
         }
 	}
 
@@ -597,5 +776,75 @@ namespace hur
         _state = state;
         
         handleWindowSizeChange(_engineConfig.Width, _engineConfig.Height);
+    }
+
+    void HurricaneGameEngineScene::applyPendingDeath()
+    {
+        if (!_pendingDeath)
+        {
+            return;
+        }
+
+        _pendingDeath = false;
+        clearHostiles();
+
+        const int lives = _gameStateService.getLivesRemaining() - 1;
+        _gameStateService.setLivesRemaining(std::max(0, lives));
+        _respawnTimer = 0.0f;
+
+        if (lives <= 0)
+        {
+            setGameState(GameState::GAME_OVER);
+            return;
+        }
+
+        _respawnTimer = 2.5f;
+    }
+
+    void HurricaneGameEngineScene::clearHostiles()
+    {
+        std::vector<int> ids;
+        for (const char* tag : { "ENEMY", "PROJECTILE", "PICKUP", "PLAYER_FX" })
+        {
+            for (auto* entity : _scene.getEntitiesByTag(tag))
+            {
+                ids.push_back(entity->Id);
+            }
+        }
+
+        for (const int id : ids)
+        {
+            _scene.removeEntity(id);
+        }
+    }
+
+    void HurricaneGameEngineScene::goToTitle()
+    {
+        _sceneHost.goTitle();
+    }
+
+    bool HurricaneGameEngineScene::overlayVisible() const
+    {
+        return _state == GameState::PAUSED || _state == GameState::GAME_OVER;
+    }
+
+    void HurricaneGameEngineScene::refreshOverlay()
+    {
+        if (_state == GameState::PAUSED)
+        {
+            _overlayHeading->setText("Paused", 48);
+            _overlayScore->setText("", 24);
+            _resume->setText("Resume", 48);
+            _resume->hitTestEnabled = true;
+        }
+        else
+        {
+            _overlayHeading->setText("Game Over", 48);
+            _overlayScore->setText("Score: " + std::to_string(_gameStateService.getScore()), 24);
+            _resume->setText("", 24);
+            _resume->hitTestEnabled = false;
+        }
+
+        _titleButton->hitTestEnabled = true;
     }
 }

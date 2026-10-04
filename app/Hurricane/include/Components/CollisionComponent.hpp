@@ -12,7 +12,8 @@ namespace hur
         Player = 1 << 0,
         Enemy = 1 << 1,
         PlayerBullet = 1 << 2,
-        EnemyBullet = 1 << 3
+        EnemyBullet = 1 << 3,
+        Pickup = 1 << 4
     };
 
 	class CollisionComponent : public hl::Component

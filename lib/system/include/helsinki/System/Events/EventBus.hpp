@@ -2,6 +2,7 @@
 
 #include <helsinki/System/Events/Event.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
+#include <algorithm>
 #include <vector>
 #include <memory>
 #include <queue>
@@ -42,8 +43,14 @@ namespace hl
         {
             if (immediateMode)
             {
-                for (auto listener : listeners)
+                const auto snapshot = listeners;
+                for (auto* listener : snapshot)
                 {
+                    if (listener == nullptr)
+                    {
+                        continue;
+                    }
+
                     listener->OnEvent(event);
                 }
             }
@@ -72,8 +79,14 @@ namespace hl
             {
                 auto& event = *currentEvents.front();
 
-                for (auto listener : listeners)
+                const auto snapshot = listeners;
+                for (auto* listener : snapshot)
                 {
+                    if (listener == nullptr)
+                    {
+                        continue;
+                    }
+
                     listener->OnEvent(event);
                 }
 

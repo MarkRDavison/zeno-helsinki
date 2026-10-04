@@ -19,22 +19,22 @@ namespace hl
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		CHECK_VK_RESULT(vkCreateFence(_device._device, &fenceInfo, nullptr, &_fence));
+		CHECK_VK_RESULT(vkCreateFence(_device.handle(), &fenceInfo, nullptr, &_fence));
 	}
 
 	void VulkanFence::destroy()
 	{
-		vkDestroyFence(_device._device, _fence, nullptr);
+		vkDestroyFence(_device.handle(), _fence, nullptr);
 	}
 
 	void VulkanFence::wait()
 	{
-		vkWaitForFences(_device._device, 1, &_fence, VK_TRUE, UINT64_MAX);
+		vkWaitForFences(_device.handle(), 1, &_fence, VK_TRUE, UINT64_MAX);
 	}
 
 	void VulkanFence::reset()
 	{
-		vkResetFences(_device._device, 1, &_fence);
+		vkResetFences(_device.handle(), 1, &_fence);
 	}
 
 }

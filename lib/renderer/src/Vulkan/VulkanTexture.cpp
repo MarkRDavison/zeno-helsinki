@@ -94,36 +94,95 @@ namespace hl
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			_mipLevels);
 
-		{
+		createSampler();
+	}
 
-			VkPhysicalDeviceProperties properties{};
-			vkGetPhysicalDeviceProperties(_device._physicalDevice, &properties); // TODO: CACHE
+	void VulkanTexture::create(VulkanCommandPool& commandPool, const uint8_t* rgba, uint32_t width, uint32_t height)
+	{
+		assert(rgba != nullptr);
+		assert(width > 0 && height > 0);
 
-			VkSamplerCreateInfo samplerInfo{};
-			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-			samplerInfo.magFilter = VK_FILTER_LINEAR;
-			samplerInfo.minFilter = VK_FILTER_LINEAR;
-			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.anisotropyEnable = VK_TRUE;
-			samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-			samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-			samplerInfo.unnormalizedCoordinates = VK_FALSE;
-			samplerInfo.compareEnable = VK_FALSE;
-			samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-			samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			samplerInfo.minLod = 0.0f; // Optional
-			samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
-			samplerInfo.mipLodBias = 0.0f; // Optional
+		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
+		_mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
-			CHECK_VK_RESULT(vkCreateSampler(_device._device, &samplerInfo, nullptr, &_sampler));
-		}
+		VulkanBuffer stagingBuffer(_device);
+		stagingBuffer.create(
+			imageSize,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		stagingBuffer.mapMemory(rgba);
+
+		_image.create(
+			width,
+			height,
+			_mipLevels,
+			VK_SAMPLE_COUNT_1_BIT,
+			VK_FORMAT_R8G8B8A8_SRGB,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			1);
+
+		_image.transitionImageLayout(
+			commandPool,
+			VK_FORMAT_R8G8B8A8_SRGB,
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			_mipLevels);
+
+		_image.copyBufferToImage(
+			commandPool,
+			stagingBuffer,
+			width,
+			height,
+			0);
+
+		stagingBuffer.destroy();
+
+		_image.generateMipmaps(
+			commandPool,
+			VK_FORMAT_R8G8B8A8_SRGB,
+			static_cast<int32_t>(width),
+			static_cast<int32_t>(height),
+			_mipLevels);
+
+		_image.createImageView(
+			VK_FORMAT_R8G8B8A8_SRGB,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			_mipLevels);
+
+		createSampler();
+	}
+
+	void VulkanTexture::createSampler()
+	{
+		VkPhysicalDeviceProperties properties{};
+		vkGetPhysicalDeviceProperties(_device.physicalDevice(), &properties); // TODO: CACHE
+
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+		samplerInfo.mipLodBias = 0.0f;
+
+		CHECK_VK_RESULT(vkCreateSampler(_device.handle(), &samplerInfo, nullptr, &_sampler));
 	}
 
 	void VulkanTexture::destroy()
 	{
-		vkDestroySampler(_device._device, _sampler, nullptr);
+		vkDestroySampler(_device.handle(), _sampler, nullptr);
 		_image.destroy();
 	}
 }

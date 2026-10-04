@@ -13,10 +13,6 @@ namespace hl
 
 	}
 
-	void VulkanRenderGraphPipelineResources::addDescriptorSetLayout(VkDescriptorSetLayout descriptorSetLayout)
-	{
-		_descriptorSetLayout = descriptorSetLayout;
-	}
 	void VulkanRenderGraphPipelineResources::addPipelineLayout(VkPipelineLayout pipelineLayout)
 	{
 		_pipelineLayout = pipelineLayout;
@@ -52,9 +48,8 @@ namespace hl
 	void VulkanRenderGraphPipelineResources::destroy()
 	{
 		_descriptorSets.clear();
-		vkDestroyPipeline(_device._device, _pipeline, nullptr);
-		vkDestroyPipelineLayout(_device._device, _pipelineLayout, nullptr);
-		vkDestroyDescriptorSetLayout(_device._device, _descriptorSetLayout, nullptr);
+		vkDestroyPipeline(_device.handle(), _pipeline, nullptr);
+		vkDestroyPipelineLayout(_device.handle(), _pipelineLayout, nullptr);
 	}
 
 }

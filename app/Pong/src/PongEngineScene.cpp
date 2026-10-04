@@ -10,6 +10,7 @@
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
+#include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <iostream>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
@@ -29,6 +30,11 @@
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
+#include <helsinki/Renderer/Resource/SignedDistanceFieldFontResource.hpp>
+#include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <helsinki/Renderer/Resource/TextSystem.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <helsinki/System/Resource/ResourceDefinition.hpp>
 
 namespace pong
 {
@@ -56,13 +62,11 @@ namespace pong
         hl::VulkanSwapChain& swapChain,
         hl::VulkanCommandPool& graphicsCommandPool,
         hl::VulkanCommandPool& transferCommandPool,
-        hl::ResourceManager& resourceManager,
-        hl::MaterialSystem& materialSystem)
+        hl::ResourceManager& resourceManager)
     {
         auto sceneRenderpassInfo = hl::RenderpassInfo
         {
             .name = "scene_pass",
-            .useMultiSampling = false,
             .inputs = {},
             .outputs =
             {
@@ -86,7 +90,7 @@ namespace pong
                     {
                         .name = "entity_pipeline",
                         .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/entity.vert"),
-                        .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/entity.frag"),
+                        .shaderFrag = std::string(hl::RendererShaderRoot) + "/entity.frag",
                         .descriptorSets =
                         {
                             hl::DescriptorSetInfo
@@ -147,14 +151,43 @@ namespace pong
             .device = &device,
             .pool = &transferCommandPool,
             .resourceManager = &resourceManager,
-            .materialSystem = &materialSystem,
+            .materialSystem = &_engine.getMaterialSystem(),
             .rootPath = _engineConfig.RootPath
         };
 
-        // TODO: Move to base and generate texture programatically
         resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
             hl::MaterialSystem::FallbackTextureName,
             resourceContext);
+
+        resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>(
+            "roboto",
+            resourceContext);
+        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+            "roboto",
+            resourceContext);
+
+        resourceManager.LoadLogical(
+            hl::ResourceDefinition
+            {
+                .name = hl::TextSystem::RasterAtlasName,
+                .type = "logical",
+                .resources = { { .name = hl::MaterialSystem::FallbackTextureName, .type = "texture" } }
+            },
+            [&](const hl::ResourceDefinition::Child& child)
+            {
+                return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+            });
+        resourceManager.LoadLogical(
+            hl::ResourceDefinition
+            {
+                .name = hl::TextSystem::SdfAtlasName,
+                .type = "logical",
+                .resources = { { .name = "roboto", .type = "texture" } }
+            },
+            [&](const hl::ResourceDefinition::Child& child)
+            {
+                return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+            });
 
         EngineScene::initialise(
             cameraMatrixResourceId,
@@ -163,7 +196,6 @@ namespace pong
             graphicsCommandPool,
             transferCommandPool,
             resourceManager,
-            materialSystem,
             renderpasses);
 
         resourceManager.Load<hl::VertexArrayResource>(

@@ -1,12 +1,13 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
-#include <helsinki/Renderer/Resource/WellKnownResources.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/HelsinkiTracy.hpp>
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
+#include <regex>
 
 namespace hl
 {
@@ -22,6 +23,29 @@ namespace hl
 		std::ostringstream contents;
 		contents << file.rdbuf();
 		return contents.str();
+	}
+
+	static std::string resolveShaderIncludes(const std::string& source, const std::filesystem::path& shaderPath)
+	{
+		static const std::regex includePattern(R"(#include\s+\"([^\"]+)\")");
+		std::string resolved = source;
+		std::smatch match;
+
+		while (std::regex_search(resolved, match, includePattern))
+		{
+			const auto includePath = shaderPath.parent_path() / match[1].str();
+			const auto includeContents = readFileContents(includePath.string());
+			resolved.replace(match.position(0), match.length(0), includeContents);
+		}
+
+		return resolved;
+	}
+
+	static std::string readShaderSource(const std::string& filename)
+	{
+		const std::filesystem::path shaderPath(filename);
+		const auto source = readFileContents(filename);
+		return resolveShaderIncludes(source, shaderPath);
 	}
 
 	std::vector<VulkanRenderGraphRenderpassResources*> RenderGraph::create(
@@ -52,6 +76,8 @@ namespace hl
 				imageCount);
 
 			renderpasses.push_back(r);
+
+			const bool useMultiSampling = passUsesMultiSampling(ri);
 
 			{
 				// images/outputs
@@ -86,8 +112,8 @@ namespace hl
 						VkAttachmentReference reference{};
 
 						description.format = ra.format;
-						description.samples = ri.useMultiSampling
-							? device._msaaSamples
+						description.samples = useMultiSampling
+							? device.msaaSamples()
 							: VK_SAMPLE_COUNT_1_BIT;
 						description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 						description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -98,7 +124,7 @@ namespace hl
 
 						if (ra.type == ResourceType::Color)
 						{
-							description.finalLayout = ri.useMultiSampling
+							description.finalLayout = useMultiSampling
 								? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 								: (isLastRenderpass
 									? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
@@ -111,7 +137,7 @@ namespace hl
 
 									allAttachments.push_back(description);
 
-									if (ri.useMultiSampling)
+									if (useMultiSampling)
 									{
 										VkAttachmentDescription resolveDescription{};
 										VkAttachmentReference resolveReference{};
@@ -164,7 +190,7 @@ namespace hl
 					subpass.colorAttachmentCount = static_cast<uint32_t>(colorReferences.size());
 					subpass.pColorAttachments = colorReferences.data();
 					subpass.pDepthStencilAttachment = depthReferences.data();
-					if (ri.useMultiSampling)
+					if (useMultiSampling)
 					{
 						subpass.pResolveAttachments = colorResolveReferences.data();
 					}
@@ -194,7 +220,7 @@ namespace hl
 
 					VkRenderPass vkRenderpass{ VK_NULL_HANDLE };
 
-					CHECK_VK_RESULT(vkCreateRenderPass(device._device, &renderPassInfo, nullptr, &vkRenderpass));
+					CHECK_VK_RESULT(vkCreateRenderPass(device.handle(), &renderPassInfo, nullptr, &vkRenderpass));
 
 					device.setDebugName(reinterpret_cast<uint64_t>(vkRenderpass), VK_OBJECT_TYPE_RENDER_PASS, r->Name.c_str());
 
@@ -262,7 +288,7 @@ namespace hl
 						poolCreateInfo.pPoolSizes = poolSizes.data();
 						poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount) * totalSets;
 
-						CHECK_VK_RESULT(vkCreateDescriptorPool(device._device, &poolCreateInfo, nullptr, &descriptorPool));
+						CHECK_VK_RESULT(vkCreateDescriptorPool(device.handle(), &poolCreateInfo, nullptr, &descriptorPool));
 
 						device.setDebugName(
 							reinterpret_cast<uint64_t>(descriptorPool),
@@ -275,22 +301,32 @@ namespace hl
 
 				//	Graphics pipelines
 				{
+					uint32_t pipelineGroupIndex = 0;
+
 					for (const auto& pg : ri.pipelineGroups)
 					{
 						r->startPipelineGroup();
-						for (const auto& p : pg)
+
+						if (!pg.empty())
 						{
-							ZoneScoped;
-							ZoneNameF("Create pipeline %s", p.name.c_str());
-							// create descritpor set layouts
+							const auto& firstPipeline = pg.front();
+							for (const auto& p : pg)
+							{
+								if (!descriptorSetLayoutsCompatible(firstPipeline.descriptorSets, p.descriptorSets))
+								{
+									throw std::runtime_error(
+										"Pipeline group in pass '" + r->Name
+										+ "' has incompatible descriptor layouts between '"
+										+ firstPipeline.name + "' and '" + p.name + "'");
+								}
+							}
+						}
 
-							auto& pipeline = r->addPipeline(p.name);
+						std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 
-							pipeline.addViewportInfo(p.viewport.mode, p.viewport.width, p.viewport.height);
-
-							std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
-
-							for (const auto& dsi : p.descriptorSets)
+						if (!pg.empty())
+						{
+							for (const auto& dsi : pg.front().descriptorSets)
 							{
 								for (const auto& b : dsi.bindings)
 								{
@@ -305,27 +341,37 @@ namespace hl
 										});
 								}
 							}
+						}
 
-							VkDescriptorSetLayout descriptorSetLayout{ VK_NULL_HANDLE };
+						VkDescriptorSetLayout descriptorSetLayout{ VK_NULL_HANDLE };
 
-							if (!layoutBindings.empty())
-							{
-								ZoneScopedN("Create Descriptor Sets");
-								VkDescriptorSetLayoutCreateInfo layoutInfo{};
-								layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-								layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
-								layoutInfo.pBindings = layoutBindings.data();
+						if (!layoutBindings.empty())
+						{
+							ZoneScopedN("Create Descriptor Set Layout");
+							VkDescriptorSetLayoutCreateInfo layoutInfo{};
+							layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+							layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
+							layoutInfo.pBindings = layoutBindings.data();
 
-								CHECK_VK_RESULT(vkCreateDescriptorSetLayout(device._device, &layoutInfo, nullptr, &descriptorSetLayout));
+							CHECK_VK_RESULT(vkCreateDescriptorSetLayout(device.handle(), &layoutInfo, nullptr, &descriptorSetLayout));
 
-								device.setDebugName(
-									reinterpret_cast<uint64_t>(descriptorSetLayout),
-									VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
-									(r->Name + "_" + p.name + std::string("_DescriptorSetLayout")).c_str()
-								);
+							device.setDebugName(
+								reinterpret_cast<uint64_t>(descriptorSetLayout),
+								VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
+								(r->Name + "_pg" + std::to_string(pipelineGroupIndex) + "_DescriptorSetLayout").c_str()
+							);
 
-								pipeline.addDescriptorSetLayout(descriptorSetLayout);
-							}
+							r->addPipelineGroupDescriptorSetLayout(descriptorSetLayout);
+						}
+
+						for (const auto& p : pg)
+						{
+							ZoneScoped;
+							ZoneNameF("Create pipeline %s", p.name.c_str());
+
+							auto& pipeline = r->addPipeline(p.name);
+
+							pipeline.addViewportInfo(p.viewport.mode, p.viewport.width, p.viewport.height);
 
 							VkPipelineLayout pipelineLayout;
 
@@ -357,7 +403,7 @@ namespace hl
 									pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 								}
 
-								CHECK_VK_RESULT(vkCreatePipelineLayout(device._device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+								CHECK_VK_RESULT(vkCreatePipelineLayout(device.handle(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 								device.setDebugName(
 									reinterpret_cast<uint64_t>(pipelineLayout),
@@ -375,13 +421,8 @@ namespace hl
 								{
 									ZoneScopedN("Create Shader Modules");
 
-									auto vertexShaderContents = WellKnownResources::IsWellKnown(p.shaderVert)
-										? WellKnownResources::GetWellKnown(p.shaderVert)
-										: readFileContents(p.shaderVert);
-
-									auto fragmentShaderContents = WellKnownResources::IsWellKnown(p.shaderFrag)
-										? WellKnownResources::GetWellKnown(p.shaderFrag)
-										: readFileContents(p.shaderFrag);
+									auto vertexShaderContents = readShaderSource(p.shaderVert);
+									auto fragmentShaderContents = readShaderSource(p.shaderFrag);
 
 									const auto& vertexSource = VulkanGraphicsPipeline::readParseCompileShader(
 										vertexShaderContents,
@@ -397,14 +438,14 @@ namespace hl
 									vertexCreateInfo.codeSize = vertexSource.size() * sizeof(uint32_t);
 									vertexCreateInfo.pCode = reinterpret_cast<const uint32_t*>(vertexSource.data());
 
-									CHECK_VK_RESULT(vkCreateShaderModule(device._device, &vertexCreateInfo, nullptr, &vertexShaderModule));
+									CHECK_VK_RESULT(vkCreateShaderModule(device.handle(), &vertexCreateInfo, nullptr, &vertexShaderModule));
 
 									VkShaderModuleCreateInfo fragmentCreateInfo{};
 									fragmentCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 									fragmentCreateInfo.codeSize = fragmentSource.size() * sizeof(uint32_t);
 									fragmentCreateInfo.pCode = reinterpret_cast<const uint32_t*>(fragmentSource.data());
 
-									CHECK_VK_RESULT(vkCreateShaderModule(device._device, &fragmentCreateInfo, nullptr, &fragmentShaderModule));
+									CHECK_VK_RESULT(vkCreateShaderModule(device.handle(), &fragmentCreateInfo, nullptr, &fragmentShaderModule));
 								}
 
 								{
@@ -482,8 +523,8 @@ namespace hl
 									VkPipelineMultisampleStateCreateInfo multisampling{};
 									multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 									multisampling.sampleShadingEnable = VK_TRUE;
-									multisampling.rasterizationSamples = ri.useMultiSampling
-										? device._msaaSamples
+									multisampling.rasterizationSamples = useMultiSampling
+										? device.msaaSamples()
 										: VK_SAMPLE_COUNT_1_BIT;
 									multisampling.minSampleShading = .2f;
 
@@ -552,7 +593,7 @@ namespace hl
 
 									VkPipeline pl = VK_NULL_HANDLE;
 
-									CHECK_VK_RESULT(vkCreateGraphicsPipelines(device._device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pl));
+									CHECK_VK_RESULT(vkCreateGraphicsPipelines(device.handle(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pl));
 
 									device.setDebugName(
 										reinterpret_cast<uint64_t>(pl),
@@ -562,8 +603,8 @@ namespace hl
 									pipeline.addPipeline(pl);
 								}
 
-								vkDestroyShaderModule(device._device, vertexShaderModule, nullptr);
-								vkDestroyShaderModule(device._device, fragmentShaderModule, nullptr);
+								vkDestroyShaderModule(device.handle(), vertexShaderModule, nullptr);
+								vkDestroyShaderModule(device.handle(), fragmentShaderModule, nullptr);
 							}
 
 							// Descriptor sets
@@ -579,7 +620,7 @@ namespace hl
 
 									auto descriptorSets = std::vector<VkDescriptorSet>(MAX_FRAMES_IN_FLIGHT);
 
-									CHECK_VK_RESULT(vkAllocateDescriptorSets(device._device, &allocInfo, descriptorSets.data()));
+									CHECK_VK_RESULT(vkAllocateDescriptorSets(device.handle(), &allocInfo, descriptorSets.data()));
 
 									for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 									{
@@ -595,6 +636,7 @@ namespace hl
 						}
 
 						r->endPipelineGroup();
+						++pipelineGroupIndex;
 					}
 				}
 			}
@@ -622,6 +664,7 @@ namespace hl
 	{
 		std::vector<VkClearValue> clearValues;
 		resources->setExtent({.width = width, .height = height});
+		const bool useMultiSampling = passUsesMultiSampling(info);
 
 		for (const auto& res : info.outputs)
 		{
@@ -643,7 +686,7 @@ namespace hl
 						});
 				}
 
-				if (info.useMultiSampling)
+				if (useMultiSampling)
 				{
 					if (res.clear.has_value())
 					{
@@ -681,7 +724,7 @@ namespace hl
 				? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
 				: VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-			if (info.useMultiSampling)
+			if (useMultiSampling)
 			{
 				usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
 			}
@@ -701,8 +744,8 @@ namespace hl
 						width,
 						height,
 						1, // TODO
-						info.useMultiSampling
-							? device._msaaSamples
+						useMultiSampling
+							? device.msaaSamples()
 							: VK_SAMPLE_COUNT_1_BIT,
 						attachment.format,
 						VK_IMAGE_TILING_OPTIMAL,
@@ -731,7 +774,7 @@ namespace hl
 						(info.name + "_" + res.name + std::string("_ImageView_") + std::to_string(i)).c_str());
 
 					// Dont create resolve images for the last one.  Needs to do swap chain magic
-					if (info.useMultiSampling && !isLastRenderpass)
+					if (useMultiSampling && !isLastRenderpass)
 					{
 						auto resolveImage = new VulkanImage(device);
 						attachment.resolveImages.push_back(resolveImage);
@@ -778,8 +821,8 @@ namespace hl
 						width,
 						height,
 						1,
-						info.useMultiSampling
-							? device._msaaSamples
+						useMultiSampling
+							? device.msaaSamples()
 							: VK_SAMPLE_COUNT_1_BIT,
 						attachment.format,
 						VK_IMAGE_TILING_OPTIMAL,
@@ -827,6 +870,8 @@ namespace hl
 		uint32_t imageCount,
 		bool isLastRenderpass)
 	{
+		const bool useMultiSampling = passUsesMultiSampling(info);
+
 		for (uint32_t i = 0; i < imageCount; ++i)
 		{
 			VkFramebuffer f = VK_NULL_HANDLE;
@@ -836,7 +881,7 @@ namespace hl
 			{
 				auto foundColorAttachment = false;
 
-				if (info.useMultiSampling)
+				if (useMultiSampling)
 				{
 					for (auto& a : resources->getAttachments())
 					{
@@ -913,7 +958,7 @@ namespace hl
 			}
 			else
 			{
-				if (info.useMultiSampling)
+				if (useMultiSampling)
 				{
 					for (auto& a : resources->getAttachments())
 					{
@@ -956,7 +1001,7 @@ namespace hl
 			framebufferInfo.height = height;
 			framebufferInfo.layers = 1;
 
-			CHECK_VK_RESULT(vkCreateFramebuffer(device._device, &framebufferInfo, nullptr, &f));
+			CHECK_VK_RESULT(vkCreateFramebuffer(device.handle(), &framebufferInfo, nullptr, &f));
 
 			device.setDebugName(
 				reinterpret_cast<uint64_t>(f),

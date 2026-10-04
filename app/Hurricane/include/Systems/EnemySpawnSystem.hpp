@@ -4,6 +4,7 @@
 #include <helsinki/Engine/Scene/Scene.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
 #include <Services/ResourceService.hpp>
+#include <EntityCatalog.hpp>
 
 namespace hur
 {
@@ -20,7 +21,7 @@ namespace hur
 		void OnEvent(const hl::Event& event) override;
 
 	private:
-		void spawnDefaultEnemy();
+		void spawnEnemy(const EntityDefinition& def);
 
 	private:
 		hl::EventBus& _eventBus;

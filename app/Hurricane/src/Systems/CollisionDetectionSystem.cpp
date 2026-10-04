@@ -38,9 +38,19 @@ namespace hur
 			const auto iTop = iPos.y - iSize.y / 2.0f;
 			const auto iBottom = iPos.y + iSize.y / 2.0f;
 
+			if (_scene.isPendingRemoval(colliderEntityI->Id))
+			{
+				continue;
+			}
+
 			for (auto j = i + 1; j < colliders.size(); ++j)
 			{
 				auto colliderEntityJ = colliders[j];
+
+				if (_scene.isPendingRemoval(colliderEntityJ->Id))
+				{
+					continue;
+				}
 
 				const auto jTc = colliderEntityJ->GetComponent<hl::TransformComponent>();
 				const auto jEc = colliderEntityJ->GetComponent<EntityComponent>();
