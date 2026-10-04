@@ -90,6 +90,32 @@ FetchContent_MakeAvailable(stb)
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 
+# -------------------- miniaudio (Ogg via existing stb_vorbis) --------------------
+FetchContent_Declare(
+    miniaudio
+    GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+    GIT_TAG        0.11.22
+)
+FetchContent_GetProperties(miniaudio)
+if(NOT miniaudio_POPULATED)
+    FetchContent_Populate(miniaudio)
+endif()
+
+enable_language(C)
+find_package(Threads REQUIRED)
+
+add_library(ThirdParty_miniaudio STATIC
+    "${PROJECT_SOURCE_DIR}/thirdparty/miniaudio_impl.c"
+)
+target_include_directories(ThirdParty_miniaudio SYSTEM PUBLIC
+    "${miniaudio_SOURCE_DIR}"
+)
+target_compile_definitions(ThirdParty_miniaudio PRIVATE MA_NO_ENCODING)
+target_link_libraries(ThirdParty_miniaudio PUBLIC stb Threads::Threads)
+if(UNIX AND NOT APPLE)
+    target_link_libraries(ThirdParty_miniaudio PUBLIC m ${CMAKE_DL_LIBS})
+endif()
+
 FetchContent_Declare(
     tinyobjloader
     GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git

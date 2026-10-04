@@ -8,12 +8,14 @@ target_include_directories(Hurricane PUBLIC
 )
 
 TARGET_LINK_LIBRARIES(Hurricane PRIVATE "helsinki-system${LIB_EXTENSION_SHARED}")
+TARGET_LINK_LIBRARIES(Hurricane PRIVATE "helsinki-audio${LIB_EXTENSION_SHARED}")
 TARGET_LINK_LIBRARIES(Hurricane PRIVATE "helsinki-ui${LIB_EXTENSION_SHARED}")
 TARGET_LINK_LIBRARIES(Hurricane PRIVATE "helsinki-renderer${LIB_EXTENSION_SHARED}")
 TARGET_LINK_LIBRARIES(Hurricane PRIVATE "helsinki-engine${LIB_EXTENSION_SHARED}")
 
 SET(MODULE_LIBS
 	"helsinki-system${LIB_EXTENSION_SHARED}"
+	"helsinki-audio${LIB_EXTENSION_SHARED}"
 	"helsinki-ui${LIB_EXTENSION_SHARED}"
 	"helsinki-renderer${LIB_EXTENSION_SHARED}"
 	"helsinki-engine${LIB_EXTENSION_SHARED}"

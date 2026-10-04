@@ -19,5 +19,6 @@ function(testsubmodule MODULE_NAME MODULE_LIBS)
 endfunction()
 
 ADD_SUBDIRECTORY(system)
+ADD_SUBDIRECTORY(audio)
 ADD_SUBDIRECTORY(ui)
 ADD_SUBDIRECTORY(renderer)
