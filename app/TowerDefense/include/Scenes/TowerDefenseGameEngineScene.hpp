@@ -8,6 +8,8 @@
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Engine/ECS/Entity.hpp>
 #include <helsinki/Ui/Label.hpp>
+#include <helsinki/Ui/Button.hpp>
+#include <helsinki/Ui/Panel.hpp>
 #include <helsinki/Ui/Layout/Layout.hpp>
 #include <Ui/UiLayoutAdapters.hpp>
 #include <helsinki/Engine/Ui/UiBatch.hpp>
@@ -51,6 +53,7 @@ namespace tower
 		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void tryHandleBoardClick();
 		bool isOccupied(int tx, int tz) const;
+		void onCreepLeaked();
 		void buildHud(hl::FontResource* font);
 		void rebuildHud();
 
@@ -59,11 +62,20 @@ namespace tower
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::Entity* _marker = nullptr;
 		int _gold = StartGold;
+		int _lives = StartLives;
+		bool _gameOver = false;
 
 		hl::UiBatch _uiBatch;
 		std::unique_ptr<FontTypeface> _typeface;
 		std::unique_ptr<hl::ui::Node> _layoutRoot;
 		std::unique_ptr<hl::ui::Label> _goldLabel;
+		std::unique_ptr<hl::ui::Label> _livesLabel;
+
+		std::unique_ptr<hl::ui::Node> _overlayRoot;
+		std::unique_ptr<hl::ui::Panel> _dim;
+		std::unique_ptr<hl::ui::Panel> _overlayPanel;
+		std::unique_ptr<hl::ui::Label> _overlayHeading;
+		std::unique_ptr<hl::ui::Button> _titleButton;
 	};
 
 }

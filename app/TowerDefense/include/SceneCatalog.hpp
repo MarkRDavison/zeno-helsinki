@@ -21,6 +21,7 @@ namespace tower
 	inline constexpr const char* ProjectileModelId = "marker";
 	inline constexpr int StartGold = 100;
 	inline constexpr int TowerCost = 25;
+	inline constexpr int StartLives = 1;
 	inline constexpr float TowerRange = 3.5f;
 	inline constexpr float TowerFireCooldown = 1.0f;
 	inline constexpr float ProjectileSpeed = 6.0f;
@@ -47,7 +48,6 @@ namespace tower
 		{ 1, 7 }, { 2, 7 }, { 3, 7 }, { 4, 7 }, { 5, 7 }, { 6, 7 }, { 7, 7 },
 	};
 
-	inline constexpr TileCoord TurretTile{ 2, 2 };
 	inline constexpr TileCoord MarkerStartTile{ 3, 3 };
 
 	inline constexpr bool isPathTile(int tx, int tz)

@@ -342,11 +342,12 @@ namespace tower
 
 		spawnBoard(resourceManager, resourceContext);
 		resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
-		spawnTower(resourceManager, TurretTile.x, TurretTile.z);
 		spawnCreep(resourceManager, resourceContext);
 		spawnMarker(resourceManager, resourceContext);
 
-		_scene.addSystem(new PathFollowSystem(_scene));
+		auto* pathFollow = new PathFollowSystem(_scene);
+		pathFollow->onLeak = [this]() { onCreepLeaked(); };
+		_scene.addSystem(pathFollow);
 		_scene.addSystem(new TowerFireSystem(_scene, resourceManager));
 		_scene.addSystem(new ProjectileSystem(_scene));
 	}
@@ -448,6 +449,10 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::tryHandleBoardClick()
 	{
+		if (_gameOver)
+		{
+			return;
+		}
 		const auto& input = _engine.getInputManager();
 		const bool released = input.isButtonReleased(GLFW_MOUSE_BUTTON_1);
 		if (!released || _marker == nullptr)
@@ -585,6 +590,12 @@ namespace tower
 			});
 	}
 
+	void TowerDefenseGameEngineScene::onCreepLeaked()
+	{
+		_lives = 0;
+		_gameOver = true;
+	}
+
 	void TowerDefenseGameEngineScene::buildHud(hl::FontResource* font)
 	{
 		_typeface = std::make_unique<FontTypeface>(font);
@@ -593,30 +604,85 @@ namespace tower
 		_goldLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
 		_goldLabel->color = { 1.0f, 1.0f, 1.0f };
 		_goldLabel->setText("Gold: " + std::to_string(_gold), 24);
+
+		_livesLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
+		_livesLabel->color = { 1.0f, 1.0f, 1.0f };
+		_livesLabel->setText("Lives: " + std::to_string(_lives), 24);
+
+		_overlayRoot = std::make_unique<hl::ui::Node>();
+		_overlayRoot->setFillParent();
+
+		auto& dimNode = _overlayRoot->addChild();
+		dimNode.setFillParent();
+		_dim = std::make_unique<hl::ui::Panel>(dimNode);
+		_dim->color = { 0.0f, 0.0f, 0.0f };
+		_dim->opacity = 0.55f;
+		_dim->hitTestEnabled = false;
+
+		auto& column = _overlayRoot->addChild();
+		column.kind = hl::ui::Kind::Column;
+		column.gap = 24.0f;
+		column.padding = { 32.0f, 24.0f, 32.0f, 24.0f };
+		column.crossAlign = hl::ui::Align::Center;
+		column.setCenter({ 0.0f, 0.0f });
+
+		_overlayPanel = std::make_unique<hl::ui::Panel>(column);
+		_overlayPanel->color = { 0.08f, 0.09f, 0.12f };
+		_overlayPanel->hitTestEnabled = false;
+
+		_overlayHeading = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
+		_overlayHeading->color = { 1.0f, 0.5f, 0.0f };
+		_overlayHeading->setText("Game Over", 64);
+
+		_titleButton = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_titleButton->setText("Title", 48);
+		_titleButton->onClick = [this]()
+		{
+			_sceneHost.goTitle();
+		};
 	}
 
 	void TowerDefenseGameEngineScene::rebuildHud()
 	{
 		_goldLabel->setText("Gold: " + std::to_string(_gold), 24);
+		_livesLabel->setText("Lives: " + std::to_string(_lives), 24);
 		hl::ui::prepareTree(*_layoutRoot);
 
-		const glm::vec2 size = _goldLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
-		_goldLabel->node().setTopLeft(size);
+		const glm::vec2 goldSize = _goldLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+		_goldLabel->node().setTopLeft(goldSize);
 		_goldLabel->node().relative = { 16.0f, 16.0f };
 		_goldLabel->node().intrinsicSize.reset();
 
+		const glm::vec2 livesSize = _livesLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+		_livesLabel->node().setTopLeft(livesSize);
+		_livesLabel->node().relative = { 16.0f, 16.0f + goldSize.y + 8.0f };
+		_livesLabel->node().intrinsicSize.reset();
+
 		const auto fb = _engine.getInputManager().getFramebufferSize();
-		hl::ui::layout(*_layoutRoot, hl::ui::Box{ 0.0f, 0.0f, fb.x, fb.y });
+		const hl::ui::Box screen{ 0.0f, 0.0f, fb.x, fb.y };
+		hl::ui::layout(*_layoutRoot, screen);
 
 		_uiBatch.begin();
 		UiBatchPaint paint(_uiBatch);
 		hl::ui::paintTree(*_layoutRoot, paint);
+
+		if (_gameOver)
+		{
+			hl::ui::prepareTree(*_overlayRoot);
+			hl::ui::layout(*_overlayRoot, screen);
+			hl::ui::dispatch(*_overlayRoot, readMenuPointer(_engine));
+			hl::ui::paintTree(*_overlayRoot, paint);
+		}
 	}
 
 	void TowerDefenseGameEngineScene::update(uint32_t /*currentFrame*/, float delta)
 	{
-		tryHandleBoardClick();
-		_scene.update(delta);
+		if (!_gameOver)
+		{
+			tryHandleBoardClick();
+			_scene.update(delta);
+		}
+
 		rebuildHud();
 	}
 

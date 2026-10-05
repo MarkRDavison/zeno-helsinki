@@ -11,6 +11,16 @@ namespace tower
 	{
 	}
 
+	void PathFollowSystem::leak(hl::Entity* entity)
+	{
+		if (onLeak)
+		{
+			onLeak();
+		}
+
+		_scene.removeEntity(entity->Id);
+	}
+
 	void PathFollowSystem::update(float delta)
 	{
 		constexpr int waypointCount = static_cast<int>(sizeof(PathWaypoints) / sizeof(PathWaypoints[0]));
@@ -27,7 +37,7 @@ namespace tower
 
 			if (follow->fromIndex >= waypointCount - 1)
 			{
-				_scene.removeEntity(entity->Id);
+				leak(entity);
 				continue;
 			}
 
@@ -53,7 +63,7 @@ namespace tower
 					transform->SetPosition(tileCenter(
 						PathWaypoints[waypointCount - 1].x,
 						PathWaypoints[waypointCount - 1].z));
-					_scene.removeEntity(entity->Id);
+					leak(entity);
 					break;
 				}
 			}
