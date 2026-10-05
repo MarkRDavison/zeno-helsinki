@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/Utils/ServiceProvider.hpp>
+#include <optional>
 
 namespace tower
 {
@@ -18,5 +19,7 @@ namespace tower
 	private:
 		hl::Engine& _engine;
 		hl::ServiceProvider& _root;
+		std::optional<hl::ServiceProvider> _scope;
+		std::optional<hl::ServiceProvider> _pendingScope;
 	};
 }

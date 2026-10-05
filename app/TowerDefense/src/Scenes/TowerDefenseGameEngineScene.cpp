@@ -42,11 +42,15 @@ namespace tower
 		hl::Engine& engine,
 		const hl::EngineConfiguration& engineConfig,
 		SceneHost& sceneHost,
+		GameStateService& gameState,
+		WaveService& wave,
 		hl::audio::Audio& audio
 	) :
 		EngineScene(engine),
 		_sceneHost(sceneHost),
 		_engineConfig(engineConfig),
+		_gameState(gameState),
+		_wave(wave),
 		_audio(audio)
 	{
 		_cameras.insert({ "Ui", new hl::Camera2D() });
@@ -623,7 +627,7 @@ namespace tower
 			ring->SetPosition(tileCenter(tile->x, tile->z, RangeRingY));
 			ring->SetScale(glm::vec3(TowerRange, 1.0f, TowerRange));
 		}
-		_ghostPlaceable = !isPathTile(tile->x, tile->z) && _gold >= TowerCost;
+		_ghostPlaceable = !isPathTile(tile->x, tile->z) && _gameState.gold() >= TowerCost;
 		_ghostVisible = true;
 	}
 
@@ -649,13 +653,12 @@ namespace tower
 		_marker->GetComponent<hl::TransformComponent>()->SetPosition(
 			tileCenter(tile->x, tile->z, MarkerY));
 
-		if (isPathTile(tile->x, tile->z) || isOccupied(tile->x, tile->z) || _gold < TowerCost)
+		if (isPathTile(tile->x, tile->z) || isOccupied(tile->x, tile->z) || !_gameState.trySpend(TowerCost))
 		{
 			flashInvalid(tile->x, tile->z);
 			return;
 		}
 
-		_gold -= TowerCost;
 		spawnTower(*_resourceManager, tile->x, tile->z);
 	}
 
@@ -859,7 +862,7 @@ namespace tower
 
 	bool TowerDefenseGameEngineScene::matchEnded() const
 	{
-		return _gameOver || _won;
+		return _gameState.matchEnded();
 	}
 
 	bool TowerDefenseGameEngineScene::uiBlocksBoardClick() const
@@ -880,52 +883,48 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::startWave()
 	{
-		if (_waveStarted || matchEnded())
+		if (!_wave.tryStart())
 		{
 			return;
 		}
 
-		_waveStarted = true;
-		_creepsToSpawn = WaveCreepCount;
-		spawnCreep();
-		_creepsToSpawn -= 1;
-		_spawnTimer = WaveSpawnInterval;
+		tickWave(0.0f);
 	}
 
 	void TowerDefenseGameEngineScene::tickWave(float delta)
 	{
-		if (!_waveStarted || matchEnded() || _creepsToSpawn <= 0)
+		_wave.tick(delta);
+		while (_wave.takeSpawn())
 		{
-			return;
+			spawnCreep();
 		}
-
-		_spawnTimer -= delta;
-		if (_spawnTimer > 0.0f)
-		{
-			return;
-		}
-
-		spawnCreep();
-		_creepsToSpawn -= 1;
-		_spawnTimer = WaveSpawnInterval;
 	}
 
-	void TowerDefenseGameEngineScene::tryWin()
+	bool TowerDefenseGameEngineScene::boardHasLiveCreep() const
 	{
-		if (!_waveStarted || matchEnded() || _creepsToSpawn > 0)
-		{
-			return;
-		}
-
 		for (auto* creep : _scene.getEntitiesByTag(CreepTag))
 		{
 			if (!_scene.isPendingRemoval(creep->Id))
 			{
-				return;
+				return true;
 			}
 		}
 
-		_won = true;
+		return false;
+	}
+
+	void TowerDefenseGameEngineScene::tryClearWave()
+	{
+		if (!_wave.tryClear(!boardHasLiveCreep()))
+		{
+			return;
+		}
+
+		if (!_gameState.won())
+		{
+			return;
+		}
+
 		_overlayHeading->setText("You Win", 64);
 		_audio.play(CueWin);
 	}
@@ -937,24 +936,19 @@ namespace tower
 			return;
 		}
 
-		if (_lives > 0)
-		{
-			_lives -= 1;
-		}
-
+		_gameState.onLeak();
 		_audio.play(CueLeak);
-		if (_lives > 0)
+		if (!_gameState.matchEnded())
 		{
 			return;
 		}
 
-		_gameOver = true;
 		_overlayHeading->setText("Game Over", 64);
 	}
 
 	void TowerDefenseGameEngineScene::onCreepKilled()
 	{
-		_gold += KillGold;
+		_gameState.addGold(KillGold);
 	}
 
 	void TowerDefenseGameEngineScene::buildHud(hl::FontResource* font)
@@ -964,11 +958,17 @@ namespace tower
 		_layoutRoot->setFillParent();
 		_goldLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
 		_goldLabel->color = { 1.0f, 1.0f, 1.0f };
-		_goldLabel->setText("Gold: " + std::to_string(_gold), 24);
+		_goldLabel->setText("Gold: " + std::to_string(_gameState.gold()), 24);
 
 		_livesLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
 		_livesLabel->color = { 1.0f, 1.0f, 1.0f };
-		_livesLabel->setText("Lives: " + std::to_string(_lives), 24);
+		_livesLabel->setText("Lives: " + std::to_string(_gameState.lives()), 24);
+
+		_waveLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
+		_waveLabel->color = { 1.0f, 1.0f, 1.0f };
+		_waveLabel->setText(
+			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(WaveCount),
+			24);
 
 		_waveButton = std::make_unique<hl::ui::Button>(_layoutRoot->addChild(), *_typeface);
 		_waveButton->setText("Start Wave", 32);
@@ -1009,8 +1009,11 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::rebuildHud()
 	{
-		_goldLabel->setText("Gold: " + std::to_string(_gold), 24);
-		_livesLabel->setText("Lives: " + std::to_string(_lives), 24);
+		_goldLabel->setText("Gold: " + std::to_string(_gameState.gold()), 24);
+		_livesLabel->setText("Lives: " + std::to_string(_gameState.lives()), 24);
+		_waveLabel->setText(
+			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(WaveCount),
+			24);
 		hl::ui::prepareTree(*_layoutRoot);
 
 		const glm::vec2 goldSize = _goldLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
@@ -1023,11 +1026,16 @@ namespace tower
 		_livesLabel->node().relative = { 16.0f, 16.0f + goldSize.y + 8.0f };
 		_livesLabel->node().intrinsicSize.reset();
 
-		if (!_waveStarted)
+		const glm::vec2 waveSize = _waveLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+		_waveLabel->node().setTopLeft(waveSize);
+		_waveLabel->node().relative = { 16.0f, 16.0f + goldSize.y + 8.0f + livesSize.y + 8.0f };
+		_waveLabel->node().intrinsicSize.reset();
+
+		if (!_wave.inCombat() && !matchEnded())
 		{
 			_waveButton->hitTestEnabled = true;
-			const glm::vec2 waveSize = _waveButton->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
-			_waveButton->node().setTopCenter(waveSize);
+			const glm::vec2 buttonSize = _waveButton->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+			_waveButton->node().setTopCenter(buttonSize);
 			_waveButton->node().relative = { 0.0f, 16.0f };
 			_waveButton->node().intrinsicSize.reset();
 		}
@@ -1078,7 +1086,7 @@ namespace tower
 		{
 			tickWave(delta);
 			_scene.update(delta);
-			tryWin();
+			tryClearWave();
 		}
 
 		rebuildHud();

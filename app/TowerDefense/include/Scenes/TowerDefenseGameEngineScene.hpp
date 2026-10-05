@@ -14,6 +14,8 @@
 #include <Ui/UiLayoutAdapters.hpp>
 #include <helsinki/Engine/Ui/UiBatch.hpp>
 #include <helsinki/Audio/Audio.hpp>
+#include <Services/GameStateService.hpp>
+#include <Services/WaveService.hpp>
 #include <SceneCatalog.hpp>
 #include <memory>
 
@@ -33,6 +35,8 @@ namespace tower
 			hl::Engine& engine,
 			const hl::EngineConfiguration& engineConfig,
 			SceneHost& sceneHost,
+			GameStateService& gameState,
+			WaveService& wave,
 			hl::audio::Audio& audio);
 		~TowerDefenseGameEngineScene();
 		void initialise(
@@ -67,7 +71,8 @@ namespace tower
 		bool uiBlocksBoardClick() const;
 		void startWave();
 		void tickWave(float delta);
-		void tryWin();
+		bool boardHasLiveCreep() const;
+		void tryClearWave();
 		void onCreepLeaked();
 		void onCreepKilled();
 		void buildHud(hl::FontResource* font);
@@ -75,6 +80,8 @@ namespace tower
 
 		SceneHost& _sceneHost;
 		const hl::EngineConfiguration& _engineConfig;
+		GameStateService& _gameState;
+		WaveService& _wave;
 		hl::audio::Audio& _audio;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::Entity* _marker = nullptr;
@@ -85,19 +92,13 @@ namespace tower
 		hl::Entity* _flashTower = nullptr;
 		bool _flashGhost = false;
 		float _invalidFlashRemaining = 0.0f;
-		int _gold = StartGold;
-		int _lives = StartLives;
-		bool _gameOver = false;
-		bool _won = false;
-		bool _waveStarted = false;
-		int _creepsToSpawn = 0;
-		float _spawnTimer = 0.0f;
 
 		hl::UiBatch _uiBatch;
 		std::unique_ptr<FontTypeface> _typeface;
 		std::unique_ptr<hl::ui::Node> _layoutRoot;
 		std::unique_ptr<hl::ui::Label> _goldLabel;
 		std::unique_ptr<hl::ui::Label> _livesLabel;
+		std::unique_ptr<hl::ui::Label> _waveLabel;
 		std::unique_ptr<hl::ui::Button> _waveButton;
 
 		std::unique_ptr<hl::ui::Node> _overlayRoot;

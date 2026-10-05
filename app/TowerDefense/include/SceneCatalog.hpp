@@ -40,6 +40,7 @@ namespace tower
 	inline constexpr int CreepHealth = 3;
 	inline constexpr int ProjectileDamage = 1;
 	inline constexpr int StartLives = 3;
+	inline constexpr int WaveCount = 3;
 	inline constexpr int WaveCreepCount = 5;
 	inline constexpr float WaveSpawnInterval = 1.0f;
 	inline constexpr float TowerRange = 3.5f;
