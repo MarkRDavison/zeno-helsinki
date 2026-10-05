@@ -19,10 +19,14 @@ layout(location = 3) in vec3 inNormal;
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out flat int fragMaterialIndex;
+layout(location = 3) out vec3 fragNormal;
 
 void main() {
     gl_Position = ubo.proj * ubo.view * pc.model * vec4(inPosition, 1.0);
     fragColor = inColor;
     fragTexCoord = inTexCoord;
     fragMaterialIndex = pc.materialIndex;
+
+    mat3 model3 = mat3(pc.model);
+    fragNormal = transpose(inverse(model3)) * inNormal;
 }

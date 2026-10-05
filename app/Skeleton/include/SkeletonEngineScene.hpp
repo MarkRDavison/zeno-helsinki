@@ -2,6 +2,8 @@
 
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
+#include <helsinki/Renderer/Resource/ResourceContext.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 
 namespace sk
 {
@@ -20,6 +22,9 @@ namespace sk
 
 		void update(uint32_t currentFrame, float delta) override;
 	private:
+		std::vector<hl::RenderpassInfo> buildRenderpasses() const;
+		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+
 		const hl::EngineConfiguration& _engineConfig;
 	};
 

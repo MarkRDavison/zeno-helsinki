@@ -1,16 +1,20 @@
 #include "SkeletonEngineScene.hpp"
+#include <SceneCatalog.hpp>
+#include <Systems/RotateSystem.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
-#include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
-#include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
-#include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
-#include <helsinki/Renderer/Resource/BasicModelResource.hpp>
+#include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
+#include <helsinki/Renderer/Resource/TextureResource.hpp>
+#include <helsinki/Renderer/RendererConfiguration.hpp>
+#include <helsinki/System/Resource/ResourceDefinition.hpp>
+#include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
-#include <iostream>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
+#include <helsinki/Renderer/RendererShaderRoot.hpp>
 
 namespace sk
 {
@@ -22,23 +26,17 @@ namespace sk
         EngineScene(engine),
         _engineConfig(engineConfig)
     {
-        // TODO: Better way of doing this...
-
+        // EngineScene destructor deletes cameras stored in _cameras.
         _cameras.insert({ "Default", new hl::Camera(
             glm::vec3(2.0f, 0.5f, -2.0f),
             glm::vec3(0.0f, 1.0f, 0.0f),
             135.0f,
             -5.0f) });
     }
-	void SkeletonEngineScene::initialise(
-        const std::string& cameraMatrixResourceId,
-		hl::VulkanDevice& device,
-		hl::VulkanSwapChain& swapChain,
-		hl::VulkanCommandPool& graphicsCommandPool,
-        hl::VulkanCommandPool& transferCommandPool,
-        hl::ResourceManager& resourceManager)
-	{
-        std::vector<hl::RenderpassInfo> renderpasses =
+
+    std::vector<hl::RenderpassInfo> SkeletonEngineScene::buildRenderpasses() const
+    {
+        return
         {
             hl::RenderpassInfo
             {
@@ -255,10 +253,67 @@ namespace sk
                     {
                         hl::PipelineInfo
                         {
-                            .name = "ui",
-                            .shaderVert = _engineConfig.RootPath + std::string("/data/shaders/ui.vert"),
-                            .shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/ui.frag"),
-                            .descriptorSets = {},
+                            .name = "ui_pipeline",
+                            .shaderVert = std::string(hl::RendererShaderRoot) + "/ui.vert",
+                            .shaderFrag = std::string(hl::RendererShaderRoot) + "/ui.frag",
+                            .descriptorSets =
+                            {
+                                hl::DescriptorSetInfo
+                                {
+                                    .bindings =
+                                    {
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 0,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "VERTEX",
+                                            .resource = "camera_matrix_ubo",
+                                            .count = MAX_CAMERAS,
+                                            .updateFrequency = hl::DescriptorUpdateFrequency::Static
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 1,
+                                            .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "ui_sheet",
+                                            .count = static_cast<uint32_t>(MAX_UI_TEXTURES),
+                                            .updateFrequency = hl::DescriptorUpdateFrequency::Static
+                                        }
+                                    }
+                                }
+                            },
+                            .vertexInputInfo = hl::VertexInputInfo
+                            {
+                                .attributes =
+                                {
+                                    {
+                                        .name = "inPosition",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 0,
+                                        .offset = offsetof(hl::VertexUi2, pos)
+                                    },
+                                    {
+                                        .name = "inColor",
+                                        .format = hl::VertexAttributeFormat::Vec4,
+                                        .location = 1,
+                                        .offset = offsetof(hl::VertexUi2, color)
+                                    },
+                                    {
+                                        .name = "inTexCoord",
+                                        .format = hl::VertexAttributeFormat::Vec2,
+                                        .location = 2,
+                                        .offset = offsetof(hl::VertexUi2, texCoord)
+                                    },
+                                    {
+                                        .name = "inTexIndex",
+                                        .format = hl::VertexAttributeFormat::Float,
+                                        .location = 3,
+                                        .offset = offsetof(hl::VertexUi2, texIndex)
+                                    }
+                                },
+                                .stride = sizeof(hl::VertexUi2)
+                            },
                             .depthState =
                             {
                                 .testEnable = false,
@@ -268,13 +323,81 @@ namespace sk
                             {
                                 .cullMode = VK_CULL_MODE_NONE
                             },
-                            .enableBlending = true // keep blending for UI elements
+                            .enableBlending = true
                         }
                     }
                 }
             },
             hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "post_color", "ui_color" })
         };
+    }
+
+    void SkeletonEngineScene::spawnScene(
+        hl::ResourceManager& resourceManager,
+        hl::ResourceContext& resourceContext)
+    {
+        resourceManager.LoadAs<hl::CubemapTextureResource, hl::ImageSamplerResource>(
+            "skybox_texture",
+            resourceContext);
+
+        const hl::ResourceDefinition uiSheetDefinition
+        {
+            .name = "ui_sheet",
+            .type = "logical",
+            .resources =
+            {
+                hl::ResourceDefinition::Child
+                {
+                    .name = hl::MaterialSystem::FallbackTextureName,
+                    .type = "texture"
+                }
+            }
+        };
+
+        resourceManager.LoadLogical(uiSheetDefinition, [&](const hl::ResourceDefinition::Child& child)
+            {
+                if (child.type != "texture")
+                {
+                    return false;
+                }
+
+                if (!resourceManager.HasResource<hl::ImageSamplerResource>(child.name))
+                {
+                    resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+                        child.name,
+                        resourceContext);
+                }
+
+                return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+            });
+
+        for (const auto& prop : SceneProps)
+        {
+            auto modelHandle = resourceManager.Load<hl::ModelResource>(
+                prop.modelId,
+                resourceContext);
+
+            auto* entity = _scene.addEntity(modelHandle->GetId());
+            if (prop.rotate)
+            {
+                entity->AddTag(RotateTag);
+            }
+            entity->AddComponent<hl::TransformComponent>()->SetPosition(prop.position);
+            entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+        }
+
+        _scene.addSystem(new RotateSystem(_scene));
+    }
+
+	void SkeletonEngineScene::initialise(
+        const std::string& cameraMatrixResourceId,
+		hl::VulkanDevice& device,
+		hl::VulkanSwapChain& swapChain,
+		hl::VulkanCommandPool& graphicsCommandPool,
+        hl::VulkanCommandPool& transferCommandPool,
+        hl::ResourceManager& resourceManager)
+	{
+        auto renderpasses = buildRenderpasses();
 
         hl::ResourceContext resourceContext
         {
@@ -285,52 +408,7 @@ namespace sk
             .rootPath = _engineConfig.RootPath
         };
 
-        resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-            hl::MaterialSystem::FallbackTextureName,
-            resourceContext);
-        resourceManager.LoadAs<hl::CubemapTextureResource, hl::ImageSamplerResource>(
-            "skybox_texture",
-            resourceContext);
-
-        {
-            auto planeModelHandle = resourceManager.Load<hl::ModelResource>(
-                "plane",
-                resourceContext);
-
-            auto plane = _scene.addEntity(planeModelHandle->GetId());
-            plane->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(0.0, 0.0, 0.0));
-            plane->AddComponent<hl::ModelComponent>()->setModelId(planeModelHandle->GetId());
-        }
-        {
-            auto rockCrystalsModelHandle = resourceManager.Load<hl::ModelResource>(
-                "rock_crystals",
-                resourceContext);
-
-            auto satellite = _scene.addEntity(rockCrystalsModelHandle->GetId());
-            satellite->AddTag("ROTATE");
-            satellite->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(-1.0, 0.0, -1.0));
-            satellite->AddComponent<hl::ModelComponent>()->setModelId(rockCrystalsModelHandle->GetId());
-        }
-        {
-            auto satelliteModelHandle = resourceManager.Load<hl::ModelResource>(
-                "satelliteDish_detailed",
-                resourceContext);
-
-            auto satellite = _scene.addEntity(satelliteModelHandle->GetId());
-            satellite->AddTag("ROTATE");
-            satellite->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(-1.0, 0.0, +1.0));
-            satellite->AddComponent<hl::ModelComponent>()->setModelId(satelliteModelHandle->GetId());
-        }
-        {
-            auto turrentModelHandle = resourceManager.Load<hl::ModelResource>(
-                "turret_double",
-                resourceContext);
-
-            auto turret = _scene.addEntity(turrentModelHandle->GetId());
-            turret->AddTag("ROTATE");
-            turret->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(+1.0, 0.0, +1.0));
-            turret->AddComponent<hl::ModelComponent>()->setModelId(turrentModelHandle->GetId());
-        }
+        spawnScene(resourceManager, resourceContext);
 
         EngineScene::initialise(
             cameraMatrixResourceId,
@@ -340,22 +418,12 @@ namespace sk
             transferCommandPool,
             resourceManager, 
             renderpasses);
+
+        registerPipelineDraw("ui_pipeline", [](hl::PipelineDrawData&) {});
 	}
 
-    void SkeletonEngineScene::update(uint32_t currentFrame, float delta)
+    void SkeletonEngineScene::update(uint32_t /*currentFrame*/, float delta)
     {
-        static float angle = 0.0f;
-
-        angle += 45.0f * delta;
-
-        for (auto& e : _scene.getEntities())
-        {
-            if (e->HasComponents<hl::TransformComponent, hl::ModelComponent>() &&
-                e->HasTag("ROTATE"))
-            {
-                auto transform = e->GetComponent<hl::TransformComponent>();
-                transform->SetRotation(glm::vec3(0.0, angle, 0.0f));
-            }
-        }
+        _scene.update(delta);
     }
 }
