@@ -23,6 +23,7 @@
 namespace hl
 {
 	class FontResource;
+	class Camera;
 }
 
 namespace tower
@@ -79,6 +80,9 @@ namespace tower
 		void onCreepKilled();
 		void buildHud(hl::FontResource* font);
 		void rebuildHud();
+		void updateCameraOrbit();
+		void updateCameraFollow(float delta);
+		hl::Camera* boardCamera() const;
 
 		SceneHost& _sceneHost;
 		const hl::EngineConfiguration& _engineConfig;
@@ -94,6 +98,11 @@ namespace tower
 		hl::Entity* _flashTower = nullptr;
 		bool _flashGhost = false;
 		float _invalidFlashRemaining = 0.0f;
+		bool _orbitDragging = false;
+		float _orbitStartMouseX = 0.0f;
+		float _orbitStartYaw = 0.0f;
+		float _cameraDistance = 0.0f;
+		float _cameraDistanceTarget = 0.0f;
 
 		hl::UiBatch _uiBatch;
 		std::unique_ptr<FontTypeface> _typeface;

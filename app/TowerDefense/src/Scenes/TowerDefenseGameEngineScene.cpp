@@ -62,6 +62,8 @@ namespace tower
 			glm::vec3(0.0f, 1.0f, 0.0f),
 			-90.0f,
 			-45.0f) });
+		_cameraDistance = glm::length(glm::vec3(0.0f, 16.0f, 16.0f));
+		_cameraDistanceTarget = _cameraDistance;
 		_engine.getEventBus().AddListener(this);
 	}
 
@@ -1134,6 +1136,8 @@ namespace tower
 
 		rebuildHud();
 		updateGhost();
+		updateCameraOrbit();
+		updateCameraFollow(delta);
 
 		if (!matchEnded())
 		{
@@ -1143,6 +1147,8 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::updateGpuResources(uint32_t currentFrame)
 	{
+		updateCameraOrbit();
+
 		if (_sunUbo)
 		{
 			SunUniformBufferObject ubo{};
@@ -1161,6 +1167,68 @@ namespace tower
 		_uiBatch.destroy();
 	}
 
+	void TowerDefenseGameEngineScene::updateCameraOrbit()
+	{
+		const auto& input = _engine.getInputManager();
+		auto* camera = boardCamera();
+		if (camera == nullptr)
+		{
+			return;
+		}
+
+		if (!input.isButtonDown(GLFW_MOUSE_BUTTON_MIDDLE))
+		{
+			_orbitDragging = false;
+			return;
+		}
+
+		const float mouseX = input.getMousePosition().x;
+		if (!_orbitDragging)
+		{
+			_orbitDragging = true;
+			_orbitStartMouseX = mouseX;
+			_orbitStartYaw = camera->getYaw();
+		}
+
+		const float yaw = _orbitStartYaw - (mouseX - _orbitStartMouseX) * CameraOrbitDegreesPerPixel;
+		camera->setLookAtPose(glm::vec3(0.0f), yaw, camera->getPitch(), _cameraDistance);
+	}
+
+	void TowerDefenseGameEngineScene::updateCameraFollow(float delta)
+	{
+		if (_orbitDragging)
+		{
+			return;
+		}
+
+		auto* camera = boardCamera();
+		if (camera == nullptr)
+		{
+			return;
+		}
+
+		const float follow = 1.0f - std::exp(-CameraSmooth * delta);
+		_cameraDistance += (_cameraDistanceTarget - _cameraDistance) * follow;
+		const glm::vec3 front = camera->getFront();
+		if (glm::length(front) < 1e-4f)
+		{
+			return;
+		}
+
+		camera->setPosition(-glm::normalize(front) * _cameraDistance);
+	}
+
+	hl::Camera* TowerDefenseGameEngineScene::boardCamera() const
+	{
+		auto it = _cameras.find("Default");
+		if (it == _cameras.end())
+		{
+			return nullptr;
+		}
+
+		return dynamic_cast<hl::Camera*>(it->second);
+	}
+
 	void TowerDefenseGameEngineScene::OnEvent(const hl::Event& event)
 	{
 		const auto* scroll = dynamic_cast<const hl::ScrollEvent*>(&event);
@@ -1169,26 +1237,10 @@ namespace tower
 			return;
 		}
 
-		auto it = _cameras.find("Default");
-		if (it == _cameras.end())
-		{
-			return;
-		}
-
-		auto* camera = dynamic_cast<hl::Camera*>(it->second);
-		if (camera == nullptr)
-		{
-			return;
-		}
-
-		const float distance = glm::length(camera->getPosition());
-		if (distance < 1e-4f)
-		{
-			return;
-		}
-
 		const float delta = static_cast<float>(scroll->getY()) * CameraZoomStep;
-		const float next = std::clamp(distance - delta, CameraDistanceMin, CameraDistanceMax);
-		camera->move(camera->getFront() * (distance - next));
+		_cameraDistanceTarget = std::clamp(
+			_cameraDistanceTarget - delta,
+			CameraDistanceMin,
+			CameraDistanceMax);
 	}
 }

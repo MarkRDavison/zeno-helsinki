@@ -86,6 +86,8 @@ namespace tower
 	inline constexpr float CameraDistanceMin = 10.0f;
 	inline constexpr float CameraDistanceMax = 40.0f;
 	inline constexpr float CameraZoomStep = 1.5f;
+	inline constexpr float CameraOrbitDegreesPerPixel = 0.25f;
+	inline constexpr float CameraSmooth = 12.0f;
 
 	inline constexpr float MarkerY = 0.05f;
 	inline constexpr glm::vec3 MarkerScale{ 0.3f, 0.3f, 0.3f };
