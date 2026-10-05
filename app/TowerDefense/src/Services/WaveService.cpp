@@ -53,6 +53,7 @@ namespace tower
 
 		_inCombat = false;
 		_wavesCompleted += 1;
+		_gameState.addGold(WaveClearBonus);
 		if (_wavesCompleted >= WaveCount)
 		{
 			_gameState.setWon();

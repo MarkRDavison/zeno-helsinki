@@ -37,6 +37,7 @@ namespace tower
 	inline constexpr int StartGold = 100;
 	inline constexpr int TowerCost = 25;
 	inline constexpr int KillGold = 10;
+	inline constexpr int WaveClearBonus = 25;
 	inline constexpr int CreepHealth = 3;
 	inline constexpr int ProjectileDamage = 1;
 	inline constexpr int StartLives = 3;
