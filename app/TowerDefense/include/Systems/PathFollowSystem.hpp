@@ -5,14 +5,13 @@
 
 namespace tower
 {
-	class RotateSystem : public hl::System
+	class PathFollowSystem : public hl::System
 	{
 	public:
-		explicit RotateSystem(hl::Scene& scene);
+		explicit PathFollowSystem(hl::Scene& scene);
 		void update(float delta) override;
 
 	private:
 		hl::Scene& _scene;
-		float _angle = 0.0f;
 	};
 }

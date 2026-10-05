@@ -28,6 +28,9 @@ namespace tower
 	private:
 		std::vector<hl::RenderpassInfo> buildRenderpasses() const;
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void spawnBoard(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void spawnTurret(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void spawnCreep(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void tryMoveMarkerToClick();
 

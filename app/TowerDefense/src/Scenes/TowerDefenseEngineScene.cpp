@@ -2,7 +2,9 @@
 #include <GroundPick.hpp>
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
-#include <Systems/RotateSystem.hpp>
+#include <Components/PathFollowComponent.hpp>
+#include <Components/TileComponent.hpp>
+#include <Systems/PathFollowSystem.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
@@ -30,7 +32,7 @@ namespace tower
 		_engineConfig(engineConfig)
 	{
 		_cameras.insert({ "Default", new hl::Camera(
-			glm::vec3(0.0f, 8.0f, 8.0f),
+			glm::vec3(0.0f, 16.0f, 16.0f),
 			glm::vec3(0.0f, 1.0f, 0.0f),
 			-90.0f,
 			-45.0f) });
@@ -342,24 +344,76 @@ namespace tower
 				return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
 			});
 
-		for (const auto& prop : SceneProps)
-		{
-			auto modelHandle = resourceManager.Load<hl::ModelResource>(
-				prop.modelId,
-				resourceContext);
-
-			auto* entity = _scene.addEntity(modelHandle->GetId());
-			if (prop.rotate)
-			{
-				entity->AddTag(RotateTag);
-			}
-			entity->AddComponent<hl::TransformComponent>()->SetPosition(prop.position);
-			entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
-		}
-
-		_scene.addSystem(new RotateSystem(_scene));
-
+		spawnBoard(resourceManager, resourceContext);
+		spawnTurret(resourceManager, resourceContext);
+		spawnCreep(resourceManager, resourceContext);
 		spawnMarker(resourceManager, resourceContext);
+
+		_scene.addSystem(new PathFollowSystem(_scene));
+	}
+
+	void TowerDefenseEngineScene::spawnBoard(
+		hl::ResourceManager& resourceManager,
+		hl::ResourceContext& resourceContext)
+	{
+		auto black = resourceManager.Load<hl::ModelResource>(TileBlackModelId, resourceContext);
+		auto white = resourceManager.Load<hl::ModelResource>(TileWhiteModelId, resourceContext);
+
+		for (int tz = 0; tz < BoardSize; ++tz)
+		{
+			for (int tx = 0; tx < BoardSize; ++tx)
+			{
+				const bool dark = ((tx + tz) & 1) != 0;
+				auto* entity = _scene.addEntity();
+				entity->AddTag(TileTag);
+				if (isPathTile(tx, tz))
+				{
+					entity->AddTag(PathTag);
+				}
+				else
+				{
+					entity->AddTag(BuildableTag);
+				}
+
+				auto* tile = entity->AddComponent<TileComponent>();
+				tile->x = tx;
+				tile->z = tz;
+				tile->path = isPathTile(tx, tz);
+
+				entity->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(tx, tz));
+				entity->AddComponent<hl::ModelComponent>()->setModelId(
+					dark ? black->GetId() : white->GetId());
+			}
+		}
+	}
+
+	void TowerDefenseEngineScene::spawnTurret(
+		hl::ResourceManager& resourceManager,
+		hl::ResourceContext& resourceContext)
+	{
+		auto modelHandle = resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
+		auto* entity = _scene.addEntity("turret");
+		entity->AddComponent<hl::TransformComponent>()->SetPosition(
+			tileCenter(TurretTile.x, TurretTile.z));
+		entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+	}
+
+	void TowerDefenseEngineScene::spawnCreep(
+		hl::ResourceManager& resourceManager,
+		hl::ResourceContext& resourceContext)
+	{
+		auto modelHandle = resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
+		const auto start = PathWaypoints[0];
+		auto* entity = _scene.addEntity("creep");
+		entity->AddTag(CreepTag);
+		auto* transform = entity->AddComponent<hl::TransformComponent>();
+		transform->SetPosition(tileCenter(start.x, start.z));
+		transform->SetScale(CreepScale);
+		entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+		auto* follow = entity->AddComponent<PathFollowComponent>();
+		follow->fromIndex = 0;
+		follow->t = 0.0f;
+		follow->speed = CreepSpeed;
 	}
 
 	void TowerDefenseEngineScene::spawnMarker(
@@ -373,7 +427,7 @@ namespace tower
 		_marker = _scene.addEntity("marker");
 		_marker->AddTag(MarkerTag);
 		auto* transform = _marker->AddComponent<hl::TransformComponent>();
-		transform->SetPosition(snapToTileCenter(glm::vec3(0.5f, 0.0f, 0.5f), MarkerY));
+		transform->SetPosition(tileCenter(MarkerStartTile.x, MarkerStartTile.z, MarkerY));
 		transform->SetScale(MarkerScale);
 		_marker->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
 	}
@@ -405,8 +459,14 @@ namespace tower
 			return;
 		}
 
+		const auto tile = worldToTile(*hit);
+		if (!tile)
+		{
+			return;
+		}
+
 		_marker->GetComponent<hl::TransformComponent>()->SetPosition(
-			snapToTileCenter(*hit, MarkerY));
+			tileCenter(tile->x, tile->z, MarkerY));
 	}
 
 	void TowerDefenseEngineScene::initialise(
