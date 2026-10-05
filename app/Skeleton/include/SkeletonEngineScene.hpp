@@ -4,6 +4,8 @@
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
+#include <helsinki/System/Resource/ResourceHandle.hpp>
+#include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 
 namespace sk
 {
@@ -21,11 +23,14 @@ namespace sk
 			hl::ResourceManager& resourceManager) override;
 
 		void update(uint32_t currentFrame, float delta) override;
+		void updateGpuResources(uint32_t currentFrame) override;
 	private:
 		std::vector<hl::RenderpassInfo> buildRenderpasses() const;
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 
 		const hl::EngineConfiguration& _engineConfig;
+		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
+		bool _specHeldOff = false;
 	};
 
 }

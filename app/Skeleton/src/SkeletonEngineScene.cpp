@@ -1,5 +1,6 @@
 #include "SkeletonEngineScene.hpp"
 #include <SceneCatalog.hpp>
+#include <SunUniformBufferObject.hpp>
 #include <Systems/RotateSystem.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
@@ -15,6 +16,7 @@
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <GLFW/glfw3.h>
 
 namespace sk
 {
@@ -137,6 +139,15 @@ namespace sk
                                             .type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
                                             .stage = "FRAGMENT",
                                             .resource = "white"
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 3,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "sun_ubo",
+                                            .count = 1,
+                                            .updateFrequency = hl::DescriptorUpdateFrequency::PerFrame
                                         }
                                     }
                                 }
@@ -340,6 +351,13 @@ namespace sk
             "skybox_texture",
             resourceContext);
 
+        _sunUbo = resourceManager.Load<hl::UniformBufferResource>(
+            "sun_ubo",
+            resourceContext,
+            sizeof(SunUniformBufferObject),
+            MAX_FRAMES_IN_FLIGHT,
+            1);
+
         const hl::ResourceDefinition uiSheetDefinition
         {
             .name = "ui_sheet",
@@ -424,6 +442,22 @@ namespace sk
 
     void SkeletonEngineScene::update(uint32_t /*currentFrame*/, float delta)
     {
+        _specHeldOff = _engine.getInputManager().isKeyDown(GLFW_KEY_H);
         _scene.update(delta);
+    }
+
+    void SkeletonEngineScene::updateGpuResources(uint32_t currentFrame)
+    {
+        if (!_sunUbo)
+        {
+            return;
+        }
+
+        SunUniformBufferObject ubo{};
+        const auto dir = glm::normalize(glm::vec3(0.45f, 0.85f, 0.30f));
+        ubo.direction = glm::vec4(dir, 1.0f);
+        ubo.color = glm::vec4(1.0f, 0.97f, 0.90f, _specHeldOff ? 0.0f : 0.35f);
+        ubo.ambient = glm::vec4(0.18f, 0.18f, 0.18f, 0.0f);
+        _sunUbo.Get()->getUniformBuffer(currentFrame).writeToBuffer(&ubo, 0);
     }
 }
