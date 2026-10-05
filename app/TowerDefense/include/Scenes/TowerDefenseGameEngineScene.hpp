@@ -54,6 +54,7 @@ namespace tower
 		void spawnCreep();
 		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnGhost(hl::ResourceManager& resourceManager);
+		void spawnRangeRing(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		std::optional<TileCoord> hoveredTile() const;
 		void updateGhost();
 		void tryHandleBoardClick();
@@ -74,6 +75,7 @@ namespace tower
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::Entity* _marker = nullptr;
 		hl::Entity* _ghost = nullptr;
+		hl::Entity* _rangeRing = nullptr;
 		bool _ghostVisible = false;
 		bool _ghostPlaceable = false;
 		int _gold = StartGold;

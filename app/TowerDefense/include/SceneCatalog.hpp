@@ -21,6 +21,10 @@ namespace tower
 	inline constexpr const char* GhostOkMaterial = "ghost_ok";
 	inline constexpr const char* GhostBadMaterial = "ghost_bad";
 	inline constexpr float GhostAlpha = 0.45f;
+	inline constexpr const char* RangeRingTag = "RANGE_RING";
+	inline constexpr const char* RangeRingModelId = "range_ring";
+	inline constexpr float RangeRingY = 0.05f;
+	inline constexpr float RangeRingInnerRadius = 0.97f;
 	inline constexpr const char* ProjectileTag = "PROJECTILE";
 	inline constexpr const char* ProjectileModelId = "marker";
 	inline constexpr int StartGold = 100;

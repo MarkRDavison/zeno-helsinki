@@ -371,6 +371,7 @@ namespace tower
 		resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
 		spawnMarker(resourceManager, resourceContext);
 		spawnGhost(resourceManager);
+		spawnRangeRing(resourceManager, resourceContext);
 
 		auto* pathFollow = new PathFollowSystem(_scene);
 		pathFollow->onLeak = [this]() { onCreepLeaked(); };
@@ -498,6 +499,22 @@ namespace tower
 		_ghostVisible = false;
 	}
 
+	void TowerDefenseGameEngineScene::spawnRangeRing(
+		hl::ResourceManager& resourceManager,
+		hl::ResourceContext& resourceContext)
+	{
+		auto modelHandle = resourceManager.Load<hl::ModelResource>(
+			RangeRingModelId,
+			resourceContext);
+
+		_rangeRing = _scene.addEntity();
+		_rangeRing->AddTag(RangeRingTag);
+		auto* transform = _rangeRing->AddComponent<hl::TransformComponent>();
+		transform->SetPosition(tileCenter(0, 0, RangeRingY));
+		transform->SetScale(glm::vec3(TowerRange, 1.0f, TowerRange));
+		_rangeRing->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+	}
+
 	std::optional<TileCoord> TowerDefenseGameEngineScene::hoveredTile() const
 	{
 		auto it = _cameras.find("Default");
@@ -538,6 +555,12 @@ namespace tower
 
 		_ghost->GetComponent<hl::TransformComponent>()->SetPosition(
 			tileCenter(tile->x, tile->z));
+		if (_rangeRing != nullptr)
+		{
+			auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
+			ring->SetPosition(tileCenter(tile->x, tile->z, RangeRingY));
+			ring->SetScale(glm::vec3(TowerRange, 1.0f, TowerRange));
+		}
 		_ghostPlaceable = !isPathTile(tile->x, tile->z) && _gold >= TowerCost;
 		_ghostVisible = true;
 	}
@@ -612,6 +635,7 @@ namespace tower
 				for (const auto& entity : pdd.scene->getEntities())
 				{
 					if (entity->HasTag(GhostTag)
+						|| entity->HasTag(RangeRingTag)
 						|| !entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
 					{
 						continue;
@@ -669,61 +693,74 @@ namespace tower
 
 		registerPipelineDraw("ghost_pipeline", [this](hl::PipelineDrawData& pdd)
 			{
-				if (!_ghostVisible || _ghost == nullptr
-					|| !_ghost->HasComponents<hl::TransformComponent, hl::ModelComponent>())
-				{
-					return;
-				}
-
-				const auto* transform = _ghost->GetComponent<hl::TransformComponent>();
-				const auto* model = _ghost->GetComponent<hl::ModelComponent>();
-				const auto* modelResource = _resourceManager->GetResource<hl::ModelResource>(model->getModelId());
-				if (modelResource == nullptr)
+				if (!_ghostVisible)
 				{
 					return;
 				}
 
 				const auto cameraIndex = static_cast<uint32_t>(getCameraIndex("Default"));
 				const char* materialName = _ghostPlaceable ? GhostOkMaterial : GhostBadMaterial;
-				auto pc = hl::MaterialPushConstantObject
+				const uint32_t materialIndex = _engine.getMaterialSystem().getMaterialIndex(materialName);
+
+				auto drawGhostLit = [&](hl::Entity* entity)
 				{
-					.model = transform->GetTransformMatrix()
+					if (entity == nullptr
+						|| !entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
+					{
+						return;
+					}
+
+					const auto* transform = entity->GetComponent<hl::TransformComponent>();
+					const auto* model = entity->GetComponent<hl::ModelComponent>();
+					const auto* modelResource = _resourceManager->GetResource<hl::ModelResource>(model->getModelId());
+					if (modelResource == nullptr)
+					{
+						return;
+					}
+
+					auto pc = hl::MaterialPushConstantObject
+					{
+						.model = transform->GetTransformMatrix()
+					};
+					pc.pad[0] = cameraIndex;
+					pc.materialIndex = materialIndex;
+
+					for (const auto& mesh : modelResource->getMeshes())
+					{
+						vkCmdPushConstants(
+							pdd.commandBuffer,
+							pdd.pipeline->getPipelineLayout(),
+							VK_SHADER_STAGE_VERTEX_BIT,
+							0,
+							sizeof(hl::MaterialPushConstantObject),
+							&pc);
+
+						VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
+						VkDeviceSize offsets[] = { 0 };
+						vkCmdBindVertexBuffers(pdd.commandBuffer, 0, 1, vertexBuffers, offsets);
+						vkCmdBindIndexBuffer(
+							pdd.commandBuffer,
+							mesh._indexBuffer._buffer,
+							0,
+							VK_INDEX_TYPE_UINT32);
+
+						auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
+						vkCmdBindDescriptorSets(
+							pdd.commandBuffer,
+							VK_PIPELINE_BIND_POINT_GRAPHICS,
+							pdd.pipeline->getPipelineLayout(),
+							0,
+							1,
+							&descriptorSet,
+							0,
+							nullptr);
+
+						vkCmdDrawIndexed(pdd.commandBuffer, mesh._indexCount, 1, 0, 0, 0);
+					}
 				};
-				pc.pad[0] = cameraIndex;
-				pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(materialName);
 
-				for (const auto& mesh : modelResource->getMeshes())
-				{
-					vkCmdPushConstants(
-						pdd.commandBuffer,
-						pdd.pipeline->getPipelineLayout(),
-						VK_SHADER_STAGE_VERTEX_BIT,
-						0,
-						sizeof(hl::MaterialPushConstantObject),
-						&pc);
-
-					VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
-					VkDeviceSize offsets[] = { 0 };
-					vkCmdBindVertexBuffers(pdd.commandBuffer, 0, 1, vertexBuffers, offsets);
-					vkCmdBindIndexBuffer(
-						pdd.commandBuffer,
-						mesh._indexBuffer._buffer,
-						0,
-						VK_INDEX_TYPE_UINT32);
-
-					auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
-					vkCmdBindDescriptorSets(
-						pdd.commandBuffer,
-						VK_PIPELINE_BIND_POINT_GRAPHICS,
-						pdd.pipeline->getPipelineLayout(),
-						0,
-						1,
-						&descriptorSet,
-						0,
-						nullptr);
-
-					vkCmdDrawIndexed(pdd.commandBuffer, mesh._indexCount, 1, 0, 0, 0);
-				}
+				drawGhostLit(_ghost);
+				drawGhostLit(_rangeRing);
 			});
 
 		registerPipelineDraw("ui_pipeline", [&](hl::PipelineDrawData& pdd)
