@@ -43,6 +43,8 @@ namespace tower
 	inline constexpr int WaveCreepCount = 5;
 	inline constexpr float WaveSpawnInterval = 1.0f;
 	inline constexpr float TowerRange = 3.5f;
+	inline constexpr float TowerYawOffset = 0.0f;
+	inline constexpr float TowerTurnSpeed = 270.0f;
 	inline constexpr float TowerFireCooldown = 1.0f;
 	inline constexpr float ProjectileSpeed = 6.0f;
 	inline constexpr float ProjectileHitRadius = 0.35f;

@@ -5,6 +5,7 @@
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
+#include <cmath>
 
 namespace tower
 {
@@ -40,6 +41,27 @@ namespace tower
 
 			return nearest;
 		}
+
+		float wrapDegrees(float degrees)
+		{
+			degrees = std::fmod(degrees + 180.0f, 360.0f);
+			if (degrees < 0.0f)
+			{
+				degrees += 360.0f;
+			}
+			return degrees - 180.0f;
+		}
+
+		void turnTowardYaw(hl::TransformComponent& transform, float targetYaw, float delta)
+		{
+			const float current = transform.GetRotation().y;
+			const float remaining = wrapDegrees(targetYaw - current);
+			const float maxStep = TowerTurnSpeed * delta;
+			const float next = std::abs(remaining) <= maxStep
+				? targetYaw
+				: current + std::copysign(maxStep, remaining);
+			transform.SetRotation(glm::vec3(0.0f, next, 0.0f));
+		}
 	}
 
 	TowerFireSystem::TowerFireSystem(hl::Scene& scene, hl::ResourceManager& resourceManager) :
@@ -51,10 +73,6 @@ namespace tower
 	void TowerFireSystem::update(float delta)
 	{
 		auto* model = _resourceManager.GetResource<hl::ModelResource>(ProjectileModelId);
-		if (model == nullptr)
-		{
-			return;
-		}
 
 		for (auto* entity : _scene.getEntitiesWithComponents<hl::TransformComponent, TowerComponent>(TowerTag))
 		{
@@ -65,16 +83,27 @@ namespace tower
 
 			auto* tower = entity->GetComponent<TowerComponent>();
 			tower->fireCooldownRemaining -= delta;
-			if (tower->fireCooldownRemaining > 0.0f)
-			{
-				continue;
-			}
 
 			const glm::vec3 from = tileCenter(tower->x, tower->z, ProjectileY);
 			auto* creep = nearestCreepInRange(_scene, from);
 			if (creep == nullptr)
 			{
-				tower->fireCooldownRemaining = 0.0f;
+				if (tower->fireCooldownRemaining < 0.0f)
+				{
+					tower->fireCooldownRemaining = 0.0f;
+				}
+				continue;
+			}
+
+			const glm::vec3 creepPos = creep->GetComponent<hl::TransformComponent>()->GetPosition();
+			const float yaw = glm::degrees(std::atan2(creepPos.x - from.x, creepPos.z - from.z));
+			turnTowardYaw(
+				*entity->GetComponent<hl::TransformComponent>(),
+				yaw + TowerYawOffset,
+				delta);
+
+			if (model == nullptr || tower->fireCooldownRemaining > 0.0f)
+			{
 				continue;
 			}
 
@@ -88,7 +117,6 @@ namespace tower
 			shot->targetId = creep->Id;
 			shot->speed = ProjectileSpeed;
 			shot->damage = ProjectileDamage;
-			const glm::vec3 creepPos = creep->GetComponent<hl::TransformComponent>()->GetPosition();
 			shot->lastDest = glm::vec3(creepPos.x, ProjectileY, creepPos.z);
 			tower->fireCooldownRemaining = TowerFireCooldown;
 		}
