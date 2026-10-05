@@ -1,0 +1,29 @@
+# Large 2D plane in X/Z plane
+
+mtllib plane.mtl
+
+g plane
+
+# vertices
+v -2.0 0.0 -2.0
+v  2.0 0.0 -2.0
+v  2.0 0.0  2.0
+v -2.0 0.0  2.0
+
+# normals (one per vertex, all pointing up Y)
+vn 0.0 1.0 0.0
+vn 0.0 1.0 0.0
+vn 0.0 1.0 0.0
+vn 0.0 1.0 0.0
+
+# texture coordinates
+vt 0.0 0.0
+vt 1.0 0.0
+vt 1.0 1.0
+vt 0.0 1.0
+
+usemtl color
+
+# face definitions (quad as two triangles, referencing per-vertex normals)
+f 1/1/1 2/2/2 3/3/3
+f 1/1/1 3/3/3 4/4/4

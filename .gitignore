@@ -39,4 +39,5 @@ out/
 
 UserInterfaceConfig.hpp
 /app/Hurricane/HurricaneConfig.hpp
+/app/TowerDefense/TowerDefenseConfig.hpp
 /lib/renderer/include/helsinki/Renderer/RendererShaderRoot.hpp
