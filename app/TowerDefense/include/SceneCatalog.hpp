@@ -83,6 +83,9 @@ namespace tower
 	inline constexpr float ProjectileSpeed = 6.0f;
 	inline constexpr float ProjectileHitRadius = 0.35f;
 	inline constexpr float ProjectileY = 0.4f;
+	inline constexpr float CameraDistanceMin = 10.0f;
+	inline constexpr float CameraDistanceMax = 40.0f;
+	inline constexpr float CameraZoomStep = 1.5f;
 
 	inline constexpr float MarkerY = 0.05f;
 	inline constexpr glm::vec3 MarkerScale{ 0.3f, 0.3f, 0.3f };

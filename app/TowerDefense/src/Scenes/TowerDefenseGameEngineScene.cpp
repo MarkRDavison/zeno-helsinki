@@ -26,6 +26,7 @@
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Infrastructure/Camera.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
+#include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
@@ -34,6 +35,7 @@
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <cmath>
+#include <algorithm>
 #include <string>
 
 namespace tower
@@ -60,10 +62,12 @@ namespace tower
 			glm::vec3(0.0f, 1.0f, 0.0f),
 			-90.0f,
 			-45.0f) });
+		_engine.getEventBus().AddListener(this);
 	}
 
 	TowerDefenseGameEngineScene::~TowerDefenseGameEngineScene()
 	{
+		_engine.getEventBus().RemoveListener(this);
 		_sceneHost.onSceneDestroyed();
 	}
 
@@ -1155,5 +1159,36 @@ namespace tower
 	void TowerDefenseGameEngineScene::additionalCleanup()
 	{
 		_uiBatch.destroy();
+	}
+
+	void TowerDefenseGameEngineScene::OnEvent(const hl::Event& event)
+	{
+		const auto* scroll = dynamic_cast<const hl::ScrollEvent*>(&event);
+		if (scroll == nullptr)
+		{
+			return;
+		}
+
+		auto it = _cameras.find("Default");
+		if (it == _cameras.end())
+		{
+			return;
+		}
+
+		auto* camera = dynamic_cast<hl::Camera*>(it->second);
+		if (camera == nullptr)
+		{
+			return;
+		}
+
+		const float distance = glm::length(camera->getPosition());
+		if (distance < 1e-4f)
+		{
+			return;
+		}
+
+		const float delta = static_cast<float>(scroll->getY()) * CameraZoomStep;
+		const float next = std::clamp(distance - delta, CameraDistanceMin, CameraDistanceMax);
+		camera->move(camera->getFront() * (distance - next));
 	}
 }

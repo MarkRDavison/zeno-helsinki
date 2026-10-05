@@ -14,6 +14,7 @@
 #include <Ui/UiLayoutAdapters.hpp>
 #include <helsinki/Engine/Ui/UiBatch.hpp>
 #include <helsinki/Audio/Audio.hpp>
+#include <helsinki/System/Events/EventListener.hpp>
 #include <Services/GameStateService.hpp>
 #include <Services/WaveService.hpp>
 #include <SceneCatalog.hpp>
@@ -28,7 +29,7 @@ namespace tower
 {
 	class SceneHost;
 
-	class TowerDefenseGameEngineScene : public hl::EngineScene
+	class TowerDefenseGameEngineScene : public hl::EngineScene, public hl::EventListener
 	{
 	public:
 		TowerDefenseGameEngineScene(
@@ -50,6 +51,7 @@ namespace tower
 		void update(uint32_t currentFrame, float delta) override;
 		void updateGpuResources(uint32_t currentFrame) override;
 		void additionalCleanup() override;
+		void OnEvent(const hl::Event& event) override;
 	private:
 		std::vector<hl::RenderpassInfo> buildRenderpasses() const;
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
