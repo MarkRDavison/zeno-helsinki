@@ -1,5 +1,6 @@
 #include <Scenes/SceneHost.hpp>
 #include <Scenes/TowerDefenseGameEngineScene.hpp>
+#include <Scenes/TowerDefenseSettingsEngineScene.hpp>
 #include <Scenes/TowerDefenseTitleEngineScene.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Audio/Audio.hpp>
@@ -23,6 +24,15 @@ namespace tower
 	void SceneHost::goGame()
 	{
 		_engine.setScene(new TowerDefenseGameEngineScene(
+			_engine,
+			_root.get<hl::EngineConfiguration>(),
+			*this,
+			_root.get<hl::audio::Audio>()));
+	}
+
+	void SceneHost::goSettings()
+	{
+		_engine.setScene(new TowerDefenseSettingsEngineScene(
 			_engine,
 			_root.get<hl::EngineConfiguration>(),
 			*this,

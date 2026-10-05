@@ -89,6 +89,13 @@ namespace tower
 			_sceneHost.goGame();
 		};
 
+		_settings = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_settings->setText("Settings", 64);
+		_settings->onClick = [this]()
+		{
+			_sceneHost.goSettings();
+		};
+
 		_quit = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
 		_quit->setText("Quit", 64);
 		_quit->onClick = [this]()

@@ -12,6 +12,7 @@ namespace tower
 
 		void goTitle();
 		void goGame();
+		void goSettings();
 		void onSceneDestroyed();
 
 	private:

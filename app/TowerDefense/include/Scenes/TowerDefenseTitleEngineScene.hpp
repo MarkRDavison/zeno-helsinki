@@ -50,6 +50,7 @@ namespace tower
 		std::unique_ptr<FontTypeface> _typeface;
 		std::unique_ptr<hl::ui::Label> _title;
 		std::unique_ptr<hl::ui::Button> _start;
+		std::unique_ptr<hl::ui::Button> _settings;
 		std::unique_ptr<hl::ui::Button> _quit;
 	};
 }
