@@ -971,7 +971,7 @@ namespace tower
 			24);
 
 		_waveButton = std::make_unique<hl::ui::Button>(_layoutRoot->addChild(), *_typeface);
-		_waveButton->setText("Start Wave", 32);
+		_waveButton->setText("Start Wave (20)", 32);
 		_waveButton->onClick = [this]() { startWave(); };
 
 		_overlayRoot = std::make_unique<hl::ui::Node>();
@@ -1014,6 +1014,12 @@ namespace tower
 		_waveLabel->setText(
 			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(WaveCount),
 			24);
+		if (!_wave.inCombat() && !matchEnded())
+		{
+			_waveButton->setText(
+				"Start Wave (" + std::to_string(_wave.buildSecondsRemaining()) + ")",
+				32);
+		}
 		hl::ui::prepareTree(*_layoutRoot);
 
 		const glm::vec2 goldSize = _goldLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });

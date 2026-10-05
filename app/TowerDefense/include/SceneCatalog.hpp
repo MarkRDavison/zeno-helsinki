@@ -52,6 +52,7 @@ namespace tower
 	};
 	inline constexpr int WaveCount = static_cast<int>(sizeof(Waves) / sizeof(Waves[0]));
 	inline constexpr float WaveSpawnInterval = 1.0f;
+	inline constexpr float BuildTimerSeconds = 20.0f;
 	inline constexpr float TowerRange = 3.5f;
 	inline constexpr float TowerYawOffset = 0.0f;
 	inline constexpr float TowerTurnSpeed = 270.0f;

@@ -1,6 +1,8 @@
 #include <Services/WaveService.hpp>
 #include <Services/GameStateService.hpp>
 #include <SceneCatalog.hpp>
+#include <algorithm>
+#include <cmath>
 
 namespace tower
 {
@@ -17,6 +19,7 @@ namespace tower
 		}
 
 		_inCombat = true;
+		_buildTimer = 0.0f;
 		_activeIndex = _wavesCompleted;
 		_pendingSpawns = Waves[_activeIndex].creepCount;
 		_spawnTimer = 0.0f;
@@ -25,7 +28,28 @@ namespace tower
 
 	void WaveService::tick(float delta)
 	{
-		if (!_inCombat || _gameState.matchEnded() || _pendingSpawns <= 0)
+		if (_gameState.matchEnded())
+		{
+			return;
+		}
+
+		if (!_inCombat)
+		{
+			if (_wavesCompleted >= WaveCount)
+			{
+				return;
+			}
+
+			_buildTimer -= delta;
+			if (_buildTimer <= 0.0f)
+			{
+				tryStart();
+			}
+
+			return;
+		}
+
+		if (_pendingSpawns <= 0)
 		{
 			return;
 		}
@@ -59,6 +83,10 @@ namespace tower
 		{
 			_gameState.setWon();
 		}
+		else
+		{
+			_buildTimer = BuildTimerSeconds;
+		}
 
 		return true;
 	}
@@ -76,6 +104,16 @@ namespace tower
 		}
 
 		return _wavesCompleted + 1;
+	}
+
+	int WaveService::buildSecondsRemaining() const
+	{
+		if (_inCombat || _gameState.matchEnded() || _wavesCompleted >= WaveCount)
+		{
+			return 0;
+		}
+
+		return static_cast<int>(std::ceil(std::max(_buildTimer, 0.0f)));
 	}
 
 	const WaveDef& WaveService::active() const

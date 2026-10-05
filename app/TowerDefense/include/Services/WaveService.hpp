@@ -17,6 +17,7 @@ namespace tower
 		bool tryClear(bool boardEmpty);
 		bool inCombat() const;
 		int hudWaveIndex() const;
+		int buildSecondsRemaining() const;
 		const WaveDef& active() const;
 
 	private:
@@ -26,5 +27,6 @@ namespace tower
 		bool _inCombat = false;
 		int _pendingSpawns = 0;
 		float _spawnTimer = 0.0f;
+		float _buildTimer = BuildTimerSeconds;
 	};
 }
