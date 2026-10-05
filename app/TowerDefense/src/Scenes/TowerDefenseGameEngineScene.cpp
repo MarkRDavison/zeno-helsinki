@@ -7,6 +7,8 @@
 #include <Components/TileComponent.hpp>
 #include <Components/TowerComponent.hpp>
 #include <Systems/PathFollowSystem.hpp>
+#include <Systems/TowerFireSystem.hpp>
+#include <Systems/ProjectileSystem.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
@@ -345,6 +347,8 @@ namespace tower
 		spawnMarker(resourceManager, resourceContext);
 
 		_scene.addSystem(new PathFollowSystem(_scene));
+		_scene.addSystem(new TowerFireSystem(_scene, resourceManager));
+		_scene.addSystem(new ProjectileSystem(_scene));
 	}
 
 	void TowerDefenseGameEngineScene::spawnBoard(

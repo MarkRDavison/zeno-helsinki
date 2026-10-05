@@ -9,5 +9,6 @@ namespace tower
 	public:
 		int x = 0;
 		int z = 0;
+		float fireCooldownRemaining = 0.0f;
 	};
 }

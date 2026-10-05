@@ -17,12 +17,20 @@ namespace tower
 	inline constexpr const char* TileWhiteModelId = "tile_white";
 	inline constexpr const char* TurretModelId = "turret_double";
 	inline constexpr const char* TowerTag = "TOWER";
+	inline constexpr const char* ProjectileTag = "PROJECTILE";
+	inline constexpr const char* ProjectileModelId = "marker";
 	inline constexpr int StartGold = 100;
 	inline constexpr int TowerCost = 25;
+	inline constexpr float TowerRange = 3.5f;
+	inline constexpr float TowerFireCooldown = 1.0f;
+	inline constexpr float ProjectileSpeed = 6.0f;
+	inline constexpr float ProjectileHitRadius = 0.35f;
+	inline constexpr float ProjectileY = 0.4f;
 
 	inline constexpr float MarkerY = 0.05f;
 	inline constexpr glm::vec3 MarkerScale{ 0.3f, 0.3f, 0.3f };
 	inline constexpr glm::vec3 CreepScale{ 0.4f, 0.4f, 0.4f };
+	inline constexpr glm::vec3 ProjectileScale{ 0.15f, 0.15f, 0.15f };
 	inline constexpr float CreepSpeed = 1.5f;
 
 	inline constexpr int BoardSize = 8;

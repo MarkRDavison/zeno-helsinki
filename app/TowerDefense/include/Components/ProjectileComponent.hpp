@@ -1,0 +1,13 @@
+#pragma once
+
+#include <helsinki/Engine/ECS/Component.hpp>
+
+namespace tower
+{
+	class ProjectileComponent : public hl::Component
+	{
+	public:
+		int targetId = 0;
+		float speed = 0.0f;
+	};
+}
