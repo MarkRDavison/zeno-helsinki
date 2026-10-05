@@ -59,6 +59,9 @@ namespace tower
 		std::optional<TileCoord> hoveredTile() const;
 		void updateGhost();
 		void tryHandleBoardClick();
+		void flashInvalid(int tx, int tz);
+		hl::Entity* towerAt(int tx, int tz) const;
+		bool invalidFlashBlinkOn() const;
 		bool isOccupied(int tx, int tz) const;
 		bool matchEnded() const;
 		bool uiBlocksBoardClick() const;
@@ -79,6 +82,9 @@ namespace tower
 		hl::Entity* _rangeRing = nullptr;
 		bool _ghostVisible = false;
 		bool _ghostPlaceable = false;
+		hl::Entity* _flashTower = nullptr;
+		bool _flashGhost = false;
+		float _invalidFlashRemaining = 0.0f;
 		int _gold = StartGold;
 		int _lives = StartLives;
 		bool _gameOver = false;

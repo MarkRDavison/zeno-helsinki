@@ -32,6 +32,7 @@
 #include <helsinki/Ui/Widget.hpp>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
+#include <cmath>
 #include <string>
 
 namespace tower
@@ -433,16 +434,34 @@ namespace tower
 
 	bool TowerDefenseGameEngineScene::isOccupied(int tx, int tz) const
 	{
+		return towerAt(tx, tz) != nullptr;
+	}
+
+	hl::Entity* TowerDefenseGameEngineScene::towerAt(int tx, int tz) const
+	{
 		for (auto* entity : _scene.getEntitiesByTag(TowerTag))
 		{
 			const auto* tower = entity->GetComponent<TowerComponent>();
 			if (tower != nullptr && tower->x == tx && tower->z == tz)
 			{
-				return true;
+				return entity;
 			}
 		}
 
-		return false;
+		return nullptr;
+	}
+
+	void TowerDefenseGameEngineScene::flashInvalid(int tx, int tz)
+	{
+		_invalidFlashRemaining = InvalidFlashSeconds;
+		_flashTower = towerAt(tx, tz);
+		_flashGhost = _flashTower == nullptr;
+	}
+
+	bool TowerDefenseGameEngineScene::invalidFlashBlinkOn() const
+	{
+		return _invalidFlashRemaining > 0.0f
+			&& std::fmod(_invalidFlashRemaining, 0.1f) > 0.05f;
 	}
 
 	void TowerDefenseGameEngineScene::spawnCreep()
@@ -632,6 +651,7 @@ namespace tower
 
 		if (isPathTile(tile->x, tile->z) || isOccupied(tile->x, tile->z) || _gold < TowerCost)
 		{
+			flashInvalid(tile->x, tile->z);
 			return;
 		}
 
@@ -681,6 +701,11 @@ namespace tower
 					if (entity->HasTag(GhostTag)
 						|| entity->HasTag(RangeRingTag)
 						|| !entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
+					{
+						continue;
+					}
+
+					if (entity.get() == _flashTower && _invalidFlashRemaining > 0.0f)
 					{
 						continue;
 					}
@@ -742,14 +767,10 @@ namespace tower
 
 		registerPipelineDraw("ghost_pipeline", [this](hl::PipelineDrawData& pdd)
 			{
-				if (!_ghostVisible)
-				{
-					return;
-				}
-
 				const auto cameraIndex = static_cast<uint32_t>(getCameraIndex("Default"));
-				const char* materialName = _ghostPlaceable ? GhostOkMaterial : GhostBadMaterial;
-				const uint32_t ghostMaterial = _engine.getMaterialSystem().getMaterialIndex(materialName);
+				const uint32_t badMaterial = _engine.getMaterialSystem().getMaterialIndex(GhostBadMaterial);
+				const bool blinkOn = invalidFlashBlinkOn();
+				const bool flashGhost = _flashGhost && _invalidFlashRemaining > 0.0f;
 
 				auto drawGhostLit = [&](hl::Entity* entity, uint32_t materialIndex)
 				{
@@ -808,8 +829,26 @@ namespace tower
 					}
 				};
 
-				drawGhostLit(_ghost, ghostMaterial);
-				drawGhostLit(_rangeRing, ghostMaterial);
+				if (flashGhost)
+				{
+					if (blinkOn)
+					{
+						drawGhostLit(_ghost, badMaterial);
+						drawGhostLit(_rangeRing, badMaterial);
+					}
+				}
+				else if (_ghostVisible)
+				{
+					const char* materialName = _ghostPlaceable ? GhostOkMaterial : GhostBadMaterial;
+					const uint32_t ghostMaterial = _engine.getMaterialSystem().getMaterialIndex(materialName);
+					drawGhostLit(_ghost, ghostMaterial);
+					drawGhostLit(_rangeRing, ghostMaterial);
+				}
+
+				if (_flashTower != nullptr && _invalidFlashRemaining > 0.0f && blinkOn)
+				{
+					drawGhostLit(_flashTower, badMaterial);
+				}
 			});
 
 		registerPipelineDraw("ui_pipeline", [&](hl::PipelineDrawData& pdd)
@@ -1010,6 +1049,17 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::update(uint32_t /*currentFrame*/, float delta)
 	{
+		if (_invalidFlashRemaining > 0.0f)
+		{
+			_invalidFlashRemaining -= delta;
+			if (_invalidFlashRemaining <= 0.0f)
+			{
+				_invalidFlashRemaining = 0.0f;
+				_flashTower = nullptr;
+				_flashGhost = false;
+			}
+		}
+
 		if (!matchEnded())
 		{
 			tickWave(delta);
