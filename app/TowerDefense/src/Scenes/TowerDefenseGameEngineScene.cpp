@@ -932,10 +932,24 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::onCreepLeaked()
 	{
-		_lives = 0;
+		if (matchEnded())
+		{
+			return;
+		}
+
+		if (_lives > 0)
+		{
+			_lives -= 1;
+		}
+
+		_audio.play(CueLeak);
+		if (_lives > 0)
+		{
+			return;
+		}
+
 		_gameOver = true;
 		_overlayHeading->setText("Game Over", 64);
-		_audio.play(CueLeak);
 	}
 
 	void TowerDefenseGameEngineScene::onCreepKilled()
