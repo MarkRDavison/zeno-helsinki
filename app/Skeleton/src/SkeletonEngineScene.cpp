@@ -121,7 +121,7 @@ namespace sk
                                         {
                                             .binding = 0,
                                             .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-                                            .stage = "VERTEX",
+                                            .stage = "VERTEX&FRAGMENT",
                                             .resource = "camera_matrix_ubo"
                                         },
                                         hl::DescriptorBinding
