@@ -1,36 +1,46 @@
-#include "Scenes/TowerDefenseEngineScene.hpp"
+#include "Scenes/TowerDefenseGameEngineScene.hpp"
+#include <Scenes/SceneHost.hpp>
 #include <GroundPick.hpp>
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
 #include <Components/PathFollowComponent.hpp>
 #include <Components/TileComponent.hpp>
+#include <Components/TowerComponent.hpp>
 #include <Systems/PathFollowSystem.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
+#include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Infrastructure/Camera.hpp>
+#include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
+#include <string>
 
 namespace tower
 {
 
-	TowerDefenseEngineScene::TowerDefenseEngineScene(
+	TowerDefenseGameEngineScene::TowerDefenseGameEngineScene(
 		hl::Engine& engine,
-		const hl::EngineConfiguration& engineConfig
+		const hl::EngineConfiguration& engineConfig,
+		SceneHost& sceneHost
 	) :
 		EngineScene(engine),
+		_sceneHost(sceneHost),
 		_engineConfig(engineConfig)
 	{
+		_cameras.insert({ "Ui", new hl::Camera2D() });
 		_cameras.insert({ "Default", new hl::Camera(
 			glm::vec3(0.0f, 16.0f, 16.0f),
 			glm::vec3(0.0f, 1.0f, 0.0f),
@@ -38,7 +48,12 @@ namespace tower
 			-45.0f) });
 	}
 
-	std::vector<hl::RenderpassInfo> TowerDefenseEngineScene::buildRenderpasses() const
+	TowerDefenseGameEngineScene::~TowerDefenseGameEngineScene()
+	{
+		_sceneHost.onSceneDestroyed();
+	}
+
+	std::vector<hl::RenderpassInfo> TowerDefenseGameEngineScene::buildRenderpasses() const
 	{
 		return
 		{
@@ -83,7 +98,8 @@ namespace tower
 											.binding = 0,
 											.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
 											.stage = "VERTEX&FRAGMENT",
-											.resource = "camera_matrix_ubo"
+											.resource = "camera_matrix_ubo",
+											.count = MAX_CAMERAS
 										},
 										hl::DescriptorBinding
 										{
@@ -302,7 +318,7 @@ namespace tower
 		};
 	}
 
-	void TowerDefenseEngineScene::spawnScene(
+	void TowerDefenseGameEngineScene::spawnScene(
 		hl::ResourceManager& resourceManager,
 		hl::ResourceContext& resourceContext)
 	{
@@ -313,46 +329,25 @@ namespace tower
 			MAX_FRAMES_IN_FLIGHT,
 			1);
 
-		const hl::ResourceDefinition uiSheetDefinition
-		{
-			.name = "ui_sheet",
-			.type = "logical",
-			.resources =
+		loadMenuUiSheet(
+			resourceManager,
+			resourceContext,
+			"ui_sheet",
 			{
-				hl::ResourceDefinition::Child
-				{
-					.name = hl::MaterialSystem::FallbackTextureName,
-					.type = "texture"
-				}
-			}
-		};
-
-		resourceManager.LoadLogical(uiSheetDefinition, [&](const hl::ResourceDefinition::Child& child)
-			{
-				if (child.type != "texture")
-				{
-					return false;
-				}
-
-				if (!resourceManager.HasResource<hl::ImageSamplerResource>(child.name))
-				{
-					resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
-						child.name,
-						resourceContext);
-				}
-
-				return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+				hl::ResourceDefinition::Child{ .name = "white", .type = "texture" },
+				hl::ResourceDefinition::Child{ .name = "roboto", .type = "texture" }
 			});
 
 		spawnBoard(resourceManager, resourceContext);
-		spawnTurret(resourceManager, resourceContext);
+		resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
+		spawnTower(resourceManager, TurretTile.x, TurretTile.z);
 		spawnCreep(resourceManager, resourceContext);
 		spawnMarker(resourceManager, resourceContext);
 
 		_scene.addSystem(new PathFollowSystem(_scene));
 	}
 
-	void TowerDefenseEngineScene::spawnBoard(
+	void TowerDefenseGameEngineScene::spawnBoard(
 		hl::ResourceManager& resourceManager,
 		hl::ResourceContext& resourceContext)
 	{
@@ -387,18 +382,33 @@ namespace tower
 		}
 	}
 
-	void TowerDefenseEngineScene::spawnTurret(
-		hl::ResourceManager& resourceManager,
-		hl::ResourceContext& resourceContext)
+	void TowerDefenseGameEngineScene::spawnTower(hl::ResourceManager& resourceManager, int tx, int tz)
 	{
-		auto modelHandle = resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
-		auto* entity = _scene.addEntity("turret");
-		entity->AddComponent<hl::TransformComponent>()->SetPosition(
-			tileCenter(TurretTile.x, TurretTile.z));
-		entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+		auto* model = resourceManager.GetResource<hl::ModelResource>(TurretModelId);
+		auto* entity = _scene.addEntity();
+		entity->AddTag(TowerTag);
+		auto* tower = entity->AddComponent<TowerComponent>();
+		tower->x = tx;
+		tower->z = tz;
+		entity->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(tx, tz));
+		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 	}
 
-	void TowerDefenseEngineScene::spawnCreep(
+	bool TowerDefenseGameEngineScene::isOccupied(int tx, int tz) const
+	{
+		for (auto* entity : _scene.getEntitiesByTag(TowerTag))
+		{
+			const auto* tower = entity->GetComponent<TowerComponent>();
+			if (tower != nullptr && tower->x == tx && tower->z == tz)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void TowerDefenseGameEngineScene::spawnCreep(
 		hl::ResourceManager& resourceManager,
 		hl::ResourceContext& resourceContext)
 	{
@@ -416,7 +426,7 @@ namespace tower
 		follow->speed = CreepSpeed;
 	}
 
-	void TowerDefenseEngineScene::spawnMarker(
+	void TowerDefenseGameEngineScene::spawnMarker(
 		hl::ResourceManager& resourceManager,
 		hl::ResourceContext& resourceContext)
 	{
@@ -432,7 +442,7 @@ namespace tower
 		_marker->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
 	}
 
-	void TowerDefenseEngineScene::tryMoveMarkerToClick()
+	void TowerDefenseGameEngineScene::tryHandleBoardClick()
 	{
 		const auto& input = _engine.getInputManager();
 		const bool released = input.isButtonReleased(GLFW_MOUSE_BUTTON_1);
@@ -467,9 +477,17 @@ namespace tower
 
 		_marker->GetComponent<hl::TransformComponent>()->SetPosition(
 			tileCenter(tile->x, tile->z, MarkerY));
+
+		if (isPathTile(tile->x, tile->z) || isOccupied(tile->x, tile->z) || _gold < TowerCost)
+		{
+			return;
+		}
+
+		_gold -= TowerCost;
+		spawnTower(*_resourceManager, tile->x, tile->z);
 	}
 
-	void TowerDefenseEngineScene::initialise(
+	void TowerDefenseGameEngineScene::initialise(
 		const std::string& cameraMatrixResourceId,
 		hl::VulkanDevice& device,
 		hl::VulkanSwapChain& swapChain,
@@ -499,16 +517,106 @@ namespace tower
 			resourceManager,
 			renderpasses);
 
-		registerPipelineDraw("ui_pipeline", [](hl::PipelineDrawData&) {});
+		buildHud(resourceManager.GetResource<hl::FontResource>("roboto"));
+		_uiBatch.initialise(device);
+
+		registerPipelineDraw("model_pipeline", [this](hl::PipelineDrawData& pdd)
+			{
+				const auto cameraIndex = static_cast<uint32_t>(getCameraIndex("Default"));
+				for (const auto& entity : pdd.scene->getEntities())
+				{
+					if (!entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
+					{
+						continue;
+					}
+
+					const auto* transform = entity->GetComponent<hl::TransformComponent>();
+					const auto* model = entity->GetComponent<hl::ModelComponent>();
+					const auto* modelResource = _resourceManager->GetResource<hl::ModelResource>(model->getModelId());
+					auto pc = hl::MaterialPushConstantObject
+					{
+						.model = transform->GetTransformMatrix()
+					};
+					pc.pad[0] = cameraIndex;
+
+					for (const auto& mesh : modelResource->getMeshes())
+					{
+						pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(mesh.materialName);
+						vkCmdPushConstants(
+							pdd.commandBuffer,
+							pdd.pipeline->getPipelineLayout(),
+							VK_SHADER_STAGE_VERTEX_BIT,
+							0,
+							sizeof(hl::MaterialPushConstantObject),
+							&pc);
+
+						VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
+						VkDeviceSize offsets[] = { 0 };
+						vkCmdBindVertexBuffers(pdd.commandBuffer, 0, 1, vertexBuffers, offsets);
+						vkCmdBindIndexBuffer(
+							pdd.commandBuffer,
+							mesh._indexBuffer._buffer,
+							0,
+							VK_INDEX_TYPE_UINT32);
+
+						auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
+						vkCmdBindDescriptorSets(
+							pdd.commandBuffer,
+							VK_PIPELINE_BIND_POINT_GRAPHICS,
+							pdd.pipeline->getPipelineLayout(),
+							0,
+							1,
+							&descriptorSet,
+							0,
+							nullptr);
+
+						vkCmdDrawIndexed(pdd.commandBuffer, mesh._indexCount, 1, 0, 0, 0);
+					}
+				}
+			});
+
+		registerPipelineDraw("ui_pipeline", [&](hl::PipelineDrawData& pdd)
+			{
+				_uiBatch.draw(pdd);
+			});
 	}
 
-	void TowerDefenseEngineScene::update(uint32_t /*currentFrame*/, float delta)
+	void TowerDefenseGameEngineScene::buildHud(hl::FontResource* font)
 	{
-		tryMoveMarkerToClick();
-		_scene.update(delta);
+		_typeface = std::make_unique<FontTypeface>(font);
+		_layoutRoot = std::make_unique<hl::ui::Node>();
+		_layoutRoot->setFillParent();
+		_goldLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
+		_goldLabel->color = { 1.0f, 1.0f, 1.0f };
+		_goldLabel->setText("Gold: " + std::to_string(_gold), 24);
 	}
 
-	void TowerDefenseEngineScene::updateGpuResources(uint32_t currentFrame)
+	void TowerDefenseGameEngineScene::rebuildHud()
+	{
+		_goldLabel->setText("Gold: " + std::to_string(_gold), 24);
+		hl::ui::prepareTree(*_layoutRoot);
+
+		const glm::vec2 size = _goldLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+		_goldLabel->node().setTopLeft(size);
+		_goldLabel->node().relative = { 16.0f, 16.0f };
+		_goldLabel->node().intrinsicSize.reset();
+
+		const auto fb = _engine.getInputManager().getFramebufferSize();
+		hl::ui::layout(*_layoutRoot, hl::ui::Box{ 0.0f, 0.0f, fb.x, fb.y });
+
+		_uiBatch.begin();
+		UiBatchPaint paint(_uiBatch);
+		hl::ui::paintTree(*_layoutRoot, paint);
+	}
+
+	void TowerDefenseGameEngineScene::update(uint32_t /*currentFrame*/, float delta)
+	{
+		tryHandleBoardClick();
+		_scene.update(delta);
+		rebuildHud();
+	}
+
+	void TowerDefenseGameEngineScene::updateGpuResources(uint32_t currentFrame)
 	{
 		if (_sunUbo)
 		{
@@ -519,5 +627,12 @@ namespace tower
 			ubo.ambient = glm::vec4(0.18f, 0.18f, 0.18f, 0.0f);
 			_sunUbo.Get()->getUniformBuffer(currentFrame).writeToBuffer(&ubo, 0);
 		}
+
+		_uiBatch.updateGpuResources(currentFrame);
+	}
+
+	void TowerDefenseGameEngineScene::additionalCleanup()
+	{
+		_uiBatch.destroy();
 	}
 }

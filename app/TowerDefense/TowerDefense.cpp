@@ -1,5 +1,5 @@
 #include "TowerDefenseConfig.hpp"
-#include <Scenes/TowerDefenseEngineScene.hpp>
+#include "Scenes/SceneHost.hpp"
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/Utils/ServiceProvider.hpp>
 
@@ -23,7 +23,9 @@ int main()
 	engineConfig.applyConfig("/data/config.json", std::string(tower::TowerDefenseConfig::RootPath));
 
 	engine.init(engineConfig);
-	engine.setScene(new tower::TowerDefenseEngineScene(engine, engineConfig));
+
+	tower::SceneHost sceneHost(engine, serviceProvider);
+	sceneHost.goTitle();
 	engine.run();
 
 	return EXIT_SUCCESS;

@@ -16,6 +16,9 @@ namespace tower
 	inline constexpr const char* TileBlackModelId = "tile_black";
 	inline constexpr const char* TileWhiteModelId = "tile_white";
 	inline constexpr const char* TurretModelId = "turret_double";
+	inline constexpr const char* TowerTag = "TOWER";
+	inline constexpr int StartGold = 100;
+	inline constexpr int TowerCost = 25;
 
 	inline constexpr float MarkerY = 0.05f;
 	inline constexpr glm::vec3 MarkerScale{ 0.3f, 0.3f, 0.3f };

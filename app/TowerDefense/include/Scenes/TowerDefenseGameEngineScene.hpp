@@ -7,14 +7,30 @@
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Engine/ECS/Entity.hpp>
+#include <helsinki/Ui/Label.hpp>
+#include <helsinki/Ui/Layout/Layout.hpp>
+#include <Ui/UiLayoutAdapters.hpp>
+#include <helsinki/Engine/Ui/UiBatch.hpp>
+#include <SceneCatalog.hpp>
+#include <memory>
+
+namespace hl
+{
+	class FontResource;
+}
 
 namespace tower
 {
+	class SceneHost;
 
-	class TowerDefenseEngineScene : public hl::EngineScene
+	class TowerDefenseGameEngineScene : public hl::EngineScene
 	{
 	public:
-		TowerDefenseEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig);
+		TowerDefenseGameEngineScene(
+			hl::Engine& engine,
+			const hl::EngineConfiguration& engineConfig,
+			SceneHost& sceneHost);
+		~TowerDefenseGameEngineScene();
 		void initialise(
 			const std::string& cameraMatrixResourceId,
 			hl::VulkanDevice& device,
@@ -25,18 +41,29 @@ namespace tower
 
 		void update(uint32_t currentFrame, float delta) override;
 		void updateGpuResources(uint32_t currentFrame) override;
+		void additionalCleanup() override;
 	private:
 		std::vector<hl::RenderpassInfo> buildRenderpasses() const;
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnBoard(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
-		void spawnTurret(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz);
 		void spawnCreep(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
-		void tryMoveMarkerToClick();
+		void tryHandleBoardClick();
+		bool isOccupied(int tx, int tz) const;
+		void buildHud(hl::FontResource* font);
+		void rebuildHud();
 
+		SceneHost& _sceneHost;
 		const hl::EngineConfiguration& _engineConfig;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::Entity* _marker = nullptr;
+		int _gold = StartGold;
+
+		hl::UiBatch _uiBatch;
+		std::unique_ptr<FontTypeface> _typeface;
+		std::unique_ptr<hl::ui::Node> _layoutRoot;
+		std::unique_ptr<hl::ui::Label> _goldLabel;
 	};
 
 }
