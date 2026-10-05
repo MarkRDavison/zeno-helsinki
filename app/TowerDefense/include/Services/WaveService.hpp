@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SceneCatalog.hpp>
+
 namespace tower
 {
 	class GameStateService;
@@ -15,10 +17,12 @@ namespace tower
 		bool tryClear(bool boardEmpty);
 		bool inCombat() const;
 		int hudWaveIndex() const;
+		const WaveDef& active() const;
 
 	private:
 		GameStateService& _gameState;
 		int _wavesCompleted = 0;
+		int _activeIndex = 0;
 		bool _inCombat = false;
 		int _pendingSpawns = 0;
 		float _spawnTimer = 0.0f;

@@ -483,8 +483,8 @@ namespace tower
 		follow->t = 0.0f;
 		follow->speed = CreepSpeed;
 		auto* health = entity->AddComponent<HealthComponent>();
-		health->max = CreepHealth;
-		health->current = CreepHealth;
+		health->max = _wave.active().health;
+		health->current = _wave.active().health;
 	}
 
 	void TowerDefenseGameEngineScene::spawnMarker(

@@ -38,11 +38,19 @@ namespace tower
 	inline constexpr int TowerCost = 25;
 	inline constexpr int KillGold = 10;
 	inline constexpr int WaveClearBonus = 25;
-	inline constexpr int CreepHealth = 3;
 	inline constexpr int ProjectileDamage = 1;
 	inline constexpr int StartLives = 3;
-	inline constexpr int WaveCount = 3;
-	inline constexpr int WaveCreepCount = 5;
+	struct WaveDef
+	{
+		int creepCount;
+		int health;
+	};
+	inline constexpr WaveDef Waves[] = {
+		{ 5, 3 },
+		{ 7, 4 },
+		{ 9, 5 },
+	};
+	inline constexpr int WaveCount = static_cast<int>(sizeof(Waves) / sizeof(Waves[0]));
 	inline constexpr float WaveSpawnInterval = 1.0f;
 	inline constexpr float TowerRange = 3.5f;
 	inline constexpr float TowerYawOffset = 0.0f;

@@ -17,7 +17,8 @@ namespace tower
 		}
 
 		_inCombat = true;
-		_pendingSpawns = WaveCreepCount;
+		_activeIndex = _wavesCompleted;
+		_pendingSpawns = Waves[_activeIndex].creepCount;
 		_spawnTimer = 0.0f;
 		return true;
 	}
@@ -75,5 +76,10 @@ namespace tower
 		}
 
 		return _wavesCompleted + 1;
+	}
+
+	const WaveDef& WaveService::active() const
+	{
+		return Waves[_activeIndex];
 	}
 }
