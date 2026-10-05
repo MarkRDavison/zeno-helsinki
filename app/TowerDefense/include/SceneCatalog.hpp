@@ -25,6 +25,12 @@ namespace tower
 	inline constexpr const char* RangeRingModelId = "range_ring";
 	inline constexpr float RangeRingY = 0.05f;
 	inline constexpr float RangeRingInnerRadius = 0.97f;
+	inline constexpr const char* PathRibbonTag = "PATH_RIBBON";
+	inline constexpr const char* PathRibbonModelId = "path_ribbon";
+	inline constexpr const char* PathRibbonMaterial = "path_ribbon";
+	inline constexpr float PathRibbonWidth = 0.2f;
+	inline constexpr float PathRibbonY = 0.03f;
+	inline constexpr float PathRibbonLength = 7.0f;
 	inline constexpr const char* ProjectileTag = "PROJECTILE";
 	inline constexpr const char* ProjectileModelId = "marker";
 	inline constexpr int StartGold = 100;

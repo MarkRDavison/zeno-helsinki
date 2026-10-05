@@ -55,6 +55,7 @@ namespace tower
 		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnGhost(hl::ResourceManager& resourceManager);
 		void spawnRangeRing(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void spawnPathRibbons(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		std::optional<TileCoord> hoveredTile() const;
 		void updateGhost();
 		void tryHandleBoardClick();

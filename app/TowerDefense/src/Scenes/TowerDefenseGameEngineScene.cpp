@@ -372,6 +372,7 @@ namespace tower
 		spawnMarker(resourceManager, resourceContext);
 		spawnGhost(resourceManager);
 		spawnRangeRing(resourceManager, resourceContext);
+		spawnPathRibbons(resourceManager, resourceContext);
 
 		auto* pathFollow = new PathFollowSystem(_scene);
 		pathFollow->onLeak = [this]() { onCreepLeaked(); };
@@ -515,6 +516,48 @@ namespace tower
 		_rangeRing->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
 	}
 
+	void TowerDefenseGameEngineScene::spawnPathRibbons(
+		hl::ResourceManager& resourceManager,
+		hl::ResourceContext& resourceContext)
+	{
+		_engine.getMaterialSystem().addMaterial(hl::Material{
+			.name = PathRibbonMaterial,
+			.diffuse = { 0.95f, 0.65f, 0.15f }
+		});
+
+		auto modelHandle = resourceManager.Load<hl::ModelResource>(
+			PathRibbonModelId,
+			resourceContext);
+
+		auto spawnLeg = [&](const glm::vec3& mid, float yawDegrees, float length)
+		{
+			auto* entity = _scene.addEntity();
+			entity->AddTag(PathRibbonTag);
+			auto* transform = entity->AddComponent<hl::TransformComponent>();
+			transform->SetPosition(mid);
+			transform->SetRotation(glm::vec3(0.0f, yawDegrees, 0.0f));
+			transform->SetScale(glm::vec3(PathRibbonWidth, 1.0f, length));
+			entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+		};
+
+		const glm::vec3 verticalA = tileCenter(0, 0, PathRibbonY);
+		glm::vec3 verticalB = tileCenter(0, BoardSize - 1, PathRibbonY);
+		verticalB.z += PathRibbonWidth * 0.5f;
+		spawnLeg(
+			(verticalA + verticalB) * 0.5f,
+			0.0f,
+			PathRibbonLength + PathRibbonWidth * 0.5f);
+
+		const glm::vec3 corner = tileCenter(0, BoardSize - 1, PathRibbonY);
+		const glm::vec3 horizontalB = tileCenter(BoardSize - 1, BoardSize - 1, PathRibbonY);
+		glm::vec3 horizontalA = corner;
+		horizontalA.x += PathRibbonWidth * 0.5f;
+		spawnLeg(
+			(horizontalA + horizontalB) * 0.5f,
+			90.0f,
+			PathRibbonLength - PathRibbonWidth * 0.5f);
+	}
+
 	std::optional<TileCoord> TowerDefenseGameEngineScene::hoveredTile() const
 	{
 		auto it = _cameras.find("Default");
@@ -632,11 +675,17 @@ namespace tower
 		registerPipelineDraw("model_pipeline", [this](hl::PipelineDrawData& pdd)
 			{
 				const auto cameraIndex = static_cast<uint32_t>(getCameraIndex("Default"));
+				const bool showPath = _engine.getInputManager().isKeyDown(GLFW_KEY_P);
 				for (const auto& entity : pdd.scene->getEntities())
 				{
 					if (entity->HasTag(GhostTag)
 						|| entity->HasTag(RangeRingTag)
 						|| !entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
+					{
+						continue;
+					}
+
+					if (entity->HasTag(PathRibbonTag) && !showPath)
 					{
 						continue;
 					}
@@ -700,9 +749,9 @@ namespace tower
 
 				const auto cameraIndex = static_cast<uint32_t>(getCameraIndex("Default"));
 				const char* materialName = _ghostPlaceable ? GhostOkMaterial : GhostBadMaterial;
-				const uint32_t materialIndex = _engine.getMaterialSystem().getMaterialIndex(materialName);
+				const uint32_t ghostMaterial = _engine.getMaterialSystem().getMaterialIndex(materialName);
 
-				auto drawGhostLit = [&](hl::Entity* entity)
+				auto drawGhostLit = [&](hl::Entity* entity, uint32_t materialIndex)
 				{
 					if (entity == nullptr
 						|| !entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
@@ -759,8 +808,8 @@ namespace tower
 					}
 				};
 
-				drawGhostLit(_ghost);
-				drawGhostLit(_rangeRing);
+				drawGhostLit(_ghost, ghostMaterial);
+				drawGhostLit(_rangeRing, ghostMaterial);
 			});
 
 		registerPipelineDraw("ui_pipeline", [&](hl::PipelineDrawData& pdd)
