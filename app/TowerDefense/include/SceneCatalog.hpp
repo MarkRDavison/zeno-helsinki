@@ -17,6 +17,9 @@ namespace tower
 	inline constexpr const char* TileWhiteModelId = "tile_white";
 	inline constexpr const char* TurretModelId = "turret_double";
 	inline constexpr const char* TowerTag = "TOWER";
+	inline constexpr const char* BlockerTag = "BLOCKER";
+	inline constexpr const char* DetailTreeModelId = "detail_tree";
+	inline constexpr const char* DetailRocksModelId = "detail_rocks";
 	inline constexpr const char* GhostTag = "GHOST";
 	inline constexpr const char* GhostOkMaterial = "ghost_ok";
 	inline constexpr const char* GhostBadMaterial = "ghost_bad";
@@ -109,6 +112,19 @@ namespace tower
 	};
 
 	inline constexpr TileCoord MarkerStartTile{ 3, 3 };
+
+	struct BlockerDef
+	{
+		const char* model;
+		TileCoord tile;
+	};
+
+	inline constexpr BlockerDef Blockers[] = {
+		{ DetailTreeModelId, { 3, 1 } },
+		{ DetailRocksModelId, { 5, 3 } },
+		{ DetailTreeModelId, { 6, 2 } },
+		{ DetailRocksModelId, { 2, 5 } },
+	};
 
 	inline constexpr bool isPathTile(int tx, int tz)
 	{

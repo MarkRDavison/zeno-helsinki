@@ -9,6 +9,7 @@
 #include <Components/CreepComponent.hpp>
 #include <Components/TileComponent.hpp>
 #include <Components/TowerComponent.hpp>
+#include <Components/BlockerComponent.hpp>
 #include <Systems/PathFollowSystem.hpp>
 #include <Systems/TowerFireSystem.hpp>
 #include <Systems/ProjectileSystem.hpp>
@@ -379,6 +380,7 @@ namespace tower
 			});
 
 		spawnBoard(resourceManager, resourceContext);
+		spawnBlockers(resourceManager, resourceContext);
 		resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
 		resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
 		_engine.getMaterialSystem().addMaterial(hl::Material{
@@ -438,6 +440,27 @@ namespace tower
 		}
 	}
 
+	void TowerDefenseGameEngineScene::spawnBlockers(
+		hl::ResourceManager& resourceManager,
+		hl::ResourceContext& resourceContext)
+	{
+		resourceManager.Load<hl::ModelResource>(DetailTreeModelId, resourceContext);
+		resourceManager.Load<hl::ModelResource>(DetailRocksModelId, resourceContext);
+
+		for (const auto& def : Blockers)
+		{
+			auto* model = resourceManager.GetResource<hl::ModelResource>(def.model);
+			auto* entity = _scene.addEntity();
+			entity->AddTag(BlockerTag);
+			auto* blocker = entity->AddComponent<BlockerComponent>();
+			blocker->x = def.tile.x;
+			blocker->z = def.tile.z;
+			entity->AddComponent<hl::TransformComponent>()->SetPosition(
+				tileCenter(def.tile.x, def.tile.z));
+			entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
+		}
+	}
+
 	void TowerDefenseGameEngineScene::spawnTower(hl::ResourceManager& resourceManager, int tx, int tz)
 	{
 		auto* model = resourceManager.GetResource<hl::ModelResource>(TurretModelId);
@@ -453,7 +476,7 @@ namespace tower
 
 	bool TowerDefenseGameEngineScene::isOccupied(int tx, int tz) const
 	{
-		return towerAt(tx, tz) != nullptr;
+		return towerAt(tx, tz) != nullptr || blockerAt(tx, tz) != nullptr;
 	}
 
 	hl::Entity* TowerDefenseGameEngineScene::towerAt(int tx, int tz) const
@@ -462,6 +485,20 @@ namespace tower
 		{
 			const auto* tower = entity->GetComponent<TowerComponent>();
 			if (tower != nullptr && tower->x == tx && tower->z == tz)
+			{
+				return entity;
+			}
+		}
+
+		return nullptr;
+	}
+
+	hl::Entity* TowerDefenseGameEngineScene::blockerAt(int tx, int tz) const
+	{
+		for (auto* entity : _scene.getEntitiesByTag(BlockerTag))
+		{
+			const auto* blocker = entity->GetComponent<BlockerComponent>();
+			if (blocker != nullptr && blocker->x == tx && blocker->z == tz)
 			{
 				return entity;
 			}
@@ -631,7 +668,7 @@ namespace tower
 		}
 
 		const auto tile = hoveredTile();
-		if (!tile || isOccupied(tile->x, tile->z))
+		if (!tile || towerAt(tile->x, tile->z) != nullptr)
 		{
 			return;
 		}
@@ -644,7 +681,9 @@ namespace tower
 			ring->SetPosition(tileCenter(tile->x, tile->z, RangeRingY));
 			ring->SetScale(glm::vec3(TowerRange, 1.0f, TowerRange));
 		}
-		_ghostPlaceable = !isPathTile(tile->x, tile->z) && _gameState.gold() >= TowerCost;
+		_ghostPlaceable = !isPathTile(tile->x, tile->z)
+			&& blockerAt(tile->x, tile->z) == nullptr
+			&& _gameState.gold() >= TowerCost;
 		_ghostVisible = true;
 	}
 
@@ -685,6 +724,12 @@ namespace tower
 				_flashGhost = false;
 			}
 			_scene.removeEntity(tower->Id);
+			return;
+		}
+
+		if (blockerAt(tile->x, tile->z) != nullptr)
+		{
+			flashInvalid(tile->x, tile->z);
 			return;
 		}
 
