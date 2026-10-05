@@ -87,6 +87,9 @@ namespace tower
 			auto* shot = projectile->AddComponent<ProjectileComponent>();
 			shot->targetId = creep->Id;
 			shot->speed = ProjectileSpeed;
+			shot->damage = ProjectileDamage;
+			const glm::vec3 creepPos = creep->GetComponent<hl::TransformComponent>()->GetPosition();
+			shot->lastDest = glm::vec3(creepPos.x, ProjectileY, creepPos.z);
 			tower->fireCooldownRemaining = TowerFireCooldown;
 		}
 	}

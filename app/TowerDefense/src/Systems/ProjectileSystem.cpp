@@ -1,5 +1,6 @@
 #include <Systems/ProjectileSystem.hpp>
 #include <Components/ProjectileComponent.hpp>
+#include <Components/HealthComponent.hpp>
 #include <SceneCatalog.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 
@@ -31,24 +32,44 @@ namespace tower
 
 			auto* shot = entity->GetComponent<ProjectileComponent>();
 			auto* target = _scene.getEntity(shot->targetId);
-			if (target == nullptr
-				|| _scene.isPendingRemoval(target->Id)
-				|| !target->HasComponent<hl::TransformComponent>())
+			const bool targetLive = target != nullptr
+				&& !_scene.isPendingRemoval(target->Id)
+				&& target->HasComponent<hl::TransformComponent>();
+			if (targetLive)
 			{
-				_scene.removeEntity(entity->Id);
-				continue;
+				const glm::vec3 targetPos = target->GetComponent<hl::TransformComponent>()->GetPosition();
+				shot->lastDest = glm::vec3(targetPos.x, ProjectileY, targetPos.z);
 			}
 
 			auto* transform = entity->GetComponent<hl::TransformComponent>();
 			const glm::vec3 pos = transform->GetPosition();
-			const glm::vec3 targetPos = target->GetComponent<hl::TransformComponent>()->GetPosition();
-			const glm::vec3 dest{ targetPos.x, ProjectileY, targetPos.z };
+			const glm::vec3 dest = shot->lastDest;
 			const float distance = xzDistance(pos, dest);
 			const float step = shot->speed * delta;
 			if (distance <= ProjectileHitRadius || distance <= step)
 			{
-				_scene.removeEntity(target->Id);
 				_scene.removeEntity(entity->Id);
+				if (!targetLive)
+				{
+					continue;
+				}
+
+				auto* health = target->GetComponent<HealthComponent>();
+				if (health != nullptr)
+				{
+					health->current -= shot->damage;
+				}
+
+				const bool dead = health == nullptr || health->current <= 0;
+				if (dead)
+				{
+					_scene.removeEntity(target->Id);
+					if (onKill)
+					{
+						onKill();
+					}
+				}
+
 				continue;
 			}
 

@@ -5,6 +5,7 @@
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
 #include <Components/PathFollowComponent.hpp>
+#include <Components/HealthComponent.hpp>
 #include <Components/TileComponent.hpp>
 #include <Components/TowerComponent.hpp>
 #include <Systems/PathFollowSystem.hpp>
@@ -15,6 +16,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <helsinki/Renderer/Resource/Material.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
@@ -61,6 +63,77 @@ namespace tower
 
 	std::vector<hl::RenderpassInfo> TowerDefenseGameEngineScene::buildRenderpasses() const
 	{
+		const auto root = _engineConfig.RootPath + std::string("/data/shaders/");
+		const hl::VertexInputInfo pbrVertexInput
+		{
+			.attributes =
+			{
+				{
+					.name = "inPosition",
+					.format = hl::VertexAttributeFormat::Vec3,
+					.location = 0,
+					.offset = offsetof(hl::Vertex, pos)
+				},
+				{
+					.name = "inColor",
+					.format = hl::VertexAttributeFormat::Vec3,
+					.location = 1,
+					.offset = offsetof(hl::Vertex, color)
+				},
+				{
+					.name = "inTexCoord",
+					.format = hl::VertexAttributeFormat::Vec2,
+					.location = 2,
+					.offset = offsetof(hl::Vertex, texCoord)
+				},
+				{
+					.name = "inNormal",
+					.format = hl::VertexAttributeFormat::Vec3,
+					.location = 3,
+					.offset = offsetof(hl::Vertex, normal)
+				}
+			},
+			.stride = sizeof(hl::Vertex)
+		};
+		const hl::DescriptorSetInfo pbrDescriptors
+		{
+			.name = "model_uniforms",
+			.bindings =
+			{
+				hl::DescriptorBinding
+				{
+					.binding = 0,
+					.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+					.stage = "VERTEX&FRAGMENT",
+					.resource = "camera_matrix_ubo",
+					.count = MAX_CAMERAS
+				},
+				hl::DescriptorBinding
+				{
+					.binding = 1,
+					.type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+					.stage = "VERTEX&FRAGMENT",
+					.resource = "material_ssbo"
+				},
+				hl::DescriptorBinding
+				{
+					.binding = 2,
+					.type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+					.stage = "FRAGMENT",
+					.resource = "white"
+				},
+				hl::DescriptorBinding
+				{
+					.binding = 3,
+					.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+					.stage = "FRAGMENT",
+					.resource = "sun_ubo",
+					.count = 1,
+					.updateFrequency = hl::DescriptorUpdateFrequency::PerFrame
+				}
+			}
+		};
+
 		return
 		{
 			hl::RenderpassInfo
@@ -90,85 +163,34 @@ namespace tower
 						hl::PipelineInfo
 						{
 							.name = "model_pipeline",
-							.shaderVert = _engineConfig.RootPath + std::string("/data/shaders/material_pbr.vert"),
-							.shaderFrag = _engineConfig.RootPath + std::string("/data/shaders/material_pbr.frag"),
-							.descriptorSets =
-							{
-								hl::DescriptorSetInfo
-								{
-									.name = "model_uniforms",
-									.bindings =
-									{
-										hl::DescriptorBinding
-										{
-											.binding = 0,
-											.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-											.stage = "VERTEX&FRAGMENT",
-											.resource = "camera_matrix_ubo",
-											.count = MAX_CAMERAS
-										},
-										hl::DescriptorBinding
-										{
-											.binding = 1,
-											.type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
-											.stage = "VERTEX&FRAGMENT",
-											.resource = "material_ssbo"
-										},
-										hl::DescriptorBinding
-										{
-											.binding = 2,
-											.type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
-											.stage = "FRAGMENT",
-											.resource = "white"
-										},
-										hl::DescriptorBinding
-										{
-											.binding = 3,
-											.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
-											.stage = "FRAGMENT",
-											.resource = "sun_ubo",
-											.count = 1,
-											.updateFrequency = hl::DescriptorUpdateFrequency::PerFrame
-										}
-									}
-								}
-							},
-							.vertexInputInfo = hl::VertexInputInfo
-							{
-								.attributes =
-								{
-									{
-										.name = "inPosition",
-										.format = hl::VertexAttributeFormat::Vec3,
-										.location = 0,
-										.offset = offsetof(hl::Vertex, pos)
-									},
-									{
-										.name = "inColor",
-										.format = hl::VertexAttributeFormat::Vec3,
-										.location = 1,
-										.offset = offsetof(hl::Vertex, color)
-									},
-									{
-										.name = "inTexCoord",
-										.format = hl::VertexAttributeFormat::Vec2,
-										.location = 2,
-										.offset = offsetof(hl::Vertex, texCoord)
-									},
-									{
-										.name = "inNormal",
-										.format = hl::VertexAttributeFormat::Vec3,
-										.location = 3,
-										.offset = offsetof(hl::Vertex, normal)
-									}
-								},
-								.stride = sizeof(hl::Vertex)
-							},
+							.shaderVert = root + "material_pbr.vert",
+							.shaderFrag = root + "material_pbr.frag",
+							.descriptorSets = { pbrDescriptors },
+							.vertexInputInfo = pbrVertexInput,
 							.rasterState =
 							{
 								.cullMode = VK_CULL_MODE_NONE
 							},
 							.enableBlending = false,
+							.pushConstantSize = sizeof(hl::MaterialPushConstantObject)
+						},
+						hl::PipelineInfo
+						{
+							.name = "ghost_pipeline",
+							.shaderVert = root + "material_pbr.vert",
+							.shaderFrag = root + "material_pbr_ghost.frag",
+							.descriptorSets = { pbrDescriptors },
+							.vertexInputInfo = pbrVertexInput,
+							.depthState =
+							{
+								.testEnable = true,
+								.writeEnable = false
+							},
+							.rasterState =
+							{
+								.cullMode = VK_CULL_MODE_NONE
+							},
+							.enableBlending = true,
 							.pushConstantSize = sizeof(hl::MaterialPushConstantObject)
 						}
 					}
@@ -348,12 +370,15 @@ namespace tower
 		resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
 		resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
 		spawnMarker(resourceManager, resourceContext);
+		spawnGhost(resourceManager);
 
 		auto* pathFollow = new PathFollowSystem(_scene);
 		pathFollow->onLeak = [this]() { onCreepLeaked(); };
 		_scene.addSystem(pathFollow);
 		_scene.addSystem(new TowerFireSystem(_scene, resourceManager));
-		_scene.addSystem(new ProjectileSystem(_scene));
+		auto* projectiles = new ProjectileSystem(_scene);
+		projectiles->onKill = [this]() { onCreepKilled(); };
+		_scene.addSystem(projectiles);
 	}
 
 	void TowerDefenseGameEngineScene::spawnBoard(
@@ -432,6 +457,9 @@ namespace tower
 		follow->fromIndex = 0;
 		follow->t = 0.0f;
 		follow->speed = CreepSpeed;
+		auto* health = entity->AddComponent<HealthComponent>();
+		health->max = CreepHealth;
+		health->current = CreepHealth;
 	}
 
 	void TowerDefenseGameEngineScene::spawnMarker(
@@ -450,6 +478,70 @@ namespace tower
 		_marker->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
 	}
 
+	void TowerDefenseGameEngineScene::spawnGhost(hl::ResourceManager& resourceManager)
+	{
+		auto* materials = &_engine.getMaterialSystem();
+		materials->addMaterial(hl::Material{
+			.name = GhostOkMaterial,
+			.diffuse = { 0.35f, 0.85f, 0.40f }
+		});
+		materials->addMaterial(hl::Material{
+			.name = GhostBadMaterial,
+			.diffuse = { 0.85f, 0.25f, 0.25f }
+		});
+
+		auto* model = resourceManager.GetResource<hl::ModelResource>(TurretModelId);
+		_ghost = _scene.addEntity();
+		_ghost->AddTag(GhostTag);
+		_ghost->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(0, 0));
+		_ghost->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
+		_ghostVisible = false;
+	}
+
+	std::optional<TileCoord> TowerDefenseGameEngineScene::hoveredTile() const
+	{
+		auto it = _cameras.find("Default");
+		if (it == _cameras.end())
+		{
+			return std::nullopt;
+		}
+
+		const auto& input = _engine.getInputManager();
+		const auto* camera = static_cast<hl::Camera*>(it->second);
+		const Ray ray = rayFromCameraMouse(
+			*camera,
+			input.getMousePosition(),
+			input.getWindowSize());
+		const auto hit = intersectGroundY0(ray);
+		if (!hit)
+		{
+			return std::nullopt;
+		}
+
+		return worldToTile(*hit);
+	}
+
+	void TowerDefenseGameEngineScene::updateGhost()
+	{
+		_ghostVisible = false;
+		_ghostPlaceable = false;
+		if (_ghost == nullptr || matchEnded() || uiBlocksBoardClick())
+		{
+			return;
+		}
+
+		const auto tile = hoveredTile();
+		if (!tile || isOccupied(tile->x, tile->z))
+		{
+			return;
+		}
+
+		_ghost->GetComponent<hl::TransformComponent>()->SetPosition(
+			tileCenter(tile->x, tile->z));
+		_ghostPlaceable = !isPathTile(tile->x, tile->z) && _gold >= TowerCost;
+		_ghostVisible = true;
+	}
+
 	void TowerDefenseGameEngineScene::tryHandleBoardClick()
 	{
 		if (matchEnded() || uiBlocksBoardClick())
@@ -463,25 +555,7 @@ namespace tower
 			return;
 		}
 
-		auto it = _cameras.find("Default");
-		if (it == _cameras.end())
-		{
-			return;
-		}
-
-		const auto* camera = static_cast<hl::Camera*>(it->second);
-		const Ray ray = rayFromCameraMouse(
-			*camera,
-			input.getMousePosition(),
-			input.getWindowSize());
-
-		const auto hit = intersectGroundY0(ray);
-		if (!hit)
-		{
-			return;
-		}
-
-		const auto tile = worldToTile(*hit);
+		const auto tile = hoveredTile();
 		if (!tile)
 		{
 			return;
@@ -537,7 +611,8 @@ namespace tower
 				const auto cameraIndex = static_cast<uint32_t>(getCameraIndex("Default"));
 				for (const auto& entity : pdd.scene->getEntities())
 				{
-					if (!entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
+					if (entity->HasTag(GhostTag)
+						|| !entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
 					{
 						continue;
 					}
@@ -545,6 +620,11 @@ namespace tower
 					const auto* transform = entity->GetComponent<hl::TransformComponent>();
 					const auto* model = entity->GetComponent<hl::ModelComponent>();
 					const auto* modelResource = _resourceManager->GetResource<hl::ModelResource>(model->getModelId());
+					if (modelResource == nullptr)
+					{
+						continue;
+					}
+
 					auto pc = hl::MaterialPushConstantObject
 					{
 						.model = transform->GetTransformMatrix()
@@ -584,6 +664,65 @@ namespace tower
 
 						vkCmdDrawIndexed(pdd.commandBuffer, mesh._indexCount, 1, 0, 0, 0);
 					}
+				}
+			});
+
+		registerPipelineDraw("ghost_pipeline", [this](hl::PipelineDrawData& pdd)
+			{
+				if (!_ghostVisible || _ghost == nullptr
+					|| !_ghost->HasComponents<hl::TransformComponent, hl::ModelComponent>())
+				{
+					return;
+				}
+
+				const auto* transform = _ghost->GetComponent<hl::TransformComponent>();
+				const auto* model = _ghost->GetComponent<hl::ModelComponent>();
+				const auto* modelResource = _resourceManager->GetResource<hl::ModelResource>(model->getModelId());
+				if (modelResource == nullptr)
+				{
+					return;
+				}
+
+				const auto cameraIndex = static_cast<uint32_t>(getCameraIndex("Default"));
+				const char* materialName = _ghostPlaceable ? GhostOkMaterial : GhostBadMaterial;
+				auto pc = hl::MaterialPushConstantObject
+				{
+					.model = transform->GetTransformMatrix()
+				};
+				pc.pad[0] = cameraIndex;
+				pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(materialName);
+
+				for (const auto& mesh : modelResource->getMeshes())
+				{
+					vkCmdPushConstants(
+						pdd.commandBuffer,
+						pdd.pipeline->getPipelineLayout(),
+						VK_SHADER_STAGE_VERTEX_BIT,
+						0,
+						sizeof(hl::MaterialPushConstantObject),
+						&pc);
+
+					VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
+					VkDeviceSize offsets[] = { 0 };
+					vkCmdBindVertexBuffers(pdd.commandBuffer, 0, 1, vertexBuffers, offsets);
+					vkCmdBindIndexBuffer(
+						pdd.commandBuffer,
+						mesh._indexBuffer._buffer,
+						0,
+						VK_INDEX_TYPE_UINT32);
+
+					auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
+					vkCmdBindDescriptorSets(
+						pdd.commandBuffer,
+						VK_PIPELINE_BIND_POINT_GRAPHICS,
+						pdd.pipeline->getPipelineLayout(),
+						0,
+						1,
+						&descriptorSet,
+						0,
+						nullptr);
+
+					vkCmdDrawIndexed(pdd.commandBuffer, mesh._indexCount, 1, 0, 0, 0);
 				}
 			});
 
@@ -672,6 +811,11 @@ namespace tower
 		_gameOver = true;
 		_overlayHeading->setText("Game Over", 64);
 		_audio.play(CueLeak);
+	}
+
+	void TowerDefenseGameEngineScene::onCreepKilled()
+	{
+		_gold += KillGold;
 	}
 
 	void TowerDefenseGameEngineScene::buildHud(hl::FontResource* font)
@@ -788,6 +932,7 @@ namespace tower
 		}
 
 		rebuildHud();
+		updateGhost();
 
 		if (!matchEnded())
 		{

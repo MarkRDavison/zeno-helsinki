@@ -53,6 +53,9 @@ namespace tower
 		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz);
 		void spawnCreep();
 		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void spawnGhost(hl::ResourceManager& resourceManager);
+		std::optional<TileCoord> hoveredTile() const;
+		void updateGhost();
 		void tryHandleBoardClick();
 		bool isOccupied(int tx, int tz) const;
 		bool matchEnded() const;
@@ -61,6 +64,7 @@ namespace tower
 		void tickWave(float delta);
 		void tryWin();
 		void onCreepLeaked();
+		void onCreepKilled();
 		void buildHud(hl::FontResource* font);
 		void rebuildHud();
 
@@ -69,6 +73,9 @@ namespace tower
 		hl::audio::Audio& _audio;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::Entity* _marker = nullptr;
+		hl::Entity* _ghost = nullptr;
+		bool _ghostVisible = false;
+		bool _ghostPlaceable = false;
 		int _gold = StartGold;
 		int _lives = StartLives;
 		bool _gameOver = false;

@@ -17,10 +17,17 @@ namespace tower
 	inline constexpr const char* TileWhiteModelId = "tile_white";
 	inline constexpr const char* TurretModelId = "turret_double";
 	inline constexpr const char* TowerTag = "TOWER";
+	inline constexpr const char* GhostTag = "GHOST";
+	inline constexpr const char* GhostOkMaterial = "ghost_ok";
+	inline constexpr const char* GhostBadMaterial = "ghost_bad";
+	inline constexpr float GhostAlpha = 0.45f;
 	inline constexpr const char* ProjectileTag = "PROJECTILE";
 	inline constexpr const char* ProjectileModelId = "marker";
 	inline constexpr int StartGold = 100;
 	inline constexpr int TowerCost = 25;
+	inline constexpr int KillGold = 10;
+	inline constexpr int CreepHealth = 3;
+	inline constexpr int ProjectileDamage = 1;
 	inline constexpr int StartLives = 1;
 	inline constexpr int WaveCreepCount = 5;
 	inline constexpr float WaveSpawnInterval = 1.0f;

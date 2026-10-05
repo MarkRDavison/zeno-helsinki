@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/ECS/System.hpp>
 #include <helsinki/Engine/Scene/Scene.hpp>
+#include <functional>
 
 namespace tower
 {
@@ -10,6 +11,8 @@ namespace tower
 	public:
 		explicit ProjectileSystem(hl::Scene& scene);
 		void update(float delta) override;
+
+		std::function<void()> onKill;
 
 	private:
 		hl::Scene& _scene;
