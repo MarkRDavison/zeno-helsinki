@@ -608,7 +608,7 @@ namespace tower
 	{
 		_ghostVisible = false;
 		_ghostPlaceable = false;
-		if (_ghost == nullptr || matchEnded() || uiBlocksBoardClick())
+		if (_ghost == nullptr || matchEnded() || _wave.inCombat() || uiBlocksBoardClick())
 		{
 			return;
 		}
@@ -652,6 +652,11 @@ namespace tower
 
 		_marker->GetComponent<hl::TransformComponent>()->SetPosition(
 			tileCenter(tile->x, tile->z, MarkerY));
+
+		if (_wave.inCombat())
+		{
+			return;
+		}
 
 		if (isPathTile(tile->x, tile->z) || isOccupied(tile->x, tile->z) || !_gameState.trySpend(TowerCost))
 		{
