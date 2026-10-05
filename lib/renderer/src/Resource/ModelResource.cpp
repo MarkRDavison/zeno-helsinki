@@ -58,6 +58,16 @@ namespace hl
 				assert(current != nullptr);
 				iss >> current->diffuse.x >> current->diffuse.y >> current->diffuse.z;
 			}
+			else if (key == "Ks")
+			{
+				assert(current != nullptr);
+				iss >> current->specular.x >> current->specular.y >> current->specular.z;
+			}
+			else if (key == "Ns")
+			{
+				assert(current != nullptr);
+				iss >> current->shininess;
+			}
 			else if (key == "map_Kd")
 			{
 				assert(current != nullptr);

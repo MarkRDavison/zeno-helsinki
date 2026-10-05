@@ -53,7 +53,8 @@ namespace hl
 
 		auto materialObj = MaterialStorageBufferObject
 		{
-			.color = glm::vec4(material.diffuse, 1.0f)
+			.color = glm::vec4(material.diffuse, 1.0f),
+			.specular = glm::vec4(material.specular, material.shininess)
 		};
 
 		_materialStorageBufferHandle->writeToBuffer(&materialObj, index);

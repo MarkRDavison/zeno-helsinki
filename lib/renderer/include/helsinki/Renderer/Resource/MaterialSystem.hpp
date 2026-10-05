@@ -12,7 +12,8 @@ namespace hl
 {
 	struct MaterialStorageBufferObject
 	{
-		alignas(16) glm::vec4 color;
+		glm::vec4 color;
+		glm::vec4 specular;
 	};
 
 	class MaterialSystem
