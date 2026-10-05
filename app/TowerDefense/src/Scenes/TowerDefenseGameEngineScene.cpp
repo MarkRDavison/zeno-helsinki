@@ -6,6 +6,7 @@
 #include <SunUniformBufferObject.hpp>
 #include <Components/PathFollowComponent.hpp>
 #include <Components/HealthComponent.hpp>
+#include <Components/CreepComponent.hpp>
 #include <Components/TileComponent.hpp>
 #include <Components/TowerComponent.hpp>
 #include <Systems/PathFollowSystem.hpp>
@@ -374,6 +375,14 @@ namespace tower
 		spawnBoard(resourceManager, resourceContext);
 		resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
 		resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
+		_engine.getMaterialSystem().addMaterial(hl::Material{
+			.name = CreepRunner.material,
+			.diffuse = CreepRunner.kd
+		});
+		_engine.getMaterialSystem().addMaterial(hl::Material{
+			.name = CreepTank.material,
+			.diffuse = CreepTank.kd
+		});
 		spawnMarker(resourceManager, resourceContext);
 		spawnGhost(resourceManager);
 		spawnRangeRing(resourceManager, resourceContext);
@@ -471,6 +480,7 @@ namespace tower
 	void TowerDefenseGameEngineScene::spawnCreep()
 	{
 		auto* model = _resourceManager->GetResource<hl::ModelResource>(CreepModelId);
+		const auto& def = _wave.nextCreep();
 		const auto start = PathWaypoints[0];
 		auto* entity = _scene.addEntity();
 		entity->AddTag(CreepTag);
@@ -478,13 +488,14 @@ namespace tower
 		transform->SetPosition(tileCenter(start.x, start.z));
 		transform->SetScale(CreepScale);
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
+		entity->AddComponent<CreepComponent>()->material = def.material;
 		auto* follow = entity->AddComponent<PathFollowComponent>();
 		follow->fromIndex = 0;
 		follow->t = 0.0f;
-		follow->speed = CreepSpeed;
+		follow->speed = def.speed;
 		auto* health = entity->AddComponent<HealthComponent>();
-		health->max = _wave.active().health;
-		health->current = _wave.active().health;
+		health->max = def.health;
+		health->current = def.health;
 	}
 
 	void TowerDefenseGameEngineScene::spawnMarker(
@@ -658,7 +669,20 @@ namespace tower
 			return;
 		}
 
-		if (isPathTile(tile->x, tile->z) || isOccupied(tile->x, tile->z) || !_gameState.trySpend(TowerCost))
+		if (auto* tower = towerAt(tile->x, tile->z))
+		{
+			_gameState.addGold(TowerSellRefund);
+			if (_flashTower == tower)
+			{
+				_flashTower = nullptr;
+				_invalidFlashRemaining = 0.0f;
+				_flashGhost = false;
+			}
+			_scene.removeEntity(tower->Id);
+			return;
+		}
+
+		if (isPathTile(tile->x, tile->z) || !_gameState.trySpend(TowerCost))
 		{
 			flashInvalid(tile->x, tile->z);
 			return;
@@ -739,7 +763,11 @@ namespace tower
 
 					for (const auto& mesh : modelResource->getMeshes())
 					{
-						pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(mesh.materialName);
+						const auto* creep = entity->GetComponent<CreepComponent>();
+						pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(
+							creep != nullptr && creep->material != nullptr
+								? creep->material
+								: mesh.materialName);
 						vkCmdPushConstants(
 							pdd.commandBuffer,
 							pdd.pipeline->getPipelineLayout(),

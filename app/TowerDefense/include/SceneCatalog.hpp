@@ -36,21 +36,44 @@ namespace tower
 	inline constexpr const char* ProjectileModelId = "marker";
 	inline constexpr int StartGold = 100;
 	inline constexpr int TowerCost = 25;
+	inline constexpr int TowerSellRefund = TowerCost / 2;
 	inline constexpr int KillGold = 10;
 	inline constexpr int WaveClearBonus = 25;
 	inline constexpr int ProjectileDamage = 1;
 	inline constexpr int StartLives = 3;
+	inline constexpr const char* CreepRunnerMaterial = "creep_runner";
+	inline constexpr const char* CreepTankMaterial = "creep_tank";
+	struct CreepDef
+	{
+		const char* material;
+		glm::vec3 kd;
+		int health;
+		float speed;
+	};
+	inline constexpr CreepDef CreepRunner{
+		CreepRunnerMaterial,
+		{ 1.0f, 0.45f, 0.15f },
+		2,
+		2.2f
+	};
+	inline constexpr CreepDef CreepTank{
+		CreepTankMaterial,
+		{ 0.35f, 0.45f, 0.85f },
+		8,
+		0.85f
+	};
 	struct WaveDef
 	{
-		int creepCount;
-		int health;
+		int runners;
+		int tanks;
 	};
 	inline constexpr WaveDef Waves[] = {
-		{ 5, 3 },
-		{ 7, 4 },
-		{ 9, 5 },
+		{ 5, 0 },
+		{ 4, 3 },
+		{ 4, 5 },
 	};
 	inline constexpr int WaveCount = static_cast<int>(sizeof(Waves) / sizeof(Waves[0]));
+	inline constexpr int MaxWaveCreeps = 16;
 	inline constexpr float WaveSpawnInterval = 1.0f;
 	inline constexpr float BuildTimerSeconds = 20.0f;
 	inline constexpr float TowerRange = 3.5f;
@@ -65,7 +88,6 @@ namespace tower
 	inline constexpr glm::vec3 MarkerScale{ 0.3f, 0.3f, 0.3f };
 	inline constexpr glm::vec3 CreepScale{ 0.4f, 0.4f, 0.4f };
 	inline constexpr glm::vec3 ProjectileScale{ 0.15f, 0.15f, 0.15f };
-	inline constexpr float CreepSpeed = 1.5f;
 
 	inline constexpr int BoardSize = 8;
 	inline constexpr float TileSize = 1.0f;

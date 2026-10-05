@@ -11,6 +11,22 @@ namespace tower
 	{
 	}
 
+	void WaveService::fillQueue()
+	{
+		_queueCount = 0;
+		_queueIndex = 0;
+		const auto& wave = Waves[_activeIndex];
+		for (int i = 0; i < wave.runners && _queueCount < MaxWaveCreeps; ++i)
+		{
+			_queue[_queueCount++] = &CreepRunner;
+		}
+		for (int i = 0; i < wave.tanks && _queueCount < MaxWaveCreeps; ++i)
+		{
+			_queue[_queueCount++] = &CreepTank;
+		}
+		_pendingSpawns = _queueCount;
+	}
+
 	bool WaveService::tryStart()
 	{
 		if (_inCombat || _gameState.matchEnded() || _wavesCompleted >= WaveCount)
@@ -21,8 +37,8 @@ namespace tower
 		_inCombat = true;
 		_buildTimer = 0.0f;
 		_activeIndex = _wavesCompleted;
-		_pendingSpawns = Waves[_activeIndex].creepCount;
 		_spawnTimer = 0.0f;
+		fillQueue();
 		return true;
 	}
 
@@ -64,6 +80,7 @@ namespace tower
 			return false;
 		}
 
+		_nextCreep = _queue[_queueIndex++];
 		_pendingSpawns -= 1;
 		_spawnTimer = WaveSpawnInterval;
 		return true;
@@ -116,8 +133,8 @@ namespace tower
 		return static_cast<int>(std::ceil(std::max(_buildTimer, 0.0f)));
 	}
 
-	const WaveDef& WaveService::active() const
+	const CreepDef& WaveService::nextCreep() const
 	{
-		return Waves[_activeIndex];
+		return _nextCreep != nullptr ? *_nextCreep : CreepRunner;
 	}
 }

@@ -18,9 +18,11 @@ namespace tower
 		bool inCombat() const;
 		int hudWaveIndex() const;
 		int buildSecondsRemaining() const;
-		const WaveDef& active() const;
+		const CreepDef& nextCreep() const;
 
 	private:
+		void fillQueue();
+
 		GameStateService& _gameState;
 		int _wavesCompleted = 0;
 		int _activeIndex = 0;
@@ -28,5 +30,9 @@ namespace tower
 		int _pendingSpawns = 0;
 		float _spawnTimer = 0.0f;
 		float _buildTimer = BuildTimerSeconds;
+		const CreepDef* _queue[MaxWaveCreeps]{};
+		int _queueCount = 0;
+		int _queueIndex = 0;
+		const CreepDef* _nextCreep = &CreepRunner;
 	};
 }
