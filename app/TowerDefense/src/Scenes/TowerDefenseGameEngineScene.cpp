@@ -1,5 +1,6 @@
 #include "Scenes/TowerDefenseGameEngineScene.hpp"
 #include <Scenes/SceneHost.hpp>
+#include <AudioCatalog.hpp>
 #include <GroundPick.hpp>
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
@@ -26,6 +27,7 @@
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <helsinki/Ui/Widget.hpp>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <string>
@@ -36,11 +38,13 @@ namespace tower
 	TowerDefenseGameEngineScene::TowerDefenseGameEngineScene(
 		hl::Engine& engine,
 		const hl::EngineConfiguration& engineConfig,
-		SceneHost& sceneHost
+		SceneHost& sceneHost,
+		hl::audio::Audio& audio
 	) :
 		EngineScene(engine),
 		_sceneHost(sceneHost),
-		_engineConfig(engineConfig)
+		_engineConfig(engineConfig),
+		_audio(audio)
 	{
 		_cameras.insert({ "Ui", new hl::Camera2D() });
 		_cameras.insert({ "Default", new hl::Camera(
@@ -342,7 +346,7 @@ namespace tower
 
 		spawnBoard(resourceManager, resourceContext);
 		resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
-		spawnCreep(resourceManager, resourceContext);
+		resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
 		spawnMarker(resourceManager, resourceContext);
 
 		auto* pathFollow = new PathFollowSystem(_scene);
@@ -397,6 +401,7 @@ namespace tower
 		tower->z = tz;
 		entity->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(tx, tz));
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
+		_audio.play(CuePlace);
 	}
 
 	bool TowerDefenseGameEngineScene::isOccupied(int tx, int tz) const
@@ -413,18 +418,16 @@ namespace tower
 		return false;
 	}
 
-	void TowerDefenseGameEngineScene::spawnCreep(
-		hl::ResourceManager& resourceManager,
-		hl::ResourceContext& resourceContext)
+	void TowerDefenseGameEngineScene::spawnCreep()
 	{
-		auto modelHandle = resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
+		auto* model = _resourceManager->GetResource<hl::ModelResource>(CreepModelId);
 		const auto start = PathWaypoints[0];
-		auto* entity = _scene.addEntity("creep");
+		auto* entity = _scene.addEntity();
 		entity->AddTag(CreepTag);
 		auto* transform = entity->AddComponent<hl::TransformComponent>();
 		transform->SetPosition(tileCenter(start.x, start.z));
 		transform->SetScale(CreepScale);
-		entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		auto* follow = entity->AddComponent<PathFollowComponent>();
 		follow->fromIndex = 0;
 		follow->t = 0.0f;
@@ -449,7 +452,7 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::tryHandleBoardClick()
 	{
-		if (_gameOver)
+		if (matchEnded() || uiBlocksBoardClick())
 		{
 			return;
 		}
@@ -590,10 +593,85 @@ namespace tower
 			});
 	}
 
+	bool TowerDefenseGameEngineScene::matchEnded() const
+	{
+		return _gameOver || _won;
+	}
+
+	bool TowerDefenseGameEngineScene::uiBlocksBoardClick() const
+	{
+		const auto pointer = readMenuPointer(_engine);
+		if (hl::ui::hitTest(*_layoutRoot, pointer.position) != nullptr)
+		{
+			return true;
+		}
+
+		if (matchEnded() && hl::ui::hitTest(*_overlayRoot, pointer.position) != nullptr)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	void TowerDefenseGameEngineScene::startWave()
+	{
+		if (_waveStarted || matchEnded())
+		{
+			return;
+		}
+
+		_waveStarted = true;
+		_creepsToSpawn = WaveCreepCount;
+		spawnCreep();
+		_creepsToSpawn -= 1;
+		_spawnTimer = WaveSpawnInterval;
+	}
+
+	void TowerDefenseGameEngineScene::tickWave(float delta)
+	{
+		if (!_waveStarted || matchEnded() || _creepsToSpawn <= 0)
+		{
+			return;
+		}
+
+		_spawnTimer -= delta;
+		if (_spawnTimer > 0.0f)
+		{
+			return;
+		}
+
+		spawnCreep();
+		_creepsToSpawn -= 1;
+		_spawnTimer = WaveSpawnInterval;
+	}
+
+	void TowerDefenseGameEngineScene::tryWin()
+	{
+		if (!_waveStarted || matchEnded() || _creepsToSpawn > 0)
+		{
+			return;
+		}
+
+		for (auto* creep : _scene.getEntitiesByTag(CreepTag))
+		{
+			if (!_scene.isPendingRemoval(creep->Id))
+			{
+				return;
+			}
+		}
+
+		_won = true;
+		_overlayHeading->setText("You Win", 64);
+		_audio.play(CueWin);
+	}
+
 	void TowerDefenseGameEngineScene::onCreepLeaked()
 	{
 		_lives = 0;
 		_gameOver = true;
+		_overlayHeading->setText("Game Over", 64);
+		_audio.play(CueLeak);
 	}
 
 	void TowerDefenseGameEngineScene::buildHud(hl::FontResource* font)
@@ -608,6 +686,10 @@ namespace tower
 		_livesLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
 		_livesLabel->color = { 1.0f, 1.0f, 1.0f };
 		_livesLabel->setText("Lives: " + std::to_string(_lives), 24);
+
+		_waveButton = std::make_unique<hl::ui::Button>(_layoutRoot->addChild(), *_typeface);
+		_waveButton->setText("Start Wave", 32);
+		_waveButton->onClick = [this]() { startWave(); };
 
 		_overlayRoot = std::make_unique<hl::ui::Node>();
 		_overlayRoot->setFillParent();
@@ -658,6 +740,22 @@ namespace tower
 		_livesLabel->node().relative = { 16.0f, 16.0f + goldSize.y + 8.0f };
 		_livesLabel->node().intrinsicSize.reset();
 
+		if (!_waveStarted)
+		{
+			_waveButton->hitTestEnabled = true;
+			const glm::vec2 waveSize = _waveButton->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+			_waveButton->node().setTopCenter(waveSize);
+			_waveButton->node().relative = { 0.0f, 16.0f };
+			_waveButton->node().intrinsicSize.reset();
+		}
+		else
+		{
+			_waveButton->hitTestEnabled = false;
+			_waveButton->node().setTopLeft({ 0.0f, 0.0f });
+			_waveButton->node().relative = { -10000.0f, -10000.0f };
+			_waveButton->node().intrinsicSize.reset();
+		}
+
 		const auto fb = _engine.getInputManager().getFramebufferSize();
 		const hl::ui::Box screen{ 0.0f, 0.0f, fb.x, fb.y };
 		hl::ui::layout(*_layoutRoot, screen);
@@ -666,7 +764,12 @@ namespace tower
 		UiBatchPaint paint(_uiBatch);
 		hl::ui::paintTree(*_layoutRoot, paint);
 
-		if (_gameOver)
+		if (!matchEnded())
+		{
+			hl::ui::dispatch(*_layoutRoot, readMenuPointer(_engine));
+		}
+
+		if (matchEnded())
 		{
 			hl::ui::prepareTree(*_overlayRoot);
 			hl::ui::layout(*_overlayRoot, screen);
@@ -677,13 +780,19 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::update(uint32_t /*currentFrame*/, float delta)
 	{
-		if (!_gameOver)
+		if (!matchEnded())
 		{
-			tryHandleBoardClick();
+			tickWave(delta);
 			_scene.update(delta);
+			tryWin();
 		}
 
 		rebuildHud();
+
+		if (!matchEnded())
+		{
+			tryHandleBoardClick();
+		}
 	}
 
 	void TowerDefenseGameEngineScene::updateGpuResources(uint32_t currentFrame)

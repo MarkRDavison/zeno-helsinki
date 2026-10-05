@@ -2,6 +2,7 @@
 #include <Scenes/TowerDefenseGameEngineScene.hpp>
 #include <Scenes/TowerDefenseTitleEngineScene.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
+#include <helsinki/Audio/Audio.hpp>
 
 namespace tower
 {
@@ -24,7 +25,8 @@ namespace tower
 		_engine.setScene(new TowerDefenseGameEngineScene(
 			_engine,
 			_root.get<hl::EngineConfiguration>(),
-			*this));
+			*this,
+			_root.get<hl::audio::Audio>()));
 	}
 
 	void SceneHost::onSceneDestroyed()

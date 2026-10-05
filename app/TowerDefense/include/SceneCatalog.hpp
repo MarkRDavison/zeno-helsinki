@@ -22,6 +22,8 @@ namespace tower
 	inline constexpr int StartGold = 100;
 	inline constexpr int TowerCost = 25;
 	inline constexpr int StartLives = 1;
+	inline constexpr int WaveCreepCount = 5;
+	inline constexpr float WaveSpawnInterval = 1.0f;
 	inline constexpr float TowerRange = 3.5f;
 	inline constexpr float TowerFireCooldown = 1.0f;
 	inline constexpr float ProjectileSpeed = 6.0f;

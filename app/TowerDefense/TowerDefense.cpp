@@ -1,6 +1,9 @@
 #include "TowerDefenseConfig.hpp"
 #include "Scenes/SceneHost.hpp"
+#include <AudioCatalog.hpp>
+#include <helsinki/Audio/Audio.hpp>
 #include <helsinki/Engine/Engine.hpp>
+#include <helsinki/System/Events/EventBus.hpp>
 #include <helsinki/System/Utils/ServiceProvider.hpp>
 
 static void registerServices(hl::ServiceProvider& services)
@@ -9,6 +12,7 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<hl::InputManager, hl::InputManager>(hl::ServiceLifetime::Singleton);
 	services.registerService<hl::Engine, hl::Engine, hl::EventBus, hl::InputManager>(hl::ServiceLifetime::Singleton);
 	services.registerService<hl::EngineConfiguration, hl::EngineConfiguration>(hl::ServiceLifetime::Singleton);
+	services.registerService<hl::audio::Audio, hl::audio::Audio>(hl::ServiceLifetime::Singleton);
 }
 
 int main()
@@ -24,9 +28,15 @@ int main()
 
 	engine.init(engineConfig);
 
+	auto& audio = serviceProvider.get<hl::audio::Audio>();
+	audio.init();
+	tower::loadTowerAudio(audio, engineConfig.RootPath);
+
 	tower::SceneHost sceneHost(engine, serviceProvider);
 	sceneHost.goTitle();
 	engine.run();
+
+	audio.shutdown();
 
 	return EXIT_SUCCESS;
 }
