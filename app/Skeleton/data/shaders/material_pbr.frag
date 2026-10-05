@@ -25,6 +25,12 @@ layout(std140, binding = 3) uniform SunBuffer {
     float _pad;
 } sun;
 
+layout(std140, binding = 4) uniform PointLights {
+    ivec4 count;
+    vec4 positionRadius[4];
+    vec4 colorIntensity[4];
+} points;
+
 layout(location = 1) in vec2 fragTexCoord;
 layout(location = 2) in flat int fragMaterialIndex;
 layout(location = 3) in vec3 fragNormal;
@@ -52,7 +58,34 @@ void main()
         spec *= step(0.0, ndotl);
     }
 
-    vec3 lit = albedo * (sun.ambient + sun.color * sun.intensity * ndotl)
-        + mat.specular.rgb * spec * sun.specularStrength;
+    vec3 diffuse = sun.ambient + sun.color * sun.intensity * ndotl;
+
+    int nLights = min(points.count.x, 4);
+    for (int i = 0; i < nLights; ++i)
+    {
+        vec4 posR = points.positionRadius[i];
+        vec4 colI = points.colorIntensity[i];
+        float radius = posR.w;
+        float intensity = colI.w;
+        if (radius <= 0.0 || intensity <= 0.0)
+        {
+            continue;
+        }
+
+        vec3 toLight = posR.xyz - fragWorldPos;
+        float d = length(toLight);
+        if (d >= radius || d < 1e-4)
+        {
+            continue;
+        }
+
+        vec3 lDir = toLight / d;
+        float ndotlP = max(dot(n, lDir), 0.0);
+        float falloff = 1.0 - d / radius;
+        float atten = intensity * falloff * falloff;
+        diffuse += colI.rgb * ndotlP * atten;
+    }
+
+    vec3 lit = albedo * diffuse + mat.specular.rgb * spec * sun.specularStrength;
     outColor = vec4(lit, 1.0);
 }

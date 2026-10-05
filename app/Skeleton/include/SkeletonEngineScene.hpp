@@ -30,6 +30,7 @@ namespace sk
 
 		const hl::EngineConfiguration& _engineConfig;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
+		hl::ResourceHandle<hl::UniformBufferResource> _pointLightsUbo;
 		bool _specHeldOff = false;
 	};
 

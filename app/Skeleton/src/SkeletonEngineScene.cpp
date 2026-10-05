@@ -1,6 +1,7 @@
 #include "SkeletonEngineScene.hpp"
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
+#include <PointLightsUniformBufferObject.hpp>
 #include <Systems/RotateSystem.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
@@ -17,6 +18,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <GLFW/glfw3.h>
+#include <algorithm>
 
 namespace sk
 {
@@ -146,6 +148,15 @@ namespace sk
                                             .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
                                             .stage = "FRAGMENT",
                                             .resource = "sun_ubo",
+                                            .count = 1,
+                                            .updateFrequency = hl::DescriptorUpdateFrequency::PerFrame
+                                        },
+                                        hl::DescriptorBinding
+                                        {
+                                            .binding = 4,
+                                            .type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+                                            .stage = "FRAGMENT",
+                                            .resource = "point_lights_ubo",
                                             .count = 1,
                                             .updateFrequency = hl::DescriptorUpdateFrequency::PerFrame
                                         }
@@ -358,6 +369,13 @@ namespace sk
             MAX_FRAMES_IN_FLIGHT,
             1);
 
+        _pointLightsUbo = resourceManager.Load<hl::UniformBufferResource>(
+            "point_lights_ubo",
+            resourceContext,
+            sizeof(PointLightsUniformBufferObject),
+            MAX_FRAMES_IN_FLIGHT,
+            1);
+
         const hl::ResourceDefinition uiSheetDefinition
         {
             .name = "ui_sheet",
@@ -448,16 +466,29 @@ namespace sk
 
     void SkeletonEngineScene::updateGpuResources(uint32_t currentFrame)
     {
-        if (!_sunUbo)
+        if (_sunUbo)
         {
-            return;
+            SunUniformBufferObject ubo{};
+            const auto dir = glm::normalize(glm::vec3(0.45f, 0.85f, 0.30f));
+            ubo.direction = glm::vec4(dir, 1.0f);
+            ubo.color = glm::vec4(1.0f, 0.97f, 0.90f, _specHeldOff ? 0.0f : 0.35f);
+            ubo.ambient = glm::vec4(0.18f, 0.18f, 0.18f, 0.0f);
+            _sunUbo.Get()->getUniformBuffer(currentFrame).writeToBuffer(&ubo, 0);
         }
 
-        SunUniformBufferObject ubo{};
-        const auto dir = glm::normalize(glm::vec3(0.45f, 0.85f, 0.30f));
-        ubo.direction = glm::vec4(dir, 1.0f);
-        ubo.color = glm::vec4(1.0f, 0.97f, 0.90f, _specHeldOff ? 0.0f : 0.35f);
-        ubo.ambient = glm::vec4(0.18f, 0.18f, 0.18f, 0.0f);
-        _sunUbo.Get()->getUniformBuffer(currentFrame).writeToBuffer(&ubo, 0);
+        if (_pointLightsUbo)
+        {
+            PointLightsUniformBufferObject lights{};
+            int n = static_cast<int>(sizeof(ScenePointLights) / sizeof(ScenePointLights[0]));
+            n = std::min(n, MaxPointLights);
+            lights.count.x = n;
+            for (int i = 0; i < n; ++i)
+            {
+                const auto& l = ScenePointLights[i];
+                lights.positionRadius[i] = glm::vec4(l.position, l.radius);
+                lights.colorIntensity[i] = glm::vec4(l.color, l.intensity);
+            }
+            _pointLightsUbo.Get()->getUniformBuffer(currentFrame).writeToBuffer(&lights, 0);
+        }
     }
 }
