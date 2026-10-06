@@ -27,7 +27,7 @@
   ],
   "waves": [
     { "id": "1", "spawns": [ { "id": "runner", "count": 4 }, { "id": "tank", "count": 1 } ] },
-    { "id": "2", "spawns": [ { "id": "runner", "count": 5 }, { "id": "tank", "count": 3 } ] },
+    { "id": "2", "spawns": [ { "id": "runner", "count": 5 }, { "id": "tank", "count": 3 }, { "id": "ufo", "count": 2 } ] },
     { "id": "3", "spawns": [ { "id": "runner", "count": 4 }, { "id": "tank", "count": 6 } ] }
   ]
 }

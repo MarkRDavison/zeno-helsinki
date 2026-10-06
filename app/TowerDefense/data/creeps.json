@@ -1,4 +1,5 @@
 [
   { "id": "runner", "model": "creep_runner", "health": 2, "speed": 2.2 },
-  { "id": "tank", "model": "creep_tank", "health": 8, "speed": 0.85 }
+  { "id": "tank", "model": "creep_tank", "health": 8, "speed": 0.85 },
+  { "id": "ufo", "model": "enemy_ufoPurple", "health": 4, "speed": 1.4, "scale": 1.0 }
 ]

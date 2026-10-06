@@ -13,6 +13,7 @@ namespace tower
 		std::string model;
 		int health = 0;
 		float speed = 0.0f;
+		float scale = 0.4f;
 	};
 
 	class CreepCatalog

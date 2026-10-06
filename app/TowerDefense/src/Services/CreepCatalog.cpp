@@ -22,6 +22,7 @@ namespace tower
 			def.model = catalogJson::requireString(*row, "model", "creeps.json");
 			def.health = catalogJson::requireIntAtLeast(*row, "health", 1, "creeps.json");
 			def.speed = catalogJson::requirePositive(*row, "speed", "creeps.json");
+			def.scale = catalogJson::optionalPositive(*row, "scale", 0.4f, "creeps.json");
 			if (_byId.contains(def.id))
 			{
 				catalogJson::fail("creeps.json: duplicate id '" + def.id + "'");

@@ -596,7 +596,7 @@ namespace tower
 		entity->AddTag(CreepTag);
 		auto* transform = entity->AddComponent<hl::TransformComponent>();
 		transform->SetPosition(_level.tileCenter(start.x, start.z));
-		transform->SetScale(CreepScale);
+		transform->SetScale(glm::vec3(def.scale));
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		auto* follow = entity->AddComponent<PathFollowComponent>();
 		follow->fromIndex = 0;
