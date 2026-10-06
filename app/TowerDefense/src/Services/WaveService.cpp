@@ -3,11 +3,13 @@
 #include <SceneCatalog.hpp>
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace tower
 {
-	WaveService::WaveService(GameStateService& gameState) :
-		_gameState(gameState)
+	WaveService::WaveService(GameStateService& gameState, CreepCatalog& creeps) :
+		_gameState(gameState),
+		_creeps(creeps)
 	{
 	}
 
@@ -16,13 +18,15 @@ namespace tower
 		_queueCount = 0;
 		_queueIndex = 0;
 		const auto& wave = Waves[_activeIndex];
+		const auto* runner = _creeps.find("runner");
+		const auto* tank = _creeps.find("tank");
 		for (int i = 0; i < wave.runners && _queueCount < MaxWaveCreeps; ++i)
 		{
-			_queue[_queueCount++] = &CreepRunner;
+			_queue[_queueCount++] = runner;
 		}
 		for (int i = 0; i < wave.tanks && _queueCount < MaxWaveCreeps; ++i)
 		{
-			_queue[_queueCount++] = &CreepTank;
+			_queue[_queueCount++] = tank;
 		}
 		_pendingSpawns = _queueCount;
 	}
@@ -135,6 +139,11 @@ namespace tower
 
 	const CreepDef& WaveService::nextCreep() const
 	{
-		return _nextCreep != nullptr ? *_nextCreep : CreepRunner;
+		if (_nextCreep == nullptr)
+		{
+			throw std::runtime_error("WaveService::nextCreep called with no pending creep");
+		}
+
+		return *_nextCreep;
 	}
 }

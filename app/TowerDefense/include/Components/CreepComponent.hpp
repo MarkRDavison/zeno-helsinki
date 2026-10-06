@@ -6,7 +6,5 @@ namespace tower
 {
 	class CreepComponent : public hl::Component
 	{
-	public:
-		const char* material = nullptr;
 	};
 }

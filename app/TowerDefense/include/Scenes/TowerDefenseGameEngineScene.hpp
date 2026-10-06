@@ -17,6 +17,7 @@
 #include <helsinki/System/Events/EventListener.hpp>
 #include <Services/GameStateService.hpp>
 #include <Services/WaveService.hpp>
+#include <Services/CreepCatalog.hpp>
 #include <SceneCatalog.hpp>
 #include <array>
 #include <memory>
@@ -40,6 +41,7 @@ namespace tower
 			SceneHost& sceneHost,
 			GameStateService& gameState,
 			WaveService& wave,
+			CreepCatalog& creeps,
 			hl::audio::Audio& audio);
 		~TowerDefenseGameEngineScene();
 		void initialise(
@@ -96,6 +98,7 @@ namespace tower
 		const hl::EngineConfiguration& _engineConfig;
 		GameStateService& _gameState;
 		WaveService& _wave;
+		CreepCatalog& _creeps;
 		hl::audio::Audio& _audio;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::Entity* _marker = nullptr;

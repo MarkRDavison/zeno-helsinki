@@ -12,7 +12,6 @@ namespace tower
 	inline constexpr const char* PathTag = "PATH";
 	inline constexpr const char* BuildableTag = "BUILDABLE";
 	inline constexpr const char* CreepTag = "CREEP";
-	inline constexpr const char* CreepModelId = "creep";
 	inline constexpr const char* TileBlackModelId = "tile_black";
 	inline constexpr const char* TileWhiteModelId = "tile_white";
 	inline constexpr const char* TowerTag = "TOWER";
@@ -41,27 +40,6 @@ namespace tower
 	inline constexpr int WaveClearBonus = 25;
 	inline constexpr int ProjectileDamage = 1;
 	inline constexpr int StartLives = 3;
-	inline constexpr const char* CreepRunnerMaterial = "creep_runner";
-	inline constexpr const char* CreepTankMaterial = "creep_tank";
-	struct CreepDef
-	{
-		const char* material;
-		glm::vec3 kd;
-		int health;
-		float speed;
-	};
-	inline constexpr CreepDef CreepRunner{
-		CreepRunnerMaterial,
-		{ 1.0f, 0.45f, 0.15f },
-		2,
-		2.2f
-	};
-	inline constexpr CreepDef CreepTank{
-		CreepTankMaterial,
-		{ 0.35f, 0.45f, 0.85f },
-		8,
-		0.85f
-	};
 	struct WaveDef
 	{
 		int runners;

@@ -6,7 +6,6 @@
 #include <SunUniformBufferObject.hpp>
 #include <Components/PathFollowComponent.hpp>
 #include <Components/HealthComponent.hpp>
-#include <Components/CreepComponent.hpp>
 #include <Components/TileComponent.hpp>
 #include <Components/TowerComponent.hpp>
 #include <Components/BlockerComponent.hpp>
@@ -48,6 +47,7 @@ namespace tower
 		SceneHost& sceneHost,
 		GameStateService& gameState,
 		WaveService& wave,
+		CreepCatalog& creeps,
 		hl::audio::Audio& audio
 	) :
 		EngineScene(engine),
@@ -55,6 +55,7 @@ namespace tower
 		_engineConfig(engineConfig),
 		_gameState(gameState),
 		_wave(wave),
+		_creeps(creeps),
 		_audio(audio)
 	{
 		_cameras.insert({ "Ui", new hl::Camera2D() });
@@ -385,15 +386,10 @@ namespace tower
 		{
 			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
 		}
-		resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
-		_engine.getMaterialSystem().addMaterial(hl::Material{
-			.name = CreepRunner.material,
-			.diffuse = CreepRunner.kd
-		});
-		_engine.getMaterialSystem().addMaterial(hl::Material{
-			.name = CreepTank.material,
-			.diffuse = CreepTank.kd
-		});
+		for (const auto& def : _creeps.all())
+		{
+			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
+		}
 		spawnMarker(resourceManager, resourceContext);
 		spawnGhost(resourceManager);
 		spawnRangeRing(resourceManager, resourceContext);
@@ -536,8 +532,8 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::spawnCreep()
 	{
-		auto* model = _resourceManager->GetResource<hl::ModelResource>(CreepModelId);
 		const auto& def = _wave.nextCreep();
+		auto* model = _resourceManager->GetResource<hl::ModelResource>(def.model);
 		const auto start = PathWaypoints[0];
 		auto* entity = _scene.addEntity();
 		entity->AddTag(CreepTag);
@@ -545,7 +541,6 @@ namespace tower
 		transform->SetPosition(tileCenter(start.x, start.z));
 		transform->SetScale(CreepScale);
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
-		entity->AddComponent<CreepComponent>()->material = def.material;
 		auto* follow = entity->AddComponent<PathFollowComponent>();
 		follow->fromIndex = 0;
 		follow->t = 0.0f;
@@ -895,11 +890,8 @@ namespace tower
 
 					for (const auto& mesh : modelResource->getMeshes())
 					{
-						const auto* creep = entity->GetComponent<CreepComponent>();
 						pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(
-							creep != nullptr && creep->material != nullptr
-								? creep->material
-								: mesh.materialName);
+							mesh.materialName);
 						vkCmdPushConstants(
 							pdd.commandBuffer,
 							pdd.pipeline->getPipelineLayout(),

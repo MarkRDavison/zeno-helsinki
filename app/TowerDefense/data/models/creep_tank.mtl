@@ -1,0 +1,4 @@
+# Created from creep.mtl
+
+newmtl creep_tank
+Kd 0.35 0.45 0.85

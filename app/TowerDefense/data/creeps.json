@@ -1,0 +1,4 @@
+[
+  { "id": "runner", "model": "creep_runner", "health": 2, "speed": 2.2 },
+  { "id": "tank", "model": "creep_tank", "health": 8, "speed": 0.85 }
+]

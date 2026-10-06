@@ -4,6 +4,7 @@
 #include <Scenes/TowerDefenseTitleEngineScene.hpp>
 #include <Services/GameStateService.hpp>
 #include <Services/WaveService.hpp>
+#include <Services/CreepCatalog.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Audio/Audio.hpp>
 
@@ -35,6 +36,7 @@ namespace tower
 			*this,
 			state,
 			waves,
+			_root.get<CreepCatalog>(),
 			_root.get<hl::audio::Audio>()));
 	}
 
