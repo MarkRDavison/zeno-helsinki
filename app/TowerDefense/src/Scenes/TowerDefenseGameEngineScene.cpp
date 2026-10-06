@@ -36,6 +36,7 @@
 #include <GLFW/glfw3.h>
 #include <cmath>
 #include <algorithm>
+#include <ranges>
 #include <string>
 #include <stdexcept>
 #include <vector>
@@ -528,6 +529,10 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::selectPlaceTool(const std::string& defId)
 	{
+		if (std::ranges::find(_placeableIds, defId) == _placeableIds.end())
+		{
+			return;
+		}
 		_selectedTowerId = _selectedTowerId == defId ? std::string{} : defId;
 	}
 
@@ -1178,15 +1183,26 @@ namespace tower
 		_buildBarPanel = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
 		_buildBarPanel->color = { 0.08f, 0.09f, 0.12f };
 		_buildBarPanel->opacity = 0.92f;
+		std::vector<std::string> catalogOrder;
+		catalogOrder.reserve(_towers.all().size());
 		for (const auto& def : _towers.all())
 		{
+			catalogOrder.push_back(def.id);
+		}
+		_placeableIds = matchPlaceableTowerIds(catalogOrder, _match);
+		for (const auto& id : _placeableIds)
+		{
+			const auto* def = _towers.find(id);
+			if (def == nullptr)
+			{
+				continue;
+			}
 			auto button = std::make_unique<hl::ui::Button>(
 				_buildBarPanel->node().addChild(),
 				*_typeface);
 			button->setText(
-				def.label + " (" + std::to_string(def.cost) + ")",
+				def->label + " (" + std::to_string(def->cost) + ")",
 				24);
-			const std::string id = def.id;
 			button->onClick = [this, id]() { selectPlaceTool(id); };
 			_placeButtons.push_back(std::move(button));
 		}
@@ -1260,11 +1276,15 @@ namespace tower
 				"Start Wave (" + std::to_string(_wave.buildSecondsRemaining()) + ")",
 				32);
 		}
-		for (std::size_t i = 0; i < _towers.all().size(); ++i)
+		for (std::size_t i = 0; i < _placeButtons.size(); ++i)
 		{
-			const auto& def = _towers.all()[i];
+			const auto* def = _towers.find(_placeableIds[i]);
+			if (def == nullptr)
+			{
+				continue;
+			}
 			_placeButtons[i]->setText(
-				def.label + " (" + std::to_string(def.cost) + ")",
+				def->label + " (" + std::to_string(def->cost) + ")",
 				24);
 		}
 		if (_inspectTower != nullptr)
@@ -1320,13 +1340,17 @@ namespace tower
 		bool anySelected = false;
 		for (std::size_t i = 0; i < _placeButtons.size(); ++i)
 		{
-			const auto& def = _towers.all()[i];
+			const auto* def = _towers.find(_placeableIds[i]);
+			if (def == nullptr)
+			{
+				continue;
+			}
 			chipSizes[i] = _placeButtons[i]->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
 			chipsWidth += chipSizes[i].x;
 			chipsHeight = std::max(chipsHeight, chipSizes[i].y);
 			const bool available =
-				!matchEnded() && !_wave.inCombat() && _gameState.gold() >= def.cost;
-			const bool selected = _selectedTowerId == def.id;
+				!matchEnded() && !_wave.inCombat() && _gameState.gold() >= def->cost;
+			const bool selected = _selectedTowerId == def->id;
 			anySelected = anySelected || selected;
 			_placeButtons[i]->color = selected
 				? glm::vec3{ 1.0f, 1.0f, 1.0f }

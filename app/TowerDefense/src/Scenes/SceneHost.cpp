@@ -110,6 +110,7 @@ namespace tower
 		{
 			match.campaign = true;
 			match.nodeId = *campaignNodeId;
+			match.ownedTowers = _root.get<ProfileService>().profile().ownedTowers;
 		}
 
 		auto& state = _pendingScope->get<GameStateService>();

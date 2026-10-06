@@ -144,6 +144,7 @@ namespace tower
 		std::unique_ptr<hl::ui::Label> _waveLabel;
 		std::unique_ptr<hl::ui::Button> _waveButton;
 		std::unique_ptr<hl::ui::Panel> _buildBarPanel;
+		std::vector<std::string> _placeableIds;
 		std::vector<std::unique_ptr<hl::ui::Button>> _placeButtons;
 		std::unique_ptr<hl::ui::Panel> _inspectPanel;
 		std::unique_ptr<hl::ui::Label> _inspectLabel;
