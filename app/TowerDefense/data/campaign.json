@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "level-1", "level": "levels/level-1.json" },
+    { "id": "level-2", "level": "levels/level-2.json", "prereq": { "all": ["level-1"] } },
+    { "id": "level-3", "level": "levels/level-3.json", "prereq": { "all": ["level-2"] } }
+  ]
+}

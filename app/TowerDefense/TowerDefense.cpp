@@ -10,6 +10,8 @@
 #include <Services/EntityCatalog.hpp>
 #include <Services/LevelCatalog.hpp>
 #include <Services/LevelsCatalog.hpp>
+#include <Services/CampaignCatalog.hpp>
+#include <Services/CampaignTypes.hpp>
 #include <helsinki/Audio/Audio.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
@@ -29,6 +31,8 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<tower::EntityCatalog, tower::EntityCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::LevelCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::LevelsCatalog, tower::LevelsCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::CampaignCatalog, tower::CampaignCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::CampaignProgress, tower::CampaignProgress>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::GameStateService, tower::GameStateService, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
 	services.registerService<tower::WaveService, tower::WaveService, tower::GameStateService, tower::CreepCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
 }
@@ -57,6 +61,8 @@ int main()
 		engineConfig.RootPath + "/data/entities.json");
 	serviceProvider.get<tower::LevelsCatalog>().load(
 		engineConfig.RootPath + "/data/levels.json");
+	serviceProvider.get<tower::CampaignCatalog>().load(
+		engineConfig.RootPath + "/data/campaign.json");
 
 	engine.init(engineConfig);
 
