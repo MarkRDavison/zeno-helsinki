@@ -1,0 +1,4 @@
+[
+  { "id": "single_cannon", "projectile": "bolt", "fireCooldown": 0.7 },
+  { "id": "double_cannon", "projectile": "bolt", "fireCooldown": 1.0 }
+]

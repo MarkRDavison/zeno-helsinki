@@ -1,39 +1,47 @@
 #include <Services/WaveService.hpp>
 #include <Services/GameStateService.hpp>
-#include <SceneCatalog.hpp>
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
 namespace tower
 {
-	WaveService::WaveService(GameStateService& gameState, CreepCatalog& creeps) :
+	WaveService::WaveService(
+		GameStateService& gameState,
+		CreepCatalog& creeps,
+		LevelCatalog& level) :
 		_gameState(gameState),
-		_creeps(creeps)
+		_creeps(creeps),
+		_level(level),
+		_buildTimer(level.buildTimer())
 	{
+	}
+
+	int WaveService::waveCount() const
+	{
+		return _level.waveCount();
 	}
 
 	void WaveService::fillQueue()
 	{
-		_queueCount = 0;
+		_queue.clear();
 		_queueIndex = 0;
-		const auto& wave = Waves[_activeIndex];
-		const auto* runner = _creeps.find("runner");
-		const auto* tank = _creeps.find("tank");
-		for (int i = 0; i < wave.runners && _queueCount < MaxWaveCreeps; ++i)
+		const auto& wave = _level.waves()[static_cast<std::size_t>(_activeIndex)];
+		for (const auto& spawn : wave.spawns)
 		{
-			_queue[_queueCount++] = runner;
+			const auto* def = _creeps.find(spawn.id);
+			for (int i = 0; i < spawn.count; ++i)
+			{
+				_queue.push_back(def);
+			}
 		}
-		for (int i = 0; i < wave.tanks && _queueCount < MaxWaveCreeps; ++i)
-		{
-			_queue[_queueCount++] = tank;
-		}
-		_pendingSpawns = _queueCount;
+
+		_pendingSpawns = static_cast<int>(_queue.size());
 	}
 
 	bool WaveService::tryStart()
 	{
-		if (_inCombat || _gameState.matchEnded() || _wavesCompleted >= WaveCount)
+		if (_inCombat || _gameState.matchEnded() || _wavesCompleted >= waveCount())
 		{
 			return false;
 		}
@@ -55,7 +63,7 @@ namespace tower
 
 		if (!_inCombat)
 		{
-			if (_wavesCompleted >= WaveCount)
+			if (_wavesCompleted >= waveCount())
 			{
 				return;
 			}
@@ -84,9 +92,9 @@ namespace tower
 			return false;
 		}
 
-		_nextCreep = _queue[_queueIndex++];
+		_nextCreep = _queue[static_cast<std::size_t>(_queueIndex++)];
 		_pendingSpawns -= 1;
-		_spawnTimer = WaveSpawnInterval;
+		_spawnTimer = _level.spawnInterval();
 		return true;
 	}
 
@@ -99,14 +107,14 @@ namespace tower
 
 		_inCombat = false;
 		_wavesCompleted += 1;
-		_gameState.addGold(WaveClearBonus);
-		if (_wavesCompleted >= WaveCount)
+		_gameState.addGold(_level.waveClearBonus());
+		if (_wavesCompleted >= waveCount())
 		{
 			_gameState.setWon();
 		}
 		else
 		{
-			_buildTimer = BuildTimerSeconds;
+			_buildTimer = _level.buildTimer();
 		}
 
 		return true;
@@ -119,9 +127,9 @@ namespace tower
 
 	int WaveService::hudWaveIndex() const
 	{
-		if (_wavesCompleted >= WaveCount)
+		if (_wavesCompleted >= waveCount())
 		{
-			return WaveCount;
+			return waveCount();
 		}
 
 		return _wavesCompleted + 1;
@@ -129,7 +137,7 @@ namespace tower
 
 	int WaveService::buildSecondsRemaining() const
 	{
-		if (_inCombat || _gameState.matchEnded() || _wavesCompleted >= WaveCount)
+		if (_inCombat || _gameState.matchEnded() || _wavesCompleted >= waveCount())
 		{
 			return 0;
 		}

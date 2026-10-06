@@ -1,0 +1,4 @@
+[
+  { "id": "level-1", "label": "Level 1", "file": "levels/level-1.json" },
+  { "id": "level-2", "label": "Level 2", "file": "levels/level-2.json" }
+]

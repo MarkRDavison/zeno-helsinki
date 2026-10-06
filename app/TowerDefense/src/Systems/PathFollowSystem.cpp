@@ -1,13 +1,15 @@
 #include <Systems/PathFollowSystem.hpp>
 #include <Components/PathFollowComponent.hpp>
+#include <Services/LevelCatalog.hpp>
 #include <SceneCatalog.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <cmath>
 
 namespace tower
 {
-	PathFollowSystem::PathFollowSystem(hl::Scene& scene) :
-		_scene(scene)
+	PathFollowSystem::PathFollowSystem(hl::Scene& scene, LevelCatalog& level) :
+		_scene(scene),
+		_level(level)
 	{
 	}
 
@@ -23,7 +25,8 @@ namespace tower
 
 	void PathFollowSystem::update(float delta)
 	{
-		constexpr int waypointCount = static_cast<int>(sizeof(PathWaypoints) / sizeof(PathWaypoints[0]));
+		const auto& waypoints = _level.path();
+		const int waypointCount = static_cast<int>(waypoints.size());
 
 		for (auto* entity : _scene.getEntitiesWithComponents<hl::TransformComponent, PathFollowComponent>(CreepTag))
 		{
@@ -41,10 +44,10 @@ namespace tower
 				continue;
 			}
 
-			const auto from = PathWaypoints[follow->fromIndex];
-			const auto to = PathWaypoints[follow->fromIndex + 1];
-			const glm::vec3 a = tileCenter(from.x, from.z);
-			const glm::vec3 b = tileCenter(to.x, to.z);
+			const auto from = waypoints[static_cast<std::size_t>(follow->fromIndex)];
+			const auto to = waypoints[static_cast<std::size_t>(follow->fromIndex + 1)];
+			const glm::vec3 a = _level.tileCenter(from.x, from.z);
+			const glm::vec3 b = _level.tileCenter(to.x, to.z);
 			const float length = glm::length(b - a);
 			if (length < 1e-6f)
 			{
@@ -60,9 +63,8 @@ namespace tower
 				follow->fromIndex += 1;
 				if (follow->fromIndex >= waypointCount - 1)
 				{
-					transform->SetPosition(tileCenter(
-						PathWaypoints[waypointCount - 1].x,
-						PathWaypoints[waypointCount - 1].z));
+					const auto& last = waypoints[static_cast<std::size_t>(waypointCount - 1)];
+					transform->SetPosition(_level.tileCenter(last.x, last.z));
 					leak(entity);
 					break;
 				}
@@ -73,10 +75,10 @@ namespace tower
 				continue;
 			}
 
-			const auto fromWp = PathWaypoints[follow->fromIndex];
-			const auto toWp = PathWaypoints[follow->fromIndex + 1];
-			const glm::vec3 start = tileCenter(fromWp.x, fromWp.z);
-			const glm::vec3 end = tileCenter(toWp.x, toWp.z);
+			const auto fromWp = waypoints[static_cast<std::size_t>(follow->fromIndex)];
+			const auto toWp = waypoints[static_cast<std::size_t>(follow->fromIndex + 1)];
+			const glm::vec3 start = _level.tileCenter(fromWp.x, fromWp.z);
+			const glm::vec3 end = _level.tileCenter(toWp.x, toWp.z);
 			const glm::vec3 dir = end - start;
 			transform->SetPosition(glm::mix(start, end, follow->t));
 			transform->SetRotation(glm::vec3(0.0f, glm::degrees(std::atan2(dir.x, dir.z)), 0.0f));

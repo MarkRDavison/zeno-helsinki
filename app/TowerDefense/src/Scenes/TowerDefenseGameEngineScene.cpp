@@ -51,7 +51,10 @@ namespace tower
 		WaveService& wave,
 		CreepCatalog& creeps,
 		TowerCatalog& towers,
+		WeaponCatalog& weapons,
+		ProjectileCatalog& projectiles,
 		EntityCatalog& entities,
+		LevelCatalog& level,
 		hl::audio::Audio& audio
 	) :
 		EngineScene(engine),
@@ -61,7 +64,10 @@ namespace tower
 		_wave(wave),
 		_creeps(creeps),
 		_towers(towers),
+		_weapons(weapons),
+		_projectiles(projectiles),
 		_entities(entities),
+		_level(level),
 		_audio(audio)
 	{
 		_cameras.insert({ "Ui", new hl::Camera2D() });
@@ -399,16 +405,25 @@ namespace tower
 		{
 			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
 		}
+		for (const auto& def : _projectiles.all())
+		{
+			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
+		}
 		spawnBlockers(resourceManager, resourceContext);
-		spawnMarker(resourceManager, resourceContext);
 		spawnGhost(resourceManager);
 		spawnRangeRing(resourceManager, resourceContext);
 		spawnPathRibbons(resourceManager, resourceContext);
 
-		auto* pathFollow = new PathFollowSystem(_scene);
+		auto* pathFollow = new PathFollowSystem(_scene, _level);
 		pathFollow->onLeak = [this]() { onCreepLeaked(); };
 		_scene.addSystem(pathFollow);
-		_scene.addSystem(new TowerFireSystem(_scene, resourceManager, _towers));
+		_scene.addSystem(new TowerFireSystem(
+			_scene,
+			resourceManager,
+			_towers,
+			_weapons,
+			_projectiles,
+			_level));
 		auto* projectiles = new ProjectileSystem(_scene);
 		projectiles->onKill = [this]() { onCreepKilled(); };
 		_scene.addSystem(projectiles);
@@ -421,14 +436,14 @@ namespace tower
 		auto black = resourceManager.Load<hl::ModelResource>(TileBlackModelId, resourceContext);
 		auto white = resourceManager.Load<hl::ModelResource>(TileWhiteModelId, resourceContext);
 
-		for (int tz = 0; tz < BoardSize; ++tz)
+		for (int tz = 0; tz < _level.boardSize(); ++tz)
 		{
-			for (int tx = 0; tx < BoardSize; ++tx)
+			for (int tx = 0; tx < _level.boardSize(); ++tx)
 			{
 				const bool dark = ((tx + tz) & 1) != 0;
 				auto* entity = _scene.addEntity();
 				entity->AddTag(TileTag);
-				if (isPathTile(tx, tz))
+				if (_level.isPathTile(tx, tz))
 				{
 					entity->AddTag(PathTag);
 				}
@@ -440,9 +455,9 @@ namespace tower
 				auto* tile = entity->AddComponent<TileComponent>();
 				tile->x = tx;
 				tile->z = tz;
-				tile->path = isPathTile(tx, tz);
+				tile->path = _level.isPathTile(tx, tz);
 
-				entity->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(tx, tz));
+				entity->AddComponent<hl::TransformComponent>()->SetPosition(_level.tileCenter(tx, tz));
 				entity->AddComponent<hl::ModelComponent>()->setModelId(
 					dark ? black->GetId() : white->GetId());
 			}
@@ -453,7 +468,7 @@ namespace tower
 		hl::ResourceManager& resourceManager,
 		hl::ResourceContext&)
 	{
-		for (const auto& placement : Blockers)
+		for (const auto& placement : _level.entities())
 		{
 			const auto* def = _entities.find(placement.id);
 			if (def == nullptr)
@@ -466,10 +481,16 @@ namespace tower
 			auto* entity = _scene.addEntity();
 			entity->AddTag(BlockerTag);
 			auto* blocker = entity->AddComponent<BlockerComponent>();
-			blocker->x = placement.tile.x;
-			blocker->z = placement.tile.z;
+			blocker->x = placement.x;
+			blocker->z = placement.z;
+			blocker->sizeX = def->sizeX;
+			blocker->sizeZ = def->sizeZ;
+			const auto minCorner = _level.tileCenter(placement.x, placement.z);
+			const auto maxCorner = _level.tileCenter(
+				placement.x + def->sizeX - 1,
+				placement.z + def->sizeZ - 1);
 			auto* transform = entity->AddComponent<hl::TransformComponent>();
-			transform->SetPosition(tileCenter(placement.tile.x, placement.tile.z));
+			transform->SetPosition((minCorner + maxCorner) * 0.5f);
 			transform->SetScale(glm::vec3(
 				static_cast<float>(def->sizeX),
 				1.0f,
@@ -497,7 +518,8 @@ namespace tower
 		tower->x = tx;
 		tower->z = tz;
 		tower->defId = defId;
-		entity->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(tx, tz));
+		tower->slotCooldown.assign(def->weapons.size(), 0.0f);
+		entity->AddComponent<hl::TransformComponent>()->SetPosition(_level.tileCenter(tx, tz));
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		_audio.play(CuePlace);
 	}
@@ -541,7 +563,9 @@ namespace tower
 		for (auto* entity : _scene.getEntitiesByTag(BlockerTag))
 		{
 			const auto* blocker = entity->GetComponent<BlockerComponent>();
-			if (blocker != nullptr && blocker->x == tx && blocker->z == tz)
+			if (blocker != nullptr
+				&& tx >= blocker->x && tx < blocker->x + blocker->sizeX
+				&& tz >= blocker->z && tz < blocker->z + blocker->sizeZ)
 			{
 				return entity;
 			}
@@ -567,11 +591,11 @@ namespace tower
 	{
 		const auto& def = _wave.nextCreep();
 		auto* model = _resourceManager->GetResource<hl::ModelResource>(def.model);
-		const auto start = PathWaypoints[0];
+		const auto start = _level.path().front();
 		auto* entity = _scene.addEntity();
 		entity->AddTag(CreepTag);
 		auto* transform = entity->AddComponent<hl::TransformComponent>();
-		transform->SetPosition(tileCenter(start.x, start.z));
+		transform->SetPosition(_level.tileCenter(start.x, start.z));
 		transform->SetScale(CreepScale);
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		auto* follow = entity->AddComponent<PathFollowComponent>();
@@ -581,22 +605,6 @@ namespace tower
 		auto* health = entity->AddComponent<HealthComponent>();
 		health->max = def.health;
 		health->current = def.health;
-	}
-
-	void TowerDefenseGameEngineScene::spawnMarker(
-		hl::ResourceManager& resourceManager,
-		hl::ResourceContext& resourceContext)
-	{
-		auto modelHandle = resourceManager.Load<hl::ModelResource>(
-			MarkerModelId,
-			resourceContext);
-
-		_marker = _scene.addEntity("marker");
-		_marker->AddTag(MarkerTag);
-		auto* transform = _marker->AddComponent<hl::TransformComponent>();
-		transform->SetPosition(tileCenter(MarkerStartTile.x, MarkerStartTile.z, MarkerY));
-		transform->SetScale(MarkerScale);
-		_marker->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
 	}
 
 	void TowerDefenseGameEngineScene::spawnGhost(hl::ResourceManager& resourceManager)
@@ -614,7 +622,7 @@ namespace tower
 		auto* model = resourceManager.GetResource<hl::ModelResource>(_towers.all().front().model);
 		_ghost = _scene.addEntity();
 		_ghost->AddTag(GhostTag);
-		_ghost->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(0, 0));
+		_ghost->AddComponent<hl::TransformComponent>()->SetPosition(_level.tileCenter(0, 0));
 		_ghost->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		_ghostVisible = false;
 	}
@@ -630,7 +638,7 @@ namespace tower
 		_rangeRing = _scene.addEntity();
 		_rangeRing->AddTag(RangeRingTag);
 		auto* transform = _rangeRing->AddComponent<hl::TransformComponent>();
-		transform->SetPosition(tileCenter(0, 0, RangeRingY));
+		transform->SetPosition(_level.tileCenter(0, 0, RangeRingY));
 		transform->SetScale(glm::vec3(_towers.all().front().range, 1.0f, _towers.all().front().range));
 		_rangeRing->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
 	}
@@ -648,33 +656,26 @@ namespace tower
 			PathRibbonModelId,
 			resourceContext);
 
-		auto spawnLeg = [&](const glm::vec3& mid, float yawDegrees, float length)
+		const auto& path = _level.path();
+		for (std::size_t i = 0; i + 1 < path.size(); ++i)
 		{
+			const glm::vec3 a = _level.tileCenter(path[i].x, path[i].z, PathRibbonY);
+			const glm::vec3 b = _level.tileCenter(path[i + 1].x, path[i + 1].z, PathRibbonY);
+			const glm::vec3 delta = b - a;
+			const float length = glm::length(delta);
+			if (length < 1e-6f)
+			{
+				continue;
+			}
+
 			auto* entity = _scene.addEntity();
 			entity->AddTag(PathRibbonTag);
 			auto* transform = entity->AddComponent<hl::TransformComponent>();
-			transform->SetPosition(mid);
-			transform->SetRotation(glm::vec3(0.0f, yawDegrees, 0.0f));
+			transform->SetPosition((a + b) * 0.5f);
+			transform->SetRotation(glm::vec3(0.0f, glm::degrees(std::atan2(delta.x, delta.z)), 0.0f));
 			transform->SetScale(glm::vec3(PathRibbonWidth, 1.0f, length));
 			entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
-		};
-
-		const glm::vec3 verticalA = tileCenter(0, 0, PathRibbonY);
-		glm::vec3 verticalB = tileCenter(0, BoardSize - 1, PathRibbonY);
-		verticalB.z += PathRibbonWidth * 0.5f;
-		spawnLeg(
-			(verticalA + verticalB) * 0.5f,
-			0.0f,
-			PathRibbonLength + PathRibbonWidth * 0.5f);
-
-		const glm::vec3 corner = tileCenter(0, BoardSize - 1, PathRibbonY);
-		const glm::vec3 horizontalB = tileCenter(BoardSize - 1, BoardSize - 1, PathRibbonY);
-		glm::vec3 horizontalA = corner;
-		horizontalA.x += PathRibbonWidth * 0.5f;
-		spawnLeg(
-			(horizontalA + horizontalB) * 0.5f,
-			90.0f,
-			PathRibbonLength - PathRibbonWidth * 0.5f);
+		}
 	}
 
 	std::optional<TileCoord> TowerDefenseGameEngineScene::hoveredTile() const
@@ -697,7 +698,7 @@ namespace tower
 			return std::nullopt;
 		}
 
-		return worldToTile(*hit);
+		return _level.worldToTile(*hit);
 	}
 
 	void TowerDefenseGameEngineScene::updateGhost()
@@ -724,14 +725,14 @@ namespace tower
 		}
 
 		_ghost->GetComponent<hl::TransformComponent>()->SetPosition(
-			tileCenter(tile->x, tile->z));
+			_level.tileCenter(tile->x, tile->z));
 		if (_inspectTower == nullptr && _rangeRing != nullptr)
 		{
 			auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
-			ring->SetPosition(tileCenter(tile->x, tile->z, RangeRingY));
+			ring->SetPosition(_level.tileCenter(tile->x, tile->z, RangeRingY));
 			ring->SetScale(glm::vec3(def->range, 1.0f, def->range));
 		}
-		_ghostPlaceable = !isPathTile(tile->x, tile->z)
+		_ghostPlaceable = !_level.isPathTile(tile->x, tile->z)
 			&& blockerAt(tile->x, tile->z) == nullptr
 			&& _gameState.gold() >= def->cost;
 		_ghostVisible = true;
@@ -783,7 +784,7 @@ namespace tower
 		}
 
 		auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
-		ring->SetPosition(tileCenter(tower->x, tower->z, RangeRingY));
+		ring->SetPosition(_level.tileCenter(tower->x, tower->z, RangeRingY));
 		const auto* def = _towers.find(tower->defId);
 		const float range = def != nullptr ? def->range : _towers.all().front().range;
 		ring->SetScale(glm::vec3(range, 1.0f, range));
@@ -797,7 +798,7 @@ namespace tower
 		}
 		const auto& input = _engine.getInputManager();
 		const bool released = input.isButtonReleased(GLFW_MOUSE_BUTTON_1);
-		if (!released || _marker == nullptr)
+		if (!released)
 		{
 			return;
 		}
@@ -807,9 +808,6 @@ namespace tower
 		{
 			return;
 		}
-
-		_marker->GetComponent<hl::TransformComponent>()->SetPosition(
-			tileCenter(tile->x, tile->z, MarkerY));
 
 		if (_wave.inCombat())
 		{
@@ -839,7 +837,7 @@ namespace tower
 			return;
 		}
 
-		if (isPathTile(tile->x, tile->z) || !_gameState.trySpend(def->cost))
+		if (_level.isPathTile(tile->x, tile->z) || !_gameState.trySpend(def->cost))
 		{
 			flashInvalid(tile->x, tile->z);
 			return;
@@ -1145,7 +1143,7 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::onCreepKilled()
 	{
-		_gameState.addGold(KillGold);
+		_gameState.addGold(_level.killGold());
 	}
 
 	void TowerDefenseGameEngineScene::buildHud(hl::FontResource* font)
@@ -1164,7 +1162,7 @@ namespace tower
 		_waveLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
 		_waveLabel->color = { 1.0f, 1.0f, 1.0f };
 		_waveLabel->setText(
-			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(WaveCount),
+			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(_level.waveCount()),
 			24);
 
 		_waveButton = std::make_unique<hl::ui::Button>(_layoutRoot->addChild(), *_typeface);
@@ -1237,7 +1235,7 @@ namespace tower
 		_goldLabel->setText("Gold: " + std::to_string(_gameState.gold()), 24);
 		_livesLabel->setText("Lives: " + std::to_string(_gameState.lives()), 24);
 		_waveLabel->setText(
-			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(WaveCount),
+			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(_level.waveCount()),
 			24);
 		if (!_wave.inCombat() && !matchEnded())
 		{

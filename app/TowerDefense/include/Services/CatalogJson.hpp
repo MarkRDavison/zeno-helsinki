@@ -2,6 +2,7 @@
 
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
+#include <helsinki/System/glm.hpp>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -105,11 +106,65 @@ namespace tower::catalogJson
 		return { parseDim(node.children[0]), parseDim(node.children[1]) };
 	}
 
+	inline float requireNumber(const hl::JsonNode& node, const char* file, const char* what)
+	{
+		if (node.type == hl::JsonNode::Type::ValueNumber)
+		{
+			return node.number;
+		}
+
+		if (node.type == hl::JsonNode::Type::ValueInteger)
+		{
+			return static_cast<float>(node.integer);
+		}
+
+		fail(std::string(file) + ": '" + what + "' must be a number");
+	}
+
+	inline glm::vec3 requireVec3(
+		const hl::JsonNode& row,
+		const char* name,
+		const char* file,
+		bool componentsPositive)
+	{
+		const auto& node = field(row, name);
+		if (node.type != hl::JsonNode::Type::Array || node.children.size() != 3)
+		{
+			fail(std::string(file) + ": '" + name + "' must be [x, y, z]");
+		}
+
+		glm::vec3 value{ 0.0f };
+		for (int i = 0; i < 3; ++i)
+		{
+			const auto* child = node.children[static_cast<std::size_t>(i)];
+			if (child == nullptr)
+			{
+				fail(std::string(file) + ": '" + name + "' must be [x, y, z]");
+			}
+
+			value[i] = requireNumber(*child, file, name);
+			if (componentsPositive && value[i] <= 0.0f)
+			{
+				fail(std::string(file) + ": '" + name + "' components must be > 0");
+			}
+		}
+
+		return value;
+	}
+
 	inline void requireArrayRoot(const hl::JsonDocument& doc, const char* file)
 	{
 		if (doc.m_Root == nullptr || doc.m_Root->type != hl::JsonNode::Type::Array)
 		{
 			fail(std::string(file) + ": root must be an array");
+		}
+	}
+
+	inline void requireObjectRoot(const hl::JsonDocument& doc, const char* file)
+	{
+		if (doc.m_Root == nullptr || doc.m_Root->type != hl::JsonNode::Type::Object)
+		{
+			fail(std::string(file) + ": root must be an object");
 		}
 	}
 }

@@ -1,0 +1,26 @@
+{
+  "id": "level-2",
+  "boardSize": 8,
+  "startGold": 75,
+  "startLives": 3,
+  "killGold": 10,
+  "waveClearBonus": 25,
+  "buildTimer": 20,
+  "spawnInterval": 1,
+  "path": [
+    [7, 0], [7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6], [7, 7],
+    [6, 7], [5, 7], [4, 7], [3, 7], [2, 7], [1, 7], [0, 7]
+  ],
+  "entities": [
+    { "id": "tree", "x": 6, "z": 4 },
+    { "id": "rocks", "x": 6, "z": 5 },
+    { "id": "log", "x": 5, "z": 5 },
+    { "id": "tree", "x": 4, "z": 6 },
+    { "id": "rocks", "x": 3, "z": 6 }
+  ],
+  "waves": [
+    { "id": "1", "spawns": [ { "id": "runner", "count": 3 }, { "id": "tank", "count": 2 } ] },
+    { "id": "2", "spawns": [ { "id": "runner", "count": 3 }, { "id": "tank", "count": 5 } ] },
+    { "id": "3", "spawns": [ { "id": "runner", "count": 2 }, { "id": "tank", "count": 7 } ] }
+  ]
+}

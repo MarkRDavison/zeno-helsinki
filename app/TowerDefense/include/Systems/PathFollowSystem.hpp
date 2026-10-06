@@ -6,10 +6,12 @@
 
 namespace tower
 {
+	class LevelCatalog;
+
 	class PathFollowSystem : public hl::System
 	{
 	public:
-		explicit PathFollowSystem(hl::Scene& scene);
+		PathFollowSystem(hl::Scene& scene, LevelCatalog& level);
 		void update(float delta) override;
 
 		std::function<void()> onLeak;
@@ -18,5 +20,6 @@ namespace tower
 		void leak(hl::Entity* entity);
 
 		hl::Scene& _scene;
+		LevelCatalog& _level;
 	};
 }

@@ -3,6 +3,7 @@
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/Utils/ServiceProvider.hpp>
 #include <optional>
+#include <string>
 
 namespace tower
 {
@@ -12,7 +13,8 @@ namespace tower
 		SceneHost(hl::Engine& engine, hl::ServiceProvider& root);
 
 		void goTitle();
-		void goGame();
+		void goLevelSelect();
+		void goGame(const std::string& id);
 		void goSettings();
 		void onSceneDestroyed();
 

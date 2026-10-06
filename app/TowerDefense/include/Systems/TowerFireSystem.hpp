@@ -7,18 +7,28 @@
 
 namespace tower
 {
+	class LevelCatalog;
+	class WeaponCatalog;
+	class ProjectileCatalog;
+
 	class TowerFireSystem : public hl::System
 	{
 	public:
 		TowerFireSystem(
 			hl::Scene& scene,
 			hl::ResourceManager& resourceManager,
-			TowerCatalog& towers);
+			TowerCatalog& towers,
+			WeaponCatalog& weapons,
+			ProjectileCatalog& projectiles,
+			LevelCatalog& level);
 		void update(float delta) override;
 
 	private:
 		hl::Scene& _scene;
 		hl::ResourceManager& _resourceManager;
 		TowerCatalog& _towers;
+		WeaponCatalog& _weapons;
+		ProjectileCatalog& _projectiles;
+		LevelCatalog& _level;
 	};
 }

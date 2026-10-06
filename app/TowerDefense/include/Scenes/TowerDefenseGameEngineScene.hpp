@@ -19,9 +19,13 @@
 #include <Services/WaveService.hpp>
 #include <Services/CreepCatalog.hpp>
 #include <Services/TowerCatalog.hpp>
+#include <Services/WeaponCatalog.hpp>
+#include <Services/ProjectileCatalog.hpp>
 #include <Services/EntityCatalog.hpp>
+#include <Services/LevelCatalog.hpp>
 #include <SceneCatalog.hpp>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -46,7 +50,10 @@ namespace tower
 			WaveService& wave,
 			CreepCatalog& creeps,
 			TowerCatalog& towers,
+			WeaponCatalog& weapons,
+			ProjectileCatalog& projectiles,
 			EntityCatalog& entities,
+			LevelCatalog& level,
 			hl::audio::Audio& audio);
 		~TowerDefenseGameEngineScene();
 		void initialise(
@@ -69,7 +76,6 @@ namespace tower
 		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz, const std::string& defId);
 		void selectPlaceTool(const std::string& defId);
 		void spawnCreep();
-		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnGhost(hl::ResourceManager& resourceManager);
 		void spawnRangeRing(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnPathRibbons(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
@@ -106,10 +112,12 @@ namespace tower
 		WaveService& _wave;
 		CreepCatalog& _creeps;
 		TowerCatalog& _towers;
+		WeaponCatalog& _weapons;
+		ProjectileCatalog& _projectiles;
 		EntityCatalog& _entities;
+		LevelCatalog& _level;
 		hl::audio::Audio& _audio;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
-		hl::Entity* _marker = nullptr;
 		hl::Entity* _ghost = nullptr;
 		hl::Entity* _rangeRing = nullptr;
 		bool _ghostVisible = false;

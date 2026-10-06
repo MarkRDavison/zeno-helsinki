@@ -7,7 +7,10 @@
 #include <helsinki/Ui/Layout/Layout.hpp>
 #include <Ui/UiLayoutAdapters.hpp>
 #include <helsinki/Engine/Ui/UiBatch.hpp>
+#include <helsinki/System/Events/EventListener.hpp>
+#include <Services/LevelsCatalog.hpp>
 #include <memory>
+#include <vector>
 
 namespace hl
 {
@@ -18,14 +21,15 @@ namespace tower
 {
 	class SceneHost;
 
-	class TowerDefenseTitleEngineScene : public hl::EngineScene
+	class TowerDefenseLevelSelectEngineScene : public hl::EngineScene, public hl::EventListener
 	{
 	public:
-		TowerDefenseTitleEngineScene(
+		TowerDefenseLevelSelectEngineScene(
 			hl::Engine& engine,
 			const hl::EngineConfiguration& engineConfig,
-			SceneHost& sceneHost);
-		~TowerDefenseTitleEngineScene();
+			SceneHost& sceneHost,
+			LevelsCatalog& levels);
+		~TowerDefenseLevelSelectEngineScene();
 
 		void initialise(
 			const std::string& cameraMatrixResourceId,
@@ -38,19 +42,21 @@ namespace tower
 		void update(uint32_t currentFrame, float delta) override;
 		void updateGpuResources(uint32_t currentFrame) override;
 		void additionalCleanup() override;
+		void OnEvent(const hl::Event& event) override;
 
 	private:
 		void buildMenu(hl::FontResource* font);
 		void rebuildAndDraw(float delta);
+		void goBack();
 
 		SceneHost& _sceneHost;
 		const hl::EngineConfiguration& _engineConfig;
+		LevelsCatalog& _levels;
 		hl::UiBatch _uiBatch;
 		std::unique_ptr<hl::ui::Node> _layoutRoot;
 		std::unique_ptr<FontTypeface> _typeface;
-		std::unique_ptr<hl::ui::Label> _title;
-		std::unique_ptr<hl::ui::Button> _selectLevel;
-		std::unique_ptr<hl::ui::Button> _settings;
-		std::unique_ptr<hl::ui::Button> _quit;
+		std::unique_ptr<hl::ui::Label> _heading;
+		std::vector<std::unique_ptr<hl::ui::Button>> _levelButtons;
+		std::unique_ptr<hl::ui::Button> _back;
 	};
 }

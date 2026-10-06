@@ -1,4 +1,23 @@
 [
-  { "id": "single", "model": "turret_single", "label": "Single", "cost": 15, "range": 2.5, "fireCooldown": 0.7 },
-  { "id": "double", "model": "turret_double", "label": "Double", "cost": 25, "range": 3.5, "fireCooldown": 1.0 }
+  {
+    "id": "single",
+    "model": "turret_single",
+    "label": "Single",
+    "cost": 15,
+    "range": 2.5,
+    "weapons": [
+      { "id": "single_cannon", "offset": [0, 0.4, 0.25] }
+    ]
+  },
+  {
+    "id": "double",
+    "model": "turret_double",
+    "label": "Double",
+    "cost": 25,
+    "range": 3.5,
+    "weapons": [
+      { "id": "double_cannon", "offset": [-0.35, 0.4, 0.2] },
+      { "id": "double_cannon", "offset": [0.35, 0.4, 0.2] }
+    ]
+  }
 ]

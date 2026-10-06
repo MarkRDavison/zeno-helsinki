@@ -1,31 +1,37 @@
-#include "Scenes/TowerDefenseTitleEngineScene.hpp"
+#include "Scenes/TowerDefenseLevelSelectEngineScene.hpp"
 #include <Scenes/SceneHost.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
+#include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 #include <helsinki/Ui/Widget.hpp>
+#include <GLFW/glfw3.h>
 
 namespace tower
 {
-	TowerDefenseTitleEngineScene::TowerDefenseTitleEngineScene(
+	TowerDefenseLevelSelectEngineScene::TowerDefenseLevelSelectEngineScene(
 		hl::Engine& engine,
 		const hl::EngineConfiguration& engineConfig,
-		SceneHost& sceneHost
+		SceneHost& sceneHost,
+		LevelsCatalog& levels
 	) :
 		EngineScene(engine),
 		_sceneHost(sceneHost),
-		_engineConfig(engineConfig)
+		_engineConfig(engineConfig),
+		_levels(levels)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
+		_engine.getEventBus().AddListener(this);
 	}
 
-	TowerDefenseTitleEngineScene::~TowerDefenseTitleEngineScene()
+	TowerDefenseLevelSelectEngineScene::~TowerDefenseLevelSelectEngineScene()
 	{
+		_engine.getEventBus().RemoveListener(this);
 		_sceneHost.onSceneDestroyed();
 	}
 
-	void TowerDefenseTitleEngineScene::initialise(
+	void TowerDefenseLevelSelectEngineScene::initialise(
 		const std::string& cameraMatrixResourceId,
 		hl::VulkanDevice& device,
 		hl::VulkanSwapChain& swapChain,
@@ -45,7 +51,7 @@ namespace tower
 		loadMenuUiSheet(
 			resourceManager,
 			resourceContext,
-			"title_ui_sheet",
+			"level_select_ui_sheet",
 			{
 				hl::ResourceDefinition::Child{ .name = "white", .type = "texture" },
 				hl::ResourceDefinition::Child{ .name = "roboto", .type = "texture" }
@@ -58,7 +64,7 @@ namespace tower
 			graphicsCommandPool,
 			transferCommandPool,
 			resourceManager,
-			{ makeMenuUiRenderpass(cameraMatrixResourceId, "title_ui_sheet") });
+			{ makeMenuUiRenderpass(cameraMatrixResourceId, "level_select_ui_sheet") });
 
 		buildMenu(resourceManager.GetResource<hl::FontResource>("roboto"));
 		_uiBatch.initialise(device);
@@ -66,7 +72,7 @@ namespace tower
 		registerPipelineDraw("ui_pipeline", [&](hl::PipelineDrawData& pdd) -> void { _uiBatch.draw(pdd); });
 	}
 
-	void TowerDefenseTitleEngineScene::buildMenu(hl::FontResource* font)
+	void TowerDefenseLevelSelectEngineScene::buildMenu(hl::FontResource* font)
 	{
 		_typeface = std::make_unique<FontTypeface>(font);
 		_layoutRoot = std::make_unique<hl::ui::Node>();
@@ -78,33 +84,33 @@ namespace tower
 		column.crossAlign = hl::ui::Align::Center;
 		column.setCenter({ 0.0f, 0.0f });
 
-		_title = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
-		_title->setText("Tower Defense", 96);
-		_title->color = { 1.0f, 0.5f, 0.0f };
+		_heading = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
+		_heading->setText("Select Level", 96);
+		_heading->color = { 1.0f, 0.5f, 0.0f };
 
-		_selectLevel = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
-		_selectLevel->setText("Select Level", 64);
-		_selectLevel->onClick = [this]()
+		for (const auto& entry : _levels.all())
 		{
-			_sceneHost.goLevelSelect();
-		};
+			auto button = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+			button->setText(entry.label, 64);
+			const std::string id = entry.id;
+			button->onClick = [this, id]()
+			{
+				_sceneHost.goGame(id);
+			};
+			_levelButtons.push_back(std::move(button));
+		}
 
-		_settings = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
-		_settings->setText("Settings", 64);
-		_settings->onClick = [this]()
-		{
-			_sceneHost.goSettings();
-		};
-
-		_quit = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
-		_quit->setText("Quit", 64);
-		_quit->onClick = [this]()
-		{
-			_engine.stop();
-		};
+		_back = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_back->setText("Back", 64);
+		_back->onClick = [this]() { goBack(); };
 	}
 
-	void TowerDefenseTitleEngineScene::rebuildAndDraw(float /*delta*/)
+	void TowerDefenseLevelSelectEngineScene::goBack()
+	{
+		_sceneHost.goTitle();
+	}
+
+	void TowerDefenseLevelSelectEngineScene::rebuildAndDraw(float /*delta*/)
 	{
 		hl::ui::prepareTree(*_layoutRoot);
 
@@ -118,18 +124,29 @@ namespace tower
 		hl::ui::paintTree(*_layoutRoot, paint);
 	}
 
-	void TowerDefenseTitleEngineScene::update(uint32_t /*currentFrame*/, float delta)
+	void TowerDefenseLevelSelectEngineScene::update(uint32_t /*currentFrame*/, float delta)
 	{
 		rebuildAndDraw(delta);
 	}
 
-	void TowerDefenseTitleEngineScene::updateGpuResources(uint32_t currentFrame)
+	void TowerDefenseLevelSelectEngineScene::updateGpuResources(uint32_t currentFrame)
 	{
 		_uiBatch.updateGpuResources(currentFrame);
 	}
 
-	void TowerDefenseTitleEngineScene::additionalCleanup()
+	void TowerDefenseLevelSelectEngineScene::additionalCleanup()
 	{
 		_uiBatch.destroy();
+	}
+
+	void TowerDefenseLevelSelectEngineScene::OnEvent(const hl::Event& event)
+	{
+		if (auto ke = dynamic_cast<const hl::KeyPressEvent*>(&event))
+		{
+			if (ke->GetKeyCode() == GLFW_KEY_ESCAPE)
+			{
+				goBack();
+			}
+		}
 	}
 }

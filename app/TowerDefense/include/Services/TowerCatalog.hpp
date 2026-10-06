@@ -1,5 +1,6 @@
 #pragma once
 
+#include <helsinki/System/glm.hpp>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -7,6 +8,14 @@
 
 namespace tower
 {
+	class WeaponCatalog;
+
+	struct TowerWeaponSlot
+	{
+		std::string id;
+		glm::vec3 offset{ 0.0f };
+	};
+
 	struct TowerDef
 	{
 		std::string id;
@@ -14,13 +23,13 @@ namespace tower
 		std::string label;
 		int cost = 0;
 		float range = 0.0f;
-		float fireCooldown = 0.0f;
+		std::vector<TowerWeaponSlot> weapons;
 	};
 
 	class TowerCatalog
 	{
 	public:
-		void load(const std::string& path);
+		void load(const std::string& path, const WeaponCatalog& weapons);
 		const TowerDef* find(std::string_view id) const;
 		const std::vector<TowerDef>& all() const;
 

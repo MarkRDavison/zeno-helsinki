@@ -1,7 +1,8 @@
 #pragma once
 
-#include <SceneCatalog.hpp>
 #include <Services/CreepCatalog.hpp>
+#include <Services/LevelCatalog.hpp>
+#include <vector>
 
 namespace tower
 {
@@ -10,7 +11,7 @@ namespace tower
 	class WaveService
 	{
 	public:
-		WaveService(GameStateService& gameState, CreepCatalog& creeps);
+		WaveService(GameStateService& gameState, CreepCatalog& creeps, LevelCatalog& level);
 
 		bool tryStart();
 		void tick(float delta);
@@ -23,17 +24,18 @@ namespace tower
 
 	private:
 		void fillQueue();
+		int waveCount() const;
 
 		GameStateService& _gameState;
 		CreepCatalog& _creeps;
+		LevelCatalog& _level;
 		int _wavesCompleted = 0;
 		int _activeIndex = 0;
 		bool _inCombat = false;
 		int _pendingSpawns = 0;
 		float _spawnTimer = 0.0f;
-		float _buildTimer = BuildTimerSeconds;
-		const CreepDef* _queue[MaxWaveCreeps]{};
-		int _queueCount = 0;
+		float _buildTimer = 0.0f;
+		std::vector<const CreepDef*> _queue;
 		int _queueIndex = 0;
 		const CreepDef* _nextCreep = nullptr;
 	};

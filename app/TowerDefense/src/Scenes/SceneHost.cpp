@@ -1,12 +1,18 @@
 #include <Scenes/SceneHost.hpp>
 #include <Scenes/TowerDefenseGameEngineScene.hpp>
+#include <Scenes/TowerDefenseLevelSelectEngineScene.hpp>
 #include <Scenes/TowerDefenseSettingsEngineScene.hpp>
 #include <Scenes/TowerDefenseTitleEngineScene.hpp>
 #include <Services/GameStateService.hpp>
 #include <Services/WaveService.hpp>
 #include <Services/CreepCatalog.hpp>
 #include <Services/TowerCatalog.hpp>
+#include <Services/WeaponCatalog.hpp>
+#include <Services/ProjectileCatalog.hpp>
 #include <Services/EntityCatalog.hpp>
+#include <Services/LevelCatalog.hpp>
+#include <Services/LevelsCatalog.hpp>
+#include <Services/CatalogJson.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Audio/Audio.hpp>
 
@@ -27,20 +33,45 @@ namespace tower
 			*this));
 	}
 
-	void SceneHost::goGame()
+	void SceneHost::goLevelSelect()
 	{
+		_pendingScope.reset();
+		_engine.setScene(new TowerDefenseLevelSelectEngineScene(
+			_engine,
+			_root.get<hl::EngineConfiguration>(),
+			*this,
+			_root.get<LevelsCatalog>()));
+	}
+
+	void SceneHost::goGame(const std::string& id)
+	{
+		const auto* entry = _root.get<LevelsCatalog>().find(id);
+		if (entry == nullptr)
+		{
+			catalogJson::fail("unknown level id '" + id + "'");
+		}
+
+		auto& config = _root.get<hl::EngineConfiguration>();
+		_root.get<LevelCatalog>().load(
+			config.RootPath + "/data/" + entry->file,
+			_root.get<CreepCatalog>(),
+			_root.get<EntityCatalog>());
+
 		_pendingScope = _root.createScope();
 		auto& state = _pendingScope->get<GameStateService>();
 		auto& waves = _pendingScope->get<WaveService>();
 		_engine.setScene(new TowerDefenseGameEngineScene(
 			_engine,
-			_root.get<hl::EngineConfiguration>(),
+			config,
 			*this,
 			state,
 			waves,
 			_root.get<CreepCatalog>(),
 			_root.get<TowerCatalog>(),
+			_root.get<WeaponCatalog>(),
+			_root.get<ProjectileCatalog>(),
 			_root.get<EntityCatalog>(),
+			_root.get<LevelCatalog>(),
 			_root.get<hl::audio::Audio>()));
 	}
 

@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/ECS/Component.hpp>
 #include <string>
+#include <vector>
 
 namespace tower
 {
@@ -11,6 +12,6 @@ namespace tower
 		int x = 0;
 		int z = 0;
 		std::string defId;
-		float fireCooldownRemaining = 0.0f;
+		std::vector<float> slotCooldown;
 	};
 }

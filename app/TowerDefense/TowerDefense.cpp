@@ -5,7 +5,11 @@
 #include <Services/WaveService.hpp>
 #include <Services/CreepCatalog.hpp>
 #include <Services/TowerCatalog.hpp>
+#include <Services/WeaponCatalog.hpp>
+#include <Services/ProjectileCatalog.hpp>
 #include <Services/EntityCatalog.hpp>
+#include <Services/LevelCatalog.hpp>
+#include <Services/LevelsCatalog.hpp>
 #include <helsinki/Audio/Audio.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
@@ -19,10 +23,14 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<hl::EngineConfiguration, hl::EngineConfiguration>(hl::ServiceLifetime::Singleton);
 	services.registerService<hl::audio::Audio, hl::audio::Audio>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::CreepCatalog, tower::CreepCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::ProjectileCatalog, tower::ProjectileCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::WeaponCatalog, tower::WeaponCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::TowerCatalog, tower::TowerCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::EntityCatalog, tower::EntityCatalog>(hl::ServiceLifetime::Singleton);
-	services.registerService<tower::GameStateService, tower::GameStateService>(hl::ServiceLifetime::Scoped);
-	services.registerService<tower::WaveService, tower::WaveService, tower::GameStateService, tower::CreepCatalog>(hl::ServiceLifetime::Scoped);
+	services.registerService<tower::LevelCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::LevelsCatalog, tower::LevelsCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::GameStateService, tower::GameStateService, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
+	services.registerService<tower::WaveService, tower::WaveService, tower::GameStateService, tower::CreepCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
 }
 
 int main()
@@ -37,10 +45,18 @@ int main()
 	engineConfig.applyConfig("/data/config.json", std::string(tower::TowerDefenseConfig::RootPath));
 	serviceProvider.get<tower::CreepCatalog>().load(
 		engineConfig.RootPath + "/data/creeps.json");
+	serviceProvider.get<tower::ProjectileCatalog>().load(
+		engineConfig.RootPath + "/data/projectiles.json");
+	serviceProvider.get<tower::WeaponCatalog>().load(
+		engineConfig.RootPath + "/data/weapons.json",
+		serviceProvider.get<tower::ProjectileCatalog>());
 	serviceProvider.get<tower::TowerCatalog>().load(
-		engineConfig.RootPath + "/data/towers.json");
+		engineConfig.RootPath + "/data/towers.json",
+		serviceProvider.get<tower::WeaponCatalog>());
 	serviceProvider.get<tower::EntityCatalog>().load(
 		engineConfig.RootPath + "/data/entities.json");
+	serviceProvider.get<tower::LevelsCatalog>().load(
+		engineConfig.RootPath + "/data/levels.json");
 
 	engine.init(engineConfig);
 

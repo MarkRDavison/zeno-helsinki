@@ -1,9 +1,10 @@
 #include <Services/TowerCatalog.hpp>
+#include <Services/WeaponCatalog.hpp>
 #include <Services/CatalogJson.hpp>
 
 namespace tower
 {
-	void TowerCatalog::load(const std::string& path)
+	void TowerCatalog::load(const std::string& path, const WeaponCatalog& weapons)
 	{
 		_defs.clear();
 		_byId.clear();
@@ -23,7 +24,31 @@ namespace tower
 			def.label = catalogJson::requireString(*row, "label", "towers.json");
 			def.cost = catalogJson::requireIntAtLeast(*row, "cost", 1, "towers.json");
 			def.range = catalogJson::requirePositive(*row, "range", "towers.json");
-			def.fireCooldown = catalogJson::requirePositive(*row, "fireCooldown", "towers.json");
+
+			const auto& weaponsNode = catalogJson::field(*row, "weapons");
+			if (weaponsNode.type != hl::JsonNode::Type::Array || weaponsNode.children.empty())
+			{
+				catalogJson::fail("towers.json: '" + def.id + "' needs a non-empty weapons array");
+			}
+
+			for (const auto* slotRow : weaponsNode.children)
+			{
+				if (slotRow == nullptr || slotRow->type != hl::JsonNode::Type::Object)
+				{
+					catalogJson::fail("towers.json: each weapon slot must be an object");
+				}
+
+				TowerWeaponSlot slot;
+				slot.id = catalogJson::requireString(*slotRow, "id", "towers.json");
+				slot.offset = catalogJson::requireVec3(*slotRow, "offset", "towers.json", false);
+				if (weapons.find(slot.id) == nullptr)
+				{
+					catalogJson::fail("towers.json: unknown weapon id '" + slot.id + "'");
+				}
+
+				def.weapons.push_back(std::move(slot));
+			}
+
 			if (_byId.contains(def.id))
 			{
 				catalogJson::fail("towers.json: duplicate id '" + def.id + "'");

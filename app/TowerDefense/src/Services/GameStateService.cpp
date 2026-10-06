@@ -1,11 +1,10 @@
 #include <Services/GameStateService.hpp>
-#include <SceneCatalog.hpp>
 
 namespace tower
 {
-	GameStateService::GameStateService() :
-		_gold(StartGold),
-		_lives(StartLives)
+	GameStateService::GameStateService(LevelCatalog& level) :
+		_gold(level.startGold()),
+		_lives(level.startLives())
 	{
 	}
 
