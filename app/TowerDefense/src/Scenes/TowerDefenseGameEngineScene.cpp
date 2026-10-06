@@ -436,9 +436,9 @@ namespace tower
 		auto black = resourceManager.Load<hl::ModelResource>(TileBlackModelId, resourceContext);
 		auto white = resourceManager.Load<hl::ModelResource>(TileWhiteModelId, resourceContext);
 
-		for (int tz = 0; tz < _level.boardSize(); ++tz)
+		for (int tz = 0; tz < _level.boardDepth(); ++tz)
 		{
-			for (int tx = 0; tx < _level.boardSize(); ++tx)
+			for (int tx = 0; tx < _level.boardWidth(); ++tx)
 			{
 				const bool dark = ((tx + tz) & 1) != 0;
 				auto* entity = _scene.addEntity();

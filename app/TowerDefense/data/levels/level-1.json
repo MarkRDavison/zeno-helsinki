@@ -1,6 +1,6 @@
 {
   "id": "level-1",
-  "boardSize": 8,
+  "boardSize": [8, 8],
   "startGold": 100,
   "startLives": 3,
   "killGold": 10,

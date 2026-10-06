@@ -42,7 +42,8 @@ namespace tower
 			const EntityCatalog& entities);
 
 		const std::string& id() const;
-		int boardSize() const;
+		int boardWidth() const;
+		int boardDepth() const;
 		int startGold() const;
 		int startLives() const;
 		int killGold() const;
@@ -63,7 +64,8 @@ namespace tower
 		static uint64_t tileKey(int x, int z);
 
 		std::string _id;
-		int _boardSize = 0;
+		int _boardWidth = 0;
+		int _boardDepth = 0;
 		int _startGold = 0;
 		int _startLives = 0;
 		int _killGold = 0;

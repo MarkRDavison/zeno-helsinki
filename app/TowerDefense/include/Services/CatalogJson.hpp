@@ -106,6 +106,27 @@ namespace tower::catalogJson
 		return { parseDim(node.children[0]), parseDim(node.children[1]) };
 	}
 
+	inline std::pair<int, int> requireBoardSize(const hl::JsonNode& row, const char* file)
+	{
+		const auto& node = field(row, "boardSize");
+		if (node.type != hl::JsonNode::Type::Array || node.children.size() != 2)
+		{
+			fail(std::string(file) + ": 'boardSize' must be [width, depth] with two integers >= 2");
+		}
+
+		const auto parseDim = [&](const hl::JsonNode* child) -> int
+		{
+			if (child == nullptr || child->type != hl::JsonNode::Type::ValueInteger || child->integer < 2)
+			{
+				fail(std::string(file) + ": 'boardSize' must be [width, depth] with two integers >= 2");
+			}
+
+			return child->integer;
+		};
+
+		return { parseDim(node.children[0]), parseDim(node.children[1]) };
+	}
+
 	inline float requireNumber(const hl::JsonNode& node, const char* file, const char* what)
 	{
 		if (node.type == hl::JsonNode::Type::ValueNumber)

@@ -28,7 +28,9 @@ namespace tower
 		const auto& root = *doc.m_Root;
 
 		_id = catalogJson::requireString(root, "id", "level.json");
-		_boardSize = catalogJson::requireIntAtLeast(root, "boardSize", 2, "level.json");
+		const auto board = catalogJson::requireBoardSize(root, "level.json");
+		_boardWidth = board.first;
+		_boardDepth = board.second;
 		_startGold = catalogJson::requireIntAtLeast(root, "startGold", 0, "level.json");
 		_startLives = catalogJson::requireIntAtLeast(root, "startLives", 1, "level.json");
 		_killGold = catalogJson::requireIntAtLeast(root, "killGold", 0, "level.json");
@@ -59,7 +61,7 @@ namespace tower
 			}
 
 			TileCoord coord{ xNode->integer, zNode->integer };
-			if (coord.x < 0 || coord.x >= _boardSize || coord.z < 0 || coord.z >= _boardSize)
+			if (coord.x < 0 || coord.x >= _boardWidth || coord.z < 0 || coord.z >= _boardDepth)
 			{
 				catalogJson::fail("level.json: path tile is off the board");
 			}
@@ -119,7 +121,7 @@ namespace tower
 				{
 					const int tx = placement.x + dx;
 					const int tz = placement.z + dz;
-					if (tx < 0 || tx >= _boardSize || tz < 0 || tz >= _boardSize)
+					if (tx < 0 || tx >= _boardWidth || tz < 0 || tz >= _boardDepth)
 					{
 						catalogJson::fail("level.json: entity '" + placement.id + "' is off the board");
 					}
@@ -194,9 +196,14 @@ namespace tower
 		return _id;
 	}
 
-	int LevelCatalog::boardSize() const
+	int LevelCatalog::boardWidth() const
 	{
-		return _boardSize;
+		return _boardWidth;
+	}
+
+	int LevelCatalog::boardDepth() const
+	{
+		return _boardDepth;
 	}
 
 	int LevelCatalog::startGold() const
@@ -251,7 +258,7 @@ namespace tower
 
 	bool LevelCatalog::isOnBoard(int tx, int tz) const
 	{
-		return tx >= 0 && tx < _boardSize && tz >= 0 && tz < _boardSize;
+		return tx >= 0 && tx < _boardWidth && tz >= 0 && tz < _boardDepth;
 	}
 
 	bool LevelCatalog::isPathTile(int tx, int tz) const
@@ -261,18 +268,20 @@ namespace tower
 
 	glm::vec3 LevelCatalog::tileCenter(int tx, int tz, float y) const
 	{
-		const float origin = (_boardSize * TileSize) * 0.5f - TileSize * 0.5f;
+		const float originX = (_boardWidth * TileSize) * 0.5f - TileSize * 0.5f;
+		const float originZ = (_boardDepth * TileSize) * 0.5f - TileSize * 0.5f;
 		return glm::vec3(
-			static_cast<float>(tx) * TileSize - origin,
+			static_cast<float>(tx) * TileSize - originX,
 			y,
-			static_cast<float>(tz) * TileSize - origin);
+			static_cast<float>(tz) * TileSize - originZ);
 	}
 
 	std::optional<TileCoord> LevelCatalog::worldToTile(const glm::vec3& hit) const
 	{
-		const float half = _boardSize * TileSize * 0.5f;
-		const int tx = static_cast<int>(std::floor(hit.x + half));
-		const int tz = static_cast<int>(std::floor(hit.z + half));
+		const float halfW = _boardWidth * TileSize * 0.5f;
+		const float halfD = _boardDepth * TileSize * 0.5f;
+		const int tx = static_cast<int>(std::floor(hit.x + halfW));
+		const int tz = static_cast<int>(std::floor(hit.z + halfD));
 		if (!isOnBoard(tx, tz))
 		{
 			return std::nullopt;
