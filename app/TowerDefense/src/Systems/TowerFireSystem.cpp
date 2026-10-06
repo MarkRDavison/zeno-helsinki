@@ -64,9 +64,13 @@ namespace tower
 		}
 	}
 
-	TowerFireSystem::TowerFireSystem(hl::Scene& scene, hl::ResourceManager& resourceManager) :
+	TowerFireSystem::TowerFireSystem(
+		hl::Scene& scene,
+		hl::ResourceManager& resourceManager,
+		TowerCatalog& towers) :
 		_scene(scene),
-		_resourceManager(resourceManager)
+		_resourceManager(resourceManager),
+		_towers(towers)
 	{
 	}
 
@@ -82,16 +86,16 @@ namespace tower
 			}
 
 			auto* tower = entity->GetComponent<TowerComponent>();
-			if (tower->defIndex < 0 || tower->defIndex >= TowerCount)
+			const auto* def = _towers.find(tower->defId);
+			if (def == nullptr)
 			{
 				continue;
 			}
 
-			const auto& def = Towers[tower->defIndex];
 			tower->fireCooldownRemaining -= delta;
 
 			const glm::vec3 from = tileCenter(tower->x, tower->z, ProjectileY);
-			auto* creep = nearestCreepInRange(_scene, from, def.range);
+			auto* creep = nearestCreepInRange(_scene, from, def->range);
 			if (creep == nullptr)
 			{
 				if (tower->fireCooldownRemaining < 0.0f)
@@ -124,7 +128,7 @@ namespace tower
 			shot->speed = ProjectileSpeed;
 			shot->damage = ProjectileDamage;
 			shot->lastDest = glm::vec3(creepPos.x, ProjectileY, creepPos.z);
-			tower->fireCooldownRemaining = def.fireCooldown;
+			tower->fireCooldownRemaining = def->fireCooldown;
 		}
 	}
 }

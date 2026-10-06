@@ -1,6 +1,7 @@
 #pragma once
 
 #include <helsinki/Engine/ECS/Component.hpp>
+#include <string>
 
 namespace tower
 {
@@ -9,7 +10,7 @@ namespace tower
 	public:
 		int x = 0;
 		int z = 0;
-		int defIndex = 0;
+		std::string defId;
 		float fireCooldownRemaining = 0.0f;
 	};
 }

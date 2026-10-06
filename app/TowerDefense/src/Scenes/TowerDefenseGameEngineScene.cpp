@@ -37,6 +37,8 @@
 #include <cmath>
 #include <algorithm>
 #include <string>
+#include <stdexcept>
+#include <vector>
 
 namespace tower
 {
@@ -48,6 +50,8 @@ namespace tower
 		GameStateService& gameState,
 		WaveService& wave,
 		CreepCatalog& creeps,
+		TowerCatalog& towers,
+		EntityCatalog& entities,
 		hl::audio::Audio& audio
 	) :
 		EngineScene(engine),
@@ -56,6 +60,8 @@ namespace tower
 		_gameState(gameState),
 		_wave(wave),
 		_creeps(creeps),
+		_towers(towers),
+		_entities(entities),
 		_audio(audio)
 	{
 		_cameras.insert({ "Ui", new hl::Camera2D() });
@@ -381,8 +387,11 @@ namespace tower
 			});
 
 		spawnBoard(resourceManager, resourceContext);
-		spawnBlockers(resourceManager, resourceContext);
-		for (const auto& def : Towers)
+		for (const auto& def : _towers.all())
+		{
+			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
+		}
+		for (const auto& def : _entities.all())
 		{
 			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
 		}
@@ -390,6 +399,7 @@ namespace tower
 		{
 			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
 		}
+		spawnBlockers(resourceManager, resourceContext);
 		spawnMarker(resourceManager, resourceContext);
 		spawnGhost(resourceManager);
 		spawnRangeRing(resourceManager, resourceContext);
@@ -398,7 +408,7 @@ namespace tower
 		auto* pathFollow = new PathFollowSystem(_scene);
 		pathFollow->onLeak = [this]() { onCreepLeaked(); };
 		_scene.addSystem(pathFollow);
-		_scene.addSystem(new TowerFireSystem(_scene, resourceManager));
+		_scene.addSystem(new TowerFireSystem(_scene, resourceManager, _towers));
 		auto* projectiles = new ProjectileSystem(_scene);
 		projectiles->onKill = [this]() { onCreepKilled(); };
 		_scene.addSystem(projectiles);
@@ -441,21 +451,29 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::spawnBlockers(
 		hl::ResourceManager& resourceManager,
-		hl::ResourceContext& resourceContext)
+		hl::ResourceContext&)
 	{
-		resourceManager.Load<hl::ModelResource>(DetailTreeModelId, resourceContext);
-		resourceManager.Load<hl::ModelResource>(DetailRocksModelId, resourceContext);
-
-		for (const auto& def : Blockers)
+		for (const auto& placement : Blockers)
 		{
-			auto* model = resourceManager.GetResource<hl::ModelResource>(def.model);
+			const auto* def = _entities.find(placement.id);
+			if (def == nullptr)
+			{
+				throw std::runtime_error(
+					std::string("Unknown blocker entity id '") + placement.id + "'");
+			}
+
+			auto* model = resourceManager.GetResource<hl::ModelResource>(def->model);
 			auto* entity = _scene.addEntity();
 			entity->AddTag(BlockerTag);
 			auto* blocker = entity->AddComponent<BlockerComponent>();
-			blocker->x = def.tile.x;
-			blocker->z = def.tile.z;
-			entity->AddComponent<hl::TransformComponent>()->SetPosition(
-				tileCenter(def.tile.x, def.tile.z));
+			blocker->x = placement.tile.x;
+			blocker->z = placement.tile.z;
+			auto* transform = entity->AddComponent<hl::TransformComponent>();
+			transform->SetPosition(tileCenter(placement.tile.x, placement.tile.z));
+			transform->SetScale(glm::vec3(
+				static_cast<float>(def->sizeX),
+				1.0f,
+				static_cast<float>(def->sizeZ)));
 			entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		}
 	}
@@ -464,24 +482,39 @@ namespace tower
 		hl::ResourceManager& resourceManager,
 		int tx,
 		int tz,
-		int defIndex)
+		const std::string& defId)
 	{
-		const auto& def = Towers[defIndex];
-		auto* model = resourceManager.GetResource<hl::ModelResource>(def.model);
+		const auto* def = _towers.find(defId);
+		if (def == nullptr)
+		{
+			return;
+		}
+
+		auto* model = resourceManager.GetResource<hl::ModelResource>(def->model);
 		auto* entity = _scene.addEntity();
 		entity->AddTag(TowerTag);
 		auto* tower = entity->AddComponent<TowerComponent>();
 		tower->x = tx;
 		tower->z = tz;
-		tower->defIndex = defIndex;
+		tower->defId = defId;
 		entity->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(tx, tz));
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		_audio.play(CuePlace);
 	}
 
-	void TowerDefenseGameEngineScene::selectPlaceTool(int defIndex)
+	void TowerDefenseGameEngineScene::selectPlaceTool(const std::string& defId)
 	{
-		_selectedTower = _selectedTower == defIndex ? -1 : defIndex;
+		_selectedTowerId = _selectedTowerId == defId ? std::string{} : defId;
+	}
+
+	const TowerDef* TowerDefenseGameEngineScene::selectedTowerDef() const
+	{
+		if (_selectedTowerId.empty())
+		{
+			return nullptr;
+		}
+
+		return _towers.find(_selectedTowerId);
 	}
 
 	bool TowerDefenseGameEngineScene::isOccupied(int tx, int tz) const
@@ -578,7 +611,7 @@ namespace tower
 			.diffuse = { 0.85f, 0.25f, 0.25f }
 		});
 
-		auto* model = resourceManager.GetResource<hl::ModelResource>(Towers[0].model);
+		auto* model = resourceManager.GetResource<hl::ModelResource>(_towers.all().front().model);
 		_ghost = _scene.addEntity();
 		_ghost->AddTag(GhostTag);
 		_ghost->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(0, 0));
@@ -598,7 +631,7 @@ namespace tower
 		_rangeRing->AddTag(RangeRingTag);
 		auto* transform = _rangeRing->AddComponent<hl::TransformComponent>();
 		transform->SetPosition(tileCenter(0, 0, RangeRingY));
-		transform->SetScale(glm::vec3(Towers[0].range, 1.0f, Towers[0].range));
+		transform->SetScale(glm::vec3(_towers.all().front().range, 1.0f, _towers.all().front().range));
 		_rangeRing->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
 	}
 
@@ -671,9 +704,9 @@ namespace tower
 	{
 		_ghostVisible = false;
 		_ghostPlaceable = false;
+		const auto* def = selectedTowerDef();
 		if (_ghost == nullptr
-			|| _selectedTower < 0
-			|| _selectedTower >= TowerCount
+			|| def == nullptr
 			|| matchEnded()
 			|| _wave.inCombat()
 			|| uiBlocksBoardClick())
@@ -681,8 +714,7 @@ namespace tower
 			return;
 		}
 
-		const auto& def = Towers[_selectedTower];
-		auto* model = _resourceManager->GetResource<hl::ModelResource>(def.model);
+		auto* model = _resourceManager->GetResource<hl::ModelResource>(def->model);
 		_ghost->GetComponent<hl::ModelComponent>()->setModelId(model->GetId());
 
 		const auto tile = hoveredTile();
@@ -697,11 +729,11 @@ namespace tower
 		{
 			auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
 			ring->SetPosition(tileCenter(tile->x, tile->z, RangeRingY));
-			ring->SetScale(glm::vec3(def.range, 1.0f, def.range));
+			ring->SetScale(glm::vec3(def->range, 1.0f, def->range));
 		}
 		_ghostPlaceable = !isPathTile(tile->x, tile->z)
 			&& blockerAt(tile->x, tile->z) == nullptr
-			&& _gameState.gold() >= def.cost;
+			&& _gameState.gold() >= def->cost;
 		_ghostVisible = true;
 	}
 
@@ -723,9 +755,8 @@ namespace tower
 		}
 
 		const auto* tower = _inspectTower->GetComponent<TowerComponent>();
-		const int cost = (tower != nullptr && tower->defIndex >= 0 && tower->defIndex < TowerCount)
-			? Towers[tower->defIndex].cost
-			: Towers[0].cost;
+		const auto* def = (tower != nullptr) ? _towers.find(tower->defId) : nullptr;
+		const int cost = def != nullptr ? def->cost : _towers.all().front().cost;
 		_gameState.addGold(towerSellRefund(cost));
 		if (_flashTower == _inspectTower)
 		{
@@ -753,9 +784,8 @@ namespace tower
 
 		auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
 		ring->SetPosition(tileCenter(tower->x, tower->z, RangeRingY));
-		const float range = (tower->defIndex >= 0 && tower->defIndex < TowerCount)
-			? Towers[tower->defIndex].range
-			: Towers[0].range;
+		const auto* def = _towers.find(tower->defId);
+		const float range = def != nullptr ? def->range : _towers.all().front().range;
 		ring->SetScale(glm::vec3(range, 1.0f, range));
 	}
 
@@ -797,25 +827,25 @@ namespace tower
 			clearInspect();
 		}
 
-		if (_selectedTower < 0 || _selectedTower >= TowerCount)
+		const auto* def = selectedTowerDef();
+		if (def == nullptr)
 		{
 			return;
 		}
 
-		const auto& def = Towers[_selectedTower];
 		if (blockerAt(tile->x, tile->z) != nullptr)
 		{
 			flashInvalid(tile->x, tile->z);
 			return;
 		}
 
-		if (isPathTile(tile->x, tile->z) || !_gameState.trySpend(def.cost))
+		if (isPathTile(tile->x, tile->z) || !_gameState.trySpend(def->cost))
 		{
 			flashInvalid(tile->x, tile->z);
 			return;
 		}
 
-		spawnTower(*_resourceManager, tile->x, tile->z, _selectedTower);
+		spawnTower(*_resourceManager, tile->x, tile->z, def->id);
 	}
 
 	void TowerDefenseGameEngineScene::initialise(
@@ -1144,15 +1174,17 @@ namespace tower
 		_buildBarPanel = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
 		_buildBarPanel->color = { 0.08f, 0.09f, 0.12f };
 		_buildBarPanel->opacity = 0.92f;
-		for (int i = 0; i < TowerCount; ++i)
+		for (const auto& def : _towers.all())
 		{
-			_placeButtons[i] = std::make_unique<hl::ui::Button>(
+			auto button = std::make_unique<hl::ui::Button>(
 				_buildBarPanel->node().addChild(),
 				*_typeface);
-			_placeButtons[i]->setText(
-				std::string(Towers[i].label) + " (" + std::to_string(Towers[i].cost) + ")",
+			button->setText(
+				def.label + " (" + std::to_string(def.cost) + ")",
 				24);
-			_placeButtons[i]->onClick = [this, i]() { selectPlaceTool(i); };
+			const std::string id = def.id;
+			button->onClick = [this, id]() { selectPlaceTool(id); };
+			_placeButtons.push_back(std::move(button));
 		}
 
 		_inspectPanel = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
@@ -1160,9 +1192,11 @@ namespace tower
 		_inspectPanel->opacity = 0.92f;
 		_inspectLabel = std::make_unique<hl::ui::Label>(_inspectPanel->node().addChild(), *_typeface);
 		_inspectLabel->color = { 1.0f, 1.0f, 1.0f };
-		_inspectLabel->setText(Towers[0].label, 24);
+		_inspectLabel->setText(_towers.all().front().label, 24);
 		_sellButton = std::make_unique<hl::ui::Button>(_inspectPanel->node().addChild(), *_typeface);
-		_sellButton->setText("Sell (" + std::to_string(towerSellRefund(Towers[0].cost)) + ")", 24);
+		_sellButton->setText(
+			"Sell (" + std::to_string(towerSellRefund(_towers.all().front().cost)) + ")",
+			24);
 		_sellButton->onClick = [this]() { sellInspectedTower(); };
 
 		_overlayRoot = std::make_unique<hl::ui::Node>();
@@ -1211,21 +1245,22 @@ namespace tower
 				"Start Wave (" + std::to_string(_wave.buildSecondsRemaining()) + ")",
 				32);
 		}
-		for (int i = 0; i < TowerCount; ++i)
+		for (std::size_t i = 0; i < _towers.all().size(); ++i)
 		{
+			const auto& def = _towers.all()[i];
 			_placeButtons[i]->setText(
-				std::string(Towers[i].label) + " (" + std::to_string(Towers[i].cost) + ")",
+				def.label + " (" + std::to_string(def.cost) + ")",
 				24);
 		}
 		if (_inspectTower != nullptr)
 		{
 			const auto* tower = _inspectTower->GetComponent<TowerComponent>();
-			if (tower != nullptr && tower->defIndex >= 0 && tower->defIndex < TowerCount)
+			const auto* def = (tower != nullptr) ? _towers.find(tower->defId) : nullptr;
+			if (def != nullptr)
 			{
-				const auto& def = Towers[tower->defIndex];
-				_inspectLabel->setText(def.label, 24);
+				_inspectLabel->setText(def->label, 24);
 				_sellButton->setText(
-					"Sell (" + std::to_string(towerSellRefund(def.cost)) + ")",
+					"Sell (" + std::to_string(towerSellRefund(def->cost)) + ")",
 					24);
 			}
 		}
@@ -1264,18 +1299,19 @@ namespace tower
 
 		constexpr glm::vec2 barPad{ 16.0f, 8.0f };
 		constexpr float chipGap = 8.0f;
-		glm::vec2 chipSizes[TowerCount]{};
+		std::vector<glm::vec2> chipSizes(_placeButtons.size());
 		float chipsWidth = 0.0f;
 		float chipsHeight = 0.0f;
 		bool anySelected = false;
-		for (int i = 0; i < TowerCount; ++i)
+		for (std::size_t i = 0; i < _placeButtons.size(); ++i)
 		{
+			const auto& def = _towers.all()[i];
 			chipSizes[i] = _placeButtons[i]->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
 			chipsWidth += chipSizes[i].x;
 			chipsHeight = std::max(chipsHeight, chipSizes[i].y);
 			const bool available =
-				!matchEnded() && !_wave.inCombat() && _gameState.gold() >= Towers[i].cost;
-			const bool selected = _selectedTower == i;
+				!matchEnded() && !_wave.inCombat() && _gameState.gold() >= def.cost;
+			const bool selected = _selectedTowerId == def.id;
 			anySelected = anySelected || selected;
 			_placeButtons[i]->color = selected
 				? glm::vec3{ 1.0f, 1.0f, 1.0f }
@@ -1286,12 +1322,15 @@ namespace tower
 			? glm::vec3{ 0.28f, 0.38f, 0.28f }
 			: glm::vec3{ 0.08f, 0.09f, 0.12f };
 		_buildBarPanel->hitTestEnabled = !matchEnded();
-		chipsWidth += chipGap * static_cast<float>(TowerCount - 1);
+		if (!_placeButtons.empty())
+		{
+			chipsWidth += chipGap * static_cast<float>(_placeButtons.size() - 1);
+		}
 		_buildBarPanel->node().setBottomCenter(
 			{ chipsWidth + barPad.x * 2.0f, chipsHeight + barPad.y * 2.0f });
 		_buildBarPanel->node().relative = { 0.0f, 0.0f };
 		float chipX = barPad.x;
-		for (int i = 0; i < TowerCount; ++i)
+		for (std::size_t i = 0; i < _placeButtons.size(); ++i)
 		{
 			_placeButtons[i]->node().setTopLeft(chipSizes[i]);
 			_placeButtons[i]->node().relative = { chipX, barPad.y };
@@ -1378,7 +1417,7 @@ namespace tower
 		if (_engine.getInputManager().isKeyReleased(GLFW_KEY_ESCAPE))
 		{
 			clearInspect();
-			_selectedTower = -1;
+			_selectedTowerId.clear();
 		}
 
 		rebuildHud();

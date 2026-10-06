@@ -1,0 +1,4 @@
+[
+  { "id": "tree", "model": "detail_tree", "size": [1, 1] },
+  { "id": "rocks", "model": "detail_rocks", "size": [1, 1] }
+]

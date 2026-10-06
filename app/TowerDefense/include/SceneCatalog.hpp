@@ -16,8 +16,6 @@ namespace tower
 	inline constexpr const char* TileWhiteModelId = "tile_white";
 	inline constexpr const char* TowerTag = "TOWER";
 	inline constexpr const char* BlockerTag = "BLOCKER";
-	inline constexpr const char* DetailTreeModelId = "detail_tree";
-	inline constexpr const char* DetailRocksModelId = "detail_rocks";
 	inline constexpr const char* GhostTag = "GHOST";
 	inline constexpr const char* GhostOkMaterial = "ghost_ok";
 	inline constexpr const char* GhostBadMaterial = "ghost_bad";
@@ -54,19 +52,6 @@ namespace tower
 	inline constexpr int MaxWaveCreeps = 16;
 	inline constexpr float WaveSpawnInterval = 1.0f;
 	inline constexpr float BuildTimerSeconds = 20.0f;
-	struct TowerDef
-	{
-		const char* model;
-		const char* label;
-		int cost;
-		float range;
-		float fireCooldown;
-	};
-	inline constexpr TowerDef Towers[] = {
-		{ "turret_single", "Single", 15, 2.5f, 0.7f },
-		{ "turret_double", "Double", 25, 3.5f, 1.0f },
-	};
-	inline constexpr int TowerCount = static_cast<int>(sizeof(Towers) / sizeof(Towers[0]));
 	inline constexpr int towerSellRefund(int cost)
 	{
 		return cost / 2;
@@ -105,15 +90,15 @@ namespace tower
 
 	struct BlockerDef
 	{
-		const char* model;
+		const char* id;
 		TileCoord tile;
 	};
 
 	inline constexpr BlockerDef Blockers[] = {
-		{ DetailTreeModelId, { 3, 1 } },
-		{ DetailRocksModelId, { 5, 3 } },
-		{ DetailTreeModelId, { 6, 2 } },
-		{ DetailRocksModelId, { 2, 5 } },
+		{ "tree", { 3, 1 } },
+		{ "rocks", { 5, 3 } },
+		{ "tree", { 6, 2 } },
+		{ "rocks", { 2, 5 } },
 	};
 
 	inline constexpr bool isPathTile(int tx, int tz)

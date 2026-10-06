@@ -1,0 +1,4 @@
+[
+  { "id": "single", "model": "turret_single", "label": "Single", "cost": 15, "range": 2.5, "fireCooldown": 0.7 },
+  { "id": "double", "model": "turret_double", "label": "Double", "cost": 25, "range": 3.5, "fireCooldown": 1.0 }
+]

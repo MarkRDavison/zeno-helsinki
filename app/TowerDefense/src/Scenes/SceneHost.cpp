@@ -5,6 +5,8 @@
 #include <Services/GameStateService.hpp>
 #include <Services/WaveService.hpp>
 #include <Services/CreepCatalog.hpp>
+#include <Services/TowerCatalog.hpp>
+#include <Services/EntityCatalog.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Audio/Audio.hpp>
 
@@ -37,6 +39,8 @@ namespace tower
 			state,
 			waves,
 			_root.get<CreepCatalog>(),
+			_root.get<TowerCatalog>(),
+			_root.get<EntityCatalog>(),
 			_root.get<hl::audio::Audio>()));
 	}
 

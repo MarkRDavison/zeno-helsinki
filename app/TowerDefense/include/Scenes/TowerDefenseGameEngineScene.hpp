@@ -18,9 +18,12 @@
 #include <Services/GameStateService.hpp>
 #include <Services/WaveService.hpp>
 #include <Services/CreepCatalog.hpp>
+#include <Services/TowerCatalog.hpp>
+#include <Services/EntityCatalog.hpp>
 #include <SceneCatalog.hpp>
-#include <array>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace hl
 {
@@ -42,6 +45,8 @@ namespace tower
 			GameStateService& gameState,
 			WaveService& wave,
 			CreepCatalog& creeps,
+			TowerCatalog& towers,
+			EntityCatalog& entities,
 			hl::audio::Audio& audio);
 		~TowerDefenseGameEngineScene();
 		void initialise(
@@ -61,8 +66,8 @@ namespace tower
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnBoard(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnBlockers(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
-		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz, int defIndex);
-		void selectPlaceTool(int defIndex);
+		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz, const std::string& defId);
+		void selectPlaceTool(const std::string& defId);
 		void spawnCreep();
 		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnGhost(hl::ResourceManager& resourceManager);
@@ -93,12 +98,15 @@ namespace tower
 		void updateCameraOrbit();
 		void updateCameraFollow(float delta);
 		hl::Camera* boardCamera() const;
+		const TowerDef* selectedTowerDef() const;
 
 		SceneHost& _sceneHost;
 		const hl::EngineConfiguration& _engineConfig;
 		GameStateService& _gameState;
 		WaveService& _wave;
 		CreepCatalog& _creeps;
+		TowerCatalog& _towers;
+		EntityCatalog& _entities;
 		hl::audio::Audio& _audio;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::Entity* _marker = nullptr;
@@ -114,7 +122,7 @@ namespace tower
 		float _orbitStartYaw = 0.0f;
 		float _cameraDistance = 0.0f;
 		float _cameraDistanceTarget = 0.0f;
-		int _selectedTower = -1;
+		std::string _selectedTowerId;
 		hl::Entity* _inspectTower = nullptr;
 
 		hl::UiBatch _uiBatch;
@@ -125,7 +133,7 @@ namespace tower
 		std::unique_ptr<hl::ui::Label> _waveLabel;
 		std::unique_ptr<hl::ui::Button> _waveButton;
 		std::unique_ptr<hl::ui::Panel> _buildBarPanel;
-		std::array<std::unique_ptr<hl::ui::Button>, TowerCount> _placeButtons;
+		std::vector<std::unique_ptr<hl::ui::Button>> _placeButtons;
 		std::unique_ptr<hl::ui::Panel> _inspectPanel;
 		std::unique_ptr<hl::ui::Label> _inspectLabel;
 		std::unique_ptr<hl::ui::Button> _sellButton;
