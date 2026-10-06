@@ -18,6 +18,7 @@
 #include <Services/GameStateService.hpp>
 #include <Services/WaveService.hpp>
 #include <SceneCatalog.hpp>
+#include <array>
 #include <memory>
 
 namespace hl
@@ -58,7 +59,8 @@ namespace tower
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnBoard(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnBlockers(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
-		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz);
+		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz, int defIndex);
+		void selectPlaceTool(int defIndex);
 		void spawnCreep();
 		void spawnMarker(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnGhost(hl::ResourceManager& resourceManager);
@@ -109,7 +111,7 @@ namespace tower
 		float _orbitStartYaw = 0.0f;
 		float _cameraDistance = 0.0f;
 		float _cameraDistanceTarget = 0.0f;
-		bool _placeToolSelected = false;
+		int _selectedTower = -1;
 		hl::Entity* _inspectTower = nullptr;
 
 		hl::UiBatch _uiBatch;
@@ -120,7 +122,7 @@ namespace tower
 		std::unique_ptr<hl::ui::Label> _waveLabel;
 		std::unique_ptr<hl::ui::Button> _waveButton;
 		std::unique_ptr<hl::ui::Panel> _buildBarPanel;
-		std::unique_ptr<hl::ui::Button> _placeButton;
+		std::array<std::unique_ptr<hl::ui::Button>, TowerCount> _placeButtons;
 		std::unique_ptr<hl::ui::Panel> _inspectPanel;
 		std::unique_ptr<hl::ui::Label> _inspectLabel;
 		std::unique_ptr<hl::ui::Button> _sellButton;

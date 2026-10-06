@@ -15,7 +15,6 @@ namespace tower
 	inline constexpr const char* CreepModelId = "creep";
 	inline constexpr const char* TileBlackModelId = "tile_black";
 	inline constexpr const char* TileWhiteModelId = "tile_white";
-	inline constexpr const char* TurretModelId = "turret_double";
 	inline constexpr const char* TowerTag = "TOWER";
 	inline constexpr const char* BlockerTag = "BLOCKER";
 	inline constexpr const char* DetailTreeModelId = "detail_tree";
@@ -38,8 +37,6 @@ namespace tower
 	inline constexpr const char* ProjectileTag = "PROJECTILE";
 	inline constexpr const char* ProjectileModelId = "marker";
 	inline constexpr int StartGold = 100;
-	inline constexpr int TowerCost = 25;
-	inline constexpr int TowerSellRefund = TowerCost / 2;
 	inline constexpr int KillGold = 10;
 	inline constexpr int WaveClearBonus = 25;
 	inline constexpr int ProjectileDamage = 1;
@@ -79,10 +76,25 @@ namespace tower
 	inline constexpr int MaxWaveCreeps = 16;
 	inline constexpr float WaveSpawnInterval = 1.0f;
 	inline constexpr float BuildTimerSeconds = 20.0f;
-	inline constexpr float TowerRange = 3.5f;
+	struct TowerDef
+	{
+		const char* model;
+		const char* label;
+		int cost;
+		float range;
+		float fireCooldown;
+	};
+	inline constexpr TowerDef Towers[] = {
+		{ "turret_single", "Single", 15, 2.5f, 0.7f },
+		{ "turret_double", "Double", 25, 3.5f, 1.0f },
+	};
+	inline constexpr int TowerCount = static_cast<int>(sizeof(Towers) / sizeof(Towers[0]));
+	inline constexpr int towerSellRefund(int cost)
+	{
+		return cost / 2;
+	}
 	inline constexpr float TowerYawOffset = 0.0f;
 	inline constexpr float TowerTurnSpeed = 270.0f;
-	inline constexpr float TowerFireCooldown = 1.0f;
 	inline constexpr float ProjectileSpeed = 6.0f;
 	inline constexpr float ProjectileHitRadius = 0.35f;
 	inline constexpr float ProjectileY = 0.4f;

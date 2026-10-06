@@ -187,7 +187,6 @@ namespace hl
     {
         ZoneScopedN("Engine Scene Update");
         update(currentFrame, delta);
-        updateCameraUniformBuffer(_cameraMatrixPushConstantHandle.Get()->getUniformBuffer(currentFrame));
         _engine.getInputManager().updateEndOfFrame();
         _scene.update();
     }
@@ -201,6 +200,8 @@ namespace hl
 	VkCommandBuffer EngineScene::draw(uint32_t currentFrame, uint32_t imageIndex)
 	{
 		ZoneScopedN("Engine Scene Draw");
+
+		updateCameraUniformBuffer(_cameraMatrixPushConstantHandle.Get()->getUniformBuffer(currentFrame));
 
         const auto& lastRenderpassName = _renderGraph->getResources().back()->Name;
         auto& frame = _frameResources[currentFrame];

@@ -209,11 +209,11 @@ namespace hl
 			}
 
 			setCurrentSceneAsAppropriate();
-			
+
+			glfwPollEvents();
+
 			while (accumulator >= delta)
 			{
-				glfwPollEvents();
-
 				update(delta);
 				ups++;
 

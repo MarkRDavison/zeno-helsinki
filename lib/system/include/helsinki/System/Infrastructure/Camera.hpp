@@ -32,6 +32,11 @@ namespace hl
 		// Property access methods for external systems
 		// Provide controlled access to internal state without exposing implementation details
 		glm::vec3 getPosition() const { return position; }
+		void setPosition(const glm::vec3& p) { position = p; }
+		void move(const glm::vec3& offset) { setPosition(getPosition() + offset); }
+		void setLookAtPose(const glm::vec3& target, float yawDegrees, float pitchDegrees, float distance);
+		float getYaw() const { return yaw; }
+		float getPitch() const { return pitch; }
 		glm::vec3 getFront() const { return front; }
 		float getZoom() const { return zoom; }
 		void setZoom(float newZoom) { zoom = newZoom; }

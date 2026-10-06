@@ -1,4 +1,6 @@
 #include <helsinki/System/Infrastructure/Camera.hpp>
+#include <algorithm>
+#include <cmath>
 
 namespace hl
 {
@@ -68,6 +70,18 @@ namespace hl
         }
 
         updateCameraVectors();
+    }
+
+    void Camera::setLookAtPose(const glm::vec3& target, float yawDegrees, float pitchDegrees, float distance)
+    {
+        yaw = yawDegrees;
+        pitch = pitchDegrees;
+        updateCameraVectors();
+        if (distance < 1e-6f)
+        {
+            return;
+        }
+        position = target - front * distance;
     }
 
     void Camera::notifyFramebufferChangeSize(uint32_t width, uint32_t height)

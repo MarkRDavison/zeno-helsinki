@@ -381,7 +381,10 @@ namespace tower
 
 		spawnBoard(resourceManager, resourceContext);
 		spawnBlockers(resourceManager, resourceContext);
-		resourceManager.Load<hl::ModelResource>(TurretModelId, resourceContext);
+		for (const auto& def : Towers)
+		{
+			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
+		}
 		resourceManager.Load<hl::ModelResource>(CreepModelId, resourceContext);
 		_engine.getMaterialSystem().addMaterial(hl::Material{
 			.name = CreepRunner.material,
@@ -461,17 +464,28 @@ namespace tower
 		}
 	}
 
-	void TowerDefenseGameEngineScene::spawnTower(hl::ResourceManager& resourceManager, int tx, int tz)
+	void TowerDefenseGameEngineScene::spawnTower(
+		hl::ResourceManager& resourceManager,
+		int tx,
+		int tz,
+		int defIndex)
 	{
-		auto* model = resourceManager.GetResource<hl::ModelResource>(TurretModelId);
+		const auto& def = Towers[defIndex];
+		auto* model = resourceManager.GetResource<hl::ModelResource>(def.model);
 		auto* entity = _scene.addEntity();
 		entity->AddTag(TowerTag);
 		auto* tower = entity->AddComponent<TowerComponent>();
 		tower->x = tx;
 		tower->z = tz;
+		tower->defIndex = defIndex;
 		entity->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(tx, tz));
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		_audio.play(CuePlace);
+	}
+
+	void TowerDefenseGameEngineScene::selectPlaceTool(int defIndex)
+	{
+		_selectedTower = _selectedTower == defIndex ? -1 : defIndex;
 	}
 
 	bool TowerDefenseGameEngineScene::isOccupied(int tx, int tz) const
@@ -569,7 +583,7 @@ namespace tower
 			.diffuse = { 0.85f, 0.25f, 0.25f }
 		});
 
-		auto* model = resourceManager.GetResource<hl::ModelResource>(TurretModelId);
+		auto* model = resourceManager.GetResource<hl::ModelResource>(Towers[0].model);
 		_ghost = _scene.addEntity();
 		_ghost->AddTag(GhostTag);
 		_ghost->AddComponent<hl::TransformComponent>()->SetPosition(tileCenter(0, 0));
@@ -589,7 +603,7 @@ namespace tower
 		_rangeRing->AddTag(RangeRingTag);
 		auto* transform = _rangeRing->AddComponent<hl::TransformComponent>();
 		transform->SetPosition(tileCenter(0, 0, RangeRingY));
-		transform->SetScale(glm::vec3(TowerRange, 1.0f, TowerRange));
+		transform->SetScale(glm::vec3(Towers[0].range, 1.0f, Towers[0].range));
 		_rangeRing->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
 	}
 
@@ -663,13 +677,18 @@ namespace tower
 		_ghostVisible = false;
 		_ghostPlaceable = false;
 		if (_ghost == nullptr
-			|| !_placeToolSelected
+			|| _selectedTower < 0
+			|| _selectedTower >= TowerCount
 			|| matchEnded()
 			|| _wave.inCombat()
 			|| uiBlocksBoardClick())
 		{
 			return;
 		}
+
+		const auto& def = Towers[_selectedTower];
+		auto* model = _resourceManager->GetResource<hl::ModelResource>(def.model);
+		_ghost->GetComponent<hl::ModelComponent>()->setModelId(model->GetId());
 
 		const auto tile = hoveredTile();
 		if (!tile || towerAt(tile->x, tile->z) != nullptr)
@@ -683,11 +702,11 @@ namespace tower
 		{
 			auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
 			ring->SetPosition(tileCenter(tile->x, tile->z, RangeRingY));
-			ring->SetScale(glm::vec3(TowerRange, 1.0f, TowerRange));
+			ring->SetScale(glm::vec3(def.range, 1.0f, def.range));
 		}
 		_ghostPlaceable = !isPathTile(tile->x, tile->z)
 			&& blockerAt(tile->x, tile->z) == nullptr
-			&& _gameState.gold() >= TowerCost;
+			&& _gameState.gold() >= def.cost;
 		_ghostVisible = true;
 	}
 
@@ -708,7 +727,11 @@ namespace tower
 			return;
 		}
 
-		_gameState.addGold(TowerSellRefund);
+		const auto* tower = _inspectTower->GetComponent<TowerComponent>();
+		const int cost = (tower != nullptr && tower->defIndex >= 0 && tower->defIndex < TowerCount)
+			? Towers[tower->defIndex].cost
+			: Towers[0].cost;
+		_gameState.addGold(towerSellRefund(cost));
 		if (_flashTower == _inspectTower)
 		{
 			_flashTower = nullptr;
@@ -735,7 +758,10 @@ namespace tower
 
 		auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
 		ring->SetPosition(tileCenter(tower->x, tower->z, RangeRingY));
-		ring->SetScale(glm::vec3(TowerRange, 1.0f, TowerRange));
+		const float range = (tower->defIndex >= 0 && tower->defIndex < TowerCount)
+			? Towers[tower->defIndex].range
+			: Towers[0].range;
+		ring->SetScale(glm::vec3(range, 1.0f, range));
 	}
 
 	void TowerDefenseGameEngineScene::tryHandleBoardClick()
@@ -776,24 +802,25 @@ namespace tower
 			clearInspect();
 		}
 
-		if (!_placeToolSelected)
+		if (_selectedTower < 0 || _selectedTower >= TowerCount)
 		{
 			return;
 		}
 
+		const auto& def = Towers[_selectedTower];
 		if (blockerAt(tile->x, tile->z) != nullptr)
 		{
 			flashInvalid(tile->x, tile->z);
 			return;
 		}
 
-		if (isPathTile(tile->x, tile->z) || !_gameState.trySpend(TowerCost))
+		if (isPathTile(tile->x, tile->z) || !_gameState.trySpend(def.cost))
 		{
 			flashInvalid(tile->x, tile->z);
 			return;
 		}
 
-		spawnTower(*_resourceManager, tile->x, tile->z);
+		spawnTower(*_resourceManager, tile->x, tile->z, _selectedTower);
 	}
 
 	void TowerDefenseGameEngineScene::initialise(
@@ -1125,18 +1152,25 @@ namespace tower
 		_buildBarPanel = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
 		_buildBarPanel->color = { 0.08f, 0.09f, 0.12f };
 		_buildBarPanel->opacity = 0.92f;
-		_placeButton = std::make_unique<hl::ui::Button>(_buildBarPanel->node().addChild(), *_typeface);
-		_placeButton->setText("Turret (" + std::to_string(TowerCost) + ")", 24);
-		_placeButton->onClick = [this]() { _placeToolSelected = !_placeToolSelected; };
+		for (int i = 0; i < TowerCount; ++i)
+		{
+			_placeButtons[i] = std::make_unique<hl::ui::Button>(
+				_buildBarPanel->node().addChild(),
+				*_typeface);
+			_placeButtons[i]->setText(
+				std::string(Towers[i].label) + " (" + std::to_string(Towers[i].cost) + ")",
+				24);
+			_placeButtons[i]->onClick = [this, i]() { selectPlaceTool(i); };
+		}
 
 		_inspectPanel = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
 		_inspectPanel->color = { 0.08f, 0.09f, 0.12f };
 		_inspectPanel->opacity = 0.92f;
 		_inspectLabel = std::make_unique<hl::ui::Label>(_inspectPanel->node().addChild(), *_typeface);
 		_inspectLabel->color = { 1.0f, 1.0f, 1.0f };
-		_inspectLabel->setText("Turret", 24);
+		_inspectLabel->setText(Towers[0].label, 24);
 		_sellButton = std::make_unique<hl::ui::Button>(_inspectPanel->node().addChild(), *_typeface);
-		_sellButton->setText("Sell (" + std::to_string(TowerSellRefund) + ")", 24);
+		_sellButton->setText("Sell (" + std::to_string(towerSellRefund(Towers[0].cost)) + ")", 24);
 		_sellButton->onClick = [this]() { sellInspectedTower(); };
 
 		_overlayRoot = std::make_unique<hl::ui::Node>();
@@ -1185,7 +1219,24 @@ namespace tower
 				"Start Wave (" + std::to_string(_wave.buildSecondsRemaining()) + ")",
 				32);
 		}
-		_placeButton->setText("Turret (" + std::to_string(TowerCost) + ")", 24);
+		for (int i = 0; i < TowerCount; ++i)
+		{
+			_placeButtons[i]->setText(
+				std::string(Towers[i].label) + " (" + std::to_string(Towers[i].cost) + ")",
+				24);
+		}
+		if (_inspectTower != nullptr)
+		{
+			const auto* tower = _inspectTower->GetComponent<TowerComponent>();
+			if (tower != nullptr && tower->defIndex >= 0 && tower->defIndex < TowerCount)
+			{
+				const auto& def = Towers[tower->defIndex];
+				_inspectLabel->setText(def.label, 24);
+				_sellButton->setText(
+					"Sell (" + std::to_string(towerSellRefund(def.cost)) + ")",
+					24);
+			}
+		}
 		hl::ui::prepareTree(*_layoutRoot);
 
 		const glm::vec2 goldSize = _goldLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
@@ -1219,26 +1270,42 @@ namespace tower
 			_waveButton->node().intrinsicSize.reset();
 		}
 
-		const bool placeToolAvailable =
-			!matchEnded() && !_wave.inCombat() && _gameState.gold() >= TowerCost;
-
-		_placeButton->color = _placeToolSelected
-			? glm::vec3{ 1.0f, 1.0f, 1.0f }
-			: glm::vec3{ 0.55f, 0.55f, 0.55f };
-		_buildBarPanel->color = !placeToolAvailable
-			? glm::vec3{ 0.12f, 0.12f, 0.14f }
-			: (_placeToolSelected
-				? glm::vec3{ 0.28f, 0.38f, 0.28f }
-				: glm::vec3{ 0.08f, 0.09f, 0.12f });
-		_placeButton->hitTestEnabled = placeToolAvailable;
-		_buildBarPanel->hitTestEnabled = !matchEnded();
-		const glm::vec2 placeSize = _placeButton->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
 		constexpr glm::vec2 barPad{ 16.0f, 8.0f };
-		_buildBarPanel->node().setBottomCenter(placeSize + barPad * 2.0f);
+		constexpr float chipGap = 8.0f;
+		glm::vec2 chipSizes[TowerCount]{};
+		float chipsWidth = 0.0f;
+		float chipsHeight = 0.0f;
+		bool anySelected = false;
+		for (int i = 0; i < TowerCount; ++i)
+		{
+			chipSizes[i] = _placeButtons[i]->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+			chipsWidth += chipSizes[i].x;
+			chipsHeight = std::max(chipsHeight, chipSizes[i].y);
+			const bool available =
+				!matchEnded() && !_wave.inCombat() && _gameState.gold() >= Towers[i].cost;
+			const bool selected = _selectedTower == i;
+			anySelected = anySelected || selected;
+			_placeButtons[i]->color = selected
+				? glm::vec3{ 1.0f, 1.0f, 1.0f }
+				: glm::vec3{ 0.55f, 0.55f, 0.55f };
+			_placeButtons[i]->hitTestEnabled = available;
+		}
+		_buildBarPanel->color = anySelected
+			? glm::vec3{ 0.28f, 0.38f, 0.28f }
+			: glm::vec3{ 0.08f, 0.09f, 0.12f };
+		_buildBarPanel->hitTestEnabled = !matchEnded();
+		chipsWidth += chipGap * static_cast<float>(TowerCount - 1);
+		_buildBarPanel->node().setBottomCenter(
+			{ chipsWidth + barPad.x * 2.0f, chipsHeight + barPad.y * 2.0f });
 		_buildBarPanel->node().relative = { 0.0f, 0.0f };
-		_placeButton->node().setTopLeft(placeSize);
-		_placeButton->node().relative = barPad;
-		_placeButton->node().intrinsicSize.reset();
+		float chipX = barPad.x;
+		for (int i = 0; i < TowerCount; ++i)
+		{
+			_placeButtons[i]->node().setTopLeft(chipSizes[i]);
+			_placeButtons[i]->node().relative = { chipX, barPad.y };
+			_placeButtons[i]->node().intrinsicSize.reset();
+			chipX += chipSizes[i].x + chipGap;
+		}
 
 		const bool showInspect = _inspectTower != nullptr && !_wave.inCombat() && !matchEnded();
 		if (showInspect)
@@ -1319,7 +1386,7 @@ namespace tower
 		if (_engine.getInputManager().isKeyReleased(GLFW_KEY_ESCAPE))
 		{
 			clearInspect();
-			_placeToolSelected = false;
+			_selectedTower = -1;
 		}
 
 		rebuildHud();
