@@ -36,3 +36,20 @@ TEST_CASE("campaign match ignores unknown owned ids", "[tower][match]")
 	match.ownedTowers = { "single", "laser" };
 	CHECK(tower::matchPlaceableTowerIds(catalog, match) == std::vector<std::string>{ "single" });
 }
+
+TEST_CASE("skirmish start gold is the level value", "[tower][match]")
+{
+	tower::MatchContext match;
+	CHECK(tower::matchStartGold(100, match) == 100);
+}
+
+TEST_CASE("campaign start gold adds rank bonus", "[tower][match]")
+{
+	tower::MatchContext match;
+	match.campaign = true;
+	CHECK(tower::matchStartGold(100, match) == 100);
+	match.startingGoldRank = 1;
+	CHECK(tower::matchStartGold(100, match) == 110);
+	match.startingGoldRank = 2;
+	CHECK(tower::matchStartGold(100, match) == 120);
+}

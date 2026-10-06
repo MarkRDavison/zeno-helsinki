@@ -1,6 +1,7 @@
 #include "Scenes/TowerDefenseCampaignHubEngineScene.hpp"
 #include <Scenes/SceneHost.hpp>
 #include <Services/CampaignEvaluator.hpp>
+#include <Services/GraphChip.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
@@ -13,22 +14,6 @@ namespace tower
 {
 	namespace
 	{
-		glm::vec3 chipColor(CampaignNodeState state)
-		{
-			switch (state)
-			{
-			case CampaignNodeState::Available:
-				return { 1.0f, 0.5f, 0.0f };
-			case CampaignNodeState::Cleared:
-				return { 0.2f, 0.75f, 0.55f };
-			case CampaignNodeState::Skipped:
-				return { 0.16f, 0.16f, 0.18f };
-			case CampaignNodeState::Locked:
-			default:
-				return { 0.28f, 0.28f, 0.32f };
-			}
-		}
-
 		bool playable(CampaignNodeState state)
 		{
 			return state == CampaignNodeState::Available || state == CampaignNodeState::Cleared;
@@ -145,7 +130,7 @@ namespace tower
 			chip.padding = hl::ui::Edges::all(16.0f);
 			chip.crossAlign = hl::ui::Align::Center;
 			auto panel = std::make_unique<hl::ui::Panel>(chip);
-			panel->color = chipColor(state);
+			panel->color = graphChipColor(campaignStateAsGraph(state));
 			panel->hitTestEnabled = false;
 			_nodePanels.push_back(std::move(panel));
 
@@ -167,6 +152,10 @@ namespace tower
 
 			_nodeButtons.push_back(std::move(button));
 		}
+
+		_research = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_research->setText("Research", 64);
+		_research->onClick = [this]() { _sceneHost.goResearch(); };
 
 		_back = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
 		_back->setText("Back", 64);

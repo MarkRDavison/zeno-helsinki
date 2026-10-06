@@ -1,8 +1,10 @@
 #pragma once
 
 #include <Services/CampaignTypes.hpp>
+#include <Services/ResearchCatalog.hpp>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace tower
@@ -11,7 +13,7 @@ namespace tower
 	{
 		CampaignProgress progress;
 		int points = 0;
-		// TODO: long term we will unlock research, this will have side effects including unlocking towers
+		std::unordered_set<std::string> researched{ "single" };
 		std::vector<std::string> ownedTowers{ "single" };
 		int startingGoldRank = 0;
 		int fireRateRank = 0;
@@ -30,9 +32,12 @@ namespace tower
 		const CampaignProgress& progress() const;
 		const CampaignProfile& profile() const;
 		void recordWin(const std::string& nodeId, const CampaignData& data);
+		void syncFromResearch(const ResearchData& data);
+		bool tryResearch(const std::string& nodeId, const ResearchData& data);
 
 	private:
 		void applyDefaults();
+		void applyResearchEffects(const ResearchData& data);
 		bool tryParse(const std::string& text);
 		bool writeFile() const;
 

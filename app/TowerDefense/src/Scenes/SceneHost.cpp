@@ -1,5 +1,6 @@
 #include <Scenes/SceneHost.hpp>
 #include <Scenes/TowerDefenseCampaignHubEngineScene.hpp>
+#include <Scenes/TowerDefenseResearchEngineScene.hpp>
 #include <Scenes/TowerDefenseGameEngineScene.hpp>
 #include <Scenes/TowerDefenseLevelSelectEngineScene.hpp>
 #include <Scenes/TowerDefenseSettingsEngineScene.hpp>
@@ -17,6 +18,7 @@
 #include <Services/CampaignEvaluator.hpp>
 #include <Services/MatchContext.hpp>
 #include <Services/ProfileService.hpp>
+#include <Services/ResearchCatalog.hpp>
 #include <Services/CatalogJson.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Audio/Audio.hpp>
@@ -57,6 +59,17 @@ namespace tower
 			*this,
 			_root.get<CampaignCatalog>(),
 			_root.get<ProfileService>().progress()));
+	}
+
+	void SceneHost::goResearch()
+	{
+		_pendingScope.reset();
+		_engine.setScene(new TowerDefenseResearchEngineScene(
+			_engine,
+			_root.get<hl::EngineConfiguration>(),
+			*this,
+			_root.get<ResearchCatalog>(),
+			_root.get<ProfileService>()));
 	}
 
 	void SceneHost::goCampaign(const std::string& nodeId)
@@ -111,6 +124,7 @@ namespace tower
 			match.campaign = true;
 			match.nodeId = *campaignNodeId;
 			match.ownedTowers = _root.get<ProfileService>().profile().ownedTowers;
+			match.startingGoldRank = _root.get<ProfileService>().profile().startingGoldRank;
 		}
 
 		auto& state = _pendingScope->get<GameStateService>();

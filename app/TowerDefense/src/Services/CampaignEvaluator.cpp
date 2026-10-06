@@ -1,4 +1,5 @@
 #include <Services/CampaignEvaluator.hpp>
+#include <Services/GraphEvaluator.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -7,58 +8,15 @@ namespace tower
 {
 	namespace
 	{
-		bool prereqSatisfied(
-			const CampaignPrereq& prereq,
-			const std::unordered_set<std::string>& cleared)
-		{
-			switch (prereq.kind)
-			{
-			case CampaignPrereqKind::Node:
-				return cleared.contains(prereq.nodeId);
-			case CampaignPrereqKind::All:
-				for (const auto& child : prereq.children)
-				{
-					if (!prereqSatisfied(child, cleared))
-					{
-						return false;
-					}
-				}
-				return true;
-			case CampaignPrereqKind::Any:
-				for (const auto& child : prereq.children)
-				{
-					if (prereqSatisfied(child, cleared))
-					{
-						return true;
-					}
-				}
-				return false;
-			}
-
-			return false;
-		}
-
-		bool nodeSatisfied(
-			const CampaignNode& node,
-			const std::unordered_set<std::string>& cleared)
-		{
-			if (!node.prereq.has_value())
-			{
-				return true;
-			}
-
-			return prereqSatisfied(*node.prereq, cleared);
-		}
-
 		bool prereqImpossible(
-			const CampaignPrereq& prereq,
+			const GraphPrereq& prereq,
 			const std::unordered_set<std::string>& skipped)
 		{
 			switch (prereq.kind)
 			{
-			case CampaignPrereqKind::Node:
+			case GraphPrereqKind::Node:
 				return skipped.contains(prereq.nodeId);
-			case CampaignPrereqKind::All:
+			case GraphPrereqKind::All:
 				for (const auto& child : prereq.children)
 				{
 					if (prereqImpossible(child, skipped))
@@ -67,7 +25,7 @@ namespace tower
 					}
 				}
 				return false;
-			case CampaignPrereqKind::Any:
+			case GraphPrereqKind::Any:
 				for (const auto& child : prereq.children)
 				{
 					if (!prereqImpossible(child, skipped))
@@ -91,6 +49,18 @@ namespace tower
 			}
 
 			return prereqImpossible(*node.prereq, skipped);
+		}
+
+		std::vector<GraphNode> graphNodes(const CampaignData& data)
+		{
+			std::vector<GraphNode> nodes;
+			nodes.reserve(data.nodes.size());
+			for (const auto& node : data.nodes)
+			{
+				nodes.push_back(GraphNode{ .id = node.id, .prereq = node.prereq });
+			}
+
+			return nodes;
 		}
 	}
 
@@ -179,25 +149,28 @@ namespace tower
 			}
 		}
 
+		const auto graphStates = evaluateGraph(graphNodes(data), cleared, skipped);
 		std::unordered_map<std::string, CampaignNodeState> states;
 		states.reserve(data.nodes.size());
 		for (const auto& node : data.nodes)
 		{
-			if (cleared.contains(node.id))
+			const auto it = graphStates.find(node.id);
+			const auto graph = it != graphStates.end() ? it->second : GraphNodeState::Locked;
+			switch (graph)
 			{
+			case GraphNodeState::Completed:
 				states.emplace(node.id, CampaignNodeState::Cleared);
-			}
-			else if (skipped.contains(node.id))
-			{
+				break;
+			case GraphNodeState::Skipped:
 				states.emplace(node.id, CampaignNodeState::Skipped);
-			}
-			else if (nodeSatisfied(node, cleared))
-			{
+				break;
+			case GraphNodeState::Available:
 				states.emplace(node.id, CampaignNodeState::Available);
-			}
-			else
-			{
+				break;
+			case GraphNodeState::Locked:
+			default:
 				states.emplace(node.id, CampaignNodeState::Locked);
+				break;
 			}
 		}
 

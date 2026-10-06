@@ -15,6 +15,7 @@ namespace tower
 		void goTitle();
 		void goLevelSelect();
 		void goCampaignHub();
+		void goResearch();
 		void goCampaign(const std::string& nodeId);
 		void goGame(const std::string& id);
 		void goSettings();

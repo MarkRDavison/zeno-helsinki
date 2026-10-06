@@ -1,13 +1,14 @@
 #pragma once
 
 #include <Services/LevelCatalog.hpp>
+#include <Services/MatchContext.hpp>
 
 namespace tower
 {
 	class GameStateService
 	{
 	public:
-		explicit GameStateService(LevelCatalog& level);
+		GameStateService(LevelCatalog& level, MatchContext& match);
 
 		int gold() const;
 		int lives() const;

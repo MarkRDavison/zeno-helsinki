@@ -11,6 +11,7 @@
 #include <Services/LevelCatalog.hpp>
 #include <Services/LevelsCatalog.hpp>
 #include <Services/CampaignCatalog.hpp>
+#include <Services/ResearchCatalog.hpp>
 #include <Services/ProfileService.hpp>
 #include <Services/MatchContext.hpp>
 #include <helsinki/Audio/Audio.hpp>
@@ -33,9 +34,10 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<tower::LevelCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::LevelsCatalog, tower::LevelsCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::CampaignCatalog, tower::CampaignCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::ResearchCatalog, tower::ResearchCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::ProfileService, tower::ProfileService>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::MatchContext, tower::MatchContext>(hl::ServiceLifetime::Scoped);
-	services.registerService<tower::GameStateService, tower::GameStateService, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
+	services.registerService<tower::GameStateService, tower::GameStateService, tower::LevelCatalog, tower::MatchContext>(hl::ServiceLifetime::Scoped);
 	services.registerService<tower::WaveService, tower::WaveService, tower::GameStateService, tower::CreepCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
 }
 
@@ -65,6 +67,8 @@ int main()
 		engineConfig.RootPath + "/data/levels.json");
 	serviceProvider.get<tower::CampaignCatalog>().load(
 		engineConfig.RootPath + "/data/campaign.json");
+	serviceProvider.get<tower::ResearchCatalog>().load(
+		engineConfig.RootPath + "/data/research.json");
 	if (const auto savePath = tower::campaignSavePath(); savePath.has_value())
 	{
 		serviceProvider.get<tower::ProfileService>().load(*savePath, true);
@@ -73,6 +77,8 @@ int main()
 	{
 		serviceProvider.get<tower::ProfileService>().load({}, true);
 	}
+	serviceProvider.get<tower::ProfileService>().syncFromResearch(
+		serviceProvider.get<tower::ResearchCatalog>().data());
 
 	engine.init(engineConfig);
 

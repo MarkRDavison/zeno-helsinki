@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Services/GraphTypes.hpp>
 #include <optional>
 #include <string>
 #include <unordered_set>
@@ -7,19 +8,8 @@
 
 namespace tower
 {
-	enum class CampaignPrereqKind
-	{
-		All,
-		Any,
-		Node
-	};
-
-	struct CampaignPrereq
-	{
-		CampaignPrereqKind kind = CampaignPrereqKind::All;
-		std::string nodeId;
-		std::vector<CampaignPrereq> children;
-	};
+	using CampaignPrereqKind = GraphPrereqKind;
+	using CampaignPrereq = GraphPrereq;
 
 	struct CampaignNode
 	{

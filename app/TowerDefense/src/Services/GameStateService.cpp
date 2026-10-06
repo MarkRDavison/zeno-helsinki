@@ -2,8 +2,8 @@
 
 namespace tower
 {
-	GameStateService::GameStateService(LevelCatalog& level) :
-		_gold(level.startGold()),
+	GameStateService::GameStateService(LevelCatalog& level, MatchContext& match) :
+		_gold(matchStartGold(level.startGold(), match)),
 		_lives(level.startLives())
 	{
 	}

@@ -1,6 +1,9 @@
 #include <Services/ProfileService.hpp>
 #include <Services/CampaignEvaluator.hpp>
 #include <Services/CatalogJson.hpp>
+#include <Services/GraphEvaluator.hpp>
+#include <algorithm>
+#include <ranges>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -45,8 +48,51 @@ namespace tower
 		CampaignProfile defaultProfile()
 		{
 			CampaignProfile profile;
+			profile.researched = { "single" };
 			profile.ownedTowers = { "single" };
 			return profile;
+		}
+
+		void deriveOwnedAndRanks(CampaignProfile& profile, const ResearchData& data)
+		{
+			profile.ownedTowers.clear();
+			profile.startingGoldRank = 0;
+			profile.fireRateRank = 0;
+			for (const auto& node : data.nodes)
+			{
+				if (!profile.researched.contains(node.id))
+				{
+					continue;
+				}
+
+				if (node.effect.tower.has_value())
+				{
+					const auto& id = *node.effect.tower;
+					if (std::ranges::find(profile.ownedTowers, id) == profile.ownedTowers.end())
+					{
+						profile.ownedTowers.push_back(id);
+					}
+				}
+
+				if (node.effect.startingGoldRank.has_value())
+				{
+					profile.startingGoldRank = std::max(
+						profile.startingGoldRank,
+						*node.effect.startingGoldRank);
+				}
+
+				if (node.effect.fireRateRank.has_value())
+				{
+					profile.fireRateRank = std::max(
+						profile.fireRateRank,
+						*node.effect.fireRateRank);
+				}
+			}
+
+			if (profile.ownedTowers.empty())
+			{
+				profile.ownedTowers.push_back("single");
+			}
 		}
 	}
 
@@ -190,6 +236,65 @@ namespace tower
 		save();
 	}
 
+	void ProfileService::applyResearchEffects(const ResearchData& data)
+	{
+		deriveOwnedAndRanks(_profile, data);
+	}
+
+	void ProfileService::syncFromResearch(const ResearchData& data)
+	{
+		for (const auto& node : data.nodes)
+		{
+			if (node.start)
+			{
+				_profile.researched.insert(node.id);
+			}
+		}
+
+		applyResearchEffects(data);
+	}
+
+	bool ProfileService::tryResearch(const std::string& nodeId, const ResearchData& data)
+	{
+		if (nodeId.empty() || _profile.researched.contains(nodeId))
+		{
+			return false;
+		}
+
+		const ResearchNode* node = nullptr;
+		for (const auto& candidate : data.nodes)
+		{
+			if (candidate.id == nodeId)
+			{
+				node = &candidate;
+				break;
+			}
+		}
+
+		if (node == nullptr)
+		{
+			return false;
+		}
+
+		const auto states = evaluateGraph(researchGraphNodes(data), _profile.researched);
+		const auto it = states.find(nodeId);
+		if (it == states.end() || it->second != GraphNodeState::Available)
+		{
+			return false;
+		}
+
+		if (_profile.points < node->cost)
+		{
+			return false;
+		}
+
+		_profile.points -= node->cost;
+		_profile.researched.insert(nodeId);
+		applyResearchEffects(data);
+		save();
+		return true;
+	}
+
 	bool ProfileService::tryParse(const std::string& text)
 	{
 		CampaignProfile parsed = defaultProfile();
@@ -273,7 +378,6 @@ namespace tower
 				return false;
 			}
 
-			// TODO: long term we will unlock research, this will have side effects including unlocking towers
 			if (const auto* towers = catalogJson::findChild(*unlocks, "towers"); towers != nullptr)
 			{
 				if (towers->type != hl::JsonNode::Type::Array)
@@ -324,6 +428,30 @@ namespace tower
 				}
 
 				parsed.fireRateRank = fire->integer;
+			}
+		}
+
+		if (const auto* research = catalogJson::findChild(root, "research"); research != nullptr)
+		{
+			if (research->type != hl::JsonNode::Type::Array)
+			{
+				return false;
+			}
+
+			parsed.researched.clear();
+			for (const auto* child : research->children)
+			{
+				if (child == nullptr || child->type != hl::JsonNode::Type::ValueString || child->content.empty())
+				{
+					return false;
+				}
+
+				parsed.researched.insert(child->content);
+			}
+
+			if (parsed.researched.empty())
+			{
+				parsed.researched.insert("single");
 			}
 		}
 
@@ -391,8 +519,21 @@ namespace tower
 
 		out << "],\n";
 		out << "  \"currency\": { \"points\": " << _profile.points << " },\n";
+		out << "  \"research\": [";
+		first = true;
+		for (const auto& id : _profile.researched)
+		{
+			if (!first)
+			{
+				out << ", ";
+			}
+
+			first = false;
+			out << "\"" << jsonEscape(id) << "\"";
+		}
+
+		out << "],\n";
 		out << "  \"unlocks\": { \"towers\": [";
-		// TODO: long term we will unlock research, this will have side effects including unlocking towers
 		first = true;
 		for (const auto& id : _profile.ownedTowers)
 		{

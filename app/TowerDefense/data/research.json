@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "single",
+      "label": "Single",
+      "start": true,
+      "cost": 0,
+      "effect": { "tower": "single" }
+    },
+    {
+      "id": "double",
+      "label": "Double",
+      "cost": 100,
+      "prereq": { "all": ["single"] },
+      "effect": { "tower": "double" }
+    },
+    {
+      "id": "gold-1",
+      "label": "Gold I",
+      "cost": 50,
+      "prereq": { "all": ["single"] },
+      "effect": { "startingGoldRank": 1 }
+    },
+    {
+      "id": "fire-1",
+      "label": "Fire I",
+      "cost": 50,
+      "prereq": { "all": ["single"] },
+      "effect": { "fireRateRank": 1 }
+    }
+  ]
+}

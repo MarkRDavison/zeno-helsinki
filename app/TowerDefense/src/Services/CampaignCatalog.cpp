@@ -1,80 +1,12 @@
 #include <Services/CampaignCatalog.hpp>
 #include <Services/CatalogJson.hpp>
+#include <Services/GraphCatalog.hpp>
 
 namespace tower
 {
 	namespace
 	{
 		const char* kFile = "campaign.json";
-
-		void collectNodeRefs(const CampaignPrereq& prereq, std::vector<std::string>& ids)
-		{
-			if (prereq.kind == CampaignPrereqKind::Node)
-			{
-				ids.push_back(prereq.nodeId);
-				return;
-			}
-
-			for (const auto& child : prereq.children)
-			{
-				collectNodeRefs(child, ids);
-			}
-		}
-
-		CampaignPrereq parsePrereqGroup(const hl::JsonNode& obj, const char* file);
-
-		CampaignPrereq parsePrereqItem(const hl::JsonNode& item, const char* file)
-		{
-			if (item.type == hl::JsonNode::Type::ValueString)
-			{
-				if (item.content.empty())
-				{
-					catalogJson::fail(std::string(file) + ": prereq node id must be a non-empty string");
-				}
-
-				CampaignPrereq prereq;
-				prereq.kind = CampaignPrereqKind::Node;
-				prereq.nodeId = item.content;
-				return prereq;
-			}
-
-			if (item.type == hl::JsonNode::Type::Object)
-			{
-				return parsePrereqGroup(item, file);
-			}
-
-			catalogJson::fail(std::string(file) + ": prereq items must be node ids or all/any objects");
-		}
-
-		CampaignPrereq parsePrereqGroup(const hl::JsonNode& obj, const char* file)
-		{
-			const auto* all = catalogJson::findChild(obj, "all");
-			const auto* any = catalogJson::findChild(obj, "any");
-			if ((all == nullptr) == (any == nullptr))
-			{
-				catalogJson::fail(std::string(file) + ": prereq must be exactly one of 'all' or 'any'");
-			}
-
-			const auto* list = all != nullptr ? all : any;
-			if (list->type != hl::JsonNode::Type::Array || list->children.empty())
-			{
-				catalogJson::fail(std::string(file) + ": 'all'/'any' must be a non-empty array");
-			}
-
-			CampaignPrereq prereq;
-			prereq.kind = all != nullptr ? CampaignPrereqKind::All : CampaignPrereqKind::Any;
-			for (const auto* child : list->children)
-			{
-				if (child == nullptr)
-				{
-					catalogJson::fail(std::string(file) + ": 'all'/'any' entries must not be null");
-				}
-
-				prereq.children.push_back(parsePrereqItem(*child, file));
-			}
-
-			return prereq;
-		}
 	}
 
 	void CampaignCatalog::load(const std::string& path)
@@ -114,7 +46,7 @@ namespace tower
 					catalogJson::fail(std::string(file) + ": 'prereq' must be an object");
 				}
 
-				def.prereq = parsePrereqGroup(*prereq, file);
+				def.prereq = parseGraphPrereqGroup(*prereq, file);
 			}
 
 			if (const auto* mutex = catalogJson::findChild(*row, "mutex"); mutex != nullptr)
@@ -136,24 +68,14 @@ namespace tower
 			_data.nodes.push_back(std::move(def));
 		}
 
-		std::vector<std::string> refs;
+		std::vector<GraphNode> graph;
+		graph.reserve(_data.nodes.size());
 		for (const auto& node : _data.nodes)
 		{
-			if (!node.prereq.has_value())
-			{
-				continue;
-			}
-
-			refs.clear();
-			collectNodeRefs(*node.prereq, refs);
-			for (const auto& id : refs)
-			{
-				if (!_byId.contains(id))
-				{
-					catalogJson::fail(std::string(file) + ": unknown prereq id '" + id + "'");
-				}
-			}
+			graph.push_back(GraphNode{ .id = node.id, .prereq = node.prereq });
 		}
+
+		validateGraphPrereqIds(graph, _byId, file);
 	}
 
 	const CampaignData& CampaignCatalog::data() const
