@@ -1,4 +1,5 @@
 #include <Scenes/SceneHost.hpp>
+#include <Scenes/TowerDefenseCampaignHubEngineScene.hpp>
 #include <Scenes/TowerDefenseGameEngineScene.hpp>
 #include <Scenes/TowerDefenseLevelSelectEngineScene.hpp>
 #include <Scenes/TowerDefenseSettingsEngineScene.hpp>
@@ -12,6 +13,8 @@
 #include <Services/EntityCatalog.hpp>
 #include <Services/LevelCatalog.hpp>
 #include <Services/LevelsCatalog.hpp>
+#include <Services/CampaignCatalog.hpp>
+#include <Services/CampaignEvaluator.hpp>
 #include <Services/CatalogJson.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Audio/Audio.hpp>
@@ -43,6 +46,43 @@ namespace tower
 			_root.get<LevelsCatalog>()));
 	}
 
+	void SceneHost::goCampaignHub()
+	{
+		_pendingScope.reset();
+		_engine.setScene(new TowerDefenseCampaignHubEngineScene(
+			_engine,
+			_root.get<hl::EngineConfiguration>(),
+			*this,
+			_root.get<CampaignCatalog>(),
+			_root.get<CampaignProgress>()));
+	}
+
+	void SceneHost::goCampaign(const std::string& nodeId)
+	{
+		const auto& catalog = _root.get<CampaignCatalog>();
+		const auto* node = catalog.find(nodeId);
+		if (node == nullptr)
+		{
+			catalogJson::fail("unknown campaign node '" + nodeId + "'");
+		}
+
+		const auto states = evaluateCampaign(catalog.data(), _root.get<CampaignProgress>());
+		const auto it = states.find(nodeId);
+		if (it == states.end()
+			|| (it->second != CampaignNodeState::Available
+				&& it->second != CampaignNodeState::Cleared))
+		{
+			catalogJson::fail("campaign node '" + nodeId + "' is not playable");
+		}
+
+		auto& config = _root.get<hl::EngineConfiguration>();
+		_root.get<LevelCatalog>().load(
+			config.RootPath + "/data/" + node->level,
+			_root.get<CreepCatalog>(),
+			_root.get<EntityCatalog>());
+		launchLoadedGame();
+	}
+
 	void SceneHost::goGame(const std::string& id)
 	{
 		const auto* entry = _root.get<LevelsCatalog>().find(id);
@@ -56,7 +96,12 @@ namespace tower
 			config.RootPath + "/data/" + entry->file,
 			_root.get<CreepCatalog>(),
 			_root.get<EntityCatalog>());
+		launchLoadedGame();
+	}
 
+	void SceneHost::launchLoadedGame()
+	{
+		auto& config = _root.get<hl::EngineConfiguration>();
 		_pendingScope = _root.createScope();
 		auto& state = _pendingScope->get<GameStateService>();
 		auto& waves = _pendingScope->get<WaveService>();

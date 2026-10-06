@@ -82,9 +82,16 @@ namespace tower
 		_title->setText("Tower Defense", 96);
 		_title->color = { 1.0f, 0.5f, 0.0f };
 
-		_selectLevel = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
-		_selectLevel->setText("Select Level", 64);
-		_selectLevel->onClick = [this]()
+		_campaign = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_campaign->setText("Campaign", 64);
+		_campaign->onClick = [this]()
+		{
+			_sceneHost.goCampaignHub();
+		};
+
+		_skirmish = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_skirmish->setText("Skirmish", 64);
+		_skirmish->onClick = [this]()
 		{
 			_sceneHost.goLevelSelect();
 		};

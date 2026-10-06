@@ -14,11 +14,15 @@ namespace tower
 
 		void goTitle();
 		void goLevelSelect();
+		void goCampaignHub();
+		void goCampaign(const std::string& nodeId);
 		void goGame(const std::string& id);
 		void goSettings();
 		void onSceneDestroyed();
 
 	private:
+		void launchLoadedGame();
+
 		hl::Engine& _engine;
 		hl::ServiceProvider& _root;
 		std::optional<hl::ServiceProvider> _scope;
