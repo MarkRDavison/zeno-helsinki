@@ -662,7 +662,11 @@ namespace tower
 	{
 		_ghostVisible = false;
 		_ghostPlaceable = false;
-		if (_ghost == nullptr || matchEnded() || _wave.inCombat() || uiBlocksBoardClick())
+		if (_ghost == nullptr
+			|| !_placeToolSelected
+			|| matchEnded()
+			|| _wave.inCombat()
+			|| uiBlocksBoardClick())
 		{
 			return;
 		}
@@ -675,7 +679,7 @@ namespace tower
 
 		_ghost->GetComponent<hl::TransformComponent>()->SetPosition(
 			tileCenter(tile->x, tile->z));
-		if (_rangeRing != nullptr)
+		if (_inspectTower == nullptr && _rangeRing != nullptr)
 		{
 			auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
 			ring->SetPosition(tileCenter(tile->x, tile->z, RangeRingY));
@@ -685,6 +689,53 @@ namespace tower
 			&& blockerAt(tile->x, tile->z) == nullptr
 			&& _gameState.gold() >= TowerCost;
 		_ghostVisible = true;
+	}
+
+	void TowerDefenseGameEngineScene::clearInspect()
+	{
+		_inspectTower = nullptr;
+	}
+
+	void TowerDefenseGameEngineScene::setInspect(hl::Entity* tower)
+	{
+		_inspectTower = tower;
+	}
+
+	void TowerDefenseGameEngineScene::sellInspectedTower()
+	{
+		if (_inspectTower == nullptr)
+		{
+			return;
+		}
+
+		_gameState.addGold(TowerSellRefund);
+		if (_flashTower == _inspectTower)
+		{
+			_flashTower = nullptr;
+			_invalidFlashRemaining = 0.0f;
+			_flashGhost = false;
+		}
+		_scene.removeEntity(_inspectTower->Id);
+		clearInspect();
+	}
+
+	void TowerDefenseGameEngineScene::syncInspectRing()
+	{
+		if (_inspectTower == nullptr || _rangeRing == nullptr)
+		{
+			return;
+		}
+
+		const auto* tower = _inspectTower->GetComponent<TowerComponent>();
+		if (tower == nullptr)
+		{
+			clearInspect();
+			return;
+		}
+
+		auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
+		ring->SetPosition(tileCenter(tower->x, tower->z, RangeRingY));
+		ring->SetScale(glm::vec3(TowerRange, 1.0f, TowerRange));
 	}
 
 	void TowerDefenseGameEngineScene::tryHandleBoardClick()
@@ -716,14 +767,17 @@ namespace tower
 
 		if (auto* tower = towerAt(tile->x, tile->z))
 		{
-			_gameState.addGold(TowerSellRefund);
-			if (_flashTower == tower)
-			{
-				_flashTower = nullptr;
-				_invalidFlashRemaining = 0.0f;
-				_flashGhost = false;
-			}
-			_scene.removeEntity(tower->Id);
+			setInspect(tower);
+			return;
+		}
+
+		if (_inspectTower != nullptr)
+		{
+			clearInspect();
+		}
+
+		if (!_placeToolSelected)
+		{
 			return;
 		}
 
@@ -929,7 +983,16 @@ namespace tower
 					const char* materialName = _ghostPlaceable ? GhostOkMaterial : GhostBadMaterial;
 					const uint32_t ghostMaterial = _engine.getMaterialSystem().getMaterialIndex(materialName);
 					drawGhostLit(_ghost, ghostMaterial);
-					drawGhostLit(_rangeRing, ghostMaterial);
+					if (_inspectTower == nullptr)
+					{
+						drawGhostLit(_rangeRing, ghostMaterial);
+					}
+				}
+
+				if (_inspectTower != nullptr)
+				{
+					const uint32_t okMaterial = _engine.getMaterialSystem().getMaterialIndex(GhostOkMaterial);
+					drawGhostLit(_rangeRing, okMaterial);
 				}
 
 				if (_flashTower != nullptr && _invalidFlashRemaining > 0.0f && blinkOn)
@@ -967,6 +1030,7 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::startWave()
 	{
+		clearInspect();
 		if (!_wave.tryStart())
 		{
 			return;
@@ -1058,6 +1122,23 @@ namespace tower
 		_waveButton->setText("Start Wave (20)", 32);
 		_waveButton->onClick = [this]() { startWave(); };
 
+		_buildBarPanel = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
+		_buildBarPanel->color = { 0.08f, 0.09f, 0.12f };
+		_buildBarPanel->opacity = 0.92f;
+		_placeButton = std::make_unique<hl::ui::Button>(_buildBarPanel->node().addChild(), *_typeface);
+		_placeButton->setText("Turret (" + std::to_string(TowerCost) + ")", 24);
+		_placeButton->onClick = [this]() { _placeToolSelected = !_placeToolSelected; };
+
+		_inspectPanel = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
+		_inspectPanel->color = { 0.08f, 0.09f, 0.12f };
+		_inspectPanel->opacity = 0.92f;
+		_inspectLabel = std::make_unique<hl::ui::Label>(_inspectPanel->node().addChild(), *_typeface);
+		_inspectLabel->color = { 1.0f, 1.0f, 1.0f };
+		_inspectLabel->setText("Turret", 24);
+		_sellButton = std::make_unique<hl::ui::Button>(_inspectPanel->node().addChild(), *_typeface);
+		_sellButton->setText("Sell (" + std::to_string(TowerSellRefund) + ")", 24);
+		_sellButton->onClick = [this]() { sellInspectedTower(); };
+
 		_overlayRoot = std::make_unique<hl::ui::Node>();
 		_overlayRoot->setFillParent();
 
@@ -1104,6 +1185,7 @@ namespace tower
 				"Start Wave (" + std::to_string(_wave.buildSecondsRemaining()) + ")",
 				32);
 		}
+		_placeButton->setText("Turret (" + std::to_string(TowerCost) + ")", 24);
 		hl::ui::prepareTree(*_layoutRoot);
 
 		const glm::vec2 goldSize = _goldLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
@@ -1135,6 +1217,56 @@ namespace tower
 			_waveButton->node().setTopLeft({ 0.0f, 0.0f });
 			_waveButton->node().relative = { -10000.0f, -10000.0f };
 			_waveButton->node().intrinsicSize.reset();
+		}
+
+		const bool placeToolAvailable =
+			!matchEnded() && !_wave.inCombat() && _gameState.gold() >= TowerCost;
+
+		_placeButton->color = _placeToolSelected
+			? glm::vec3{ 1.0f, 1.0f, 1.0f }
+			: glm::vec3{ 0.55f, 0.55f, 0.55f };
+		_buildBarPanel->color = !placeToolAvailable
+			? glm::vec3{ 0.12f, 0.12f, 0.14f }
+			: (_placeToolSelected
+				? glm::vec3{ 0.28f, 0.38f, 0.28f }
+				: glm::vec3{ 0.08f, 0.09f, 0.12f });
+		_placeButton->hitTestEnabled = placeToolAvailable;
+		_buildBarPanel->hitTestEnabled = !matchEnded();
+		const glm::vec2 placeSize = _placeButton->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+		constexpr glm::vec2 barPad{ 16.0f, 8.0f };
+		_buildBarPanel->node().setBottomCenter(placeSize + barPad * 2.0f);
+		_buildBarPanel->node().relative = { 0.0f, 0.0f };
+		_placeButton->node().setTopLeft(placeSize);
+		_placeButton->node().relative = barPad;
+		_placeButton->node().intrinsicSize.reset();
+
+		const bool showInspect = _inspectTower != nullptr && !_wave.inCombat() && !matchEnded();
+		if (showInspect)
+		{
+			_inspectPanel->hitTestEnabled = true;
+			_sellButton->hitTestEnabled = true;
+			const glm::vec2 titleSize = _inspectLabel->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+			const glm::vec2 sellSize = _sellButton->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+			constexpr glm::vec2 inspectPad{ 16.0f, 12.0f };
+			constexpr float inspectGap = 8.0f;
+			_inspectPanel->node().setBottomRight({
+				std::max(titleSize.x, sellSize.x) + inspectPad.x * 2.0f,
+				titleSize.y + inspectGap + sellSize.y + inspectPad.y * 2.0f
+			});
+			_inspectPanel->node().relative = { 0.0f, 0.0f };
+			_inspectLabel->node().setTopLeft(titleSize);
+			_inspectLabel->node().relative = inspectPad;
+			_inspectLabel->node().intrinsicSize.reset();
+			_sellButton->node().setTopLeft(sellSize);
+			_sellButton->node().relative = { inspectPad.x, inspectPad.y + titleSize.y + inspectGap };
+			_sellButton->node().intrinsicSize.reset();
+		}
+		else
+		{
+			_inspectPanel->hitTestEnabled = false;
+			_sellButton->hitTestEnabled = false;
+			_inspectPanel->node().setTopLeft({ 0.0f, 0.0f });
+			_inspectPanel->node().relative = { -10000.0f, -10000.0f };
 		}
 
 		const auto fb = _engine.getInputManager().getFramebufferSize();
@@ -1179,8 +1311,20 @@ namespace tower
 			tryClearWave();
 		}
 
+		if (matchEnded() || _wave.inCombat())
+		{
+			clearInspect();
+		}
+
+		if (_engine.getInputManager().isKeyReleased(GLFW_KEY_ESCAPE))
+		{
+			clearInspect();
+			_placeToolSelected = false;
+		}
+
 		rebuildHud();
 		updateGhost();
+		syncInspectRing();
 		updateCameraOrbit();
 		updateCameraFollow(delta);
 

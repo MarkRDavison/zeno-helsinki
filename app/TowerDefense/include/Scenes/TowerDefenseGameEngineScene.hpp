@@ -68,6 +68,10 @@ namespace tower
 		void updateGhost();
 		void tryHandleBoardClick();
 		void flashInvalid(int tx, int tz);
+		void clearInspect();
+		void setInspect(hl::Entity* tower);
+		void sellInspectedTower();
+		void syncInspectRing();
 		hl::Entity* towerAt(int tx, int tz) const;
 		hl::Entity* blockerAt(int tx, int tz) const;
 		bool invalidFlashBlinkOn() const;
@@ -105,6 +109,8 @@ namespace tower
 		float _orbitStartYaw = 0.0f;
 		float _cameraDistance = 0.0f;
 		float _cameraDistanceTarget = 0.0f;
+		bool _placeToolSelected = false;
+		hl::Entity* _inspectTower = nullptr;
 
 		hl::UiBatch _uiBatch;
 		std::unique_ptr<FontTypeface> _typeface;
@@ -113,6 +119,11 @@ namespace tower
 		std::unique_ptr<hl::ui::Label> _livesLabel;
 		std::unique_ptr<hl::ui::Label> _waveLabel;
 		std::unique_ptr<hl::ui::Button> _waveButton;
+		std::unique_ptr<hl::ui::Panel> _buildBarPanel;
+		std::unique_ptr<hl::ui::Button> _placeButton;
+		std::unique_ptr<hl::ui::Panel> _inspectPanel;
+		std::unique_ptr<hl::ui::Label> _inspectLabel;
+		std::unique_ptr<hl::ui::Button> _sellButton;
 
 		std::unique_ptr<hl::ui::Node> _overlayRoot;
 		std::unique_ptr<hl::ui::Panel> _dim;
