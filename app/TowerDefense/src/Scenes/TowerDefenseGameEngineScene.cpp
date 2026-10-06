@@ -426,7 +426,8 @@ namespace tower
 			_towers,
 			_weapons,
 			_projectiles,
-			_level));
+			_level,
+			_match));
 		auto* projectiles = new ProjectileSystem(_scene);
 		projectiles->onKill = [this]() { onCreepKilled(); };
 		_scene.addSystem(projectiles);

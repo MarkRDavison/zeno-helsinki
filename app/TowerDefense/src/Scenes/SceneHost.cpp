@@ -125,6 +125,7 @@ namespace tower
 			match.nodeId = *campaignNodeId;
 			match.ownedTowers = _root.get<ProfileService>().profile().ownedTowers;
 			match.startingGoldRank = _root.get<ProfileService>().profile().startingGoldRank;
+			match.fireRateRank = _root.get<ProfileService>().profile().fireRateRank;
 		}
 
 		auto& state = _pendingScope->get<GameStateService>();

@@ -4,6 +4,7 @@
 #include <helsinki/Engine/Scene/Scene.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <Services/TowerCatalog.hpp>
+#include <Services/MatchContext.hpp>
 
 namespace tower
 {
@@ -20,7 +21,8 @@ namespace tower
 			TowerCatalog& towers,
 			WeaponCatalog& weapons,
 			ProjectileCatalog& projectiles,
-			LevelCatalog& level);
+			LevelCatalog& level,
+			MatchContext& match);
 		void update(float delta) override;
 
 	private:
@@ -30,5 +32,6 @@ namespace tower
 		WeaponCatalog& _weapons;
 		ProjectileCatalog& _projectiles;
 		LevelCatalog& _level;
+		MatchContext& _match;
 	};
 }

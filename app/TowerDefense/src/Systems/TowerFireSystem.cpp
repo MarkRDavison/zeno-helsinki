@@ -2,6 +2,7 @@
 #include <Components/TowerComponent.hpp>
 #include <Components/ProjectileComponent.hpp>
 #include <Services/LevelCatalog.hpp>
+#include <Services/MatchContext.hpp>
 #include <Services/WeaponCatalog.hpp>
 #include <Services/ProjectileCatalog.hpp>
 #include <SceneCatalog.hpp>
@@ -84,13 +85,15 @@ namespace tower
 		TowerCatalog& towers,
 		WeaponCatalog& weapons,
 		ProjectileCatalog& projectiles,
-		LevelCatalog& level) :
+		LevelCatalog& level,
+		MatchContext& match) :
 		_scene(scene),
 		_resourceManager(resourceManager),
 		_towers(towers),
 		_weapons(weapons),
 		_projectiles(projectiles),
-		_level(level)
+		_level(level),
+		_match(match)
 	{
 	}
 
@@ -187,7 +190,7 @@ namespace tower
 				shot->y = projectile->y;
 				shot->aimOffset = glm::vec2(lateral.x, lateral.z);
 				shot->lastDest = dest;
-				tower->slotCooldown[i] = weapon->fireCooldown;
+				tower->slotCooldown[i] = matchFireCooldown(weapon->fireCooldown, _match);
 			}
 		}
 	}

@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <Services/MatchContext.hpp>
 
 TEST_CASE("campaign match lists owned towers only", "[tower][match]")
@@ -52,4 +53,25 @@ TEST_CASE("campaign start gold adds rank bonus", "[tower][match]")
 	CHECK(tower::matchStartGold(100, match) == 110);
 	match.startingGoldRank = 2;
 	CHECK(tower::matchStartGold(100, match) == 120);
+}
+
+TEST_CASE("skirmish fire cooldown is the catalog value", "[tower][match]")
+{
+	tower::MatchContext match;
+	CHECK(tower::matchFireCooldown(0.7f, match) == 0.7f);
+}
+
+TEST_CASE("campaign fire cooldown scales per rank", "[tower][match]")
+{
+	tower::MatchContext match;
+	match.campaign = true;
+	CHECK(tower::matchFireCooldown(0.7f, match) == Catch::Approx(0.7f));
+	match.fireRateRank = 1;
+	CHECK(
+		tower::matchFireCooldown(0.7f, match)
+		== Catch::Approx(0.7f * tower::kFireRateCooldownScale));
+	match.fireRateRank = 2;
+	CHECK(
+		tower::matchFireCooldown(0.7f, match)
+		== Catch::Approx(0.7f * tower::kFireRateCooldownScale * tower::kFireRateCooldownScale));
 }

@@ -12,9 +12,11 @@ namespace tower
 		std::string nodeId;
 		std::vector<std::string> ownedTowers;
 		int startingGoldRank = 0;
+		int fireRateRank = 0;
 	};
 
 	inline constexpr int kStartingGoldPerRank = 10;
+	inline constexpr float kFireRateCooldownScale = 0.95f;
 
 	inline int matchStartGold(int levelStart, const MatchContext& match)
 	{
@@ -24,6 +26,22 @@ namespace tower
 		}
 
 		return levelStart + match.startingGoldRank * kStartingGoldPerRank;
+	}
+
+	inline float matchFireCooldown(float catalogCooldown, const MatchContext& match)
+	{
+		if (!match.campaign || match.fireRateRank <= 0)
+		{
+			return catalogCooldown;
+		}
+
+		float scale = 1.0f;
+		for (int i = 0; i < match.fireRateRank; ++i)
+		{
+			scale *= kFireRateCooldownScale;
+		}
+
+		return catalogCooldown * scale;
 	}
 
 	inline std::vector<std::string> matchPlaceableTowerIds(
