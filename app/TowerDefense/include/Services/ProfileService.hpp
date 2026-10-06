@@ -17,6 +17,8 @@ namespace tower
 		int fireRateRank = 0;
 	};
 
+	inline constexpr int kFirstClearPoints = 100;
+
 	std::optional<std::string> campaignSavePath();
 
 	class ProfileService
@@ -27,6 +29,7 @@ namespace tower
 		CampaignProgress& progress();
 		const CampaignProgress& progress() const;
 		const CampaignProfile& profile() const;
+		void recordWin(const std::string& nodeId, const CampaignData& data);
 
 	private:
 		void applyDefaults();

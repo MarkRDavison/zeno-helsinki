@@ -1,4 +1,5 @@
 #include <Services/ProfileService.hpp>
+#include <Services/CampaignEvaluator.hpp>
 #include <Services/CatalogJson.hpp>
 #include <cstdlib>
 #include <filesystem>
@@ -161,6 +162,32 @@ namespace tower
 	const CampaignProfile& ProfileService::profile() const
 	{
 		return _profile;
+	}
+
+	void ProfileService::recordWin(const std::string& nodeId, const CampaignData& data)
+	{
+		if (nodeId.empty())
+		{
+			return;
+		}
+
+		if (!_profile.progress.cleared.contains(nodeId))
+		{
+			_profile.progress.cleared.insert(nodeId);
+			_profile.points += kFirstClearPoints;
+		}
+
+		const auto states = evaluateCampaign(data, _profile.progress);
+		_profile.progress.skipped.clear();
+		for (const auto& [id, state] : states)
+		{
+			if (state == CampaignNodeState::Skipped)
+			{
+				_profile.progress.skipped.insert(id);
+			}
+		}
+
+		save();
 	}
 
 	bool ProfileService::tryParse(const std::string& text)

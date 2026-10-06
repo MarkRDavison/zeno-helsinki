@@ -1,8 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Services/ProfileService.hpp>
+#include <Services/CampaignTypes.hpp>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -100,5 +102,82 @@ TEST_CASE("resetOnBoot wipes a seeded save", "[tower][profile]")
 	CHECK(profile.progress().cleared.empty());
 	CHECK(profile.progress().skipped.empty());
 	REQUIRE(std::filesystem::exists(path));
+	std::filesystem::remove_all(path.parent_path());
+}
+
+namespace
+{
+	tower::CampaignNode testNode(
+		std::string id,
+		std::optional<tower::CampaignPrereq> prereq = std::nullopt,
+		std::optional<std::string> mutex = std::nullopt)
+	{
+		tower::CampaignNode node;
+		node.id = std::move(id);
+		node.level = "levels/fake.json";
+		node.prereq = std::move(prereq);
+		node.mutex = std::move(mutex);
+		return node;
+	}
+
+	tower::CampaignPrereq testRef(std::string id)
+	{
+		tower::CampaignPrereq prereq;
+		prereq.kind = tower::CampaignPrereqKind::Node;
+		prereq.nodeId = std::move(id);
+		return prereq;
+	}
+
+	tower::CampaignPrereq testAll(std::vector<tower::CampaignPrereq> children)
+	{
+		tower::CampaignPrereq prereq;
+		prereq.kind = tower::CampaignPrereqKind::All;
+		prereq.children = std::move(children);
+		return prereq;
+	}
+
+	tower::CampaignPrereq testAny(std::vector<tower::CampaignPrereq> children)
+	{
+		tower::CampaignPrereq prereq;
+		prereq.kind = tower::CampaignPrereqKind::Any;
+		prereq.children = std::move(children);
+		return prereq;
+	}
+}
+
+TEST_CASE("recordWin first clear grants points", "[tower][profile]")
+{
+	const auto path = uniqueSavePath();
+	tower::CampaignData data;
+	data.nodes.push_back(testNode("n1"));
+	data.nodes.push_back(testNode("n2", testAll({ testRef("n1") })));
+
+	tower::ProfileService profile;
+	profile.load(path.string(), false);
+	profile.recordWin("n1", data);
+	CHECK(profile.progress().cleared.contains("n1"));
+	CHECK(profile.profile().points == tower::kFirstClearPoints);
+
+	profile.recordWin("n1", data);
+	CHECK(profile.profile().points == tower::kFirstClearPoints);
+	std::filesystem::remove_all(path.parent_path());
+}
+
+TEST_CASE("recordWin persists mutex skipped sibling", "[tower][profile]")
+{
+	const auto path = uniqueSavePath();
+	tower::CampaignData data;
+	data.nodes.push_back(testNode("root"));
+	data.nodes.push_back(testNode("A", testAll({ testRef("root") }), "pick"));
+	data.nodes.push_back(testNode("B", testAll({ testRef("root") }), "pick"));
+	data.nodes.push_back(testNode("C", testAny({ testRef("A"), testRef("B") })));
+
+	tower::ProfileService profile;
+	profile.load(path.string(), false);
+	profile.progress().cleared.insert("root");
+	profile.recordWin("A", data);
+	CHECK(profile.progress().cleared.contains("A"));
+	CHECK(profile.progress().skipped.contains("B"));
+	CHECK(profile.profile().points == tower::kFirstClearPoints);
 	std::filesystem::remove_all(path.parent_path());
 }

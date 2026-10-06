@@ -48,6 +48,7 @@ namespace tower
 		const hl::EngineConfiguration& engineConfig,
 		SceneHost& sceneHost,
 		GameStateService& gameState,
+		MatchContext& match,
 		WaveService& wave,
 		CreepCatalog& creeps,
 		TowerCatalog& towers,
@@ -61,6 +62,7 @@ namespace tower
 		_sceneHost(sceneHost),
 		_engineConfig(engineConfig),
 		_gameState(gameState),
+		_match(match),
 		_wave(wave),
 		_creeps(creeps),
 		_towers(towers),
@@ -1122,6 +1124,10 @@ namespace tower
 
 		_overlayHeading->setText("You Win", 64);
 		_audio.play(CueWin);
+		if (_match.campaign)
+		{
+			_sceneHost.onCampaignWon(_match.nodeId);
+		}
 	}
 
 	void TowerDefenseGameEngineScene::onCreepLeaked()
@@ -1223,11 +1229,22 @@ namespace tower
 		_overlayHeading->setText("Game Over", 64);
 
 		_titleButton = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
-		_titleButton->setText("Title", 48);
-		_titleButton->onClick = [this]()
+		if (_match.campaign)
 		{
-			_sceneHost.goTitle();
-		};
+			_titleButton->setText("Hub", 48);
+			_titleButton->onClick = [this]()
+			{
+				_sceneHost.goCampaignHub();
+			};
+		}
+		else
+		{
+			_titleButton->setText("Title", 48);
+			_titleButton->onClick = [this]()
+			{
+				_sceneHost.goTitle();
+			};
+		}
 	}
 
 	void TowerDefenseGameEngineScene::rebuildHud()

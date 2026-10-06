@@ -16,6 +16,7 @@
 #include <helsinki/Audio/Audio.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 #include <Services/GameStateService.hpp>
+#include <Services/MatchContext.hpp>
 #include <Services/WaveService.hpp>
 #include <Services/CreepCatalog.hpp>
 #include <Services/TowerCatalog.hpp>
@@ -47,6 +48,7 @@ namespace tower
 			const hl::EngineConfiguration& engineConfig,
 			SceneHost& sceneHost,
 			GameStateService& gameState,
+			MatchContext& match,
 			WaveService& wave,
 			CreepCatalog& creeps,
 			TowerCatalog& towers,
@@ -109,6 +111,7 @@ namespace tower
 		SceneHost& _sceneHost;
 		const hl::EngineConfiguration& _engineConfig;
 		GameStateService& _gameState;
+		MatchContext& _match;
 		WaveService& _wave;
 		CreepCatalog& _creeps;
 		TowerCatalog& _towers;

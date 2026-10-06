@@ -15,6 +15,7 @@
 #include <Services/LevelsCatalog.hpp>
 #include <Services/CampaignCatalog.hpp>
 #include <Services/CampaignEvaluator.hpp>
+#include <Services/MatchContext.hpp>
 #include <Services/ProfileService.hpp>
 #include <Services/CatalogJson.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
@@ -81,7 +82,7 @@ namespace tower
 			config.RootPath + "/data/" + node->level,
 			_root.get<CreepCatalog>(),
 			_root.get<EntityCatalog>());
-		launchLoadedGame();
+		launchLoadedGame(&nodeId);
 	}
 
 	void SceneHost::goGame(const std::string& id)
@@ -97,13 +98,20 @@ namespace tower
 			config.RootPath + "/data/" + entry->file,
 			_root.get<CreepCatalog>(),
 			_root.get<EntityCatalog>());
-		launchLoadedGame();
+		launchLoadedGame(nullptr);
 	}
 
-	void SceneHost::launchLoadedGame()
+	void SceneHost::launchLoadedGame(const std::string* campaignNodeId)
 	{
 		auto& config = _root.get<hl::EngineConfiguration>();
 		_pendingScope = _root.createScope();
+		auto& match = _pendingScope->get<MatchContext>();
+		if (campaignNodeId != nullptr)
+		{
+			match.campaign = true;
+			match.nodeId = *campaignNodeId;
+		}
+
 		auto& state = _pendingScope->get<GameStateService>();
 		auto& waves = _pendingScope->get<WaveService>();
 		_engine.setScene(new TowerDefenseGameEngineScene(
@@ -111,6 +119,7 @@ namespace tower
 			config,
 			*this,
 			state,
+			match,
 			waves,
 			_root.get<CreepCatalog>(),
 			_root.get<TowerCatalog>(),
@@ -119,6 +128,13 @@ namespace tower
 			_root.get<EntityCatalog>(),
 			_root.get<LevelCatalog>(),
 			_root.get<hl::audio::Audio>()));
+	}
+
+	void SceneHost::onCampaignWon(const std::string& nodeId)
+	{
+		_root.get<ProfileService>().recordWin(
+			nodeId,
+			_root.get<CampaignCatalog>().data());
 	}
 
 	void SceneHost::goSettings()

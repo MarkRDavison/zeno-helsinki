@@ -18,10 +18,11 @@ namespace tower
 		void goCampaign(const std::string& nodeId);
 		void goGame(const std::string& id);
 		void goSettings();
+		void onCampaignWon(const std::string& nodeId);
 		void onSceneDestroyed();
 
 	private:
-		void launchLoadedGame();
+		void launchLoadedGame(const std::string* campaignNodeId);
 
 		hl::Engine& _engine;
 		hl::ServiceProvider& _root;

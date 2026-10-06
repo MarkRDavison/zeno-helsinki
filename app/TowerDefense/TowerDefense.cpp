@@ -12,6 +12,7 @@
 #include <Services/LevelsCatalog.hpp>
 #include <Services/CampaignCatalog.hpp>
 #include <Services/ProfileService.hpp>
+#include <Services/MatchContext.hpp>
 #include <helsinki/Audio/Audio.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
@@ -33,6 +34,7 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<tower::LevelsCatalog, tower::LevelsCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::CampaignCatalog, tower::CampaignCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::ProfileService, tower::ProfileService>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::MatchContext, tower::MatchContext>(hl::ServiceLifetime::Scoped);
 	services.registerService<tower::GameStateService, tower::GameStateService, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
 	services.registerService<tower::WaveService, tower::WaveService, tower::GameStateService, tower::CreepCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
 }
