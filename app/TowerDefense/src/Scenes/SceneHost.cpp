@@ -15,6 +15,7 @@
 #include <Services/LevelsCatalog.hpp>
 #include <Services/CampaignCatalog.hpp>
 #include <Services/CampaignEvaluator.hpp>
+#include <Services/ProfileService.hpp>
 #include <Services/CatalogJson.hpp>
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Audio/Audio.hpp>
@@ -54,7 +55,7 @@ namespace tower
 			_root.get<hl::EngineConfiguration>(),
 			*this,
 			_root.get<CampaignCatalog>(),
-			_root.get<CampaignProgress>()));
+			_root.get<ProfileService>().progress()));
 	}
 
 	void SceneHost::goCampaign(const std::string& nodeId)
@@ -66,7 +67,7 @@ namespace tower
 			catalogJson::fail("unknown campaign node '" + nodeId + "'");
 		}
 
-		const auto states = evaluateCampaign(catalog.data(), _root.get<CampaignProgress>());
+		const auto states = evaluateCampaign(catalog.data(), _root.get<ProfileService>().progress());
 		const auto it = states.find(nodeId);
 		if (it == states.end()
 			|| (it->second != CampaignNodeState::Available
