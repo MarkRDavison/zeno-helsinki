@@ -32,20 +32,24 @@ TEST_CASE("range omit is 0", "[tower][creep][range]")
 	CHECK(creeps.find("tank")->range == 0.0f);
 }
 
-TEST_CASE("stall at range 0 on the blocked tile", "[tower][paths][stall]")
+TEST_CASE("stall at range 0 on the tile before the occupied tile", "[tower][paths][stall]")
 {
 	const std::vector<tower::TileCoord> path{ { 0, 0 }, { 0, 1 }, { 0, 2 } };
 	const tower::PathBlockFootprint gate{ 0, 1, 1, 1 };
 	const auto blocked = tower::firstBlockedTile(path, 0, gate);
 	REQUIRE(blocked.has_value());
 	CHECK(blocked->z == 1);
+	const auto approach = tower::stallApproachIndex(path, 0, gate);
+	REQUIRE(approach.has_value());
+	CHECK(*approach == 0);
+	CHECK(path[static_cast<std::size_t>(*approach)].z == 0);
 
-	const glm::vec3 onTile{ 0.0f, 0.0f, 0.0f };
-	const glm::vec3 tileCenter{ 0.0f, 0.0f, 0.0f };
-	CHECK(tower::shouldStall(onTile, tileCenter, 0.0f));
+	const glm::vec3 onOccupied{ 0.0f, 0.0f, 1.0f };
+	const glm::vec3 occupiedCenter{ 0.0f, 0.0f, 1.0f };
+	CHECK(tower::shouldStall(onOccupied, occupiedCenter, 0.0f));
 
-	const glm::vec3 oneTileAway{ 0.0f, 0.0f, 1.0f };
-	CHECK_FALSE(tower::shouldStall(oneTileAway, tileCenter, 0.0f));
+	const glm::vec3 onApproach{ 0.0f, 0.0f, 0.0f };
+	CHECK_FALSE(tower::shouldStall(onApproach, occupiedCenter, 0.0f));
 }
 
 TEST_CASE("no block after the creep has passed the footprint", "[tower][paths][stall]")

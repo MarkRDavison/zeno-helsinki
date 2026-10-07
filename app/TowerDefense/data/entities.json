@@ -1,5 +1,6 @@
 [
   { "id": "tree", "model": "detail_tree", "size": [1, 1] },
   { "id": "rocks", "model": "detail_rocks", "size": [1, 1] },
-  { "id": "log", "model": "log", "size": [1, 2] }
+  { "id": "log", "model": "log", "size": [1, 2] },
+  { "id": "choke_rock", "model": "detail_rocks", "size": [1, 1], "health": 16 }
 ]

@@ -1,5 +1,14 @@
 [
   { "id": "runner", "model": "creep_runner", "health": 2, "speed": 2.2 },
   { "id": "tank", "model": "creep_tank", "health": 8, "speed": 0.85, "resist": { "physical": 0.25 } },
-  { "id": "ufo", "model": "enemy_ufoPurple", "health": 4, "speed": 1.4, "scale": 1.0 }
+  { "id": "ufo", "model": "enemy_ufoPurple", "health": 4, "speed": 1.4, "scale": 1.0 },
+  {
+    "id": "brute",
+    "model": "creep",
+    "health": 12,
+    "speed": 1.1,
+    "range": 0,
+    "scale": 0.5,
+    "slots": [ { "id": "teeth", "offset": [0.2, 0.35, 0.25] } ]
+  }
 ]

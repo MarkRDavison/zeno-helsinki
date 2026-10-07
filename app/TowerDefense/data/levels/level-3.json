@@ -25,6 +25,7 @@
     { "id": "rocks", "x": 4, "z": 2 },
     { "id": "log", "x": 6, "z": 1 },
     { "id": "log", "x": 1, "z": 3 },
+    { "id": "choke_rock", "x": 4, "z": 3 },
     { "id": "rocks", "x": 4, "z": 4 },
     { "id": "tree", "x": 5, "z": 4 },
     { "id": "rocks", "x": 6, "z": 4 }
@@ -34,10 +35,16 @@
       "name": "1",
       "streams": [
         {
-          "name": "main",
+          "name": "brutes",
           "path": "main",
-          "spawnInterval": 1,
-          "spawns": [ { "id": "runner", "count": 4 }, { "id": "tank", "count": 1 } ]
+          "spawnInterval": 1.2,
+          "spawns": [ { "id": "brute", "count": 3 } ]
+        },
+        {
+          "name": "runners",
+          "path": "main",
+          "spawnInterval": 1.0,
+          "spawns": [ { "id": "runner", "count": 4 } ]
         }
       ]
     },

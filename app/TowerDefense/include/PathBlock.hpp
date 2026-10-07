@@ -21,7 +21,7 @@ namespace tower
 			&& tz >= footprint.z && tz < footprint.z + footprint.sizeZ;
 	}
 
-	inline std::optional<TileCoord> firstBlockedTile(
+	inline std::optional<int> firstBlockedIndex(
 		const std::vector<TileCoord>& path,
 		int fromIndex,
 		const PathBlockFootprint& footprint)
@@ -36,11 +36,44 @@ namespace tower
 			const auto& tile = path[static_cast<std::size_t>(i)];
 			if (footprintContains(footprint, tile.x, tile.z))
 			{
-				return tile;
+				return i;
 			}
 		}
 
 		return std::nullopt;
+	}
+
+	inline std::optional<TileCoord> firstBlockedTile(
+		const std::vector<TileCoord>& path,
+		int fromIndex,
+		const PathBlockFootprint& footprint)
+	{
+		const auto index = firstBlockedIndex(path, fromIndex, footprint);
+		if (!index.has_value())
+		{
+			return std::nullopt;
+		}
+
+		return path[static_cast<std::size_t>(*index)];
+	}
+
+	inline std::optional<int> stallApproachIndex(
+		const std::vector<TileCoord>& path,
+		int fromIndex,
+		const PathBlockFootprint& footprint)
+	{
+		const auto blocked = firstBlockedIndex(path, fromIndex, footprint);
+		if (!blocked.has_value())
+		{
+			return std::nullopt;
+		}
+
+		if (*blocked <= 0)
+		{
+			return 0;
+		}
+
+		return *blocked - 1;
 	}
 
 	inline float xzDistance(const glm::vec3& a, const glm::vec3& b)

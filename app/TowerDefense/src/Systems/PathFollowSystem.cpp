@@ -34,7 +34,9 @@ namespace tower
 	{
 		struct PathStall
 		{
-			TileCoord tile{};
+			TileCoord blocked{};
+			int blockedIndex = -1;
+			int approachIndex = -1;
 			int entityId = -1;
 		};
 
@@ -64,9 +66,16 @@ namespace tower
 					placed->sizeX,
 					placed->sizeZ
 				};
-				if (const auto tile = firstBlockedTile(waypoints, follow.fromIndex, footprint))
+				const auto blockedIndex = firstBlockedIndex(waypoints, follow.fromIndex, footprint);
+				const auto approachIndex = stallApproachIndex(waypoints, follow.fromIndex, footprint);
+				if (blockedIndex.has_value() && approachIndex.has_value())
 				{
-					return PathStall{ *tile, entity->Id };
+					return PathStall{
+						waypoints[static_cast<std::size_t>(*blockedIndex)],
+						*blockedIndex,
+						*approachIndex,
+						entity->Id
+					};
 				}
 			}
 
@@ -79,21 +88,34 @@ namespace tower
 			const PathFollowComponent& follow,
 			const PathStall& stall)
 		{
-			const auto& waypoints = level.path(follow.pathName);
-			if (follow.fromIndex >= 0 && follow.fromIndex < static_cast<int>(waypoints.size()))
+			if (follow.fromIndex >= stall.approachIndex)
 			{
-				const auto& here = waypoints[static_cast<std::size_t>(follow.fromIndex)];
-				if (here.x == stall.tile.x && here.z == stall.tile.z)
-				{
-					return true;
-				}
+				return true;
 			}
 
 			const auto* body = creep->GetComponent<CreepComponent>();
 			const float range = body != nullptr ? body->range : 0.0f;
 			const auto* transform = creep->GetComponent<hl::TransformComponent>();
-			const glm::vec3 center = level.tileCenter(stall.tile.x, stall.tile.z);
+			const glm::vec3 center = level.tileCenter(stall.blocked.x, stall.blocked.z);
 			return shouldStall(transform->GetPosition(), center, range);
+		}
+
+		void holdAtApproach(
+			LevelCatalog& level,
+			PathFollowComponent& follow,
+			hl::TransformComponent& transform,
+			const PathStall& stall)
+		{
+			if (follow.fromIndex < stall.approachIndex)
+			{
+				return;
+			}
+
+			const auto& waypoints = level.path(follow.pathName);
+			follow.fromIndex = stall.approachIndex;
+			follow.t = 0.0f;
+			const auto& tile = waypoints[static_cast<std::size_t>(stall.approachIndex)];
+			transform.SetPosition(level.tileCenter(tile.x, tile.z));
 		}
 
 		std::optional<PathStall> activeStall(
@@ -131,8 +153,9 @@ namespace tower
 			const auto& waypoints = _level.path(follow->pathName);
 			const int waypointCount = static_cast<int>(waypoints.size());
 
-			if (activeStall(_scene, _level, entity, *follow))
+			if (const auto stall = activeStall(_scene, _level, entity, *follow))
 			{
+				holdAtApproach(_level, *follow, *transform, *stall);
 				continue;
 			}
 
@@ -161,11 +184,9 @@ namespace tower
 				follow->fromIndex += 1;
 				if (follow->fromIndex >= waypointCount - 1)
 				{
-					if (activeStall(_scene, _level, entity, *follow))
+					if (const auto stall = activeStall(_scene, _level, entity, *follow))
 					{
-						follow->t = 0.0f;
-						const auto& tile = waypoints[static_cast<std::size_t>(follow->fromIndex)];
-						transform->SetPosition(_level.tileCenter(tile.x, tile.z));
+						holdAtApproach(_level, *follow, *transform, *stall);
 						break;
 					}
 
@@ -175,11 +196,9 @@ namespace tower
 					break;
 				}
 
-				if (activeStall(_scene, _level, entity, *follow))
+				if (const auto stall = activeStall(_scene, _level, entity, *follow))
 				{
-					follow->t = 0.0f;
-					const auto& tile = waypoints[static_cast<std::size_t>(follow->fromIndex)];
-					transform->SetPosition(_level.tileCenter(tile.x, tile.z));
+					holdAtApproach(_level, *follow, *transform, *stall);
 					break;
 				}
 			}
@@ -189,8 +208,9 @@ namespace tower
 				continue;
 			}
 
-			if (activeStall(_scene, _level, entity, *follow))
+			if (const auto stall = activeStall(_scene, _level, entity, *follow))
 			{
+				holdAtApproach(_level, *follow, *transform, *stall);
 				continue;
 			}
 

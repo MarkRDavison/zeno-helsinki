@@ -5,6 +5,10 @@
 #include <Services/EntityCatalog.hpp>
 #include <Services/LevelCatalog.hpp>
 #include <Services/LevelsCatalog.hpp>
+#include <Services/ProjectileCatalog.hpp>
+#include <Services/StatusCatalog.hpp>
+#include <Services/StatusCategoryCatalog.hpp>
+#include <Services/WeaponCatalog.hpp>
 #include <filesystem>
 #include <string>
 #include <unordered_set>
@@ -28,8 +32,16 @@ TEST_CASE("level-4 has two named paths and a split wave", "[tower][paths][level-
 {
 	tower::DamageTypeCatalog types;
 	types.load(dataFile("damage-types.json"));
+	tower::StatusCategoryCatalog categories;
+	categories.load(dataFile("status-categories.json"));
+	tower::StatusCatalog statuses;
+	statuses.load(dataFile("statuses.json"), categories, types);
+	tower::ProjectileCatalog projectiles;
+	projectiles.load(dataFile("projectiles.json"), types, statuses);
+	tower::WeaponCatalog weapons;
+	weapons.load(dataFile("weapons.json"), projectiles);
 	tower::CreepCatalog creeps;
-	creeps.load(dataFile("creeps.json"), types);
+	creeps.load(dataFile("creeps.json"), types, weapons);
 	tower::EntityCatalog entities;
 	entities.load(dataFile("entities.json"), types);
 	tower::LevelCatalog level;
