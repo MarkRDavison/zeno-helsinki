@@ -78,7 +78,7 @@ namespace tower
 		std::vector<hl::RenderpassInfo> buildRenderpasses() const;
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnBoard(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
-		void spawnBlockers(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void spawnEntities(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz, const std::string& defId);
 		void selectPlaceTool(const std::string& defId);
 		void spawnCreep();
@@ -95,7 +95,7 @@ namespace tower
 		void sellInspectedTower();
 		void syncInspectRing();
 		hl::Entity* towerAt(int tx, int tz) const;
-		hl::Entity* blockerAt(int tx, int tz) const;
+		hl::Entity* entityAt(int tx, int tz) const;
 		bool invalidFlashBlinkOn() const;
 		bool isOccupied(int tx, int tz) const;
 		bool matchEnded() const;

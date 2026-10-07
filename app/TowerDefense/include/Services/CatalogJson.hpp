@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Services/WeaponCatalog.hpp>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
 #include <helsinki/System/glm.hpp>
@@ -367,6 +368,56 @@ namespace tower::catalogJson
 		}
 
 		return values;
+	}
+
+	inline std::vector<WeaponSlot> parseWeaponSlots(
+		const hl::JsonNode& row,
+		const char* key,
+		const char* file,
+		const WeaponCatalog& weapons,
+		bool requireNonEmpty)
+	{
+		const auto* node = findChild(row, key);
+		if (node == nullptr)
+		{
+			if (requireNonEmpty)
+			{
+				fail(std::string(file) + ": '" + key + "' is required");
+			}
+
+			return {};
+		}
+
+		if (node->type != hl::JsonNode::Type::Array)
+		{
+			fail(std::string(file) + ": '" + key + "' must be an array");
+		}
+
+		if (requireNonEmpty && node->children.empty())
+		{
+			fail(std::string(file) + ": '" + key + "' must be non-empty");
+		}
+
+		std::vector<WeaponSlot> slots;
+		for (const auto* slotRow : node->children)
+		{
+			if (slotRow == nullptr || slotRow->type != hl::JsonNode::Type::Object)
+			{
+				fail(std::string(file) + ": each " + std::string(key) + " entry must be an object");
+			}
+
+			WeaponSlot slot;
+			slot.id = requireString(*slotRow, "id", file);
+			slot.offset = requireVec3(*slotRow, "offset", file, false);
+			if (weapons.find(slot.id) == nullptr)
+			{
+				fail(std::string(file) + ": unknown weapon id '" + slot.id + "'");
+			}
+
+			slots.push_back(std::move(slot));
+		}
+
+		return slots;
 	}
 
 	inline void requireArrayRoot(const hl::JsonDocument& doc, const char* file)

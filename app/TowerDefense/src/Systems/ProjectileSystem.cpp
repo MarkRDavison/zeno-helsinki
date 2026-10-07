@@ -2,7 +2,9 @@
 #include <Components/ProjectileComponent.hpp>
 #include <Components/HealthComponent.hpp>
 #include <Components/CreepComponent.hpp>
+#include <Components/EntityComponent.hpp>
 #include <Components/StatusListComponent.hpp>
+#include <Components/TeamComponent.hpp>
 #include <Combat.hpp>
 #include <Status.hpp>
 #include <SceneCatalog.hpp>
@@ -21,11 +23,14 @@ namespace tower
 
 		float defenderResist(
 			const CreepComponent* creep,
+			const EntityComponent* placed,
 			const StatusListComponent* list,
 			const StatusCatalog& statuses,
 			std::string_view type)
 		{
-			const float innate = creep != nullptr ? resistOf(creep->resist, type) : 0.0f;
+			const float innate = creep != nullptr
+				? resistOf(creep->resist, type)
+				: (placed != nullptr ? resistOf(placed->resist, type) : 0.0f);
 			if (list == nullptr)
 			{
 				return innate;
@@ -88,23 +93,26 @@ namespace tower
 
 				auto* health = target->GetComponent<HealthComponent>();
 				auto* creep = target->GetComponent<CreepComponent>();
+				auto* placed = target->GetComponent<EntityComponent>();
 				auto* list = target->GetComponent<StatusListComponent>();
-				if (health != nullptr)
+				if (health == nullptr)
 				{
-					const float resist = defenderResist(
-						creep,
-						list,
-						_statuses,
-						shot->damageType);
-					const float dealt = outgoingDamage(shot->damage, 0.0f, 0.0f);
-					applyHit(health->current, dealt, resist);
+					continue;
 				}
 
-				const bool dead = health == nullptr || isDead(health->current);
-				if (dead)
+				const float resist = defenderResist(
+					creep,
+					placed,
+					list,
+					_statuses,
+					shot->damageType);
+				const float dealt = outgoingDamage(shot->damage, 0.0f, 0.0f);
+				applyHit(health->current, dealt, resist);
+
+				if (isDead(health->current))
 				{
 					_scene.removeEntity(target->Id);
-					if (onKill)
+					if (onKill && hasTeam(target, Team::Creep))
 					{
 						onKill();
 					}

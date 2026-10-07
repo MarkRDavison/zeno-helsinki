@@ -131,7 +131,7 @@ namespace tower
 
 	bool WaveService::tryClear(bool boardEmpty)
 	{
-		// TODO stuck wave / can't finish (play-test): unarmed pile on an immortal path blocker.
+		// TODO stuck wave / can't finish (play-test): unarmed pile on an immortal path entity.
 		if (!_inCombat || _gameState.matchEnded() || pendingSpawns() > 0 || !boardEmpty)
 		{
 			return false;

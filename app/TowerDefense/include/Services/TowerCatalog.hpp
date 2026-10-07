@@ -1,6 +1,6 @@
 #pragma once
 
-#include <helsinki/System/glm.hpp>
+#include <Services/WeaponCatalog.hpp>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -8,14 +8,6 @@
 
 namespace tower
 {
-	class WeaponCatalog;
-
-	struct TowerWeaponSlot
-	{
-		std::string id;
-		glm::vec3 offset{ 0.0f };
-	};
-
 	struct TowerDef
 	{
 		std::string id;
@@ -23,7 +15,7 @@ namespace tower
 		std::string label;
 		int cost = 0;
 		float range = 0.0f;
-		std::vector<TowerWeaponSlot> weapons;
+		std::vector<WeaponSlot> weapons;
 	};
 
 	class TowerCatalog

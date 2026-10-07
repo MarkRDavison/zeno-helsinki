@@ -11,13 +11,32 @@ namespace tower
 
 	void CreepCatalog::load(const std::string& path, const DamageTypeCatalog& types)
 	{
-		loadFromText(hl::String::readFile(path), kFile, types);
+		WeaponCatalog weapons;
+		loadFromText(hl::String::readFile(path), kFile, types, weapons);
+	}
+
+	void CreepCatalog::load(
+		const std::string& path,
+		const DamageTypeCatalog& types,
+		const WeaponCatalog& weapons)
+	{
+		loadFromText(hl::String::readFile(path), kFile, types, weapons);
 	}
 
 	void CreepCatalog::loadFromText(
 		const std::string& text,
 		const char* file,
 		const DamageTypeCatalog& types)
+	{
+		WeaponCatalog weapons;
+		loadFromText(text, file, types, weapons);
+	}
+
+	void CreepCatalog::loadFromText(
+		const std::string& text,
+		const char* file,
+		const DamageTypeCatalog& types,
+		const WeaponCatalog& weapons)
 	{
 		_defs.clear();
 		_byId.clear();
@@ -40,6 +59,7 @@ namespace tower
 			def.scale = catalogJson::optionalPositive(*row, "scale", 0.4f, file);
 			def.range = catalogJson::optionalNonNegative(*row, "range", 0.0f, file);
 			def.resist = parseResist(*row, def.id, file, "creep", types);
+			def.slots = catalogJson::parseWeaponSlots(*row, "slots", file, weapons, false);
 			if (_byId.contains(def.id))
 			{
 				catalogJson::fail(std::string(file) + ": duplicate id '" + def.id + "'");

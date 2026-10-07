@@ -11,7 +11,6 @@ namespace tower
 	inline constexpr const char* TileBlackModelId = "tile_black";
 	inline constexpr const char* TileWhiteModelId = "tile_white";
 	inline constexpr const char* TowerTag = "TOWER";
-	inline constexpr const char* BlockerTag = "BLOCKER";
 	inline constexpr const char* GhostTag = "GHOST";
 	inline constexpr const char* GhostOkMaterial = "ghost_ok";
 	inline constexpr const char* GhostBadMaterial = "ghost_bad";

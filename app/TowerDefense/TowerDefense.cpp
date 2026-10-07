@@ -65,9 +65,6 @@ int main()
 		engineConfig.RootPath + "/data/statuses.json",
 		serviceProvider.get<tower::StatusCategoryCatalog>(),
 		serviceProvider.get<tower::DamageTypeCatalog>());
-	serviceProvider.get<tower::CreepCatalog>().load(
-		engineConfig.RootPath + "/data/creeps.json",
-		serviceProvider.get<tower::DamageTypeCatalog>());
 	serviceProvider.get<tower::ProjectileCatalog>().load(
 		engineConfig.RootPath + "/data/projectiles.json",
 		serviceProvider.get<tower::DamageTypeCatalog>(),
@@ -75,6 +72,10 @@ int main()
 	serviceProvider.get<tower::WeaponCatalog>().load(
 		engineConfig.RootPath + "/data/weapons.json",
 		serviceProvider.get<tower::ProjectileCatalog>());
+	serviceProvider.get<tower::CreepCatalog>().load(
+		engineConfig.RootPath + "/data/creeps.json",
+		serviceProvider.get<tower::DamageTypeCatalog>(),
+		serviceProvider.get<tower::WeaponCatalog>());
 	serviceProvider.get<tower::TowerCatalog>().load(
 		engineConfig.RootPath + "/data/towers.json",
 		serviceProvider.get<tower::WeaponCatalog>());

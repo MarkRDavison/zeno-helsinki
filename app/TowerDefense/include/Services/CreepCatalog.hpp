@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Services/WeaponCatalog.hpp>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -18,13 +19,23 @@ namespace tower
 		float scale = 0.4f;
 		float range = 0.0f;
 		std::unordered_map<std::string, float> resist;
+		std::vector<WeaponSlot> slots;
 	};
 
 	class CreepCatalog
 	{
 	public:
 		void load(const std::string& path, const DamageTypeCatalog& types);
+		void load(
+			const std::string& path,
+			const DamageTypeCatalog& types,
+			const WeaponCatalog& weapons);
 		void loadFromText(const std::string& text, const char* file, const DamageTypeCatalog& types);
+		void loadFromText(
+			const std::string& text,
+			const char* file,
+			const DamageTypeCatalog& types,
+			const WeaponCatalog& weapons);
 		const CreepDef* find(std::string_view id) const;
 		const std::vector<CreepDef>& all() const;
 

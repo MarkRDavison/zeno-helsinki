@@ -6,7 +6,7 @@
 
 namespace tower
 {
-	class BlockerComponent : public hl::Component
+	class EntityComponent : public hl::Component
 	{
 	public:
 		int x = 0;

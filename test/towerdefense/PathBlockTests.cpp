@@ -55,7 +55,7 @@ TEST_CASE("no block after the creep has passed the footprint", "[tower][paths][s
 	CHECK_FALSE(tower::firstBlockedTile(path, 2, gate).has_value());
 }
 
-TEST_CASE("resume when blocker is gone", "[tower][paths][stall]")
+TEST_CASE("resume when path entity is gone", "[tower][paths][stall]")
 {
 	const std::vector<tower::TileCoord> path{ { 0, 0 }, { 0, 1 }, { 0, 2 } };
 	CHECK_FALSE(tower::firstBlockedTile(path, 0, tower::PathBlockFootprint{ 9, 9, 1, 1 }).has_value());

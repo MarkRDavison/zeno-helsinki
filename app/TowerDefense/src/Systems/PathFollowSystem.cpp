@@ -1,7 +1,7 @@
 #include <Systems/PathFollowSystem.hpp>
 #include <Components/PathFollowComponent.hpp>
 #include <Components/CreepComponent.hpp>
-#include <Components/BlockerComponent.hpp>
+#include <Components/EntityComponent.hpp>
 #include <Components/HealthComponent.hpp>
 #include <Components/TeamComponent.hpp>
 #include <PathBlock.hpp>
@@ -32,13 +32,19 @@ namespace tower
 
 	namespace
 	{
-		std::optional<TileCoord> blockingTileFor(
+		struct PathStall
+		{
+			TileCoord tile{};
+			int entityId = -1;
+		};
+
+		std::optional<PathStall> stallOnPath(
 			hl::Scene& scene,
 			LevelCatalog& level,
 			const PathFollowComponent& follow)
 		{
 			const auto& waypoints = level.path(follow.pathName);
-			for (auto* entity : scene.getEntitiesWithComponents<BlockerComponent, TeamComponent>())
+			for (auto* entity : scene.getEntitiesWithComponents<EntityComponent, TeamComponent>())
 			{
 				if (scene.isPendingRemoval(entity->Id) || !hasTeam(entity, Team::Neutral))
 				{
@@ -51,39 +57,33 @@ namespace tower
 					continue;
 				}
 
-				const auto* blocker = entity->GetComponent<BlockerComponent>();
+				const auto* placed = entity->GetComponent<EntityComponent>();
 				const PathBlockFootprint footprint{
-					blocker->x,
-					blocker->z,
-					blocker->sizeX,
-					blocker->sizeZ
+					placed->x,
+					placed->z,
+					placed->sizeX,
+					placed->sizeZ
 				};
 				if (const auto tile = firstBlockedTile(waypoints, follow.fromIndex, footprint))
 				{
-					return tile;
+					return PathStall{ *tile, entity->Id };
 				}
 			}
 
 			return std::nullopt;
 		}
 
-		bool stalled(
-			hl::Scene& scene,
+		bool inRangeOfStall(
 			LevelCatalog& level,
 			hl::Entity* creep,
-			const PathFollowComponent& follow)
+			const PathFollowComponent& follow,
+			const PathStall& stall)
 		{
-			const auto blocked = blockingTileFor(scene, level, follow);
-			if (!blocked.has_value())
-			{
-				return false;
-			}
-
 			const auto& waypoints = level.path(follow.pathName);
 			if (follow.fromIndex >= 0 && follow.fromIndex < static_cast<int>(waypoints.size()))
 			{
 				const auto& here = waypoints[static_cast<std::size_t>(follow.fromIndex)];
-				if (here.x == blocked->x && here.z == blocked->z)
+				if (here.x == stall.tile.x && here.z == stall.tile.z)
 				{
 					return true;
 				}
@@ -92,8 +92,25 @@ namespace tower
 			const auto* body = creep->GetComponent<CreepComponent>();
 			const float range = body != nullptr ? body->range : 0.0f;
 			const auto* transform = creep->GetComponent<hl::TransformComponent>();
-			const glm::vec3 center = level.tileCenter(blocked->x, blocked->z);
+			const glm::vec3 center = level.tileCenter(stall.tile.x, stall.tile.z);
 			return shouldStall(transform->GetPosition(), center, range);
+		}
+
+		std::optional<PathStall> activeStall(
+			hl::Scene& scene,
+			LevelCatalog& level,
+			hl::Entity* creep,
+			PathFollowComponent& follow)
+		{
+			const auto stall = stallOnPath(scene, level, follow);
+			if (!stall.has_value() || !inRangeOfStall(level, creep, follow, *stall))
+			{
+				follow.stalledEntityId = -1;
+				return std::nullopt;
+			}
+
+			follow.stalledEntityId = stall->entityId;
+			return stall;
 		}
 	}
 
@@ -114,7 +131,7 @@ namespace tower
 			const auto& waypoints = _level.path(follow->pathName);
 			const int waypointCount = static_cast<int>(waypoints.size());
 
-			if (stalled(_scene, _level, entity, *follow))
+			if (activeStall(_scene, _level, entity, *follow))
 			{
 				continue;
 			}
@@ -144,7 +161,7 @@ namespace tower
 				follow->fromIndex += 1;
 				if (follow->fromIndex >= waypointCount - 1)
 				{
-					if (stalled(_scene, _level, entity, *follow))
+					if (activeStall(_scene, _level, entity, *follow))
 					{
 						follow->t = 0.0f;
 						const auto& tile = waypoints[static_cast<std::size_t>(follow->fromIndex)];
@@ -158,7 +175,7 @@ namespace tower
 					break;
 				}
 
-				if (stalled(_scene, _level, entity, *follow))
+				if (activeStall(_scene, _level, entity, *follow))
 				{
 					follow->t = 0.0f;
 					const auto& tile = waypoints[static_cast<std::size_t>(follow->fromIndex)];
@@ -172,7 +189,7 @@ namespace tower
 				continue;
 			}
 
-			if (stalled(_scene, _level, entity, *follow))
+			if (activeStall(_scene, _level, entity, *follow))
 			{
 				continue;
 			}

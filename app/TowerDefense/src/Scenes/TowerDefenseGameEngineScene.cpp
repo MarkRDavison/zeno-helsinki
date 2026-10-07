@@ -13,9 +13,10 @@
 #include <Components/StatusRingComponent.hpp>
 #include <Components/TileComponent.hpp>
 #include <Components/TowerComponent.hpp>
-#include <Components/BlockerComponent.hpp>
+#include <Components/EntityComponent.hpp>
 #include <Systems/PathFollowSystem.hpp>
 #include <Systems/TowerFireSystem.hpp>
+#include <Systems/CreepFireSystem.hpp>
 #include <Systems/ProjectileSystem.hpp>
 #include <Systems/StatusSystem.hpp>
 #include <Status.hpp>
@@ -424,7 +425,7 @@ namespace tower
 		{
 			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
 		}
-		spawnBlockers(resourceManager, resourceContext);
+		spawnEntities(resourceManager, resourceContext);
 		spawnGhost(resourceManager);
 		spawnRangeRing(resourceManager, resourceContext);
 		spawnPathRibbons(resourceManager, resourceContext);
@@ -435,6 +436,11 @@ namespace tower
 		auto* pathFollow = new PathFollowSystem(_scene, _level);
 		pathFollow->onLeak = [this]() { onCreepLeaked(); };
 		_scene.addSystem(pathFollow);
+		_scene.addSystem(new CreepFireSystem(
+			_scene,
+			resourceManager,
+			_weapons,
+			_projectiles));
 		_scene.addSystem(new TowerFireSystem(
 			_scene,
 			resourceManager,
@@ -483,7 +489,7 @@ namespace tower
 		}
 	}
 
-	void TowerDefenseGameEngineScene::spawnBlockers(
+	void TowerDefenseGameEngineScene::spawnEntities(
 		hl::ResourceManager& resourceManager,
 		hl::ResourceContext&)
 	{
@@ -493,19 +499,18 @@ namespace tower
 			if (def == nullptr)
 			{
 				throw std::runtime_error(
-					std::string("Unknown blocker entity id '") + placement.id + "'");
+					std::string("Unknown entity id '") + placement.id + "'");
 			}
 
 			auto* model = resourceManager.GetResource<hl::ModelResource>(def->model);
 			auto* entity = _scene.addEntity();
-			entity->AddTag(BlockerTag);
 			entity->AddComponent<TeamComponent>()->team = Team::Neutral;
-			auto* blocker = entity->AddComponent<BlockerComponent>();
-			blocker->x = placement.x;
-			blocker->z = placement.z;
-			blocker->sizeX = def->sizeX;
-			blocker->sizeZ = def->sizeZ;
-			blocker->resist = def->resist;
+			auto* placed = entity->AddComponent<EntityComponent>();
+			placed->x = placement.x;
+			placed->z = placement.z;
+			placed->sizeX = def->sizeX;
+			placed->sizeZ = def->sizeZ;
+			placed->resist = def->resist;
 			if (def->health > 0.0f)
 			{
 				auto* health = entity->AddComponent<HealthComponent>();
@@ -573,7 +578,7 @@ namespace tower
 
 	bool TowerDefenseGameEngineScene::isOccupied(int tx, int tz) const
 	{
-		return towerAt(tx, tz) != nullptr || blockerAt(tx, tz) != nullptr;
+		return towerAt(tx, tz) != nullptr || entityAt(tx, tz) != nullptr;
 	}
 
 	hl::Entity* TowerDefenseGameEngineScene::towerAt(int tx, int tz) const
@@ -590,14 +595,19 @@ namespace tower
 		return nullptr;
 	}
 
-	hl::Entity* TowerDefenseGameEngineScene::blockerAt(int tx, int tz) const
+	hl::Entity* TowerDefenseGameEngineScene::entityAt(int tx, int tz) const
 	{
-		for (auto* entity : _scene.getEntitiesByTag(BlockerTag))
+		for (auto* entity : _scene.getEntitiesWithComponents<EntityComponent>())
 		{
-			const auto* blocker = entity->GetComponent<BlockerComponent>();
-			if (blocker != nullptr
-				&& tx >= blocker->x && tx < blocker->x + blocker->sizeX
-				&& tz >= blocker->z && tz < blocker->z + blocker->sizeZ)
+			if (_scene.isPendingRemoval(entity->Id))
+			{
+				continue;
+			}
+
+			const auto* placed = entity->GetComponent<EntityComponent>();
+			if (placed != nullptr
+				&& tx >= placed->x && tx < placed->x + placed->sizeX
+				&& tz >= placed->z && tz < placed->z + placed->sizeZ)
 			{
 				return entity;
 			}
@@ -643,6 +653,8 @@ namespace tower
 		creep->baseSpeed = def.speed;
 		creep->scale = def.scale;
 		creep->range = def.range;
+		creep->slots = def.slots;
+		creep->slotCooldown.assign(def.slots.size(), 0.0f);
 		entity->AddComponent<StatusListComponent>();
 		auto* health = entity->AddComponent<HealthComponent>();
 		health->max = def.health;
@@ -898,7 +910,7 @@ namespace tower
 			ring->SetScale(glm::vec3(def->range, 1.0f, def->range));
 		}
 		_ghostPlaceable = !_level.isPathTile(tile->x, tile->z)
-			&& blockerAt(tile->x, tile->z) == nullptr
+			&& entityAt(tile->x, tile->z) == nullptr
 			&& _gameState.gold() >= def->cost;
 		_ghostVisible = true;
 	}
@@ -996,7 +1008,7 @@ namespace tower
 			return;
 		}
 
-		if (blockerAt(tile->x, tile->z) != nullptr)
+		if (entityAt(tile->x, tile->z) != nullptr)
 		{
 			flashInvalid(tile->x, tile->z);
 			return;

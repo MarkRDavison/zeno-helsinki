@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Services/WeaponCatalog.hpp>
 #include <helsinki/Engine/ECS/Component.hpp>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace tower
 {
@@ -14,5 +16,7 @@ namespace tower
 		float baseSpeed = 1.0f;
 		float scale = 0.4f;
 		float range = 0.0f;
+		std::vector<WeaponSlot> slots;
+		std::vector<float> slotCooldown;
 	};
 }
