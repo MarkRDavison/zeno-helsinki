@@ -1,0 +1,82 @@
+{
+  "id": "level-4",
+  "boardSize": [8, 8],
+  "startGold": 100,
+  "startLives": 3,
+  "killGold": 10,
+  "waveClearBonus": 25,
+  "buildTimer": 20,
+  "paths": [
+    {
+      "name": "west",
+      "path": [
+        [0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [0, 7]
+      ]
+    },
+    {
+      "name": "east",
+      "path": [
+        [7, 0], [7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6], [7, 7]
+      ]
+    }
+  ],
+  "entities": [
+    { "id": "tree", "x": 3, "z": 3 },
+    { "id": "rocks", "x": 4, "z": 3 },
+    { "id": "tree", "x": 3, "z": 4 },
+    { "id": "rocks", "x": 4, "z": 4 }
+  ],
+  "waves": [
+    {
+      "name": "split",
+      "streams": [
+        {
+          "name": "west-runners",
+          "path": "west",
+          "spawnInterval": 0.8,
+          "spawns": [ { "id": "runner", "count": 5 } ]
+        },
+        {
+          "name": "east-tanks",
+          "path": "east",
+          "spawnInterval": 1.2,
+          "spawns": [ { "id": "tank", "count": 2 } ]
+        }
+      ]
+    },
+    {
+      "name": "press",
+      "streams": [
+        {
+          "name": "west-mix",
+          "path": "west",
+          "spawnInterval": 0.9,
+          "spawns": [ { "id": "runner", "count": 3 }, { "id": "ufo", "count": 2 } ]
+        },
+        {
+          "name": "east-mix",
+          "path": "east",
+          "spawnInterval": 1.0,
+          "spawns": [ { "id": "tank", "count": 3 }, { "id": "ufo", "count": 2 } ]
+        }
+      ]
+    },
+    {
+      "name": "close",
+      "streams": [
+        {
+          "name": "west-tanks",
+          "path": "west",
+          "spawnInterval": 1.0,
+          "spawns": [ { "id": "tank", "count": 4 } ]
+        },
+        {
+          "name": "east-runners",
+          "path": "east",
+          "spawnInterval": 0.7,
+          "spawns": [ { "id": "runner", "count": 6 } ]
+        }
+      ]
+    }
+  ]
+}
