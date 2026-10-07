@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/ECS/Component.hpp>
 #include <helsinki/System/glm.hpp>
+#include <string>
 
 namespace tower
 {
@@ -10,7 +11,8 @@ namespace tower
 	public:
 		int targetId = 0;
 		float speed = 0.0f;
-		int damage = 1;
+		float damage = 1.0f;
+		std::string damageType;
 		float hitRadius = 0.35f;
 		float y = 0.4f;
 		glm::vec2 aimOffset{ 0.0f, 0.0f };

@@ -186,6 +186,7 @@ namespace tower
 				shot->targetId = creep->Id;
 				shot->speed = projectile->speed;
 				shot->damage = projectile->damage;
+				shot->damageType = projectile->damageType;
 				shot->hitRadius = projectile->hitRadius;
 				shot->y = projectile->y;
 				shot->aimOffset = glm::vec2(lateral.x, lateral.z);

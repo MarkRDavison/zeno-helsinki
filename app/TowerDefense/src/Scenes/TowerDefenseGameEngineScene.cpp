@@ -6,6 +6,7 @@
 #include <SunUniformBufferObject.hpp>
 #include <Components/PathFollowComponent.hpp>
 #include <Components/HealthComponent.hpp>
+#include <Components/CreepComponent.hpp>
 #include <Components/TileComponent.hpp>
 #include <Components/TowerComponent.hpp>
 #include <Components/BlockerComponent.hpp>
@@ -610,6 +611,7 @@ namespace tower
 		follow->fromIndex = 0;
 		follow->t = 0.0f;
 		follow->speed = def.speed;
+		entity->AddComponent<CreepComponent>()->resist = def.resist;
 		auto* health = entity->AddComponent<HealthComponent>();
 		health->max = def.health;
 		health->current = def.health;

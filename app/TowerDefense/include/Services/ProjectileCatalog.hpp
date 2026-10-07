@@ -8,11 +8,14 @@
 
 namespace tower
 {
+	class DamageTypeCatalog;
+
 	struct ProjectileDef
 	{
 		std::string id;
 		std::string model;
-		int damage = 1;
+		float damage = 1.0f;
+		std::string damageType;
 		float speed = 0.0f;
 		float hitRadius = 0.0f;
 		float y = 0.0f;
@@ -22,7 +25,8 @@ namespace tower
 	class ProjectileCatalog
 	{
 	public:
-		void load(const std::string& path);
+		void load(const std::string& path, const DamageTypeCatalog& types);
+		void loadFromText(const std::string& text, const char* file, const DamageTypeCatalog& types);
 		const ProjectileDef* find(std::string_view id) const;
 		const std::vector<ProjectileDef>& all() const;
 

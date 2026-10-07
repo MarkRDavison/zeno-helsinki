@@ -190,6 +190,30 @@ namespace tower::catalogJson
 		fail(std::string(file) + ": '" + what + "' must be a number");
 	}
 
+	inline float requireAnyNumber(const hl::JsonNode& node, const char* file, const char* what)
+	{
+		return requireNumber(node, file, what);
+	}
+
+	inline const hl::JsonNode* optionalObject(
+		const hl::JsonNode& row,
+		const char* name,
+		const char* file)
+	{
+		const auto* node = findChild(row, name);
+		if (node == nullptr)
+		{
+			return nullptr;
+		}
+
+		if (node->type != hl::JsonNode::Type::Object)
+		{
+			fail(std::string(file) + ": '" + name + "' must be an object");
+		}
+
+		return node;
+	}
+
 	inline glm::vec3 requireVec3(
 		const hl::JsonNode& row,
 		const char* name,

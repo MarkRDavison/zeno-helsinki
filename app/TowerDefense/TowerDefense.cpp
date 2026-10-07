@@ -3,6 +3,7 @@
 #include <AudioCatalog.hpp>
 #include <Services/GameStateService.hpp>
 #include <Services/WaveService.hpp>
+#include <Services/DamageTypeCatalog.hpp>
 #include <Services/CreepCatalog.hpp>
 #include <Services/TowerCatalog.hpp>
 #include <Services/WeaponCatalog.hpp>
@@ -26,6 +27,7 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<hl::Engine, hl::Engine, hl::EventBus, hl::InputManager>(hl::ServiceLifetime::Singleton);
 	services.registerService<hl::EngineConfiguration, hl::EngineConfiguration>(hl::ServiceLifetime::Singleton);
 	services.registerService<hl::audio::Audio, hl::audio::Audio>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::DamageTypeCatalog, tower::DamageTypeCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::CreepCatalog, tower::CreepCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::ProjectileCatalog, tower::ProjectileCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::WeaponCatalog, tower::WeaponCatalog>(hl::ServiceLifetime::Singleton);
@@ -51,10 +53,14 @@ int main()
 
 	auto& engineConfig = serviceProvider.get<hl::EngineConfiguration>();
 	engineConfig.applyConfig("/data/config.json", std::string(tower::TowerDefenseConfig::RootPath));
+	serviceProvider.get<tower::DamageTypeCatalog>().load(
+		engineConfig.RootPath + "/data/damage-types.json");
 	serviceProvider.get<tower::CreepCatalog>().load(
-		engineConfig.RootPath + "/data/creeps.json");
+		engineConfig.RootPath + "/data/creeps.json",
+		serviceProvider.get<tower::DamageTypeCatalog>());
 	serviceProvider.get<tower::ProjectileCatalog>().load(
-		engineConfig.RootPath + "/data/projectiles.json");
+		engineConfig.RootPath + "/data/projectiles.json",
+		serviceProvider.get<tower::DamageTypeCatalog>());
 	serviceProvider.get<tower::WeaponCatalog>().load(
 		engineConfig.RootPath + "/data/weapons.json",
 		serviceProvider.get<tower::ProjectileCatalog>());

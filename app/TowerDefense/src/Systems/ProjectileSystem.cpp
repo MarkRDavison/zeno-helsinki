@@ -1,6 +1,8 @@
 #include <Systems/ProjectileSystem.hpp>
 #include <Components/ProjectileComponent.hpp>
 #include <Components/HealthComponent.hpp>
+#include <Components/CreepComponent.hpp>
+#include <Combat.hpp>
 #include <SceneCatalog.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 
@@ -60,10 +62,16 @@ namespace tower
 				auto* health = target->GetComponent<HealthComponent>();
 				if (health != nullptr)
 				{
-					health->current -= shot->damage;
+					float resist = 0.0f;
+					if (const auto* creep = target->GetComponent<CreepComponent>())
+					{
+						resist = resistOf(creep->resist, shot->damageType);
+					}
+
+					applyHit(health->current, shot->damage, resist);
 				}
 
-				const bool dead = health == nullptr || health->current <= 0;
+				const bool dead = health == nullptr || isDead(health->current);
 				if (dead)
 				{
 					_scene.removeEntity(target->Id);

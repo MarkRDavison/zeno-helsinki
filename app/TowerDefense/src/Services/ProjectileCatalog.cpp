@@ -1,33 +1,55 @@
 #include <Services/ProjectileCatalog.hpp>
 #include <Services/CatalogJson.hpp>
+#include <Services/DamageTypeCatalog.hpp>
 
 namespace tower
 {
-	void ProjectileCatalog::load(const std::string& path)
+	namespace
+	{
+		const char* kFile = "projectiles.json";
+	}
+
+	void ProjectileCatalog::load(const std::string& path, const DamageTypeCatalog& types)
+	{
+		loadFromText(hl::String::readFile(path), kFile, types);
+	}
+
+	void ProjectileCatalog::loadFromText(
+		const std::string& text,
+		const char* file,
+		const DamageTypeCatalog& types)
 	{
 		_defs.clear();
 		_byId.clear();
 
-		const auto doc = hl::Json::parseFromText(hl::String::readFile(path));
-		catalogJson::requireArrayRoot(doc, "projectiles.json");
+		const auto doc = hl::Json::parseFromText(text);
+		catalogJson::requireArrayRoot(doc, file);
 		for (const auto* row : doc.m_Root->children)
 		{
 			if (row == nullptr || row->type != hl::JsonNode::Type::Object)
 			{
-				catalogJson::fail("projectiles.json: each entry must be an object");
+				catalogJson::fail(std::string(file) + ": each entry must be an object");
 			}
 
 			ProjectileDef def;
-			def.id = catalogJson::requireString(*row, "id", "projectiles.json");
-			def.model = catalogJson::requireString(*row, "model", "projectiles.json");
-			def.damage = catalogJson::requireIntAtLeast(*row, "damage", 1, "projectiles.json");
-			def.speed = catalogJson::requirePositive(*row, "speed", "projectiles.json");
-			def.hitRadius = catalogJson::requirePositive(*row, "hitRadius", "projectiles.json");
-			def.y = catalogJson::requirePositive(*row, "y", "projectiles.json");
-			def.scale = catalogJson::requireVec3(*row, "scale", "projectiles.json", true);
+			def.id = catalogJson::requireString(*row, "id", file);
+			def.model = catalogJson::requireString(*row, "model", file);
+			def.damage = static_cast<float>(
+				catalogJson::requireIntAtLeast(*row, "damage", 1, file));
+			def.damageType = catalogJson::requireString(*row, "damageType", file);
+			if (!types.contains(def.damageType))
+			{
+				catalogJson::fail(
+					std::string(file) + ": unknown damageType '" + def.damageType + "'");
+			}
+
+			def.speed = catalogJson::requirePositive(*row, "speed", file);
+			def.hitRadius = catalogJson::requirePositive(*row, "hitRadius", file);
+			def.y = catalogJson::requirePositive(*row, "y", file);
+			def.scale = catalogJson::requireVec3(*row, "scale", file, true);
 			if (_byId.contains(def.id))
 			{
-				catalogJson::fail("projectiles.json: duplicate id '" + def.id + "'");
+				catalogJson::fail(std::string(file) + ": duplicate id '" + def.id + "'");
 			}
 
 			_byId.emplace(def.id, _defs.size());
@@ -36,7 +58,7 @@ namespace tower
 
 		if (_defs.empty())
 		{
-			catalogJson::fail("projectiles.json: catalog is empty");
+			catalogJson::fail(std::string(file) + ": catalog is empty");
 		}
 	}
 
