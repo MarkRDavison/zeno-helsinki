@@ -5,6 +5,7 @@
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
 #include <Components/PathFollowComponent.hpp>
+#include <Components/PathRibbonComponent.hpp>
 #include <Components/HealthComponent.hpp>
 #include <Components/CreepComponent.hpp>
 #include <Components/StatusListComponent.hpp>
@@ -41,6 +42,7 @@
 #include <GLFW/glfw3.h>
 #include <cmath>
 #include <algorithm>
+#include <iterator>
 #include <ranges>
 #include <string>
 #include <stdexcept>
@@ -611,7 +613,7 @@ namespace tower
 	{
 		const auto& def = _wave.nextCreep();
 		auto* model = _resourceManager->GetResource<hl::ModelResource>(def.model);
-		const auto start = _level.path().front();
+		const auto& start = _level.path(_wave.nextPathName()).front();
 		auto* entity = _scene.addEntity();
 		entity->AddTag(CreepTag);
 		auto* transform = entity->AddComponent<hl::TransformComponent>();
@@ -619,6 +621,7 @@ namespace tower
 		transform->SetScale(glm::vec3(def.scale));
 		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		auto* follow = entity->AddComponent<PathFollowComponent>();
+		follow->pathName = _wave.nextPathName();
 		follow->fromIndex = 0;
 		follow->t = 0.0f;
 		follow->baseSpeed = def.speed;
@@ -789,34 +792,42 @@ namespace tower
 		hl::ResourceManager& resourceManager,
 		hl::ResourceContext& resourceContext)
 	{
-		_engine.getMaterialSystem().addMaterial(hl::Material{
-			.name = PathRibbonMaterial,
-			.diffuse = { 0.95f, 0.65f, 0.15f }
-		});
-
 		auto modelHandle = resourceManager.Load<hl::ModelResource>(
 			PathRibbonModelId,
 			resourceContext);
 
-		const auto& path = _level.path();
-		for (std::size_t i = 0; i + 1 < path.size(); ++i)
+		const auto paletteCount = static_cast<int>(std::size(PathRibbonPalette));
+		const auto& namedPaths = _level.paths();
+		for (std::size_t pathIndex = 0; pathIndex < namedPaths.size(); ++pathIndex)
 		{
-			const glm::vec3 a = _level.tileCenter(path[i].x, path[i].z, PathRibbonY);
-			const glm::vec3 b = _level.tileCenter(path[i + 1].x, path[i + 1].z, PathRibbonY);
-			const glm::vec3 delta = b - a;
-			const float length = glm::length(delta);
-			if (length < 1e-6f)
-			{
-				continue;
-			}
+			const std::string materialName = std::string(PathRibbonMaterial) + "_"
+				+ std::to_string(pathIndex);
+			_engine.getMaterialSystem().addMaterial(hl::Material{
+				.name = materialName,
+				.diffuse = PathRibbonPalette[pathIndex % static_cast<std::size_t>(paletteCount)]
+			});
 
-			auto* entity = _scene.addEntity();
-			entity->AddTag(PathRibbonTag);
-			auto* transform = entity->AddComponent<hl::TransformComponent>();
-			transform->SetPosition((a + b) * 0.5f);
-			transform->SetRotation(glm::vec3(0.0f, glm::degrees(std::atan2(delta.x, delta.z)), 0.0f));
-			transform->SetScale(glm::vec3(PathRibbonWidth, 1.0f, length));
-			entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+			const auto& path = namedPaths[pathIndex].path;
+			for (std::size_t i = 0; i + 1 < path.size(); ++i)
+			{
+				const glm::vec3 a = _level.tileCenter(path[i].x, path[i].z, PathRibbonY);
+				const glm::vec3 b = _level.tileCenter(path[i + 1].x, path[i + 1].z, PathRibbonY);
+				const glm::vec3 delta = b - a;
+				const float length = glm::length(delta);
+				if (length < 1e-6f)
+				{
+					continue;
+				}
+
+				auto* entity = _scene.addEntity();
+				entity->AddTag(PathRibbonTag);
+				auto* transform = entity->AddComponent<hl::TransformComponent>();
+				transform->SetPosition((a + b) * 0.5f);
+				transform->SetRotation(glm::vec3(0.0f, glm::degrees(std::atan2(delta.x, delta.z)), 0.0f));
+				transform->SetScale(glm::vec3(PathRibbonWidth, 1.0f, length));
+				entity->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+				entity->AddComponent<PathRibbonComponent>()->materialName = materialName;
+			}
 		}
 	}
 
@@ -1061,8 +1072,9 @@ namespace tower
 
 					for (const auto& mesh : modelResource->getMeshes())
 					{
+						const auto* ribbon = entity->GetComponent<PathRibbonComponent>();
 						pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(
-							mesh.materialName);
+							ribbon != nullptr ? ribbon->materialName : mesh.materialName);
 						vkCmdPushConstants(
 							pdd.commandBuffer,
 							pdd.pipeline->getPipelineLayout(),
@@ -1326,9 +1338,7 @@ namespace tower
 
 		_waveLabel = std::make_unique<hl::ui::Label>(_layoutRoot->addChild(), *_typeface);
 		_waveLabel->color = { 1.0f, 1.0f, 1.0f };
-		_waveLabel->setText(
-			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(_level.waveCount()),
-			24);
+		_waveLabel->setText(_wave.hudWaveLine(), 24);
 
 		_waveButton = std::make_unique<hl::ui::Button>(_layoutRoot->addChild(), *_typeface);
 		_waveButton->setText("Start Wave (20)", 32);
@@ -1421,9 +1431,7 @@ namespace tower
 	{
 		_goldLabel->setText("Gold: " + std::to_string(_gameState.gold()), 24);
 		_livesLabel->setText("Lives: " + std::to_string(_gameState.lives()), 24);
-		_waveLabel->setText(
-			"Wave: " + std::to_string(_wave.hudWaveIndex()) + "/" + std::to_string(_level.waveCount()),
-			24);
+		_waveLabel->setText(_wave.hudWaveLine(), 24);
 		if (!_wave.inCombat() && !matchEnded())
 		{
 			_waveButton->setText(

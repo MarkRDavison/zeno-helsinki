@@ -22,21 +22,39 @@ namespace tower
 		return _level.waveCount();
 	}
 
-	void WaveService::fillQueue()
+	int WaveService::pendingSpawns() const
 	{
-		_queue.clear();
-		_queueIndex = 0;
-		const auto& wave = _level.waves()[static_cast<std::size_t>(_activeIndex)];
-		for (const auto& spawn : wave.spawns)
+		int total = 0;
+		for (const auto& stream : _streams)
 		{
-			const auto* def = _creeps.find(spawn.id);
-			for (int i = 0; i < spawn.count; ++i)
-			{
-				_queue.push_back(def);
-			}
+			total += stream.pending;
 		}
 
-		_pendingSpawns = static_cast<int>(_queue.size());
+		return total;
+	}
+
+	void WaveService::fillQueues()
+	{
+		_streams.clear();
+		const auto& wave = _level.waves()[static_cast<std::size_t>(_activeIndex)];
+		for (const auto& stream : wave.streams)
+		{
+			StreamQueue queue;
+			queue.pathName = stream.pathName;
+			queue.spawnInterval = stream.spawnInterval;
+			queue.spawnTimer = 0.0f;
+			for (const auto& spawn : stream.spawns)
+			{
+				const auto* def = _creeps.find(spawn.id);
+				for (int i = 0; i < spawn.count; ++i)
+				{
+					queue.queue.push_back(def);
+				}
+			}
+
+			queue.pending = static_cast<int>(queue.queue.size());
+			_streams.push_back(std::move(queue));
+		}
 	}
 
 	bool WaveService::tryStart()
@@ -49,8 +67,7 @@ namespace tower
 		_inCombat = true;
 		_buildTimer = 0.0f;
 		_activeIndex = _wavesCompleted;
-		_spawnTimer = 0.0f;
-		fillQueue();
+		fillQueues();
 		return true;
 	}
 
@@ -77,30 +94,44 @@ namespace tower
 			return;
 		}
 
-		if (_pendingSpawns <= 0)
+		for (auto& stream : _streams)
 		{
-			return;
-		}
+			if (stream.pending <= 0)
+			{
+				continue;
+			}
 
-		_spawnTimer -= delta;
+			stream.spawnTimer -= delta;
+		}
 	}
 
 	bool WaveService::takeSpawn()
 	{
-		if (!_inCombat || _gameState.matchEnded() || _pendingSpawns <= 0 || _spawnTimer > 0.0f)
+		if (!_inCombat || _gameState.matchEnded())
 		{
 			return false;
 		}
 
-		_nextCreep = _queue[static_cast<std::size_t>(_queueIndex++)];
-		_pendingSpawns -= 1;
-		_spawnTimer = _level.spawnInterval();
-		return true;
+		for (auto& stream : _streams)
+		{
+			if (stream.pending <= 0 || stream.spawnTimer > 0.0f)
+			{
+				continue;
+			}
+
+			_nextCreep = stream.queue[static_cast<std::size_t>(stream.queueIndex++)];
+			_nextPathName = stream.pathName;
+			stream.pending -= 1;
+			stream.spawnTimer = stream.spawnInterval;
+			return true;
+		}
+
+		return false;
 	}
 
 	bool WaveService::tryClear(bool boardEmpty)
 	{
-		if (!_inCombat || _gameState.matchEnded() || _pendingSpawns > 0 || !boardEmpty)
+		if (!_inCombat || _gameState.matchEnded() || pendingSpawns() > 0 || !boardEmpty)
 		{
 			return false;
 		}
@@ -135,6 +166,13 @@ namespace tower
 		return _wavesCompleted + 1;
 	}
 
+	std::string WaveService::hudWaveLine() const
+	{
+		const int index = hudWaveIndex();
+		const auto& wave = _level.waves()[static_cast<std::size_t>(index - 1)];
+		return "Wave " + wave.name + " (#" + std::to_string(index) + ")";
+	}
+
 	int WaveService::buildSecondsRemaining() const
 	{
 		if (_inCombat || _gameState.matchEnded() || _wavesCompleted >= waveCount())
@@ -153,5 +191,15 @@ namespace tower
 		}
 
 		return *_nextCreep;
+	}
+
+	const std::string& WaveService::nextPathName() const
+	{
+		if (_nextCreep == nullptr)
+		{
+			throw std::runtime_error("WaveService::nextPathName called with no pending creep");
+		}
+
+		return _nextPathName;
 	}
 }

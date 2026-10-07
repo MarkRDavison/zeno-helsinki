@@ -3,6 +3,7 @@
 #include <Services/CreepCatalog.hpp>
 #include <Services/EntityCatalog.hpp>
 #include <cmath>
+#include <stdexcept>
 #include <unordered_set>
 
 namespace tower
@@ -13,77 +14,177 @@ namespace tower
 			| static_cast<uint32_t>(z);
 	}
 
+	namespace
+	{
+		std::vector<TileCoord> parsePathTiles(
+			const hl::JsonNode& pathNode,
+			int boardWidth,
+			int boardDepth,
+			const char* file,
+			const std::string& pathName)
+		{
+			if (pathNode.type != hl::JsonNode::Type::Array || pathNode.children.size() < 2)
+			{
+				catalogJson::fail(
+					std::string(file) + ": path '" + pathName + "' must be an array of at least 2 tiles");
+			}
+
+			std::vector<TileCoord> tiles;
+			for (const auto* step : pathNode.children)
+			{
+				if (step == nullptr || step->type != hl::JsonNode::Type::Array || step->children.size() != 2)
+				{
+					catalogJson::fail(std::string(file) + ": each path tile must be [x, z]");
+				}
+
+				const auto* xNode = step->children[0];
+				const auto* zNode = step->children[1];
+				if (xNode == nullptr || zNode == nullptr
+					|| xNode->type != hl::JsonNode::Type::ValueInteger
+					|| zNode->type != hl::JsonNode::Type::ValueInteger)
+				{
+					catalogJson::fail(std::string(file) + ": path tiles must be integer [x, z]");
+				}
+
+				TileCoord coord{ xNode->integer, zNode->integer };
+				if (coord.x < 0 || coord.x >= boardWidth || coord.z < 0 || coord.z >= boardDepth)
+				{
+					catalogJson::fail(std::string(file) + ": path tile is off the board");
+				}
+
+				if (!tiles.empty())
+				{
+					const auto& prev = tiles.back();
+					const int dist = std::abs(coord.x - prev.x) + std::abs(coord.z - prev.z);
+					if (dist != 1)
+					{
+						catalogJson::fail(std::string(file) + ": path steps must be adjacent");
+					}
+				}
+
+				tiles.push_back(coord);
+			}
+
+			return tiles;
+		}
+
+		std::vector<WaveSpawn> parseSpawns(
+			const hl::JsonNode& spawnsNode,
+			const CreepCatalog& creeps,
+			const char* file,
+			const std::string& context)
+		{
+			if (spawnsNode.type != hl::JsonNode::Type::Array || spawnsNode.children.empty())
+			{
+				catalogJson::fail(std::string(file) + ": " + context + " needs a non-empty spawns array");
+			}
+
+			std::vector<WaveSpawn> spawns;
+			for (const auto* spawnRow : spawnsNode.children)
+			{
+				if (spawnRow == nullptr || spawnRow->type != hl::JsonNode::Type::Object)
+				{
+					catalogJson::fail(std::string(file) + ": each spawn must be an object");
+				}
+
+				WaveSpawn spawn;
+				spawn.id = catalogJson::requireString(*spawnRow, "id", file);
+				spawn.count = catalogJson::requireIntAtLeast(*spawnRow, "count", 1, file);
+				if (creeps.find(spawn.id) == nullptr)
+				{
+					catalogJson::fail(std::string(file) + ": unknown creep id '" + spawn.id + "'");
+				}
+
+				spawns.push_back(std::move(spawn));
+			}
+
+			return spawns;
+		}
+	}
+
 	void LevelCatalog::load(
 		const std::string& path,
 		const CreepCatalog& creeps,
 		const EntityCatalog& entities)
 	{
-		_path.clear();
+		loadFromText(hl::String::readFile(path), "level.json", creeps, entities);
+	}
+
+	void LevelCatalog::loadFromText(
+		const std::string& text,
+		const char* file,
+		const CreepCatalog& creeps,
+		const EntityCatalog& entities)
+	{
+		_paths.clear();
+		_pathByName.clear();
 		_pathTiles.clear();
 		_entities.clear();
 		_waves.clear();
 
-		const auto doc = hl::Json::parseFromText(hl::String::readFile(path));
-		catalogJson::requireObjectRoot(doc, "level.json");
+		const auto doc = hl::Json::parseFromText(text);
+		catalogJson::requireObjectRoot(doc, file);
 		const auto& root = *doc.m_Root;
 
-		_id = catalogJson::requireString(root, "id", "level.json");
-		const auto board = catalogJson::requireBoardSize(root, "level.json");
-		_boardWidth = board.first;
-		_boardDepth = board.second;
-		_startGold = catalogJson::requireIntAtLeast(root, "startGold", 0, "level.json");
-		_startLives = catalogJson::requireIntAtLeast(root, "startLives", 1, "level.json");
-		_killGold = catalogJson::requireIntAtLeast(root, "killGold", 0, "level.json");
-		_waveClearBonus = catalogJson::requireIntAtLeast(root, "waveClearBonus", 0, "level.json");
-		_buildTimer = catalogJson::requirePositive(root, "buildTimer", "level.json");
-		_spawnInterval = catalogJson::requirePositive(root, "spawnInterval", "level.json");
-
-		const auto& pathNode = catalogJson::field(root, "path");
-		if (pathNode.type != hl::JsonNode::Type::Array || pathNode.children.size() < 2)
+		if (catalogJson::findChild(root, "path") != nullptr)
 		{
-			catalogJson::fail("level.json: 'path' must be an array of at least 2 tiles");
+			catalogJson::fail(std::string(file) + ": singular 'path' is invalid; use 'paths'");
 		}
 
-		for (const auto* step : pathNode.children)
+		if (catalogJson::findChild(root, "spawnInterval") != nullptr)
 		{
-			if (step == nullptr || step->type != hl::JsonNode::Type::Array || step->children.size() != 2)
+			catalogJson::fail(std::string(file) + ": level-wide 'spawnInterval' is invalid; put it on each stream");
+		}
+
+		_id = catalogJson::requireString(root, "id", file);
+		const auto board = catalogJson::requireBoardSize(root, file);
+		_boardWidth = board.first;
+		_boardDepth = board.second;
+		_startGold = catalogJson::requireIntAtLeast(root, "startGold", 0, file);
+		_startLives = catalogJson::requireIntAtLeast(root, "startLives", 1, file);
+		_killGold = catalogJson::requireIntAtLeast(root, "killGold", 0, file);
+		_waveClearBonus = catalogJson::requireIntAtLeast(root, "waveClearBonus", 0, file);
+		_buildTimer = catalogJson::requirePositive(root, "buildTimer", file);
+
+		const auto& pathsNode = catalogJson::field(root, "paths");
+		if (pathsNode.type != hl::JsonNode::Type::Array || pathsNode.children.empty())
+		{
+			catalogJson::fail(std::string(file) + ": 'paths' must be a non-empty array");
+		}
+
+		for (const auto* row : pathsNode.children)
+		{
+			if (row == nullptr || row->type != hl::JsonNode::Type::Object)
 			{
-				catalogJson::fail("level.json: each path tile must be [x, z]");
+				catalogJson::fail(std::string(file) + ": each path entry must be an object");
 			}
 
-			const auto* xNode = step->children[0];
-			const auto* zNode = step->children[1];
-			if (xNode == nullptr || zNode == nullptr
-				|| xNode->type != hl::JsonNode::Type::ValueInteger
-				|| zNode->type != hl::JsonNode::Type::ValueInteger)
+			NamedPath named;
+			named.name = catalogJson::requireString(*row, "name", file);
+			if (_pathByName.contains(named.name))
 			{
-				catalogJson::fail("level.json: path tiles must be integer [x, z]");
+				catalogJson::fail(std::string(file) + ": duplicate path name '" + named.name + "'");
 			}
 
-			TileCoord coord{ xNode->integer, zNode->integer };
-			if (coord.x < 0 || coord.x >= _boardWidth || coord.z < 0 || coord.z >= _boardDepth)
+			named.path = parsePathTiles(
+				catalogJson::field(*row, "path"),
+				_boardWidth,
+				_boardDepth,
+				file,
+				named.name);
+			for (const auto& tile : named.path)
 			{
-				catalogJson::fail("level.json: path tile is off the board");
+				_pathTiles.insert(tileKey(tile.x, tile.z));
 			}
 
-			if (!_path.empty())
-			{
-				const auto& prev = _path.back();
-				const int dist = std::abs(coord.x - prev.x) + std::abs(coord.z - prev.z);
-				if (dist != 1)
-				{
-					catalogJson::fail("level.json: path steps must be adjacent");
-				}
-			}
-
-			_pathTiles.insert(tileKey(coord.x, coord.z));
-			_path.push_back(coord);
+			_pathByName.emplace(named.name, _paths.size());
+			_paths.push_back(std::move(named));
 		}
 
 		const auto& entitiesNode = catalogJson::field(root, "entities");
 		if (entitiesNode.type != hl::JsonNode::Type::Array)
 		{
-			catalogJson::fail("level.json: 'entities' must be an array");
+			catalogJson::fail(std::string(file) + ": 'entities' must be an array");
 		}
 
 		std::unordered_set<uint64_t> occupied;
@@ -91,17 +192,17 @@ namespace tower
 		{
 			if (row == nullptr || row->type != hl::JsonNode::Type::Object)
 			{
-				catalogJson::fail("level.json: each entity placement must be an object");
+				catalogJson::fail(std::string(file) + ": each entity placement must be an object");
 			}
 
 			LevelEntity placement;
-			placement.id = catalogJson::requireString(*row, "id", "level.json");
+			placement.id = catalogJson::requireString(*row, "id", file);
 			const auto& xNode = catalogJson::field(*row, "x");
 			const auto& zNode = catalogJson::field(*row, "z");
 			if (xNode.type != hl::JsonNode::Type::ValueInteger
 				|| zNode.type != hl::JsonNode::Type::ValueInteger)
 			{
-				catalogJson::fail("level.json: entity x/z must be integers");
+				catalogJson::fail(std::string(file) + ": entity x/z must be integers");
 			}
 
 			placement.x = xNode.integer;
@@ -110,7 +211,7 @@ namespace tower
 			const auto* def = entities.find(placement.id);
 			if (def == nullptr)
 			{
-				catalogJson::fail("level.json: unknown entity id '" + placement.id + "'");
+				catalogJson::fail(std::string(file) + ": unknown entity id '" + placement.id + "'");
 			}
 
 			placement.sizeX = def->sizeX;
@@ -123,18 +224,19 @@ namespace tower
 					const int tz = placement.z + dz;
 					if (tx < 0 || tx >= _boardWidth || tz < 0 || tz >= _boardDepth)
 					{
-						catalogJson::fail("level.json: entity '" + placement.id + "' is off the board");
+						catalogJson::fail(std::string(file) + ": entity '" + placement.id + "' is off the board");
 					}
 
 					if (isPathTile(tx, tz))
 					{
-						catalogJson::fail("level.json: entity '" + placement.id + "' sits on the path");
+						catalogJson::fail(std::string(file) + ": entity '" + placement.id + "' sits on the path");
 					}
 
 					const auto key = tileKey(tx, tz);
 					if (!occupied.insert(key).second)
 					{
-						catalogJson::fail("level.json: entity '" + placement.id + "' overlaps another entity");
+						catalogJson::fail(
+							std::string(file) + ": entity '" + placement.id + "' overlaps another entity");
 					}
 				}
 			}
@@ -145,46 +247,66 @@ namespace tower
 		const auto& wavesNode = catalogJson::field(root, "waves");
 		if (wavesNode.type != hl::JsonNode::Type::Array || wavesNode.children.empty())
 		{
-			catalogJson::fail("level.json: 'waves' must be a non-empty array");
+			catalogJson::fail(std::string(file) + ": 'waves' must be a non-empty array");
 		}
 
-		std::unordered_set<std::string> waveIds;
+		std::unordered_set<std::string> waveNames;
 		for (const auto* row : wavesNode.children)
 		{
 			if (row == nullptr || row->type != hl::JsonNode::Type::Object)
 			{
-				catalogJson::fail("level.json: each wave must be an object");
+				catalogJson::fail(std::string(file) + ": each wave must be an object");
+			}
+
+			if (catalogJson::findChild(*row, "spawns") != nullptr
+				&& catalogJson::findChild(*row, "streams") == nullptr)
+			{
+				catalogJson::fail(std::string(file) + ": old wave shape (bare 'spawns') is invalid");
 			}
 
 			LevelWave wave;
-			wave.id = catalogJson::requireString(*row, "id", "level.json");
-			if (!waveIds.insert(wave.id).second)
+			wave.name = catalogJson::requireString(*row, "name", file);
+			if (!waveNames.insert(wave.name).second)
 			{
-				catalogJson::fail("level.json: duplicate wave id '" + wave.id + "'");
+				catalogJson::fail(std::string(file) + ": duplicate wave name '" + wave.name + "'");
 			}
 
-			const auto& spawnsNode = catalogJson::field(*row, "spawns");
-			if (spawnsNode.type != hl::JsonNode::Type::Array || spawnsNode.children.empty())
+			const auto& streamsNode = catalogJson::field(*row, "streams");
+			if (streamsNode.type != hl::JsonNode::Type::Array || streamsNode.children.empty())
 			{
-				catalogJson::fail("level.json: wave '" + wave.id + "' needs a non-empty spawns array");
+				catalogJson::fail(std::string(file) + ": wave '" + wave.name + "' needs a non-empty streams array");
 			}
 
-			for (const auto* spawnRow : spawnsNode.children)
+			std::unordered_set<std::string> streamNames;
+			for (const auto* streamRow : streamsNode.children)
 			{
-				if (spawnRow == nullptr || spawnRow->type != hl::JsonNode::Type::Object)
+				if (streamRow == nullptr || streamRow->type != hl::JsonNode::Type::Object)
 				{
-					catalogJson::fail("level.json: each spawn must be an object");
+					catalogJson::fail(std::string(file) + ": each stream must be an object");
 				}
 
-				WaveSpawn spawn;
-				spawn.id = catalogJson::requireString(*spawnRow, "id", "level.json");
-				spawn.count = catalogJson::requireIntAtLeast(*spawnRow, "count", 1, "level.json");
-				if (creeps.find(spawn.id) == nullptr)
+				LevelStream stream;
+				stream.name = catalogJson::requireString(*streamRow, "name", file);
+				if (!streamNames.insert(stream.name).second)
 				{
-					catalogJson::fail("level.json: unknown creep id '" + spawn.id + "'");
+					catalogJson::fail(
+						std::string(file) + ": duplicate stream name '" + stream.name
+						+ "' in wave '" + wave.name + "'");
 				}
 
-				wave.spawns.push_back(std::move(spawn));
+				stream.pathName = catalogJson::requireString(*streamRow, "path", file);
+				if (!_pathByName.contains(stream.pathName))
+				{
+					catalogJson::fail(std::string(file) + ": unknown stream path '" + stream.pathName + "'");
+				}
+
+				stream.spawnInterval = catalogJson::requirePositive(*streamRow, "spawnInterval", file);
+				stream.spawns = parseSpawns(
+					catalogJson::field(*streamRow, "spawns"),
+					creeps,
+					file,
+					"stream '" + stream.name + "'");
+				wave.streams.push_back(std::move(stream));
 			}
 
 			_waves.push_back(std::move(wave));
@@ -231,19 +353,25 @@ namespace tower
 		return _buildTimer;
 	}
 
-	float LevelCatalog::spawnInterval() const
-	{
-		return _spawnInterval;
-	}
-
 	int LevelCatalog::waveCount() const
 	{
 		return static_cast<int>(_waves.size());
 	}
 
-	const std::vector<TileCoord>& LevelCatalog::path() const
+	const std::vector<NamedPath>& LevelCatalog::paths() const
 	{
-		return _path;
+		return _paths;
+	}
+
+	const std::vector<TileCoord>& LevelCatalog::path(std::string_view name) const
+	{
+		const auto it = _pathByName.find(std::string(name));
+		if (it == _pathByName.end())
+		{
+			throw std::runtime_error("unknown path '" + std::string(name) + "'");
+		}
+
+		return _paths[it->second].path;
 	}
 
 	const std::vector<LevelEntity>& LevelCatalog::entities() const

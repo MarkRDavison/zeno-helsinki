@@ -25,9 +25,6 @@ namespace tower
 
 	void PathFollowSystem::update(float delta)
 	{
-		const auto& waypoints = _level.path();
-		const int waypointCount = static_cast<int>(waypoints.size());
-
 		for (auto* entity : _scene.getEntitiesWithComponents<hl::TransformComponent, PathFollowComponent>(CreepTag))
 		{
 			if (_scene.isPendingRemoval(entity->Id))
@@ -37,6 +34,8 @@ namespace tower
 
 			auto* follow = entity->GetComponent<PathFollowComponent>();
 			auto* transform = entity->GetComponent<hl::TransformComponent>();
+			const auto& waypoints = _level.path(follow->pathName);
+			const int waypointCount = static_cast<int>(waypoints.size());
 
 			if (follow->fromIndex >= waypointCount - 1)
 			{

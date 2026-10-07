@@ -3,6 +3,8 @@
 #include <SceneCatalog.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include <cstdint>
@@ -27,10 +29,24 @@ namespace tower
 		int count = 0;
 	};
 
+	struct LevelStream
+	{
+		std::string name;
+		std::string pathName;
+		float spawnInterval = 0.0f;
+		std::vector<WaveSpawn> spawns;
+	};
+
 	struct LevelWave
 	{
-		std::string id;
-		std::vector<WaveSpawn> spawns;
+		std::string name;
+		std::vector<LevelStream> streams;
+	};
+
+	struct NamedPath
+	{
+		std::string name;
+		std::vector<TileCoord> path;
 	};
 
 	class LevelCatalog
@@ -38,6 +54,11 @@ namespace tower
 	public:
 		void load(
 			const std::string& path,
+			const CreepCatalog& creeps,
+			const EntityCatalog& entities);
+		void loadFromText(
+			const std::string& text,
+			const char* file,
 			const CreepCatalog& creeps,
 			const EntityCatalog& entities);
 
@@ -49,9 +70,9 @@ namespace tower
 		int killGold() const;
 		int waveClearBonus() const;
 		float buildTimer() const;
-		float spawnInterval() const;
 		int waveCount() const;
-		const std::vector<TileCoord>& path() const;
+		const std::vector<NamedPath>& paths() const;
+		const std::vector<TileCoord>& path(std::string_view name) const;
 		const std::vector<LevelEntity>& entities() const;
 		const std::vector<LevelWave>& waves() const;
 
@@ -71,8 +92,8 @@ namespace tower
 		int _killGold = 0;
 		int _waveClearBonus = 0;
 		float _buildTimer = 0.0f;
-		float _spawnInterval = 0.0f;
-		std::vector<TileCoord> _path;
+		std::vector<NamedPath> _paths;
+		std::unordered_map<std::string, std::size_t> _pathByName;
 		std::unordered_set<uint64_t> _pathTiles;
 		std::vector<LevelEntity> _entities;
 		std::vector<LevelWave> _waves;

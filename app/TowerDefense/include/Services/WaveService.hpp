@@ -2,6 +2,7 @@
 
 #include <Services/CreepCatalog.hpp>
 #include <Services/LevelCatalog.hpp>
+#include <string>
 #include <vector>
 
 namespace tower
@@ -19,11 +20,24 @@ namespace tower
 		bool tryClear(bool boardEmpty);
 		bool inCombat() const;
 		int hudWaveIndex() const;
+		std::string hudWaveLine() const;
 		int buildSecondsRemaining() const;
 		const CreepDef& nextCreep() const;
+		const std::string& nextPathName() const;
 
 	private:
-		void fillQueue();
+		struct StreamQueue
+		{
+			std::string pathName;
+			float spawnInterval = 0.0f;
+			float spawnTimer = 0.0f;
+			int pending = 0;
+			int queueIndex = 0;
+			std::vector<const CreepDef*> queue;
+		};
+
+		void fillQueues();
+		int pendingSpawns() const;
 		int waveCount() const;
 
 		GameStateService& _gameState;
@@ -32,11 +46,9 @@ namespace tower
 		int _wavesCompleted = 0;
 		int _activeIndex = 0;
 		bool _inCombat = false;
-		int _pendingSpawns = 0;
-		float _spawnTimer = 0.0f;
 		float _buildTimer = 0.0f;
-		std::vector<const CreepDef*> _queue;
-		int _queueIndex = 0;
+		std::vector<StreamQueue> _streams;
 		const CreepDef* _nextCreep = nullptr;
+		std::string _nextPathName;
 	};
 }

@@ -27,6 +27,14 @@ namespace tower
 	inline constexpr const char* PathRibbonMaterial = "path_ribbon";
 	inline constexpr float PathRibbonWidth = 0.2f;
 	inline constexpr float PathRibbonY = 0.03f;
+	inline constexpr glm::vec3 PathRibbonPalette[] = {
+		{ 0.95f, 0.65f, 0.15f },
+		{ 0.20f, 0.75f, 0.90f },
+		{ 0.85f, 0.35f, 0.80f },
+		{ 0.40f, 0.85f, 0.35f },
+		{ 0.95f, 0.40f, 0.35f },
+		{ 0.55f, 0.55f, 0.95f }
+	};
 	inline constexpr float InvalidFlashSeconds = 0.25f;
 	inline constexpr const char* ProjectileTag = "PROJECTILE";
 	inline constexpr int towerSellRefund(int cost)

@@ -6,13 +6,17 @@
   "killGold": 10,
   "waveClearBonus": 25,
   "buildTimer": 20,
-  "spawnInterval": 1,
-  "path": [
-    [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1],
-    [5, 2],
-    [5, 3], [4, 3], [3, 3], [2, 3],
-    [2, 4],
-    [2, 5], [3, 5], [4, 5], [5, 5], [6, 5], [7, 5]
+  "paths": [
+    {
+      "name": "main",
+      "path": [
+        [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1],
+        [5, 2],
+        [5, 3], [4, 3], [3, 3], [2, 3],
+        [2, 4],
+        [2, 5], [3, 5], [4, 5], [5, 5], [6, 5], [7, 5]
+      ]
+    }
   ],
   "entities": [
     { "id": "tree", "x": 1, "z": 2 },
@@ -26,8 +30,38 @@
     { "id": "rocks", "x": 6, "z": 4 }
   ],
   "waves": [
-    { "id": "1", "spawns": [ { "id": "runner", "count": 4 }, { "id": "tank", "count": 1 } ] },
-    { "id": "2", "spawns": [ { "id": "runner", "count": 5 }, { "id": "tank", "count": 3 }, { "id": "ufo", "count": 2 } ] },
-    { "id": "3", "spawns": [ { "id": "runner", "count": 4 }, { "id": "tank", "count": 6 } ] }
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 4 }, { "id": "tank", "count": 1 } ]
+        }
+      ]
+    },
+    {
+      "name": "2",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 5 }, { "id": "tank", "count": 3 }, { "id": "ufo", "count": 2 } ]
+        }
+      ]
+    },
+    {
+      "name": "3",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 4 }, { "id": "tank", "count": 6 } ]
+        }
+      ]
+    }
   ]
 }
