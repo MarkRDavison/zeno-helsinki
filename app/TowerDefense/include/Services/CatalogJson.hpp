@@ -63,6 +63,41 @@ namespace tower::catalogJson
 		fail(std::string(file) + ": '" + name + "' must be a number");
 	}
 
+	inline float optionalNonNegative(
+		const hl::JsonNode& row,
+		const char* name,
+		float fallback,
+		const char* file)
+	{
+		const auto* node = findChild(row, name);
+		if (node == nullptr)
+		{
+			return fallback;
+		}
+
+		if (node->type == hl::JsonNode::Type::ValueNumber)
+		{
+			if (node->number < 0.0f)
+			{
+				fail(std::string(file) + ": '" + name + "' must be >= 0");
+			}
+
+			return node->number;
+		}
+
+		if (node->type == hl::JsonNode::Type::ValueInteger)
+		{
+			if (node->integer < 0)
+			{
+				fail(std::string(file) + ": '" + name + "' must be >= 0");
+			}
+
+			return static_cast<float>(node->integer);
+		}
+
+		fail(std::string(file) + ": '" + name + "' must be a number");
+	}
+
 	inline const hl::JsonNode& field(const hl::JsonNode& row, const char* name)
 	{
 		try

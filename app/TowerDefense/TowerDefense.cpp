@@ -79,7 +79,8 @@ int main()
 		engineConfig.RootPath + "/data/towers.json",
 		serviceProvider.get<tower::WeaponCatalog>());
 	serviceProvider.get<tower::EntityCatalog>().load(
-		engineConfig.RootPath + "/data/entities.json");
+		engineConfig.RootPath + "/data/entities.json",
+		serviceProvider.get<tower::DamageTypeCatalog>());
 	serviceProvider.get<tower::LevelsCatalog>().load(
 		engineConfig.RootPath + "/data/levels.json");
 	serviceProvider.get<tower::CampaignCatalog>().load(

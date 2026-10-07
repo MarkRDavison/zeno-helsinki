@@ -1,9 +1,16 @@
 #include <Systems/PathFollowSystem.hpp>
 #include <Components/PathFollowComponent.hpp>
+#include <Components/CreepComponent.hpp>
+#include <Components/BlockerComponent.hpp>
+#include <Components/HealthComponent.hpp>
+#include <Components/TeamComponent.hpp>
+#include <PathBlock.hpp>
+#include <Combat.hpp>
 #include <Services/LevelCatalog.hpp>
 #include <SceneCatalog.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <cmath>
+#include <optional>
 
 namespace tower
 {
@@ -23,11 +30,81 @@ namespace tower
 		_scene.removeEntity(entity->Id);
 	}
 
+	namespace
+	{
+		std::optional<TileCoord> blockingTileFor(
+			hl::Scene& scene,
+			LevelCatalog& level,
+			const PathFollowComponent& follow)
+		{
+			const auto& waypoints = level.path(follow.pathName);
+			for (auto* entity : scene.getEntitiesWithComponents<BlockerComponent, TeamComponent>())
+			{
+				if (scene.isPendingRemoval(entity->Id) || !hasTeam(entity, Team::Neutral))
+				{
+					continue;
+				}
+
+				const auto* health = entity->GetComponent<HealthComponent>();
+				if (health != nullptr && isDead(health->current))
+				{
+					continue;
+				}
+
+				const auto* blocker = entity->GetComponent<BlockerComponent>();
+				const PathBlockFootprint footprint{
+					blocker->x,
+					blocker->z,
+					blocker->sizeX,
+					blocker->sizeZ
+				};
+				if (const auto tile = firstBlockedTile(waypoints, follow.fromIndex, footprint))
+				{
+					return tile;
+				}
+			}
+
+			return std::nullopt;
+		}
+
+		bool stalled(
+			hl::Scene& scene,
+			LevelCatalog& level,
+			hl::Entity* creep,
+			const PathFollowComponent& follow)
+		{
+			const auto blocked = blockingTileFor(scene, level, follow);
+			if (!blocked.has_value())
+			{
+				return false;
+			}
+
+			const auto& waypoints = level.path(follow.pathName);
+			if (follow.fromIndex >= 0 && follow.fromIndex < static_cast<int>(waypoints.size()))
+			{
+				const auto& here = waypoints[static_cast<std::size_t>(follow.fromIndex)];
+				if (here.x == blocked->x && here.z == blocked->z)
+				{
+					return true;
+				}
+			}
+
+			const auto* body = creep->GetComponent<CreepComponent>();
+			const float range = body != nullptr ? body->range : 0.0f;
+			const auto* transform = creep->GetComponent<hl::TransformComponent>();
+			const glm::vec3 center = level.tileCenter(blocked->x, blocked->z);
+			return shouldStall(transform->GetPosition(), center, range);
+		}
+	}
+
 	void PathFollowSystem::update(float delta)
 	{
-		for (auto* entity : _scene.getEntitiesWithComponents<hl::TransformComponent, PathFollowComponent>(CreepTag))
+		for (auto* entity : _scene.getEntitiesWithComponents<
+			hl::TransformComponent,
+			PathFollowComponent,
+			TeamComponent>())
 		{
-			if (_scene.isPendingRemoval(entity->Id))
+			if (_scene.isPendingRemoval(entity->Id) || !hasTeam(entity, Team::Creep))
 			{
 				continue;
 			}
@@ -36,6 +113,11 @@ namespace tower
 			auto* transform = entity->GetComponent<hl::TransformComponent>();
 			const auto& waypoints = _level.path(follow->pathName);
 			const int waypointCount = static_cast<int>(waypoints.size());
+
+			if (stalled(_scene, _level, entity, *follow))
+			{
+				continue;
+			}
 
 			if (follow->fromIndex >= waypointCount - 1)
 			{
@@ -62,14 +144,40 @@ namespace tower
 				follow->fromIndex += 1;
 				if (follow->fromIndex >= waypointCount - 1)
 				{
+					if (stalled(_scene, _level, entity, *follow))
+					{
+						follow->t = 0.0f;
+						const auto& tile = waypoints[static_cast<std::size_t>(follow->fromIndex)];
+						transform->SetPosition(_level.tileCenter(tile.x, tile.z));
+						break;
+					}
+
 					const auto& last = waypoints[static_cast<std::size_t>(waypointCount - 1)];
 					transform->SetPosition(_level.tileCenter(last.x, last.z));
 					leak(entity);
 					break;
 				}
+
+				if (stalled(_scene, _level, entity, *follow))
+				{
+					follow->t = 0.0f;
+					const auto& tile = waypoints[static_cast<std::size_t>(follow->fromIndex)];
+					transform->SetPosition(_level.tileCenter(tile.x, tile.z));
+					break;
+				}
 			}
 
 			if (_scene.isPendingRemoval(entity->Id))
+			{
+				continue;
+			}
+
+			if (stalled(_scene, _level, entity, *follow))
+			{
+				continue;
+			}
+
+			if (follow->fromIndex >= waypointCount - 1)
 			{
 				continue;
 			}

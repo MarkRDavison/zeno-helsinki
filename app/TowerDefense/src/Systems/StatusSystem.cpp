@@ -3,9 +3,9 @@
 #include <Components/HealthComponent.hpp>
 #include <Components/PathFollowComponent.hpp>
 #include <Components/StatusListComponent.hpp>
+#include <Components/TeamComponent.hpp>
 #include <Combat.hpp>
 #include <Status.hpp>
-#include <SceneCatalog.hpp>
 #include <iostream>
 #include <string>
 
@@ -57,9 +57,9 @@ namespace tower
 
 	void StatusSystem::update(float delta)
 	{
-		for (auto* entity : _scene.getEntitiesWithComponents<StatusListComponent>(CreepTag))
+		for (auto* entity : _scene.getEntitiesWithComponents<StatusListComponent, TeamComponent>())
 		{
-			if (_scene.isPendingRemoval(entity->Id))
+			if (_scene.isPendingRemoval(entity->Id) || !hasTeam(entity, Team::Creep))
 			{
 				continue;
 			}

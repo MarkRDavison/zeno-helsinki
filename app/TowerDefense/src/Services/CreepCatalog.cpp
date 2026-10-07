@@ -1,59 +1,12 @@
 #include <Services/CreepCatalog.hpp>
 #include <Services/CatalogJson.hpp>
-#include <Services/DamageTypeCatalog.hpp>
-#include <Combat.hpp>
-#include <iostream>
+#include <CatalogResist.hpp>
 
 namespace tower
 {
 	namespace
 	{
 		const char* kFile = "creeps.json";
-
-		std::unordered_map<std::string, float> parseResist(
-			const hl::JsonNode& row,
-			const std::string& creepId,
-			const char* file,
-			const DamageTypeCatalog& types)
-		{
-			std::unordered_map<std::string, float> resist;
-			const auto* node = catalogJson::optionalObject(row, "resist", file);
-			if (node == nullptr)
-			{
-				return resist;
-			}
-
-			for (const auto* child : node->children)
-			{
-				if (child == nullptr)
-				{
-					continue;
-				}
-
-				if (child->name.empty())
-				{
-					catalogJson::fail(std::string(file) + ": resist keys must be type ids");
-				}
-
-				if (!types.contains(child->name))
-				{
-					catalogJson::fail(
-						std::string(file) + ": unknown resist type '" + child->name + "'");
-				}
-
-				const float raw = catalogJson::requireAnyNumber(*child, file, child->name.c_str());
-				const auto clamped = clampResist(raw);
-				if (clamped.warned)
-				{
-					std::clog << file << ": creep '" << creepId << "' resist '" << child->name
-						<< "' " << raw << " clamped to 1.0\n";
-				}
-
-				resist[child->name] = clamped.value;
-			}
-
-			return resist;
-		}
 	}
 
 	void CreepCatalog::load(const std::string& path, const DamageTypeCatalog& types)
@@ -85,7 +38,8 @@ namespace tower
 				catalogJson::requireIntAtLeast(*row, "health", 1, file));
 			def.speed = catalogJson::requirePositive(*row, "speed", file);
 			def.scale = catalogJson::optionalPositive(*row, "scale", 0.4f, file);
-			def.resist = parseResist(*row, def.id, file, types);
+			def.range = catalogJson::optionalNonNegative(*row, "range", 0.0f, file);
+			def.resist = parseResist(*row, def.id, file, "creep", types);
 			if (_byId.contains(def.id))
 			{
 				catalogJson::fail(std::string(file) + ": duplicate id '" + def.id + "'");

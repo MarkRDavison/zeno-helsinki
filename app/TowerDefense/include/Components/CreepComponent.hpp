@@ -13,5 +13,6 @@ namespace tower
 		float baseHealth = 1.0f;
 		float baseSpeed = 1.0f;
 		float scale = 0.4f;
+		float range = 0.0f;
 	};
 }

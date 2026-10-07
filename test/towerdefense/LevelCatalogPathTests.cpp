@@ -48,9 +48,19 @@ namespace
 		return catalog;
 	}
 
+	constexpr auto kEntities = R"json(
+[
+  { "id": "tree", "model": "detail_tree", "size": [1, 1] },
+  { "id": "rocks", "model": "detail_rocks", "size": [1, 1] }
+]
+)json";
+
 	tower::EntityCatalog entities()
 	{
-		return {};
+		const auto loadedTypes = types();
+		tower::EntityCatalog catalog;
+		catalog.loadFromText(kEntities, "entities.json", loadedTypes);
+		return catalog;
 	}
 
 	void loadLevel(tower::LevelCatalog& level, const std::string& json)
@@ -436,4 +446,56 @@ TEST_CASE("stream missing spawnInterval is load fail", "[tower][paths][catalog]"
   ]
 )json")),
 		std::runtime_error);
+}
+
+TEST_CASE("on-path entity placement loads", "[tower][paths][entity]")
+{
+	tower::LevelCatalog level;
+	loadLevel(
+		level,
+		wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1], [0, 2] ] } ],
+  "entities": [ { "id": "rocks", "x": 0, "z": 1 } ],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json"));
+	REQUIRE(level.entities().size() == 1);
+	CHECK(level.entities()[0].z == 1);
+}
+
+TEST_CASE("off-path scenery still loads", "[tower][paths][entity]")
+{
+	tower::LevelCatalog level;
+	loadLevel(
+		level,
+		wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1], [0, 2] ] } ],
+  "entities": [ { "id": "tree", "x": 3, "z": 3 } ],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json"));
+	REQUIRE(level.entities().size() == 1);
+	CHECK(level.entities()[0].id == "tree");
 }

@@ -227,11 +227,6 @@ namespace tower
 						catalogJson::fail(std::string(file) + ": entity '" + placement.id + "' is off the board");
 					}
 
-					if (isPathTile(tx, tz))
-					{
-						catalogJson::fail(std::string(file) + ": entity '" + placement.id + "' sits on the path");
-					}
-
 					const auto key = tileKey(tx, tz);
 					if (!occupied.insert(key).second)
 					{

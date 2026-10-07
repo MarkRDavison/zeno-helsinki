@@ -16,6 +16,7 @@ namespace tower
 		float health = 0.0f;
 		float speed = 0.0f;
 		float scale = 0.4f;
+		float range = 0.0f;
 		std::unordered_map<std::string, float> resist;
 	};
 

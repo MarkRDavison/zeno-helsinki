@@ -5,6 +5,7 @@
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
 #include <Components/PathFollowComponent.hpp>
+#include <Components/TeamComponent.hpp>
 #include <Components/PathRibbonComponent.hpp>
 #include <Components/HealthComponent.hpp>
 #include <Components/CreepComponent.hpp>
@@ -498,11 +499,19 @@ namespace tower
 			auto* model = resourceManager.GetResource<hl::ModelResource>(def->model);
 			auto* entity = _scene.addEntity();
 			entity->AddTag(BlockerTag);
+			entity->AddComponent<TeamComponent>()->team = Team::Neutral;
 			auto* blocker = entity->AddComponent<BlockerComponent>();
 			blocker->x = placement.x;
 			blocker->z = placement.z;
 			blocker->sizeX = def->sizeX;
 			blocker->sizeZ = def->sizeZ;
+			blocker->resist = def->resist;
+			if (def->health > 0.0f)
+			{
+				auto* health = entity->AddComponent<HealthComponent>();
+				health->max = def->health;
+				health->current = def->health;
+			}
 			const auto minCorner = _level.tileCenter(placement.x, placement.z);
 			const auto maxCorner = _level.tileCenter(
 				placement.x + def->sizeX - 1,
@@ -532,6 +541,7 @@ namespace tower
 		auto* model = resourceManager.GetResource<hl::ModelResource>(def->model);
 		auto* entity = _scene.addEntity();
 		entity->AddTag(TowerTag);
+		entity->AddComponent<TeamComponent>()->team = Team::Tower;
 		auto* tower = entity->AddComponent<TowerComponent>();
 		tower->x = tx;
 		tower->z = tz;
@@ -616,6 +626,7 @@ namespace tower
 		const auto& start = _level.path(_wave.nextPathName()).front();
 		auto* entity = _scene.addEntity();
 		entity->AddTag(CreepTag);
+		entity->AddComponent<TeamComponent>()->team = Team::Creep;
 		auto* transform = entity->AddComponent<hl::TransformComponent>();
 		transform->SetPosition(_level.tileCenter(start.x, start.z));
 		transform->SetScale(glm::vec3(def.scale));
@@ -631,6 +642,7 @@ namespace tower
 		creep->baseHealth = def.health;
 		creep->baseSpeed = def.speed;
 		creep->scale = def.scale;
+		creep->range = def.range;
 		entity->AddComponent<StatusListComponent>();
 		auto* health = entity->AddComponent<HealthComponent>();
 		health->max = def.health;
@@ -1270,9 +1282,9 @@ namespace tower
 
 	bool TowerDefenseGameEngineScene::boardHasLiveCreep() const
 	{
-		for (auto* creep : _scene.getEntitiesByTag(CreepTag))
+		for (auto* creep : _scene.getEntitiesWithComponents<TeamComponent>())
 		{
-			if (!_scene.isPendingRemoval(creep->Id))
+			if (!_scene.isPendingRemoval(creep->Id) && hasTeam(creep, Team::Creep))
 			{
 				return true;
 			}

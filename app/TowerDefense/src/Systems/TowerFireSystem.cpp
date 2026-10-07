@@ -6,6 +6,7 @@
 #include <Services/WeaponCatalog.hpp>
 #include <Services/ProjectileCatalog.hpp>
 #include <SceneCatalog.hpp>
+#include <Targeting.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
@@ -15,37 +16,6 @@ namespace tower
 {
 	namespace
 	{
-		float xzDistance(const glm::vec3& a, const glm::vec3& b)
-		{
-			const float dx = a.x - b.x;
-			const float dz = a.z - b.z;
-			return glm::length(glm::vec2(dx, dz));
-		}
-
-		hl::Entity* nearestCreepInRange(hl::Scene& scene, const glm::vec3& from, float range)
-		{
-			hl::Entity* nearest = nullptr;
-			float best = range;
-			for (auto* creep : scene.getEntitiesWithComponents<hl::TransformComponent>(CreepTag))
-			{
-				if (scene.isPendingRemoval(creep->Id))
-				{
-					continue;
-				}
-
-				const float distance = xzDistance(
-					from,
-					creep->GetComponent<hl::TransformComponent>()->GetPosition());
-				if (distance <= best)
-				{
-					best = distance;
-					nearest = creep;
-				}
-			}
-
-			return nearest;
-		}
-
 		float wrapDegrees(float degrees)
 		{
 			degrees = std::fmod(degrees + 180.0f, 360.0f);
@@ -124,7 +94,7 @@ namespace tower
 			}
 
 			const glm::vec3 tile = _level.tileCenter(tower->x, tower->z);
-			auto* creep = nearestCreepInRange(_scene, tile, def->range);
+			auto* creep = nearestInRangeWithTeam(_scene, tile, def->range, Team::Creep);
 			if (creep == nullptr)
 			{
 				for (float& remaining : tower->slotCooldown)

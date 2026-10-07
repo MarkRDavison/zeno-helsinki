@@ -31,7 +31,7 @@ TEST_CASE("level-4 has two named paths and a split wave", "[tower][paths][level-
 	tower::CreepCatalog creeps;
 	creeps.load(dataFile("creeps.json"), types);
 	tower::EntityCatalog entities;
-	entities.load(dataFile("entities.json"));
+	entities.load(dataFile("entities.json"), types);
 	tower::LevelCatalog level;
 	level.load(dataFile("levels/level-4.json"), creeps, entities);
 

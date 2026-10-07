@@ -1,6 +1,8 @@
 #pragma once
 
 #include <helsinki/Engine/ECS/Component.hpp>
+#include <string>
+#include <unordered_map>
 
 namespace tower
 {
@@ -11,5 +13,6 @@ namespace tower
 		int z = 0;
 		int sizeX = 1;
 		int sizeZ = 1;
+		std::unordered_map<std::string, float> resist;
 	};
 }
