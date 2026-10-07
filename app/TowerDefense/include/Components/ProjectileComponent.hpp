@@ -3,6 +3,7 @@
 #include <helsinki/Engine/ECS/Component.hpp>
 #include <helsinki/System/glm.hpp>
 #include <string>
+#include <vector>
 
 namespace tower
 {
@@ -17,5 +18,6 @@ namespace tower
 		float y = 0.4f;
 		glm::vec2 aimOffset{ 0.0f, 0.0f };
 		glm::vec3 lastDest{ 0.0f, 0.0f, 0.0f };
+		std::vector<std::string> statuses;
 	};
 }

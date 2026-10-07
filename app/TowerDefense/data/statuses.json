@@ -1,0 +1,6 @@
+[
+  { "id": "slow", "category": "slow", "duration": 3, "magnitude": 0.5, "channel": "speed" },
+  { "id": "poison", "category": "poison", "duration": 2.5, "interval": 1, "tickDamage": 1, "damageType": "poison" },
+  { "id": "burn", "category": "burn", "duration": 2.5, "interval": 1, "tickDamage": 1, "damageType": "fire" },
+  { "id": "weakness", "category": "weakness", "duration": 3, "magnitude": 0.2, "channel": "weakness" }
+]

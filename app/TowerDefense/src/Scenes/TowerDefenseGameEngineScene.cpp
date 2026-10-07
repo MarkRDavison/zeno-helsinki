@@ -7,12 +7,16 @@
 #include <Components/PathFollowComponent.hpp>
 #include <Components/HealthComponent.hpp>
 #include <Components/CreepComponent.hpp>
+#include <Components/StatusListComponent.hpp>
+#include <Components/StatusRingComponent.hpp>
 #include <Components/TileComponent.hpp>
 #include <Components/TowerComponent.hpp>
 #include <Components/BlockerComponent.hpp>
 #include <Systems/PathFollowSystem.hpp>
 #include <Systems/TowerFireSystem.hpp>
 #include <Systems/ProjectileSystem.hpp>
+#include <Systems/StatusSystem.hpp>
+#include <Status.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
@@ -56,6 +60,8 @@ namespace tower
 		TowerCatalog& towers,
 		WeaponCatalog& weapons,
 		ProjectileCatalog& projectiles,
+		StatusCatalog& statuses,
+		StatusCategoryCatalog& statusCategories,
 		EntityCatalog& entities,
 		LevelCatalog& level,
 		hl::audio::Audio& audio
@@ -70,6 +76,8 @@ namespace tower
 		_towers(towers),
 		_weapons(weapons),
 		_projectiles(projectiles),
+		_statuses(statuses),
+		_statusCategories(statusCategories),
 		_entities(entities),
 		_level(level),
 		_audio(audio)
@@ -418,6 +426,9 @@ namespace tower
 		spawnRangeRing(resourceManager, resourceContext);
 		spawnPathRibbons(resourceManager, resourceContext);
 
+		auto* statuses = new StatusSystem(_scene, _statuses);
+		statuses->onKill = [this]() { onCreepKilled(); };
+		_scene.addSystem(statuses);
 		auto* pathFollow = new PathFollowSystem(_scene, _level);
 		pathFollow->onLeak = [this]() { onCreepLeaked(); };
 		_scene.addSystem(pathFollow);
@@ -429,7 +440,7 @@ namespace tower
 			_projectiles,
 			_level,
 			_match));
-		auto* projectiles = new ProjectileSystem(_scene);
+		auto* projectiles = new ProjectileSystem(_scene, _statuses, _statusCategories);
 		projectiles->onKill = [this]() { onCreepKilled(); };
 		_scene.addSystem(projectiles);
 	}
@@ -610,8 +621,14 @@ namespace tower
 		auto* follow = entity->AddComponent<PathFollowComponent>();
 		follow->fromIndex = 0;
 		follow->t = 0.0f;
+		follow->baseSpeed = def.speed;
 		follow->speed = def.speed;
-		entity->AddComponent<CreepComponent>()->resist = def.resist;
+		auto* creep = entity->AddComponent<CreepComponent>();
+		creep->resist = def.resist;
+		creep->baseHealth = def.health;
+		creep->baseSpeed = def.speed;
+		creep->scale = def.scale;
+		entity->AddComponent<StatusListComponent>();
 		auto* health = entity->AddComponent<HealthComponent>();
 		health->max = def.health;
 		health->current = def.health;
@@ -651,6 +668,121 @@ namespace tower
 		transform->SetPosition(_level.tileCenter(0, 0, RangeRingY));
 		transform->SetScale(glm::vec3(_towers.all().front().range, 1.0f, _towers.all().front().range));
 		_rangeRing->AddComponent<hl::ModelComponent>()->setModelId(modelHandle->GetId());
+	}
+
+	void TowerDefenseGameEngineScene::syncStatusRings()
+	{
+		if (_resourceManager == nullptr)
+		{
+			return;
+		}
+
+		struct Desired
+		{
+			int creepId = 0;
+			StatusRing ring;
+			glm::vec3 position{ 0.0f };
+		};
+
+		std::vector<Desired> desired;
+		for (auto* creep : _scene.getEntitiesWithComponents<
+			hl::TransformComponent,
+			CreepComponent,
+			StatusListComponent>(CreepTag))
+		{
+			if (_scene.isPendingRemoval(creep->Id))
+			{
+				continue;
+			}
+
+			const auto* list = creep->GetComponent<StatusListComponent>();
+			const auto* creepComp = creep->GetComponent<CreepComponent>();
+			const auto pos = creep->GetComponent<hl::TransformComponent>()->GetPosition();
+			const auto rings = statusRings(
+				list->instances,
+				_statuses,
+				_statusCategories,
+				creepComp->scale);
+			for (const auto& ring : rings)
+			{
+				desired.push_back(Desired{
+					.creepId = creep->Id,
+					.ring = ring,
+					.position = glm::vec3(pos.x, StatusRingY, pos.z)
+				});
+			}
+		}
+
+		for (auto* entity : _scene.getEntitiesByTag(StatusRingTag))
+		{
+			if (_scene.isPendingRemoval(entity->Id))
+			{
+				continue;
+			}
+
+			auto* ring = entity->GetComponent<StatusRingComponent>();
+			const bool keep = ring != nullptr && std::any_of(
+				desired.begin(),
+				desired.end(),
+				[&](const Desired& item)
+				{
+					return item.creepId == ring->creepId && item.ring.categoryId == ring->categoryId;
+				});
+			if (!keep)
+			{
+				_scene.removeEntity(entity->Id);
+			}
+		}
+
+		auto* model = _resourceManager->GetResource<hl::ModelResource>(RangeRingModelId);
+		if (model == nullptr)
+		{
+			return;
+		}
+
+		for (const auto& item : desired)
+		{
+			hl::Entity* existing = nullptr;
+			for (auto* entity : _scene.getEntitiesByTag(StatusRingTag))
+			{
+				if (_scene.isPendingRemoval(entity->Id))
+				{
+					continue;
+				}
+
+				auto* ring = entity->GetComponent<StatusRingComponent>();
+				if (ring != nullptr
+					&& ring->creepId == item.creepId
+					&& ring->categoryId == item.ring.categoryId)
+				{
+					existing = entity;
+					break;
+				}
+			}
+
+			const std::string materialName = "status_ring_" + item.ring.categoryId;
+			_engine.getMaterialSystem().addMaterial(hl::Material{
+				.name = materialName,
+				.diffuse = item.ring.color
+			});
+
+			if (existing == nullptr)
+			{
+				existing = _scene.addEntity();
+				existing->AddTag(StatusRingTag);
+				existing->AddComponent<hl::TransformComponent>();
+				existing->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
+				auto* ring = existing->AddComponent<StatusRingComponent>();
+				ring->creepId = item.creepId;
+				ring->categoryId = item.ring.categoryId;
+				ring->materialName = materialName;
+			}
+
+			auto* transform = existing->GetComponent<hl::TransformComponent>();
+			transform->SetPosition(item.position);
+			transform->SetScale(glm::vec3(item.ring.scaleXZ, 1.0f, item.ring.scaleXZ));
+			existing->GetComponent<StatusRingComponent>()->materialName = materialName;
+		}
 	}
 
 	void TowerDefenseGameEngineScene::spawnPathRibbons(
@@ -897,6 +1029,7 @@ namespace tower
 				{
 					if (entity->HasTag(GhostTag)
 						|| entity->HasTag(RangeRingTag)
+						|| entity->HasTag(StatusRingTag)
 						|| !entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
 					{
 						continue;
@@ -1055,6 +1188,24 @@ namespace tower
 				if (_flashTower != nullptr && _invalidFlashRemaining > 0.0f && blinkOn)
 				{
 					drawGhostLit(_flashTower, badMaterial);
+				}
+
+				for (auto* entity : _scene.getEntitiesByTag(StatusRingTag))
+				{
+					if (_scene.isPendingRemoval(entity->Id))
+					{
+						continue;
+					}
+
+					auto* ring = entity->GetComponent<StatusRingComponent>();
+					if (ring == nullptr)
+					{
+						continue;
+					}
+
+					drawGhostLit(
+						entity,
+						_engine.getMaterialSystem().getMaterialIndex(ring->materialName));
 				}
 			});
 
@@ -1465,6 +1616,7 @@ namespace tower
 		rebuildHud();
 		updateGhost();
 		syncInspectRing();
+		syncStatusRings();
 		updateCameraOrbit();
 		updateCameraFollow(delta);
 

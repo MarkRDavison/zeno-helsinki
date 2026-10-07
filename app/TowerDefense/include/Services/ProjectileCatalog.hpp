@@ -9,6 +9,7 @@
 namespace tower
 {
 	class DamageTypeCatalog;
+	class StatusCatalog;
 
 	struct ProjectileDef
 	{
@@ -20,13 +21,21 @@ namespace tower
 		float hitRadius = 0.0f;
 		float y = 0.0f;
 		glm::vec3 scale{ 1.0f };
+		std::vector<std::string> statuses;
 	};
 
 	class ProjectileCatalog
 	{
 	public:
-		void load(const std::string& path, const DamageTypeCatalog& types);
-		void loadFromText(const std::string& text, const char* file, const DamageTypeCatalog& types);
+		void load(
+			const std::string& path,
+			const DamageTypeCatalog& types,
+			const StatusCatalog& statuses);
+		void loadFromText(
+			const std::string& text,
+			const char* file,
+			const DamageTypeCatalog& types,
+			const StatusCatalog& statuses);
 		const ProjectileDef* find(std::string_view id) const;
 		const std::vector<ProjectileDef>& all() const;
 

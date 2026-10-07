@@ -19,6 +19,8 @@ namespace tower
 	inline constexpr const char* RangeRingTag = "RANGE_RING";
 	inline constexpr const char* RangeRingModelId = "range_ring";
 	inline constexpr float RangeRingY = 0.05f;
+	inline constexpr const char* StatusRingTag = "STATUS_RING";
+	inline constexpr float StatusRingY = 0.2f;
 	inline constexpr float RangeRingInnerRadius = 0.97f;
 	inline constexpr const char* PathRibbonTag = "PATH_RIBBON";
 	inline constexpr const char* PathRibbonModelId = "path_ribbon";

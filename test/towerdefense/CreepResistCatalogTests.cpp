@@ -12,7 +12,8 @@ namespace
 	constexpr auto kTypes = R"json(
 [
   { "id": "physical", "name": "Physical", "description": "Bolts and kinetic hits." },
-  { "id": "fire", "name": "Fire", "description": "Explosions and burn hits." }
+  { "id": "fire", "name": "Fire", "description": "Explosions and burn hits." },
+  { "id": "poison", "name": "Poison", "description": "Poison status ticks." }
 ]
 )json";
 

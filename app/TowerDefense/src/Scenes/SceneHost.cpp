@@ -11,6 +11,8 @@
 #include <Services/TowerCatalog.hpp>
 #include <Services/WeaponCatalog.hpp>
 #include <Services/ProjectileCatalog.hpp>
+#include <Services/StatusCatalog.hpp>
+#include <Services/StatusCategoryCatalog.hpp>
 #include <Services/EntityCatalog.hpp>
 #include <Services/LevelCatalog.hpp>
 #include <Services/LevelsCatalog.hpp>
@@ -141,6 +143,8 @@ namespace tower
 			_root.get<TowerCatalog>(),
 			_root.get<WeaponCatalog>(),
 			_root.get<ProjectileCatalog>(),
+			_root.get<StatusCatalog>(),
+			_root.get<StatusCategoryCatalog>(),
 			_root.get<EntityCatalog>(),
 			_root.get<LevelCatalog>(),
 			_root.get<hl::audio::Audio>()));

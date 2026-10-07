@@ -9,6 +9,7 @@ namespace tower
 	public:
 		int fromIndex = 0;
 		float t = 0.0f;
+		float baseSpeed = 1.5f;
 		float speed = 1.5f;
 	};
 }

@@ -2,7 +2,9 @@
 #include <Components/ProjectileComponent.hpp>
 #include <Components/HealthComponent.hpp>
 #include <Components/CreepComponent.hpp>
+#include <Components/StatusListComponent.hpp>
 #include <Combat.hpp>
+#include <Status.hpp>
 #include <SceneCatalog.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 
@@ -16,10 +18,35 @@ namespace tower
 			const float dz = a.z - b.z;
 			return glm::length(glm::vec2(dx, dz));
 		}
+
+		float defenderResist(
+			const CreepComponent* creep,
+			const StatusListComponent* list,
+			const StatusCatalog& statuses,
+			std::string_view type)
+		{
+			const float innate = creep != nullptr ? resistOf(creep->resist, type) : 0.0f;
+			if (list == nullptr)
+			{
+				return innate;
+			}
+
+			const float typeResistance = channelSum(
+				list->instances,
+				statuses,
+				std::string(type) + "_resistance");
+			const float weakness = channelSum(list->instances, statuses, "weakness");
+			return effectiveResist(innate, typeResistance, weakness);
+		}
 	}
 
-	ProjectileSystem::ProjectileSystem(hl::Scene& scene) :
-		_scene(scene)
+	ProjectileSystem::ProjectileSystem(
+		hl::Scene& scene,
+		const StatusCatalog& statuses,
+		const StatusCategoryCatalog& categories) :
+		_scene(scene),
+		_statuses(statuses),
+		_categories(categories)
 	{
 	}
 
@@ -60,15 +87,17 @@ namespace tower
 				}
 
 				auto* health = target->GetComponent<HealthComponent>();
+				auto* creep = target->GetComponent<CreepComponent>();
+				auto* list = target->GetComponent<StatusListComponent>();
 				if (health != nullptr)
 				{
-					float resist = 0.0f;
-					if (const auto* creep = target->GetComponent<CreepComponent>())
-					{
-						resist = resistOf(creep->resist, shot->damageType);
-					}
-
-					applyHit(health->current, shot->damage, resist);
+					const float resist = defenderResist(
+						creep,
+						list,
+						_statuses,
+						shot->damageType);
+					const float dealt = outgoingDamage(shot->damage, 0.0f, 0.0f);
+					applyHit(health->current, dealt, resist);
 				}
 
 				const bool dead = health == nullptr || isDead(health->current);
@@ -78,6 +107,30 @@ namespace tower
 					if (onKill)
 					{
 						onKill();
+					}
+
+					continue;
+				}
+
+				if (list != nullptr)
+				{
+					for (const auto& statusId : shot->statuses)
+					{
+						const auto* def = _statuses.find(statusId);
+						const auto* category = def != nullptr
+							? _categories.find(def->category)
+							: nullptr;
+						if (def == nullptr || category == nullptr)
+						{
+							continue;
+						}
+
+						applyStatus(
+							list->instances,
+							*def,
+							*category,
+							_statuses,
+							list->nextSeq);
 					}
 				}
 

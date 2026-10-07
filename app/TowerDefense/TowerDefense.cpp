@@ -8,6 +8,8 @@
 #include <Services/TowerCatalog.hpp>
 #include <Services/WeaponCatalog.hpp>
 #include <Services/ProjectileCatalog.hpp>
+#include <Services/StatusCatalog.hpp>
+#include <Services/StatusCategoryCatalog.hpp>
 #include <Services/EntityCatalog.hpp>
 #include <Services/LevelCatalog.hpp>
 #include <Services/LevelsCatalog.hpp>
@@ -30,6 +32,8 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<tower::DamageTypeCatalog, tower::DamageTypeCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::CreepCatalog, tower::CreepCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::ProjectileCatalog, tower::ProjectileCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::StatusCategoryCatalog, tower::StatusCategoryCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::StatusCatalog, tower::StatusCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::WeaponCatalog, tower::WeaponCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::TowerCatalog, tower::TowerCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::EntityCatalog, tower::EntityCatalog>(hl::ServiceLifetime::Singleton);
@@ -55,12 +59,19 @@ int main()
 	engineConfig.applyConfig("/data/config.json", std::string(tower::TowerDefenseConfig::RootPath));
 	serviceProvider.get<tower::DamageTypeCatalog>().load(
 		engineConfig.RootPath + "/data/damage-types.json");
+	serviceProvider.get<tower::StatusCategoryCatalog>().load(
+		engineConfig.RootPath + "/data/status-categories.json");
+	serviceProvider.get<tower::StatusCatalog>().load(
+		engineConfig.RootPath + "/data/statuses.json",
+		serviceProvider.get<tower::StatusCategoryCatalog>(),
+		serviceProvider.get<tower::DamageTypeCatalog>());
 	serviceProvider.get<tower::CreepCatalog>().load(
 		engineConfig.RootPath + "/data/creeps.json",
 		serviceProvider.get<tower::DamageTypeCatalog>());
 	serviceProvider.get<tower::ProjectileCatalog>().load(
 		engineConfig.RootPath + "/data/projectiles.json",
-		serviceProvider.get<tower::DamageTypeCatalog>());
+		serviceProvider.get<tower::DamageTypeCatalog>(),
+		serviceProvider.get<tower::StatusCatalog>());
 	serviceProvider.get<tower::WeaponCatalog>().load(
 		engineConfig.RootPath + "/data/weapons.json",
 		serviceProvider.get<tower::ProjectileCatalog>());

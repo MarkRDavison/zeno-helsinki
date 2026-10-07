@@ -22,6 +22,8 @@
 #include <Services/TowerCatalog.hpp>
 #include <Services/WeaponCatalog.hpp>
 #include <Services/ProjectileCatalog.hpp>
+#include <Services/StatusCatalog.hpp>
+#include <Services/StatusCategoryCatalog.hpp>
 #include <Services/EntityCatalog.hpp>
 #include <Services/LevelCatalog.hpp>
 #include <SceneCatalog.hpp>
@@ -54,6 +56,8 @@ namespace tower
 			TowerCatalog& towers,
 			WeaponCatalog& weapons,
 			ProjectileCatalog& projectiles,
+			StatusCatalog& statuses,
+			StatusCategoryCatalog& statusCategories,
 			EntityCatalog& entities,
 			LevelCatalog& level,
 			hl::audio::Audio& audio);
@@ -80,6 +84,7 @@ namespace tower
 		void spawnCreep();
 		void spawnGhost(hl::ResourceManager& resourceManager);
 		void spawnRangeRing(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void syncStatusRings();
 		void spawnPathRibbons(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		std::optional<TileCoord> hoveredTile() const;
 		void updateGhost();
@@ -117,6 +122,8 @@ namespace tower
 		TowerCatalog& _towers;
 		WeaponCatalog& _weapons;
 		ProjectileCatalog& _projectiles;
+		StatusCatalog& _statuses;
+		StatusCategoryCatalog& _statusCategories;
 		EntityCatalog& _entities;
 		LevelCatalog& _level;
 		hl::audio::Audio& _audio;

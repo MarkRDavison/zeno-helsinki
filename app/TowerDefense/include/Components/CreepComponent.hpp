@@ -10,5 +10,8 @@ namespace tower
 	{
 	public:
 		std::unordered_map<std::string, float> resist;
+		float baseHealth = 1.0f;
+		float baseSpeed = 1.0f;
+		float scale = 0.4f;
 	};
 }

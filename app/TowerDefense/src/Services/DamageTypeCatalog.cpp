@@ -45,9 +45,9 @@ namespace tower
 			catalogJson::fail(std::string(file) + ": catalog is empty");
 		}
 
-		if (find("physical") == nullptr || find("fire") == nullptr)
+		if (find("physical") == nullptr || find("fire") == nullptr || find("poison") == nullptr)
 		{
-			catalogJson::fail(std::string(file) + ": must define id 'physical' and 'fire'");
+			catalogJson::fail(std::string(file) + ": must define id 'physical', 'fire', and 'poison'");
 		}
 	}
 

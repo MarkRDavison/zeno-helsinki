@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace tower::catalogJson
 {
@@ -102,6 +103,48 @@ namespace tower::catalogJson
 		}
 
 		return node.integer;
+	}
+
+	inline int optionalIntAtLeast(
+		const hl::JsonNode& row,
+		const char* name,
+		int minimum,
+		int fallback,
+		const char* file)
+	{
+		const auto* node = findChild(row, name);
+		if (node == nullptr)
+		{
+			return fallback;
+		}
+
+		if (node->type != hl::JsonNode::Type::ValueInteger || node->integer < minimum)
+		{
+			fail(std::string(file) + ": '" + name + "' must be an integer >= "
+				+ std::to_string(minimum));
+		}
+
+		return node->integer;
+	}
+
+	inline int optionalInt(
+		const hl::JsonNode& row,
+		const char* name,
+		int fallback,
+		const char* file)
+	{
+		const auto* node = findChild(row, name);
+		if (node == nullptr)
+		{
+			return fallback;
+		}
+
+		if (node->type != hl::JsonNode::Type::ValueInteger)
+		{
+			fail(std::string(file) + ": '" + name + "' must be an integer");
+		}
+
+		return node->integer;
 	}
 
 	inline float requirePositive(
@@ -243,6 +286,52 @@ namespace tower::catalogJson
 		}
 
 		return value;
+	}
+
+	inline glm::vec3 requireColor01(const hl::JsonNode& row, const char* name, const char* file)
+	{
+		const glm::vec3 value = requireVec3(row, name, file, false);
+		for (int i = 0; i < 3; ++i)
+		{
+			if (value[i] < 0.0f || value[i] > 1.0f)
+			{
+				fail(std::string(file) + ": '" + name + "' components must be 0..1");
+			}
+		}
+
+		return value;
+	}
+
+	inline std::vector<std::string> optionalStringArray(
+		const hl::JsonNode& row,
+		const char* name,
+		const char* file)
+	{
+		const auto* node = findChild(row, name);
+		if (node == nullptr)
+		{
+			return {};
+		}
+
+		if (node->type != hl::JsonNode::Type::Array)
+		{
+			fail(std::string(file) + ": '" + name + "' must be an array of strings");
+		}
+
+		std::vector<std::string> values;
+		for (const auto* child : node->children)
+		{
+			if (child == nullptr
+				|| child->type != hl::JsonNode::Type::ValueString
+				|| child->content.empty())
+			{
+				fail(std::string(file) + ": '" + name + "' must be an array of strings");
+			}
+
+			values.push_back(child->content);
+		}
+
+		return values;
 	}
 
 	inline void requireArrayRoot(const hl::JsonDocument& doc, const char* file)

@@ -1,6 +1,7 @@
 #include <Services/ProjectileCatalog.hpp>
 #include <Services/CatalogJson.hpp>
 #include <Services/DamageTypeCatalog.hpp>
+#include <Services/StatusCatalog.hpp>
 
 namespace tower
 {
@@ -9,15 +10,19 @@ namespace tower
 		const char* kFile = "projectiles.json";
 	}
 
-	void ProjectileCatalog::load(const std::string& path, const DamageTypeCatalog& types)
+	void ProjectileCatalog::load(
+		const std::string& path,
+		const DamageTypeCatalog& types,
+		const StatusCatalog& statuses)
 	{
-		loadFromText(hl::String::readFile(path), kFile, types);
+		loadFromText(hl::String::readFile(path), kFile, types, statuses);
 	}
 
 	void ProjectileCatalog::loadFromText(
 		const std::string& text,
 		const char* file,
-		const DamageTypeCatalog& types)
+		const DamageTypeCatalog& types,
+		const StatusCatalog& statuses)
 	{
 		_defs.clear();
 		_byId.clear();
@@ -47,6 +52,15 @@ namespace tower
 			def.hitRadius = catalogJson::requirePositive(*row, "hitRadius", file);
 			def.y = catalogJson::requirePositive(*row, "y", file);
 			def.scale = catalogJson::requireVec3(*row, "scale", file, true);
+			def.statuses = catalogJson::optionalStringArray(*row, "statuses", file);
+			for (const auto& statusId : def.statuses)
+			{
+				if (statuses.find(statusId) == nullptr)
+				{
+					catalogJson::fail(std::string(file) + ": unknown status '" + statusId + "'");
+				}
+			}
+
 			if (_byId.contains(def.id))
 			{
 				catalogJson::fail(std::string(file) + ": duplicate id '" + def.id + "'");

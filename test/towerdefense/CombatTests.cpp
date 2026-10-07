@@ -68,3 +68,26 @@ TEST_CASE("overkill does not heal", "[tower][combat]")
 	CHECK(tower::isDead(current));
 	CHECK(tower::takenDamage(10.0f, 2.0f) == Catch::Approx(0.0f));
 }
+
+TEST_CASE("effective resist adds type resistance and subtracts weakness", "[tower][combat]")
+{
+	CHECK(tower::effectiveResist(0.25f, 0.0f, 0.0f) == Catch::Approx(0.25f));
+	CHECK(tower::effectiveResist(-0.2f, 0.0f, 0.2f) == Catch::Approx(-0.4f));
+	CHECK(tower::takenDamage(10.0f, tower::effectiveResist(0.0f, 0.2f, 0.0f)) == Catch::Approx(8.0f));
+	CHECK(tower::takenDamage(10.0f, tower::effectiveResist(0.0f, 0.0f, 0.2f)) == Catch::Approx(12.0f));
+}
+
+TEST_CASE("outgoing damage scales from attacker channels", "[tower][combat]")
+{
+	CHECK(tower::outgoingDamage(10.0f, 0.0f, 0.0f) == Catch::Approx(10.0f));
+	CHECK(tower::outgoingDamage(10.0f, 0.0f, 0.2f) == Catch::Approx(12.0f));
+}
+
+TEST_CASE("unit clamp warns outside 0..1", "[tower][combat]")
+{
+	CHECK_FALSE(tower::clampUnit(0.5f).warned);
+	CHECK(tower::clampUnit(1.5f).value == Catch::Approx(1.0f));
+	CHECK(tower::clampUnit(1.5f).warned);
+	CHECK(tower::clampUnit(-0.2f).value == Catch::Approx(0.0f));
+	CHECK(tower::clampUnit(-0.2f).warned);
+}

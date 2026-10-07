@@ -187,6 +187,7 @@ namespace tower
 				shot->speed = projectile->speed;
 				shot->damage = projectile->damage;
 				shot->damageType = projectile->damageType;
+				shot->statuses = projectile->statuses;
 				shot->hitRadius = projectile->hitRadius;
 				shot->y = projectile->y;
 				shot->aimOffset = glm::vec2(lateral.x, lateral.z);

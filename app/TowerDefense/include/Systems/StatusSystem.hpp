@@ -7,15 +7,11 @@
 namespace tower
 {
 	class StatusCatalog;
-	class StatusCategoryCatalog;
 
-	class ProjectileSystem : public hl::System
+	class StatusSystem : public hl::System
 	{
 	public:
-		ProjectileSystem(
-			hl::Scene& scene,
-			const StatusCatalog& statuses,
-			const StatusCategoryCatalog& categories);
+		StatusSystem(hl::Scene& scene, const StatusCatalog& statuses);
 		void update(float delta) override;
 
 		std::function<void()> onKill;
@@ -23,6 +19,5 @@ namespace tower
 	private:
 		hl::Scene& _scene;
 		const StatusCatalog& _statuses;
-		const StatusCategoryCatalog& _categories;
 	};
 }

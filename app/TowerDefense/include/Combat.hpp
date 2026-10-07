@@ -22,6 +22,37 @@ namespace tower
 		return { resist, false };
 	}
 
+	inline ClampResistResult clampUnit(float value)
+	{
+		if (value < 0.0f)
+		{
+			return { 0.0f, true };
+		}
+
+		if (value > 1.0f)
+		{
+			return { 1.0f, true };
+		}
+
+		return { value, false };
+	}
+
+	inline float outgoingDamage(float base, float damageChannel, float typeDamageChannel)
+	{
+		const float scale = 1.0f + damageChannel + typeDamageChannel;
+		if (scale <= 0.0f)
+		{
+			return 0.0f;
+		}
+
+		return base * scale;
+	}
+
+	inline float effectiveResist(float innate, float typeResistance, float weaknessMagnitude)
+	{
+		return clampResist(innate + typeResistance - weaknessMagnitude).value;
+	}
+
 	inline float resistOf(
 		const std::unordered_map<std::string, float>& resist,
 		std::string_view type)
