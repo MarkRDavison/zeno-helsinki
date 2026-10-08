@@ -66,7 +66,8 @@ namespace
 
 	constexpr auto kTowers = R"json(
 [
-  { "id": "single", "model": "turret_single", "label": "Single", "cost": 15, "range": 3, "weapons": [ { "id": "single_cannon", "offset": [0, 0, 0] } ] }
+  { "id": "single", "model": "turret_single", "label": "Single", "cost": 15, "range": 3, "weapons": [ { "id": "single_cannon", "offset": [0, 0, 0] } ] },
+  { "id": "double", "model": "turret_double", "label": "Double", "cost": 25, "range": 3.5, "weapons": [ { "id": "single_cannon", "offset": [0, 0, 0] } ] }
 ]
 )json";
 
@@ -131,7 +132,7 @@ namespace
 			wave(gameState, creeps, level),
 			selection(scene, gameState),
 			focus(scene, selection, gameState, towers, level),
-			build(scene, wave, gameState, towers, level),
+			build(scene, wave, gameState, towers, level, match),
 			commands(selection, focus, build)
 		{
 		}
@@ -177,6 +178,37 @@ namespace
 				health->current = 8.0f;
 			}
 			return entity;
+		}
+
+		int liveTowerCount() const
+		{
+			int count = 0;
+			for (auto* entity : scene.getEntitiesByTag(tower::TowerTag))
+			{
+				if (!scene.isPendingRemoval(entity->Id))
+				{
+					++count;
+				}
+			}
+			return count;
+		}
+
+		bool hasTowerAt(int x, int z) const
+		{
+			for (auto* entity : scene.getEntitiesByTag(tower::TowerTag))
+			{
+				if (scene.isPendingRemoval(entity->Id))
+				{
+					continue;
+				}
+
+				const auto* tower = entity->GetComponent<tower::TowerComponent>();
+				if (tower != nullptr && tower->x == x && tower->z == z)
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 	};
 }
@@ -231,4 +263,69 @@ TEST_CASE("PlaceTower is false while in combat", "[tower][command]")
 	const int gold = fixture.gameState.gold();
 	CHECK_FALSE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 3, .z = 3 }));
 	CHECK(fixture.gameState.gold() == gold);
+	CHECK(fixture.liveTowerCount() == 0);
+}
+
+TEST_CASE("PlaceTower spends gold and spawns a tower", "[tower][command]")
+{
+	Fixture fixture;
+	const int gold = fixture.gameState.gold();
+	REQUIRE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 3, .z = 3 }));
+	CHECK(fixture.gameState.gold() == gold - 15);
+	CHECK(fixture.hasTowerAt(3, 3));
+	CHECK(fixture.liveTowerCount() == 1);
+}
+
+TEST_CASE("PlaceTower is false on a path tile", "[tower][command]")
+{
+	Fixture fixture;
+	const int gold = fixture.gameState.gold();
+	CHECK_FALSE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 0, .z = 0 }));
+	CHECK(fixture.gameState.gold() == gold);
+	CHECK(fixture.liveTowerCount() == 0);
+}
+
+TEST_CASE("PlaceTower is false on an occupied tile", "[tower][command]")
+{
+	Fixture fixture;
+	fixture.addTower();
+	const int gold = fixture.gameState.gold();
+	CHECK_FALSE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 2, .z = 2 }));
+	CHECK(fixture.gameState.gold() == gold);
+	CHECK(fixture.liveTowerCount() == 1);
+}
+
+TEST_CASE("PlaceTower is false when too poor", "[tower][command]")
+{
+	Fixture fixture;
+	while (fixture.gameState.gold() >= 15)
+	{
+		REQUIRE(fixture.gameState.trySpend(15));
+	}
+	const int gold = fixture.gameState.gold();
+	CHECK_FALSE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 3, .z = 3 }));
+	CHECK(fixture.gameState.gold() == gold);
+	CHECK(fixture.liveTowerCount() == 0);
+}
+
+TEST_CASE("campaign PlaceTower refuses unowned ids", "[tower][command]")
+{
+	Fixture fixture;
+	fixture.match.campaign = true;
+	fixture.match.ownedTowers = { "single" };
+	const int gold = fixture.gameState.gold();
+	CHECK_FALSE(fixture.commands.handle(tower::PlaceTower{ .defId = "double", .x = 3, .z = 3 }));
+	CHECK(fixture.gameState.gold() == gold);
+	CHECK(fixture.liveTowerCount() == 0);
+	REQUIRE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 3, .z = 3 }));
+	CHECK(fixture.hasTowerAt(3, 3));
+}
+
+TEST_CASE("skirmish PlaceTower allows catalog ids not in ownedTowers", "[tower][command]")
+{
+	Fixture fixture;
+	REQUIRE_FALSE(fixture.match.campaign);
+	REQUIRE(fixture.match.ownedTowers.empty());
+	REQUIRE(fixture.commands.handle(tower::PlaceTower{ .defId = "double", .x = 4, .z = 4 }));
+	CHECK(fixture.hasTowerAt(4, 4));
 }

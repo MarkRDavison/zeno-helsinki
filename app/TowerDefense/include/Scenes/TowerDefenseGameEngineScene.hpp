@@ -83,7 +83,6 @@ namespace tower
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnBoard(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnEntities(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
-		void spawnTower(hl::ResourceManager& resourceManager, int tx, int tz, const std::string& defId);
 		void selectPlaceTool(const std::string& defId);
 		void spawnCreep();
 		void spawnGhost(hl::ResourceManager& resourceManager);

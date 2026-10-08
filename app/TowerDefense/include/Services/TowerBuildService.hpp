@@ -3,6 +3,16 @@
 #include <helsinki/Engine/Scene/Scene.hpp>
 #include <string_view>
 
+namespace hl
+{
+	class ResourceManager;
+
+	namespace audio
+	{
+		class Audio;
+	}
+}
+
 namespace tower
 {
 	class WaveService;
@@ -10,6 +20,7 @@ namespace tower
 	class TowerCatalog;
 	class LevelCatalog;
 	class TowerSelectionService;
+	struct MatchContext;
 
 	class TowerBuildService
 	{
@@ -19,8 +30,11 @@ namespace tower
 			WaveService& wave,
 			GameStateService& gameState,
 			TowerCatalog& towers,
-			LevelCatalog& level);
+			LevelCatalog& level,
+			MatchContext& match,
+			hl::audio::Audio* audio = nullptr);
 
+		void setResourceManager(hl::ResourceManager* resources);
 		bool tileOccupied(int tx, int tz) const;
 		bool tryPlace(std::string_view defId, int x, int z);
 		bool trySell(TowerSelectionService& selection);
@@ -31,5 +45,8 @@ namespace tower
 		GameStateService& _gameState;
 		TowerCatalog& _towers;
 		LevelCatalog& _level;
+		MatchContext& _match;
+		hl::audio::Audio* _audio = nullptr;
+		hl::ResourceManager* _resources = nullptr;
 	};
 }

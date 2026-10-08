@@ -87,7 +87,7 @@ namespace tower
 		_level(level),
 		_selection(_scene, gameState),
 		_focus(_scene, _selection, gameState, towers, level),
-		_build(_scene, wave, gameState, towers, level),
+		_build(_scene, wave, gameState, towers, level, match, &audio),
 		_commands(_selection, _focus, _build),
 		_audio(audio)
 	{
@@ -535,32 +535,6 @@ namespace tower
 				static_cast<float>(def->sizeZ)));
 			entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		}
-	}
-
-	void TowerDefenseGameEngineScene::spawnTower(
-		hl::ResourceManager& resourceManager,
-		int tx,
-		int tz,
-		const std::string& defId)
-	{
-		const auto* def = _towers.find(defId);
-		if (def == nullptr)
-		{
-			return;
-		}
-
-		auto* model = resourceManager.GetResource<hl::ModelResource>(def->model);
-		auto* entity = _scene.addEntity();
-		entity->AddTag(TowerTag);
-		entity->AddComponent<TeamComponent>()->team = Team::Tower;
-		auto* tower = entity->AddComponent<TowerComponent>();
-		tower->x = tx;
-		tower->z = tz;
-		tower->defId = defId;
-		tower->slotCooldown.assign(def->weapons.size(), 0.0f);
-		entity->AddComponent<hl::TransformComponent>()->SetPosition(_level.tileCenter(tx, tz));
-		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
-		_audio.play(CuePlace);
 	}
 
 	void TowerDefenseGameEngineScene::selectPlaceTool(const std::string& defId)
@@ -1130,8 +1104,6 @@ namespace tower
 			flashInvalid(tile->x, tile->z);
 			return;
 		}
-
-		spawnTower(*_resourceManager, tile->x, tile->z, def->id);
 	}
 
 	void TowerDefenseGameEngineScene::initialise(
@@ -1142,6 +1114,8 @@ namespace tower
 		hl::VulkanCommandPool& transferCommandPool,
 		hl::ResourceManager& resourceManager)
 	{
+		_build.setResourceManager(&resourceManager);
+
 		auto renderpasses = buildRenderpasses();
 
 		hl::ResourceContext resourceContext

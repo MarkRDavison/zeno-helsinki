@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -66,5 +68,16 @@ namespace tower
 			}
 		}
 		return ids;
+	}
+
+	inline bool matchAllowsTower(std::string_view defId, const MatchContext& match)
+	{
+		if (!match.campaign)
+		{
+			return true;
+		}
+
+		return std::find(match.ownedTowers.begin(), match.ownedTowers.end(), defId)
+			!= match.ownedTowers.end();
 	}
 }
