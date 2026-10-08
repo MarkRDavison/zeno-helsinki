@@ -31,6 +31,15 @@ namespace hl::physics
 
 		std::optional<RayHit> castRay(glm::vec3 origin, glm::vec3 endOffset, float maxFraction = 1.f) const;
 
+		CharacterId createCharacter(const CharacterDesc& desc);
+		void destroyCharacter(CharacterId id);
+		void setMove(CharacterId id, glm::vec3 wish);
+		void jump(CharacterId id);
+		void setClimbing(CharacterId id, bool climbing);
+		Pose getPose(CharacterId id) const;
+		bool isGrounded(CharacterId id) const;
+		bool isClimbing(CharacterId id) const;
+
 	private:
 		struct Impl;
 		std::unique_ptr<Impl> _impl;

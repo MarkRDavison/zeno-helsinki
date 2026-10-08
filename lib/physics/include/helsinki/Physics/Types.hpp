@@ -46,6 +46,26 @@ namespace hl::physics
 		}
 	};
 
+	struct CharacterId
+	{
+		std::uint32_t bits = 0xffffffffu;
+
+		static CharacterId invalid()
+		{
+			return CharacterId{};
+		}
+
+		bool valid() const
+		{
+			return bits != 0xffffffffu;
+		}
+
+		friend bool operator==(CharacterId lhs, CharacterId rhs)
+		{
+			return lhs.bits == rhs.bits;
+		}
+	};
+
 	struct Pose
 	{
 		glm::vec3 position{0.f};
@@ -102,5 +122,15 @@ namespace hl::physics
 		float fraction = 0.f;
 		glm::vec3 point{0.f};
 		glm::vec3 normal{0.f};
+	};
+
+	struct CharacterDesc
+	{
+		Dim dim = Dim::D3;
+		Pose pose;
+		float capsuleRadius = 0.4f;
+		float capsuleHeight = 1.2f;
+		float maxSlopeAngleDeg = 45.f;
+		float jumpSpeed = 6.f;
 	};
 }
