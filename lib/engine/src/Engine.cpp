@@ -268,8 +268,8 @@ namespace hl
 		}
 
 		{
-			ZoneScopedN("Wait fence");
-			_syncContext.getFence(_currentFrame).wait();
+			ZoneScopedN("Wait timeline");
+			_syncContext.waitFrame(_currentFrame);
 		}
 
 		VkResult result;
@@ -296,39 +296,51 @@ namespace hl
 			throw std::runtime_error("failed to acquire swap chain image!");
 		}
 
-		_syncContext.getFence(_currentFrame).reset();
-
 		_currentEngineScene->updateGpuResources(_currentFrame);
 
 		const auto primaryCommandBuffer = _currentEngineScene->draw(_currentFrame, imageIndex);
 
+		const uint64_t timelineSignalValue = _syncContext.peekNextSignalValue();
 		VkSemaphore waitSemaphores[] = { _syncContext.getImageAvailableSemaphore(_currentFrame)._semaphore };
+		const uint64_t waitValues[] = { 0 };
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		VkSemaphore signalSemaphores[] = { _syncContext.getRenderFinishedSemaphore(_currentFrame)._semaphore };
+		VkSemaphore renderFinished = _syncContext.getRenderFinishedSemaphore(_currentFrame)._semaphore;
+		VkSemaphore signalSemaphores[] = { renderFinished, _syncContext.graphicsTimeline()._semaphore };
+		const uint64_t signalValues[] = { 0, timelineSignalValue };
+
+		VkTimelineSemaphoreSubmitInfo timelineSubmitInfo{};
+		timelineSubmitInfo.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+		timelineSubmitInfo.waitSemaphoreValueCount = 1;
+		timelineSubmitInfo.pWaitSemaphoreValues = waitValues;
+		timelineSubmitInfo.signalSemaphoreValueCount = 2;
+		timelineSubmitInfo.pSignalSemaphoreValues = signalValues;
+
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = &timelineSubmitInfo;
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = waitSemaphores;
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &primaryCommandBuffer;
-		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.signalSemaphoreCount = 2;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
 		{
 			ZoneScopedN("Submit render queue");
 			CHECK_VK_RESULT(vkQueueSubmit(
-				_device.graphicsQueue()._queue, 
-				1, 
-				&submitInfo, 
-				_syncContext.getFence(_currentFrame)._fence));
+				_device.graphicsQueue()._queue,
+				1,
+				&submitInfo,
+				VK_NULL_HANDLE));
 		}
+		_syncContext.onSubmitSucceeded(_currentFrame, timelineSignalValue);
 
 		VkSwapchainKHR swapChains[] = { _swapChain.handle() };
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = signalSemaphores;
+		presentInfo.pWaitSemaphores = &renderFinished;
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = swapChains;
 		presentInfo.pImageIndices = &imageIndex;
@@ -428,7 +440,7 @@ namespace hl
 			glfwWaitEvents();
 		}
 
-		_device.waitIdle();
+		_syncContext.waitLastSubmitted();
 
 		_swapChain.destroy();
 		_swapChain.create(_config.EnableVsync);
@@ -466,7 +478,7 @@ namespace hl
 			{
 				// TODO: Only have to do this because we are destroying the scene NOW.
 				// We could wait till the next time we're already waiting on idle and destroy there.....
-				this->_device.waitIdle();
+				_syncContext.waitLastSubmitted();
 				destroyScene();
 			}
 
