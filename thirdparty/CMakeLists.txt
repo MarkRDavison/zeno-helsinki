@@ -183,3 +183,27 @@ FetchContent_Declare(
   GIT_TAG        v1.12.1
 )
 FetchContent_MakeAvailable(msdfgen)
+
+# -------------------- Jolt Physics (helsinki-physics PRIVATE; do not PUBLIC-link) --------------------
+set(TARGET_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(TARGET_HELLO_WORLD OFF CACHE BOOL "" FORCE)
+set(TARGET_SAMPLES OFF CACHE BOOL "" FORCE)
+set(TARGET_VIEWER OFF CACHE BOOL "" FORCE)
+set(TARGET_PERFORMANCE_TEST OFF CACHE BOOL "" FORCE)
+set(DOUBLE_PRECISION OFF CACHE BOOL "" FORCE)
+set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
+set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
+set(JPH_USE_VK OFF CACHE BOOL "" FORCE)
+set(JPH_USE_DX12 OFF CACHE BOOL "" FORCE)
+set(JPH_USE_MTL OFF CACHE BOOL "" FORCE)
+set(OVERRIDE_CXX_FLAGS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+	JoltPhysics
+	GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
+	GIT_TAG        v5.6.0
+	SOURCE_SUBDIR  Build
+)
+FetchContent_MakeAvailable(JoltPhysics)
+if(TARGET Jolt)
+	set_target_properties(Jolt PROPERTIES COMPILE_WARNING_AS_ERROR OFF)
+endif()
