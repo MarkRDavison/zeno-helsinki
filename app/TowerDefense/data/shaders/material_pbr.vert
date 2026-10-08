@@ -4,7 +4,8 @@ layout(push_constant) uniform PushConstants {
     mat4 model;
     int materialIndex;
     int cameraIndex;
-    int pad[2];
+    int skipShadow;
+    int pad;
 } pc;
 
 layout(binding = 0) uniform UniformBufferObject {
@@ -23,6 +24,7 @@ layout(location = 2) out flat int fragMaterialIndex;
 layout(location = 3) out vec3 fragNormal;
 layout(location = 4) out vec3 fragWorldPos;
 layout(location = 5) out flat int fragCameraIndex;
+layout(location = 6) out flat int fragSkipShadow;
 
 void main() {
     gl_Position = ubo[pc.cameraIndex].proj * ubo[pc.cameraIndex].view * pc.model * vec4(inPosition, 1.0);
@@ -30,6 +32,7 @@ void main() {
     fragTexCoord = inTexCoord;
     fragMaterialIndex = pc.materialIndex;
     fragCameraIndex = pc.cameraIndex;
+    fragSkipShadow = pc.skipShadow;
 
     mat3 model3 = mat3(pc.model);
     fragNormal = transpose(inverse(model3)) * inNormal;

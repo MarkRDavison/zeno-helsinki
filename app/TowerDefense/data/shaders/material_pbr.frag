@@ -32,13 +32,64 @@ layout(std140, binding = 3) uniform SunBuffer {
     float _pad;
 } sun;
 
+layout(binding = 4) uniform sampler2DShadow shadowMap;
+
+layout(std140, binding = 5) uniform ShadowBuffer {
+    mat4 view;
+    mat4 proj;
+} shadowCam;
+
 layout(location = 1) in vec2 fragTexCoord;
 layout(location = 2) in flat int fragMaterialIndex;
 layout(location = 3) in vec3 fragNormal;
 layout(location = 4) in vec3 fragWorldPos;
 layout(location = 5) in flat int fragCameraIndex;
+layout(location = 6) in flat int fragSkipShadow;
 
 layout(location = 0) out vec4 outColor;
+
+float interleavedGradientNoise(vec2 p)
+{
+    return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
+}
+
+vec2 vogelDisk(int i, int n, float theta)
+{
+    const float goldenAngle = 2.39996323;
+    float r = sqrt((float(i) + 0.5) / float(n));
+    float a = float(i) * goldenAngle + theta;
+    return r * vec2(cos(a), sin(a));
+}
+
+float sunShadow(vec3 worldPos, vec3 n, vec3 sunDir)
+{
+    vec4 lightClip = shadowCam.proj * shadowCam.view * vec4(worldPos, 1.0);
+    if (lightClip.w <= 0.0)
+    {
+        return 1.0;
+    }
+
+    vec3 ndc = lightClip.xyz / lightClip.w;
+    vec2 uv = ndc.xy * 0.5 + 0.5;
+    float ref = ndc.z;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ref < 0.0 || ref > 1.0)
+    {
+        return 1.0;
+    }
+
+    float bias = max(0.004 * (1.0 - max(dot(n, sunDir), 0.0)), 0.0008);
+    float z = ref - bias;
+    vec2 texel = 1.0 / vec2(textureSize(shadowMap, 0));
+    float theta = interleavedGradientNoise(gl_FragCoord.xy) * 6.2831853;
+    const int taps = 16;
+    const float radius = 3.5;
+    float lit = 0.0;
+    for (int i = 0; i < taps; ++i)
+    {
+        lit += texture(shadowMap, vec3(uv + vogelDisk(i, taps, theta) * radius * texel, z));
+    }
+    return lit / float(taps);
+}
 
 void main()
 {
@@ -47,6 +98,7 @@ void main()
     vec3 n = normalize(fragNormal);
     vec3 sunDir = normalize(sun.direction);
     float ndotl = max(dot(n, sunDir), 0.0);
+    float shadow = fragSkipShadow != 0 ? 1.0 : sunShadow(fragWorldPos, n, sunDir);
 
     vec3 cameraPos = inverse(ubo[fragCameraIndex].view)[3].xyz;
     vec3 viewDir = normalize(cameraPos - fragWorldPos);
@@ -60,7 +112,7 @@ void main()
         spec *= step(0.0, ndotl);
     }
 
-    vec3 diffuse = sun.ambient + sun.color * sun.intensity * ndotl;
-    vec3 lit = albedo * diffuse + mat.specular.rgb * spec * sun.specularStrength;
+    vec3 diffuse = sun.ambient + sun.color * sun.intensity * ndotl * shadow;
+    vec3 lit = albedo * diffuse + mat.specular.rgb * spec * sun.specularStrength * shadow;
     outColor = vec4(lit, 1.0);
 }

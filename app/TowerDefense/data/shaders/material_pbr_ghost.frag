@@ -37,6 +37,7 @@ layout(location = 2) in flat int fragMaterialIndex;
 layout(location = 3) in vec3 fragNormal;
 layout(location = 4) in vec3 fragWorldPos;
 layout(location = 5) in flat int fragCameraIndex;
+layout(location = 6) in flat int fragSkipShadow;
 
 layout(location = 0) out vec4 outColor;
 
@@ -64,5 +65,5 @@ void main()
 
     vec3 diffuse = sun.ambient + sun.color * sun.intensity * ndotl;
     vec3 lit = albedo * diffuse + mat.specular.rgb * spec * sun.specularStrength;
-    outColor = vec4(lit, GhostAlpha);
+    outColor = vec4(lit, GhostAlpha + 0.0 * float(fragSkipShadow));
 }

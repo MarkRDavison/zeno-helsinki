@@ -41,6 +41,7 @@
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/Ui/Widget.hpp>
 #include <vulkan/vulkan.h>
@@ -183,16 +184,37 @@ namespace tower
 					.resource = "sun_ubo",
 					.count = 1,
 					.updateFrequency = hl::DescriptorUpdateFrequency::PerFrame
+				},
+				hl::DescriptorBinding
+				{
+					.binding = 4,
+					.type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+					.stage = "FRAGMENT",
+					.resource = hl::RenderGraphHelpers::ShadowDepthName,
+					.count = 1,
+					.updateFrequency = hl::DescriptorUpdateFrequency::PerFrame
+				},
+				hl::DescriptorBinding
+				{
+					.binding = 5,
+					.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+					.stage = "VERTEX&FRAGMENT",
+					.resource = hl::RenderGraphHelpers::ShadowUboName,
+					.count = 1,
+					.updateFrequency = hl::DescriptorUpdateFrequency::PerFrame
 				}
 			}
 		};
 
 		return
 		{
+			hl::RenderGraphHelpers::createShadowMapPass(
+				hl::RenderGraphHelpers::ShadowDepthName,
+				ShadowMapSize),
 			hl::RenderpassInfo
 			{
 				.name = "scene_pass",
-				.inputs = {},
+				.inputs = { hl::RenderGraphHelpers::ShadowDepthName },
 				.outputs =
 				{
 					hl::ResourceInfo
@@ -409,6 +431,13 @@ namespace tower
 			"sun_ubo",
 			resourceContext,
 			sizeof(SunUniformBufferObject),
+			MAX_FRAMES_IN_FLIGHT,
+			1);
+
+		_shadowUbo = resourceManager.Load<hl::UniformBufferResource>(
+			hl::RenderGraphHelpers::ShadowUboName,
+			resourceContext,
+			sizeof(hl::CameraUniformBufferObject),
 			MAX_FRAMES_IN_FLIGHT,
 			1);
 
@@ -1122,12 +1151,79 @@ namespace tower
 						.model = transform->GetTransformMatrix()
 					};
 					pc.pad[0] = cameraIndex;
+					pc.pad[1] = (entity->HasTag(PathRibbonTag) || entity->HasTag(TargetLineTag))
+						? 1u
+						: 0u;
 
 					for (const auto& mesh : modelResource->getMeshes())
 					{
 						const auto* ribbon = entity->GetComponent<PathRibbonComponent>();
 						pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(
 							ribbon != nullptr ? ribbon->materialName : mesh.materialName);
+						vkCmdPushConstants(
+							pdd.commandBuffer,
+							pdd.pipeline->getPipelineLayout(),
+							VK_SHADER_STAGE_VERTEX_BIT,
+							0,
+							sizeof(hl::MaterialPushConstantObject),
+							&pc);
+
+						VkBuffer vertexBuffers[] = { mesh._vertexBuffer._buffer };
+						VkDeviceSize offsets[] = { 0 };
+						vkCmdBindVertexBuffers(pdd.commandBuffer, 0, 1, vertexBuffers, offsets);
+						vkCmdBindIndexBuffer(
+							pdd.commandBuffer,
+							mesh._indexBuffer._buffer,
+							0,
+							VK_INDEX_TYPE_UINT32);
+
+						auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
+						vkCmdBindDescriptorSets(
+							pdd.commandBuffer,
+							VK_PIPELINE_BIND_POINT_GRAPHICS,
+							pdd.pipeline->getPipelineLayout(),
+							0,
+							1,
+							&descriptorSet,
+							0,
+							nullptr);
+
+						vkCmdDrawIndexed(pdd.commandBuffer, mesh._indexCount, 1, 0, 0, 0);
+					}
+				}
+			});
+
+		registerPipelineDraw(hl::RenderGraphHelpers::ShadowPipelineName, [this](hl::PipelineDrawData& pdd)
+			{
+				for (const auto& entity : pdd.scene->getEntities())
+				{
+					if (isSunShadowOverlay(*entity)
+						|| !entity->HasComponents<hl::TransformComponent, hl::ModelComponent>())
+					{
+						continue;
+					}
+
+					if (entity.get() == _flashTower && _invalidFlashRemaining > 0.0f)
+					{
+						continue;
+					}
+
+					const auto* transform = entity->GetComponent<hl::TransformComponent>();
+					const auto* model = entity->GetComponent<hl::ModelComponent>();
+					const auto* modelResource = _resourceManager->GetResource<hl::ModelResource>(model->getModelId());
+					if (modelResource == nullptr)
+					{
+						continue;
+					}
+
+					auto pc = hl::MaterialPushConstantObject
+					{
+						.model = transform->GetTransformMatrix()
+					};
+
+					for (const auto& mesh : modelResource->getMeshes())
+					{
+						pc.materialIndex = _engine.getMaterialSystem().getMaterialIndex(mesh.materialName);
 						vkCmdPushConstants(
 							pdd.commandBuffer,
 							pdd.pipeline->getPipelineLayout(),
@@ -1702,11 +1798,36 @@ namespace tower
 		if (_sunUbo)
 		{
 			SunUniformBufferObject ubo{};
-			const auto dir = glm::normalize(glm::vec3(0.45f, 0.85f, 0.30f));
+			const auto dir = glm::normalize(SceneSunDirection);
 			ubo.direction = glm::vec4(dir, 1.0f);
 			ubo.color = glm::vec4(1.0f, 0.97f, 0.90f, 0.35f);
 			ubo.ambient = glm::vec4(0.18f, 0.18f, 0.18f, 0.0f);
 			_sunUbo.Get()->getUniformBuffer(currentFrame).writeToBuffer(&ubo, 0);
+		}
+
+		if (_shadowUbo)
+		{
+			const glm::vec3 sunDir = glm::normalize(SceneSunDirection);
+			glm::vec3 up{ 0.0f, 1.0f, 0.0f };
+			if (glm::abs(glm::dot(sunDir, up)) > 0.95f)
+			{
+				up = glm::vec3(0.0f, 0.0f, 1.0f);
+			}
+
+			const float halfW = static_cast<float>(_level.boardWidth()) * TileSize * 0.5f;
+			const float halfD = static_cast<float>(_level.boardDepth()) * TileSize * 0.5f;
+			const float orthoHalf = std::max(halfW, halfD) + ShadowOrthoMargin;
+			const glm::vec3 lightPos = sunDir * ShadowLightDistance;
+			hl::CameraUniformBufferObject shadow{};
+			shadow.view = glm::lookAt(lightPos, glm::vec3(0.0f), up);
+			shadow.proj = glm::ortho(
+				-orthoHalf,
+				orthoHalf,
+				-orthoHalf,
+				orthoHalf,
+				ShadowNear,
+				ShadowLightDistance + orthoHalf * 2.0f);
+			_shadowUbo.Get()->getUniformBuffer(currentFrame).writeToBuffer(&shadow, 0);
 		}
 
 		_uiBatch.updateGpuResources(currentFrame);
@@ -1777,6 +1898,15 @@ namespace tower
 		}
 
 		return dynamic_cast<hl::Camera*>(it->second);
+	}
+
+	bool TowerDefenseGameEngineScene::isSunShadowOverlay(const hl::Entity& entity) const
+	{
+		return entity.HasTag(GhostTag)
+			|| entity.HasTag(RangeRingTag)
+			|| entity.HasTag(StatusRingTag)
+			|| entity.HasTag(PathRibbonTag)
+			|| entity.HasTag(TargetLineTag);
 	}
 
 	void TowerDefenseGameEngineScene::OnEvent(const hl::Event& event)

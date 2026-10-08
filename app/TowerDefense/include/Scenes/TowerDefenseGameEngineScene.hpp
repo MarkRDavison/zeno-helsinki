@@ -117,6 +117,7 @@ namespace tower
 		void updateCameraFollow(float delta);
 		hl::Camera* boardCamera() const;
 		const TowerDef* selectedTowerDef() const;
+		bool isSunShadowOverlay(const hl::Entity& entity) const;
 
 		SceneHost& _sceneHost;
 		const hl::EngineConfiguration& _engineConfig;
@@ -137,6 +138,7 @@ namespace tower
 		GameCommandService _commands;
 		hl::audio::Audio& _audio;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
+		hl::ResourceHandle<hl::UniformBufferResource> _shadowUbo;
 		hl::Entity* _ghost = nullptr;
 		hl::Entity* _rangeRing = nullptr;
 		bool _ghostVisible = false;

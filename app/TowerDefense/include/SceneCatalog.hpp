@@ -54,6 +54,11 @@ namespace tower
 	inline constexpr float CameraZoomStep = 1.5f;
 	inline constexpr float CameraOrbitDegreesPerPixel = 0.25f;
 	inline constexpr float CameraSmooth = 12.0f;
+	inline constexpr glm::vec3 SceneSunDirection{ 0.45f, 0.85f, 0.30f };
+	inline constexpr uint32_t ShadowMapSize = 2048;
+	inline constexpr float ShadowOrthoMargin = 3.0f;
+	inline constexpr float ShadowLightDistance = 20.0f;
+	inline constexpr float ShadowNear = 0.1f;
 
 	inline constexpr glm::vec3 CreepScale{ 0.4f, 0.4f, 0.4f };
 
