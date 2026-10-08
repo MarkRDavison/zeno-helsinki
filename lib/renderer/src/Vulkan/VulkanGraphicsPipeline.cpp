@@ -35,8 +35,8 @@ namespace hl
         const char* sources[] = { shaderSource.c_str() };
         shader.setStrings(sources, 1);
         shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 450);
-        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
-        shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_0);
+        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
+        shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_3);
 
         TBuiltInResource DefaultTBuiltInResource = {};
         {

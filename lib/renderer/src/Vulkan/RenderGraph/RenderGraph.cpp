@@ -54,6 +54,7 @@ namespace hl
 		uint32_t width,
 		uint32_t height,
 		const std::vector<VkImageView>& swapChainImageViews,
+		VkFormat swapChainFormat,
 		ResourceManager& /*resourceManager*/)
 	{
 		std::vector<VulkanRenderGraphRenderpassResources*> renderpasses;
@@ -91,154 +92,29 @@ namespace hl
 					imageCount,
 					isLastRenderpass);
 
-				// Renderpass
+				std::vector<VkFormat> colorFormats;
+				VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+				for (const auto& attachment : r->getAttachments())
 				{
-					std::vector<VkAttachmentDescription> allAttachments;
-
-					std::vector<VkAttachmentDescription> colorAttachments;
-					std::vector<VkAttachmentReference> colorReferences;
-
-					std::vector<VkAttachmentDescription> colorResolveAttachments;
-					std::vector<VkAttachmentReference> colorResolveReferences;
-
-					std::vector<VkAttachmentDescription> depthAttachments;
-					std::vector<VkAttachmentReference> depthReferences;
-
-					uint32_t referenceLayout = 0;
-
-					for (const auto& ra : r->getAttachments())
+					if (attachment.type == ResourceType::Color)
 					{
-						VkAttachmentDescription description{};
-						VkAttachmentReference reference{};
-
-						description.format = ra.format;
-						description.samples = useMultiSampling
-							? device.msaaSamples()
-							: VK_SAMPLE_COUNT_1_BIT;
-						description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-						description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-						description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-						reference.attachment = referenceLayout;
-						referenceLayout += 1;
-
-						if (ra.type == ResourceType::Color)
+						colorFormats.push_back(isLastRenderpass ? swapChainFormat : attachment.format);
+					}
+					else if (attachment.type == ResourceType::Depth)
+					{
+						if (depthFormat != VK_FORMAT_UNDEFINED)
 						{
-							description.finalLayout = useMultiSampling
-								? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-								: (isLastRenderpass
-									? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-									: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-									reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-									colorAttachments.push_back(description);
-									colorReferences.push_back(reference);
-
-									allAttachments.push_back(description);
-
-									if (useMultiSampling)
-									{
-										VkAttachmentDescription resolveDescription{};
-										VkAttachmentReference resolveReference{};
-
-										resolveDescription.format = ra.format;
-										resolveDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-										resolveDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-										resolveDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-										resolveDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-										resolveDescription.finalLayout = isLastRenderpass
-											? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-											: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-										resolveReference.attachment = referenceLayout;
-										resolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-										referenceLayout += 1;
-
-										colorResolveAttachments.push_back(resolveDescription);
-										colorResolveReferences.push_back(resolveReference);
-
-										allAttachments.push_back(resolveDescription);
-									}
+							throw std::runtime_error("Can only have 1 depth attachment per pass");
 						}
-						else if (ra.type == ResourceType::Depth)
-						{
-							description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-							description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-							description.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-							reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-							depthAttachments.push_back(description);
-							depthReferences.push_back(reference);
-
-							allAttachments.push_back(description);
-						}
-						else
-						{
-							throw std::runtime_error("NOT GOOD");
-						}
+						depthFormat = attachment.format;
 					}
-
-					if (depthReferences.size() > 1)
-					{
-						throw std::runtime_error("Can only have 1 depth attachment per subpass");
-					}
-
-					VkSubpassDescription subpass{};
-					subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-					subpass.colorAttachmentCount = static_cast<uint32_t>(colorReferences.size());
-					subpass.pColorAttachments = colorReferences.data();
-					subpass.pDepthStencilAttachment = depthReferences.data();
-					if (useMultiSampling)
-					{
-						subpass.pResolveAttachments = colorResolveReferences.data();
-					}
-					else
-					{
-						subpass.pResolveAttachments = nullptr;
-					}
-
-					// TODO: Optimisation possibility
-					VkSubpassDependency dependency{};
-					dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-					dependency.dstSubpass = 0;
-					dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-					dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-					dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-					dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-					// TODO: This will change if subpasses added
-					VkRenderPassCreateInfo renderPassInfo{};
-					renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-					renderPassInfo.attachmentCount = static_cast<uint32_t>(allAttachments.size());
-					renderPassInfo.pAttachments = allAttachments.data();
-					renderPassInfo.subpassCount = 1;
-					renderPassInfo.pSubpasses = &subpass;
-					renderPassInfo.dependencyCount = 1;
-					renderPassInfo.pDependencies = &dependency;
-
-					VkRenderPass vkRenderpass{ VK_NULL_HANDLE };
-
-					CHECK_VK_RESULT(vkCreateRenderPass(device.handle(), &renderPassInfo, nullptr, &vkRenderpass));
-
-					device.setDebugName(reinterpret_cast<uint64_t>(vkRenderpass), VK_OBJECT_TYPE_RENDER_PASS, r->Name.c_str());
-
-					r->addRenderpass(vkRenderpass);
 				}
 
-				// Framebuffers
-				{
-					createFrameBuffers(
-						device,
-						r, 
-						ri,
-						width,
-						height,
-						swapChainImageViews,
-						imageCount,
-						isLastRenderpass);
-				}
+				r->setRenderingState(
+					colorFormats,
+					depthFormat,
+					useMultiSampling ? device.msaaSamples() : VK_SAMPLE_COUNT_1_BIT,
+					isLastRenderpass);
 
 				VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
@@ -587,9 +463,18 @@ namespace hl
 									pipelineInfo.pColorBlendState = &colorBlending;
 									pipelineInfo.pDynamicState = &dynamicState;
 									pipelineInfo.layout = pipelineLayout;
-									pipelineInfo.renderPass = r->getRenderPass();
+									pipelineInfo.renderPass = VK_NULL_HANDLE;
 									pipelineInfo.subpass = 0;
 									pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+									VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
+									pipelineRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+									pipelineRenderingInfo.colorAttachmentCount = static_cast<uint32_t>(r->getColorFormats().size());
+									pipelineRenderingInfo.pColorAttachmentFormats = r->getColorFormats().empty()
+										? nullptr
+										: r->getColorFormats().data();
+									pipelineRenderingInfo.depthAttachmentFormat = r->getDepthFormat();
+									pipelineInfo.pNext = &pipelineRenderingInfo;
 
 									VkPipeline pl = VK_NULL_HANDLE;
 
@@ -860,158 +745,6 @@ namespace hl
 
 		resources->setClearValues(clearValues);
 	}
-	void RenderGraph::createFrameBuffers(
-		VulkanDevice& device,
-		VulkanRenderGraphRenderpassResources* resources, 
-		const RenderpassInfo& info,
-		uint32_t width,
-		uint32_t height,
-		const std::vector<VkImageView>& swapChainImageViews,
-		uint32_t imageCount,
-		bool isLastRenderpass)
-	{
-		const bool useMultiSampling = passUsesMultiSampling(info);
-
-		for (uint32_t i = 0; i < imageCount; ++i)
-		{
-			VkFramebuffer f = VK_NULL_HANDLE;
-			std::vector<VkImageView> attachments;
-
-			if (isLastRenderpass)
-			{
-				auto foundColorAttachment = false;
-
-				if (useMultiSampling)
-				{
-					for (auto& a : resources->getAttachments())
-					{
-						if (a.type == ResourceType::Color)
-						{
-							if (foundColorAttachment)
-							{
-								throw std::runtime_error("Cannot have multiple color attachments in renderpass that writes to the swapchain.");
-							}
-							else
-							{
-								foundColorAttachment = true;
-							}
-						}
-
-						// these size to i comparisons, probably should be size vs image count
-						if (a.images.size() == imageCount)
-						{
-							attachments.push_back(a.images[i]->_imageView);
-						}
-
-						if (a.resolveImages.size() == imageCount ||
-							a.type == ResourceType::Color)
-						{
-							if (a.type == ResourceType::Color)
-							{
-								// TODO: Assert that swapchain image format matches a.format
-								attachments.push_back(swapChainImageViews[i]);
-							}
-							else
-							{
-								attachments.push_back(a.resolveImages[i]->_imageView);
-							}
-						}
-					}
-
-				}
-				else
-				{
-					for (auto& a : resources->getAttachments())
-					{
-						if (a.type == ResourceType::Color)
-						{
-							if (foundColorAttachment)
-							{
-								throw std::runtime_error("Cannot have multiple color attachments in renderpass that writes to the swapchain.");
-							}
-							else
-							{
-								foundColorAttachment = true;
-							}
-						}
-
-						// these size to i comparisons, probably should be size vs image count
-						if (a.images.size() == imageCount)
-						{
-							if (a.type == ResourceType::Color)
-							{
-								// TODO: Assert that swapchain image format matches a.format
-								attachments.push_back(swapChainImageViews[i]);
-							}
-							else
-							{
-								attachments.push_back(a.images[i]->_imageView);
-							}
-						}
-
-						if (a.resolveImages.size() > 0)
-						{
-							throw std::runtime_error("Should not have resolve images when not using multi sampling");
-						}
-					}
-				}
-			}
-			else
-			{
-				if (useMultiSampling)
-				{
-					for (auto& a : resources->getAttachments())
-					{
-						// these size to i comparisons, probably should be size vs image count
-						if (a.images.size() == imageCount)
-						{
-							attachments.push_back(a.images[i]->_imageView);
-						}
-
-						if (a.resolveImages.size() == imageCount)
-						{
-							attachments.push_back(a.resolveImages[i]->_imageView);
-						}
-					}
-				}
-				else
-				{
-					for (auto& a : resources->getAttachments())
-					{
-						// these size to i comparisons, probably should be size vs image count
-						if (a.images.size() == imageCount)
-						{
-							attachments.push_back(a.images[i]->_imageView);
-						}
-
-						if (a.resolveImages.size() > 0)
-						{
-							throw std::runtime_error("Should not have resolve images when not using multi sampling");
-						}
-					}
-				}
-			}
-
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = resources->getRenderPass();
-			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-			framebufferInfo.pAttachments = attachments.data();
-			framebufferInfo.width = width;
-			framebufferInfo.height = height;
-			framebufferInfo.layers = 1;
-
-			CHECK_VK_RESULT(vkCreateFramebuffer(device.handle(), &framebufferInfo, nullptr, &f));
-
-			device.setDebugName(
-				reinterpret_cast<uint64_t>(f),
-				VK_OBJECT_TYPE_FRAMEBUFFER,
-				(resources->Name + std::string("_Framebuffer_") + std::to_string(i)).c_str()
-			);
-
-			resources->addFramebuffer(f);
-		}
-	}
 
 	VkFormat RenderGraph::extractFormat(const std::string& formatString)
 	{
@@ -1211,6 +944,58 @@ namespace hl
 		}
 
 		return nodes;
+	}
+
+	std::vector<GraphImageBarrierEdge> RenderGraph::generateImageBarrierEdges(
+		const std::vector<hl::RenderpassInfo>& renderpassInfo)
+	{
+		std::vector<GraphImageBarrierEdge> edges;
+		if (renderpassInfo.empty())
+		{
+			return edges;
+		}
+
+		const auto& lastPassName = renderpassInfo.back().name;
+
+		for (const auto& pass : renderpassInfo)
+		{
+			for (const auto& output : pass.outputs)
+			{
+				edges.push_back(GraphImageBarrierEdge
+					{
+						.passName = pass.name,
+						.resourceName = output.name,
+						.kind = output.type == ResourceType::Depth
+							? GraphImageBarrierKind::UndefinedToDepthAttachment
+							: GraphImageBarrierKind::UndefinedToColorAttachment
+					});
+			}
+
+			for (const auto& input : pass.inputs)
+			{
+				edges.push_back(GraphImageBarrierEdge
+					{
+						.passName = pass.name,
+						.resourceName = input,
+						.kind = GraphImageBarrierKind::ColorAttachmentToSampled
+					});
+			}
+		}
+
+		for (const auto& output : renderpassInfo.back().outputs)
+		{
+			if (output.type == ResourceType::Color)
+			{
+				edges.push_back(GraphImageBarrierEdge
+					{
+						.passName = lastPassName,
+						.resourceName = output.name,
+						.kind = GraphImageBarrierKind::ColorAttachmentToPresent
+					});
+			}
+		}
+
+		return edges;
 	}
 
 }

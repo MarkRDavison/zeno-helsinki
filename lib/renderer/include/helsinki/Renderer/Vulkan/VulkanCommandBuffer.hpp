@@ -9,6 +9,12 @@ namespace hl
 	public:
 		VulkanCommandBuffer(VulkanDevice& device);
 
+		static void pipelineBarrier2(VulkanDevice& device, VkCommandBuffer commandBuffer, const VkDependencyInfo& dependencyInfo);
+		static void undefinedToColorAttachment(VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image);
+		static void undefinedToDepthAttachment(VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image);
+		static void colorAttachmentToSampled(VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image);
+		static void colorAttachmentToPresent(VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image);
+
 	public: // private: TODO: to private
 		VulkanDevice& _device;
 

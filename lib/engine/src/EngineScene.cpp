@@ -14,6 +14,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <algorithm>
+#include <cassert>
 #include <future>
 #include <stdexcept>
 
@@ -201,10 +202,21 @@ namespace hl
 	{
 		ZoneScopedN("Engine Scene Draw");
 
+		assert(_device != nullptr);
+		assert(_swapChain != nullptr);
+		assert(_renderGraph != nullptr);
+		assert(_device->cmdBeginRendering() != nullptr);
+		assert(_device->cmdEndRendering() != nullptr);
+		assert(currentFrame < static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT));
+		assert(imageIndex < _swapChain->images().size());
+		assert(imageIndex < _swapChain->imageViews().size());
+		assert(!_renderGraph->getResources().empty());
+
 		updateCameraUniformBuffer(_cameraMatrixPushConstantHandle.Get()->getUniformBuffer(currentFrame));
 
         const auto& lastRenderpassName = _renderGraph->getResources().back()->Name;
         auto& frame = _frameResources[currentFrame];
+		assert(frame.primaryCmd != VK_NULL_HANDLE);
 
         CHECK_VK_RESULT(vkResetCommandBuffer(frame.primaryCmd, 0));
         for (auto& [_, secondaries] : frame.secondaryCommandsByLayerAndPipelineGroup)
@@ -238,30 +250,117 @@ namespace hl
                 ZoneNameF("record command buffer for %s", renderpassName.c_str());
 
                 const auto& renderpass = _renderGraph->getRenderpassByName(renderpassName);
+				assert(renderpass != nullptr);
                 const auto& clearValues = renderpass->getClearValues();
-                const auto& framebuffer = renderpass->getFramebuffer(lastRenderpassName == renderpass->Name ? imageIndex : currentFrame);
+                const bool isLastRenderpass = lastRenderpassName == renderpass->Name;
+                const uint32_t attachmentSlot = isLastRenderpass ? imageIndex : currentFrame;
+                const bool msaa = renderpass->usesMultiSampling();
+                const auto renderExtent = getExtent(renderpass->getExtent(), _swapChain->extent());
+				assert(renderExtent.width > 0 && renderExtent.height > 0);
 
-                VkRenderPassBeginInfo renderpassBegin
+                _renderGraph->recordPrePassBarriers(
+                    frame.primaryCmd,
+                    renderpassName,
+                    currentFrame,
+                    imageIndex);
+
+                std::vector<VkRenderingAttachmentInfo> colorAttachments;
+                VkRenderingAttachmentInfo depthAttachment{};
+                bool hasDepth = false;
+                size_t clearIndex = 0;
+
+                for (const auto& attachment : renderpass->getAttachments())
                 {
-                    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                    .renderPass = renderpass->getRenderPass(),
-                    .framebuffer = framebuffer,
-                    .renderArea =
+                    if (attachment.type == ResourceType::Color)
                     {
-                        .offset = { 0,0 },
-                        .extent = getExtent(renderpass->getExtent(), _swapChain->extent()),
-                    },
-                    .clearValueCount = (uint32_t)clearValues.size(),
-                    .pClearValues = clearValues.data()
-                };
+                        VkRenderingAttachmentInfo colorInfo{};
+                        colorInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                        colorInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                        colorInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                        colorInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-                vkCmdBeginRenderPass(frame.primaryCmd, &renderpassBegin, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+                        assert(clearIndex < clearValues.size());
+                        colorInfo.clearValue = clearValues[clearIndex++];
+
+                        if (isLastRenderpass && !msaa)
+                        {
+                            colorInfo.imageView = _swapChain->imageViews()[imageIndex];
+                        }
+                        else
+                        {
+                            assert(attachmentSlot < attachment.images.size());
+                            assert(attachment.images[attachmentSlot] != nullptr);
+                            colorInfo.imageView = attachment.images[attachmentSlot]->_imageView;
+                        }
+						assert(colorInfo.imageView != VK_NULL_HANDLE);
+
+                        if (msaa)
+                        {
+                            if (clearIndex < clearValues.size())
+                            {
+                                ++clearIndex;
+                            }
+                            colorInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+                            colorInfo.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                            if (isLastRenderpass)
+                            {
+                                colorInfo.resolveImageView = _swapChain->imageViews()[imageIndex];
+                            }
+                            else
+                            {
+                                assert(attachmentSlot < attachment.resolveImages.size());
+                                assert(attachment.resolveImages[attachmentSlot] != nullptr);
+                                colorInfo.resolveImageView = attachment.resolveImages[attachmentSlot]->_imageView;
+                            }
+							assert(colorInfo.resolveImageView != VK_NULL_HANDLE);
+                        }
+
+                        colorAttachments.push_back(colorInfo);
+                    }
+                    else if (attachment.type == ResourceType::Depth)
+                    {
+                        hasDepth = true;
+                        assert(attachmentSlot < attachment.images.size());
+                        assert(attachment.images[attachmentSlot] != nullptr);
+                        depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                        depthAttachment.imageView = attachment.images[attachmentSlot]->_imageView;
+						assert(depthAttachment.imageView != VK_NULL_HANDLE);
+                        depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                        assert(clearIndex < clearValues.size());
+                        depthAttachment.clearValue = clearValues[clearIndex++];
+                    }
+                }
+
+                VkRenderingInfo renderingInfo{};
+                renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+                renderingInfo.flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT;
+                renderingInfo.renderArea = { .offset = { 0, 0 }, .extent = renderExtent };
+                renderingInfo.layerCount = 1;
+                renderingInfo.colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size());
+                renderingInfo.pColorAttachments = colorAttachments.empty() ? nullptr : colorAttachments.data();
+                renderingInfo.pDepthAttachment = hasDepth ? &depthAttachment : nullptr;
+				assert(renderingInfo.layerCount == 1);
+				assert(renderingInfo.colorAttachmentCount == renderpass->getColorFormats().size());
+
+                _device->cmdBeginRendering()(frame.primaryCmd, &renderingInfo);
+
+                VkCommandBufferInheritanceRenderingInfo inheritanceRendering{};
+                inheritanceRendering.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO;
+                inheritanceRendering.colorAttachmentCount = static_cast<uint32_t>(renderpass->getColorFormats().size());
+                inheritanceRendering.pColorAttachmentFormats = renderpass->getColorFormats().empty()
+                    ? nullptr
+                    : renderpass->getColorFormats().data();
+                inheritanceRendering.depthAttachmentFormat = renderpass->getDepthFormat();
+                inheritanceRendering.rasterizationSamples = renderpass->getRasterizationSamples();
 
                 VkCommandBufferInheritanceInfo inheritanceInfo{};
                 inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-                inheritanceInfo.renderPass = renderpass->getRenderPass();
+                inheritanceInfo.pNext = &inheritanceRendering;
+                inheritanceInfo.renderPass = VK_NULL_HANDLE;
                 inheritanceInfo.subpass = 0;
-                inheritanceInfo.framebuffer = framebuffer;
+                inheritanceInfo.framebuffer = VK_NULL_HANDLE;
                 inheritanceInfo.occlusionQueryEnable = VK_FALSE;
                 inheritanceInfo.queryFlags = 0;
                 inheritanceInfo.pipelineStatistics = 0;
@@ -326,7 +425,12 @@ namespace hl
                         secondaryBuffersForGroup.data());
                 }
 
-                vkCmdEndRenderPass(frame.primaryCmd);
+                _device->cmdEndRendering()(frame.primaryCmd);
+
+                _renderGraph->recordPostPassBarriers(
+                    frame.primaryCmd,
+                    renderpassName,
+                    imageIndex);
 
                 ++renderpassIndex;
             }

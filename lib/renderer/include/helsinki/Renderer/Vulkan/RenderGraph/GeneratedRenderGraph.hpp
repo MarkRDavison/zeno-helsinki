@@ -35,6 +35,16 @@ namespace hl
 		void updateAllDescriptorSets();
 		void updateAllOutputResources();
 
+		void recordPrePassBarriers(
+			VkCommandBuffer commandBuffer,
+			const std::string& passName,
+			uint32_t currentFrame,
+			uint32_t imageIndex);
+		void recordPostPassBarriers(
+			VkCommandBuffer commandBuffer,
+			const std::string& passName,
+			uint32_t imageIndex);
+
 	private:
 		VulkanDevice& _device;
 		VulkanSwapChain& _swapChain;

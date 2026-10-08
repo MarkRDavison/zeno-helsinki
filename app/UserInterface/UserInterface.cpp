@@ -14,7 +14,6 @@ static void registerServices(hl::ServiceProvider& services)
 
 int main()
 {
-
 	hl::ServiceProvider serviceProvider;
 
 	registerServices(serviceProvider);

@@ -30,6 +30,10 @@ namespace hl
 		VulkanQueue& presentQueue() { return _presentQueue; }
 		VkSampleCountFlagBits msaaSamples() const { return _msaaSamples; }
 
+		PFN_vkCmdBeginRendering cmdBeginRendering() const { return _cmdBeginRendering; }
+		PFN_vkCmdEndRendering cmdEndRendering() const { return _cmdEndRendering; }
+		PFN_vkCmdPipelineBarrier2 cmdPipelineBarrier2() const { return _cmdPipelineBarrier2; }
+
 		inline void setDebugName(uint64_t handle, VkObjectType type, const char* name)
 		{
 			VkDebugUtilsObjectNameInfoEXT nameInfo{};
@@ -57,8 +61,10 @@ namespace hl
 		void createLogicalDevice();
 
 		static bool isDeviceSuitable(VkPhysicalDevice d, VkSurfaceKHR s);
+		static bool isBasicallySuitable(VkPhysicalDevice d, VkSurfaceKHR s);
 		static bool checkDeviceExtensionSupport(VkPhysicalDevice p);
 		static VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice p);
+		void loadCore13Commands();
 
 		// TODO: Split logical and physical???
 		VulkanInstance& _instance;
@@ -69,5 +75,8 @@ namespace hl
 		VulkanQueue _presentQueue;
 		VkSampleCountFlagBits _msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 		std::unordered_map<uint64_t, std::string> _handleToNameMap;
+		PFN_vkCmdBeginRendering _cmdBeginRendering{ nullptr };
+		PFN_vkCmdEndRendering _cmdEndRendering{ nullptr };
+		PFN_vkCmdPipelineBarrier2 _cmdPipelineBarrier2{ nullptr };
 	};
 }

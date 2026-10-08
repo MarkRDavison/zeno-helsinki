@@ -1,9 +1,10 @@
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
+#include <cassert>
 #include <stdexcept>
-#include <iostream>
 #include <set>
+#include <string>
 
 namespace hl
 {
@@ -48,6 +49,97 @@ namespace hl
         throw std::runtime_error("failed to find suitable memory type!");
     }
 
+	static void queryModernDeviceFeatures(
+		VkPhysicalDevice physicalDevice,
+		VkPhysicalDeviceFeatures2& features2,
+		VkPhysicalDeviceVulkan12Features& vulkan12,
+		VkPhysicalDeviceVulkan13Features& vulkan13)
+	{
+		vulkan13 = {};
+		vulkan13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+		vulkan12 = {};
+		vulkan12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		vulkan12.pNext = &vulkan13;
+
+		features2 = {};
+		features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		features2.pNext = &vulkan12;
+
+		vkGetPhysicalDeviceFeatures2(physicalDevice, &features2);
+	}
+
+	static std::string missingRequiredModernFeatures(VkPhysicalDevice physicalDevice)
+	{
+		VkPhysicalDeviceProperties properties{};
+		vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+		if (VK_VERSION_MAJOR(properties.apiVersion) < 1
+			|| (VK_VERSION_MAJOR(properties.apiVersion) == 1
+				&& VK_VERSION_MINOR(properties.apiVersion) < 3))
+		{
+			return "Vulkan 1.3 apiVersion";
+		}
+
+		VkPhysicalDeviceFeatures2 features2{};
+		VkPhysicalDeviceVulkan12Features vulkan12{};
+		VkPhysicalDeviceVulkan13Features vulkan13{};
+		queryModernDeviceFeatures(physicalDevice, features2, vulkan12, vulkan13);
+
+		if (vulkan13.dynamicRendering != VK_TRUE)
+		{
+			return "dynamicRendering";
+		}
+		if (vulkan13.synchronization2 != VK_TRUE)
+		{
+			return "synchronization2";
+		}
+		if (vulkan12.timelineSemaphore != VK_TRUE)
+		{
+			return "timelineSemaphore";
+		}
+		if (vulkan12.descriptorIndexing != VK_TRUE)
+		{
+			return "descriptorIndexing";
+		}
+		if (vulkan12.shaderSampledImageArrayNonUniformIndexing != VK_TRUE)
+		{
+			return "shaderSampledImageArrayNonUniformIndexing";
+		}
+		if (vulkan12.descriptorBindingPartiallyBound != VK_TRUE)
+		{
+			return "descriptorBindingPartiallyBound";
+		}
+		if (vulkan12.descriptorBindingSampledImageUpdateAfterBind != VK_TRUE)
+		{
+			return "descriptorBindingSampledImageUpdateAfterBind";
+		}
+		if (vulkan12.runtimeDescriptorArray != VK_TRUE)
+		{
+			return "runtimeDescriptorArray";
+		}
+
+		return {};
+	}
+
+	bool VulkanDevice::isBasicallySuitable(VkPhysicalDevice d, VkSurfaceKHR s)
+	{
+		auto queueIndices = VulkanQueue::findQueueFamilies(d, s);
+
+		bool extensionsSupported = checkDeviceExtensionSupport(d);
+
+		bool swapChainAdequate = false;
+		if (extensionsSupported)
+		{
+			auto swapChainSupport = VulkanSwapChain::querySwapChainSupport(d, s);
+			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+		}
+
+		VkPhysicalDeviceFeatures supportedFeatures{};
+		vkGetPhysicalDeviceFeatures(d, &supportedFeatures);
+
+		return queueIndices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+	}
+
 	void VulkanDevice::pickPhysicalDevice()
 	{
         uint32_t deviceCount = 0;
@@ -61,18 +153,35 @@ namespace hl
         std::vector<VkPhysicalDevice> devices(deviceCount);
         vkEnumeratePhysicalDevices(_instance.handle(), &deviceCount, devices.data());
 
+		std::string lastMissingFeature;
+
         for (const auto& d : devices)
         {
-            if (isDeviceSuitable(d, _surface.handle()))
+            if (!isBasicallySuitable(d, _surface.handle()))
             {
-                _physicalDevice = d;
-                _msaaSamples = getMaxUsableSampleCount(_physicalDevice);
-                break;
+                continue;
             }
+
+			const auto missing = missingRequiredModernFeatures(d);
+			if (!missing.empty())
+			{
+				lastMissingFeature = missing;
+				continue;
+			}
+
+			_physicalDevice = d;
+			_msaaSamples = getMaxUsableSampleCount(_physicalDevice);
+			break;
         }
 
         if (_physicalDevice == VK_NULL_HANDLE)
         {
+			if (!lastMissingFeature.empty())
+			{
+				throw std::runtime_error(
+					"failed to find a suitable GPU: missing required feature " + lastMissingFeature);
+			}
+
             throw std::runtime_error("failed to find a suitable GPU!");
         }
 	}
@@ -95,17 +204,35 @@ namespace hl
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
-        VkPhysicalDeviceFeatures deviceFeatures{};
-        deviceFeatures.samplerAnisotropy = VK_TRUE;
-        deviceFeatures.sampleRateShading = VK_TRUE; // enable sample shading feature for the device
+		VkPhysicalDeviceVulkan13Features vulkan13{};
+		vulkan13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		vulkan13.dynamicRendering = VK_TRUE;
+		vulkan13.synchronization2 = VK_TRUE;
+
+		VkPhysicalDeviceVulkan12Features vulkan12{};
+		vulkan12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		vulkan12.pNext = &vulkan13;
+		vulkan12.timelineSemaphore = VK_TRUE;
+		vulkan12.descriptorIndexing = VK_TRUE;
+		vulkan12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+		vulkan12.descriptorBindingPartiallyBound = VK_TRUE;
+		vulkan12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+		vulkan12.runtimeDescriptorArray = VK_TRUE;
+
+		VkPhysicalDeviceFeatures2 features2{};
+		features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		features2.pNext = &vulkan12;
+		features2.features.samplerAnisotropy = VK_TRUE;
+		features2.features.sampleRateShading = VK_TRUE;
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		createInfo.pNext = &features2;
 
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
 
-        createInfo.pEnabledFeatures = &deviceFeatures;
+        createInfo.pEnabledFeatures = nullptr;
 
         createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -124,25 +251,58 @@ namespace hl
 
         vkGetDeviceQueue(_device, queueIndices.graphicsFamily.value(), 0, &_graphicsQueue._queue);
         vkGetDeviceQueue(_device, queueIndices.presentFamily.value(), 0, &_presentQueue._queue);
+
+		loadCore13Commands();
+	}
+
+	void VulkanDevice::loadCore13Commands()
+	{
+		assert(_device != VK_NULL_HANDLE);
+
+		_cmdBeginRendering = reinterpret_cast<PFN_vkCmdBeginRendering>(
+			vkGetDeviceProcAddr(_device, "vkCmdBeginRendering"));
+		if (_cmdBeginRendering == nullptr)
+		{
+			_cmdBeginRendering = reinterpret_cast<PFN_vkCmdBeginRendering>(
+				vkGetDeviceProcAddr(_device, "vkCmdBeginRenderingKHR"));
+		}
+
+		_cmdEndRendering = reinterpret_cast<PFN_vkCmdEndRendering>(
+			vkGetDeviceProcAddr(_device, "vkCmdEndRendering"));
+		if (_cmdEndRendering == nullptr)
+		{
+			_cmdEndRendering = reinterpret_cast<PFN_vkCmdEndRendering>(
+				vkGetDeviceProcAddr(_device, "vkCmdEndRenderingKHR"));
+		}
+
+		_cmdPipelineBarrier2 = reinterpret_cast<PFN_vkCmdPipelineBarrier2>(
+			vkGetDeviceProcAddr(_device, "vkCmdPipelineBarrier2"));
+		if (_cmdPipelineBarrier2 == nullptr)
+		{
+			_cmdPipelineBarrier2 = reinterpret_cast<PFN_vkCmdPipelineBarrier2>(
+				vkGetDeviceProcAddr(_device, "vkCmdPipelineBarrier2KHR"));
+		}
+
+		assert(_cmdBeginRendering != nullptr);
+		assert(_cmdEndRendering != nullptr);
+		assert(_cmdPipelineBarrier2 != nullptr);
 	}
 
     bool VulkanDevice::isDeviceSuitable(VkPhysicalDevice d, VkSurfaceKHR s)
     {
-        auto queueIndices = VulkanQueue::findQueueFamilies(d, s);
+		if (!isBasicallySuitable(d, s))
+		{
+			return false;
+		}
 
-        bool extensionsSupported = checkDeviceExtensionSupport(d);
+		const auto missing = missingRequiredModernFeatures(d);
+		if (!missing.empty())
+		{
+			throw std::runtime_error(
+				"GPU is not suitable: missing required feature " + missing);
+		}
 
-        bool swapChainAdequate = false;
-        if (extensionsSupported)
-        {
-            auto swapChainSupport = VulkanSwapChain::querySwapChainSupport(d, s);
-            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-        }
-
-        VkPhysicalDeviceFeatures supportedFeatures;
-        vkGetPhysicalDeviceFeatures(d, &supportedFeatures);
-
-        return queueIndices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+		return true;
     }
 
     bool VulkanDevice::checkDeviceExtensionSupport(VkPhysicalDevice p)

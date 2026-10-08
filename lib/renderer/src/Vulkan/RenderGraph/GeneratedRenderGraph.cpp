@@ -1,12 +1,13 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanCommandBuffer.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/UniformBufferResource.hpp>
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <helsinki/Renderer/Resource/OffscreenImageResource.hpp>
 #include <helsinki/System/Resource/LogicalResource.hpp>
+#include <cassert>
 #include <stdexcept>
-#include <iostream>
 
 namespace hl
 {
@@ -29,6 +30,7 @@ namespace hl
 			swapChain.extent().width,
 			swapChain.extent().height,
 			swapChain.imageViews(),
+			swapChain.format(),
             resourceManager);
 
         for (uint32_t layer = 0;; ++layer)
@@ -139,7 +141,6 @@ namespace hl
                 info,
                 width,
                 height,
-                _swapChain.imageViews(),
                 (uint32_t)(isLastRenderpass ? _swapChain.imageViews().size() : MAX_FRAMES_IN_FLIGHT),
                 isLastRenderpass);
 
@@ -457,4 +458,122 @@ namespace hl
             }
         }
     }
+
+	static const RenderpassAttachment* findAttachmentByName(
+		const std::vector<VulkanRenderGraphRenderpassResources*>& resources,
+		const std::string& resourceName)
+	{
+		for (const auto* pass : resources)
+		{
+			for (const auto& attachment : pass->getAttachments())
+			{
+				if (attachment.name == resourceName)
+				{
+					return &attachment;
+				}
+			}
+		}
+
+		return nullptr;
+	}
+
+	void GeneratedRenderGraph::recordPrePassBarriers(
+		VkCommandBuffer commandBuffer,
+		const std::string& passName,
+		uint32_t currentFrame,
+		uint32_t imageIndex)
+	{
+		assert(commandBuffer != VK_NULL_HANDLE);
+		assert(imageIndex < _swapChain.images().size());
+		assert(currentFrame < static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT));
+
+		auto* pass = getRenderpassByName(passName);
+		assert(pass != nullptr);
+		const uint32_t slot = pass->writesToSwapchain() ? imageIndex : currentFrame;
+		const bool msaa = pass->usesMultiSampling();
+
+		for (const auto& edge : RenderGraph::generateImageBarrierEdges(_renderGraph))
+		{
+			if (edge.passName != passName)
+			{
+				continue;
+			}
+
+			if (edge.kind == GraphImageBarrierKind::UndefinedToColorAttachment)
+			{
+				const auto* attachment = findAttachmentByName(_resources, edge.resourceName);
+				assert(attachment != nullptr);
+
+				if (pass->writesToSwapchain() && !msaa)
+				{
+					VulkanCommandBuffer::undefinedToColorAttachment(_device, commandBuffer, _swapChain.images()[imageIndex]);
+				}
+				else
+				{
+					assert(slot < attachment->images.size());
+					assert(attachment->images[slot] != nullptr);
+					VulkanCommandBuffer::undefinedToColorAttachment(_device, commandBuffer, attachment->images[slot]->_image);
+					if (msaa)
+					{
+						if (pass->writesToSwapchain())
+						{
+							VulkanCommandBuffer::undefinedToColorAttachment(_device, commandBuffer, _swapChain.images()[imageIndex]);
+						}
+						else
+						{
+							assert(slot < attachment->resolveImages.size());
+							assert(attachment->resolveImages[slot] != nullptr);
+							VulkanCommandBuffer::undefinedToColorAttachment(_device, commandBuffer, attachment->resolveImages[slot]->_image);
+						}
+					}
+				}
+			}
+			else if (edge.kind == GraphImageBarrierKind::UndefinedToDepthAttachment)
+			{
+				const auto* attachment = findAttachmentByName(_resources, edge.resourceName);
+				assert(attachment != nullptr);
+				assert(slot < attachment->images.size());
+				assert(attachment->images[slot] != nullptr);
+				VulkanCommandBuffer::undefinedToDepthAttachment(_device, commandBuffer, attachment->images[slot]->_image);
+			}
+			else if (edge.kind == GraphImageBarrierKind::ColorAttachmentToSampled)
+			{
+				const auto* attachment = findAttachmentByName(_resources, edge.resourceName);
+				assert(attachment != nullptr);
+
+				const uint32_t sampledSlot = currentFrame;
+				if (!attachment->resolveImages.empty())
+				{
+					assert(sampledSlot < attachment->resolveImages.size());
+					assert(attachment->resolveImages[sampledSlot] != nullptr);
+					VulkanCommandBuffer::colorAttachmentToSampled(_device, commandBuffer, attachment->resolveImages[sampledSlot]->_image);
+				}
+				else
+				{
+					assert(sampledSlot < attachment->images.size());
+					assert(attachment->images[sampledSlot] != nullptr);
+					VulkanCommandBuffer::colorAttachmentToSampled(_device, commandBuffer, attachment->images[sampledSlot]->_image);
+				}
+			}
+		}
+	}
+
+	void GeneratedRenderGraph::recordPostPassBarriers(
+		VkCommandBuffer commandBuffer,
+		const std::string& passName,
+		uint32_t imageIndex)
+	{
+		assert(commandBuffer != VK_NULL_HANDLE);
+		assert(imageIndex < _swapChain.images().size());
+
+		for (const auto& edge : RenderGraph::generateImageBarrierEdges(_renderGraph))
+		{
+			if (edge.passName != passName || edge.kind != GraphImageBarrierKind::ColorAttachmentToPresent)
+			{
+				continue;
+			}
+
+			VulkanCommandBuffer::colorAttachmentToPresent(_device, commandBuffer, _swapChain.images()[imageIndex]);
+		}
+	}
 }

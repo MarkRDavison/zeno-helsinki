@@ -32,6 +32,7 @@ namespace hl
 		VkSwapchainKHR handle() const { return _swapChain; }
 		VkExtent2D extent() const { return _swapChainExtent; }
 		VkFormat format() const { return _swapChainImageFormat; }
+		const std::vector<VkImage>& images() const { return _swapChainImages; }
 		const std::vector<VkImageView>& imageViews() const { return _swapChainImageViews; }
 
 	private:

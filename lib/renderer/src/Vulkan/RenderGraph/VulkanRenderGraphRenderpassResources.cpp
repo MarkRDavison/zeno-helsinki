@@ -26,16 +26,6 @@ namespace hl
 		return added;
 	}
 
-	void VulkanRenderGraphRenderpassResources::addRenderpass(VkRenderPass renderpass)
-	{
-		_renderpass = renderpass;
-	}
-
-	void VulkanRenderGraphRenderpassResources::addFramebuffer(VkFramebuffer framebuffer)
-	{
-		_framebuffers.push_back(framebuffer);
-	}
-
 	void VulkanRenderGraphRenderpassResources::startPipelineGroup()
 	{
 		assert(!_pipelineGroupOpen);
@@ -89,16 +79,6 @@ namespace hl
 
 		_pipelineGroupDescriptorSetLayouts.clear();
 
-		for (auto& fb : _framebuffers)
-		{
-			vkDestroyFramebuffer(_device.handle(), fb, nullptr);
-		}
-
-		_framebuffers.clear();
-
-		vkDestroyRenderPass(_device.handle(), _renderpass, nullptr);
-		_renderpass = VK_NULL_HANDLE;
-
 		for (auto& a : getAttachments())
 		{
 			if (a.sampler != VK_NULL_HANDLE)
@@ -123,18 +103,9 @@ namespace hl
 		const RenderpassInfo& info,
 		uint32_t width, 
 		uint32_t height,
-		const std::vector<VkImageView>& swapChainImageViews,
 		uint32_t imageCount,
 		bool isLastRenderpass)
 	{
-		// Destroy
-		for (auto& fb : _framebuffers)
-		{
-			vkDestroyFramebuffer(_device.handle(), fb, nullptr);
-		}
-
-		_framebuffers.clear();
-
 		for (auto& a : getAttachments())
 		{
 			if (a.sampler != VK_NULL_HANDLE)
@@ -158,7 +129,6 @@ namespace hl
 
 		_attachments.clear();
 
-		// Create
 		RenderGraph::createImages(
 			_device,
 			this,
@@ -166,16 +136,6 @@ namespace hl
 			width,
 			height,
 			imageCount, 
-			isLastRenderpass);
-
-		RenderGraph::createFrameBuffers(
-			_device,
-			this,
-			info,
-			width,
-			height,
-			swapChainImageViews,
-			imageCount,
 			isLastRenderpass);
 	}
 
@@ -190,16 +150,6 @@ namespace hl
 	const std::vector<std::vector<VulkanRenderGraphPipelineResources*>>& VulkanRenderGraphRenderpassResources::getPipelineGroups() const
 	{
 		return _pipelineGroups;
-	}
-
-	const VkRenderPass VulkanRenderGraphRenderpassResources::getRenderPass() const
-	{
-		return _renderpass;
-	}
-
-	const VkFramebuffer VulkanRenderGraphRenderpassResources::getFramebuffer(uint32_t imageIndex)
-	{
-		return _framebuffers[imageIndex];
 	}
 
 	std::vector<VkClearValue> VulkanRenderGraphRenderpassResources::getClearValues() const
@@ -217,5 +167,42 @@ namespace hl
 	void VulkanRenderGraphRenderpassResources::setExtent(VkExtent2D extent)
 	{
 		_extent = extent;
+	}
+
+	void VulkanRenderGraphRenderpassResources::setRenderingState(
+		const std::vector<VkFormat>& colorFormats,
+		VkFormat depthFormat,
+		VkSampleCountFlagBits rasterizationSamples,
+		bool writesToSwapchain)
+	{
+		_colorFormats = colorFormats;
+		_depthFormat = depthFormat;
+		_rasterizationSamples = rasterizationSamples;
+		_writesToSwapchain = writesToSwapchain;
+	}
+
+	const std::vector<VkFormat>& VulkanRenderGraphRenderpassResources::getColorFormats() const
+	{
+		return _colorFormats;
+	}
+
+	VkFormat VulkanRenderGraphRenderpassResources::getDepthFormat() const
+	{
+		return _depthFormat;
+	}
+
+	VkSampleCountFlagBits VulkanRenderGraphRenderpassResources::getRasterizationSamples() const
+	{
+		return _rasterizationSamples;
+	}
+
+	bool VulkanRenderGraphRenderpassResources::writesToSwapchain() const
+	{
+		return _writesToSwapchain;
+	}
+
+	bool VulkanRenderGraphRenderpassResources::usesMultiSampling() const
+	{
+		return _rasterizationSamples != VK_SAMPLE_COUNT_1_BIT;
 	}
 }

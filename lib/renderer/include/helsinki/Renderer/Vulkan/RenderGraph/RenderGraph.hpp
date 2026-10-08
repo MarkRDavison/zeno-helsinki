@@ -211,6 +211,21 @@ namespace hl
         VkSampler sampler{ VK_NULL_HANDLE }; // TODO: This is populated when a subsequent renderpass needs it
     };
 
+    enum class GraphImageBarrierKind
+    {
+        UndefinedToColorAttachment,
+        UndefinedToDepthAttachment,
+        ColorAttachmentToSampled,
+        ColorAttachmentToPresent
+    };
+
+    struct GraphImageBarrierEdge
+    {
+        std::string passName;
+        std::string resourceName;
+        GraphImageBarrierKind kind;
+    };
+
     class RenderGraph
     {
         RenderGraph() = delete;
@@ -221,6 +236,7 @@ namespace hl
             uint32_t width,
             uint32_t height,
             const std::vector<VkImageView>& swapChainImageViews,
+            VkFormat swapChainFormat,
             ResourceManager& resourceManager);
 
         static void destroy(std::vector<VulkanRenderGraphRenderpassResources*>& generatedRenderpassResources);
@@ -233,15 +249,6 @@ namespace hl
             uint32_t height,
             uint32_t imageCount,
             bool isLastRenderpass);
-        static void createFrameBuffers(
-            VulkanDevice& device,
-            VulkanRenderGraphRenderpassResources *resources, 
-            const RenderpassInfo& info,
-            uint32_t width,
-            uint32_t height,
-            const std::vector<VkImageView>& swapChainImageViews,
-            uint32_t imageCount,
-            bool isLastRenderpass);
 
         static VkFormat extractFormat(const std::string& formatString);
         static VkDescriptorType extractDescriptorType(const std::string& descriptorTypeString);
@@ -249,6 +256,7 @@ namespace hl
         static VkFormat extractVertexAttributeFormat(VertexAttributeFormat format);
 
         static std::unordered_map<std::string, Node> generateDAG(const std::vector<hl::RenderpassInfo>& renderpassInfo);
+        static std::vector<GraphImageBarrierEdge> generateImageBarrierEdges(const std::vector<hl::RenderpassInfo>& renderpassInfo);
     };
 
 }
