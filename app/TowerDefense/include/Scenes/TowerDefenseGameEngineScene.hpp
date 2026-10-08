@@ -15,8 +15,12 @@
 #include <helsinki/Engine/Ui/UiBatch.hpp>
 #include <helsinki/Audio/Audio.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
+#include <Services/GameCommandService.hpp>
 #include <Services/GameStateService.hpp>
 #include <Services/MatchContext.hpp>
+#include <Services/TowerBuildService.hpp>
+#include <Services/TowerFocusService.hpp>
+#include <Services/TowerSelectionService.hpp>
 #include <Services/WaveService.hpp>
 #include <Services/CreepCatalog.hpp>
 #include <Services/TowerCatalog.hpp>
@@ -93,10 +97,10 @@ namespace tower
 		void updateGhost();
 		void tryHandleBoardClick();
 		void flashInvalid(int tx, int tz);
-		void clearInspect();
-		void setInspect(hl::Entity* tower);
+		void clearInspect(bool clearFocus);
 		void sellInspectedTower();
 		void syncInspectRing();
+		hl::Entity* selectedTower() const;
 		hl::Entity* towerAt(int tx, int tz) const;
 		hl::Entity* entityAt(int tx, int tz) const;
 		bool invalidFlashBlinkOn() const;
@@ -129,6 +133,10 @@ namespace tower
 		StatusCategoryCatalog& _statusCategories;
 		EntityCatalog& _entities;
 		LevelCatalog& _level;
+		TowerSelectionService _selection;
+		TowerFocusService _focus;
+		TowerBuildService _build;
+		GameCommandService _commands;
 		hl::audio::Audio& _audio;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::Entity* _ghost = nullptr;
@@ -144,7 +152,6 @@ namespace tower
 		float _cameraDistance = 0.0f;
 		float _cameraDistanceTarget = 0.0f;
 		std::string _selectedTowerId;
-		hl::Entity* _inspectTower = nullptr;
 		std::vector<hl::Entity*> _targetLines;
 
 		hl::UiBatch _uiBatch;

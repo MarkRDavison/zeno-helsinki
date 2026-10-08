@@ -18,6 +18,16 @@ namespace tower
 		return _lives;
 	}
 
+	int GameStateService::selectedTowerId() const
+	{
+		return _selectedTowerId;
+	}
+
+	void GameStateService::setSelectedTowerId(int id)
+	{
+		_selectedTowerId = id;
+	}
+
 	bool GameStateService::trySpend(int cost)
 	{
 		if (matchEnded() || _gold < cost)

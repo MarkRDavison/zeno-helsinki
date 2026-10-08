@@ -22,6 +22,7 @@ namespace tower
 	{
 	public:
 		void load(const std::string& path, const WeaponCatalog& weapons);
+		void loadFromText(const std::string& text, const char* file, const WeaponCatalog& weapons);
 		const TowerDef* find(std::string_view id) const;
 		const std::vector<TowerDef>& all() const;
 

@@ -85,6 +85,10 @@ namespace tower
 		_statusCategories(statusCategories),
 		_entities(entities),
 		_level(level),
+		_selection(_scene, gameState),
+		_focus(_scene, _selection, gameState, towers, level),
+		_build(_scene, wave, gameState, towers, level),
+		_commands(_selection, _focus, _build),
 		_audio(audio)
 	{
 		_cameras.insert({ "Ui", new hl::Camera2D() });
@@ -998,7 +1002,7 @@ namespace tower
 
 		_ghost->GetComponent<hl::TransformComponent>()->SetPosition(
 			_level.tileCenter(tile->x, tile->z));
-		if (_inspectTower == nullptr && _rangeRing != nullptr)
+		if (selectedTower() == nullptr && _rangeRing != nullptr)
 		{
 			auto* ring = _rangeRing->GetComponent<hl::TransformComponent>();
 			ring->SetPosition(_level.tileCenter(tile->x, tile->z, RangeRingY));
@@ -1010,48 +1014,45 @@ namespace tower
 		_ghostVisible = true;
 	}
 
-	void TowerDefenseGameEngineScene::clearInspect()
+	hl::Entity* TowerDefenseGameEngineScene::selectedTower() const
 	{
-		_inspectTower = nullptr;
+		return _selection.selected();
 	}
 
-	void TowerDefenseGameEngineScene::setInspect(hl::Entity* tower)
+	void TowerDefenseGameEngineScene::clearInspect(bool clearFocus)
 	{
-		_inspectTower = tower;
+		_commands.handle(DeselectTower{ .clearFocus = clearFocus });
 	}
 
 	void TowerDefenseGameEngineScene::sellInspectedTower()
 	{
-		if (_inspectTower == nullptr)
+		auto* selected = selectedTower();
+		const bool flashingSold = _flashTower != nullptr && selected != nullptr && _flashTower == selected;
+		if (!_commands.handle(SellSelected{}))
 		{
 			return;
 		}
 
-		const auto* tower = _inspectTower->GetComponent<TowerComponent>();
-		const auto* def = (tower != nullptr) ? _towers.find(tower->defId) : nullptr;
-		const int cost = def != nullptr ? def->cost : _towers.all().front().cost;
-		_gameState.addGold(towerSellRefund(cost));
-		if (_flashTower == _inspectTower)
+		if (flashingSold)
 		{
 			_flashTower = nullptr;
 			_invalidFlashRemaining = 0.0f;
 			_flashGhost = false;
 		}
-		_scene.removeEntity(_inspectTower->Id);
-		clearInspect();
 	}
 
 	void TowerDefenseGameEngineScene::syncInspectRing()
 	{
-		if (_inspectTower == nullptr || _rangeRing == nullptr)
+		auto* selected = selectedTower();
+		if (selected == nullptr || _rangeRing == nullptr)
 		{
 			return;
 		}
 
-		const auto* tower = _inspectTower->GetComponent<TowerComponent>();
+		const auto* tower = selected->GetComponent<TowerComponent>();
 		if (tower == nullptr)
 		{
-			clearInspect();
+			clearInspect(false);
 			return;
 		}
 
@@ -1082,79 +1083,41 @@ namespace tower
 			return;
 		}
 
-		if (_wave.inCombat())
+		if (rightReleased)
 		{
-			if (leftReleased)
-			{
-				if (auto* tower = towerAt(tile->x, tile->z))
-				{
-					if (_inspectTower == tower)
-					{
-						if (auto* component = tower->GetComponent<TowerComponent>())
-						{
-							component->focusEntityId = TowerFocusNone;
-						}
-						clearInspect();
-					}
-					else
-					{
-						setInspect(tower);
-					}
-					return;
-				}
-
-				if (_inspectTower != nullptr)
-				{
-					if (auto* component = _inspectTower->GetComponent<TowerComponent>())
-					{
-						component->focusEntityId = TowerFocusNone;
-					}
-					clearInspect();
-				}
-				return;
-			}
-
-			if (_inspectTower == nullptr)
-			{
-				return;
-			}
-
-			auto* selected = _inspectTower->GetComponent<TowerComponent>();
-			const auto* def = (selected != nullptr) ? _towers.find(selected->defId) : nullptr;
-			if (selected == nullptr || def == nullptr)
-			{
-				return;
-			}
-
 			auto* entity = entityAt(tile->x, tile->z);
 			if (entity == nullptr || !hasTeam(entity, Team::Neutral))
 			{
 				return;
 			}
 
-			const glm::vec3 from = _level.tileCenter(selected->x, selected->z);
-			if (!tryAssignTowerFocus(_scene, from, def->range, entity, selected->focusEntityId))
+			if (!_commands.handle(AssignTowerFocus{ .targetEntityId = entity->Id }))
 			{
 				flashInvalid(tile->x, tile->z);
 			}
 			return;
 		}
 
-		if (!leftReleased)
-		{
-			return;
-		}
-
 		if (auto* tower = towerAt(tile->x, tile->z))
 		{
-			setInspect(tower);
+			if (_wave.inCombat() && selectedTower() == tower)
+			{
+				clearInspect(true);
+			}
+			else
+			{
+				_commands.handle(SelectTower{ .towerEntityId = tower->Id });
+			}
 			return;
 		}
 
-		if (_inspectTower != nullptr)
+		if (_wave.inCombat())
 		{
-			clearInspect();
+			clearInspect(true);
+			return;
 		}
+
+		clearInspect(false);
 
 		const auto* def = selectedTowerDef();
 		if (def == nullptr)
@@ -1162,13 +1125,7 @@ namespace tower
 			return;
 		}
 
-		if (entityAt(tile->x, tile->z) != nullptr)
-		{
-			flashInvalid(tile->x, tile->z);
-			return;
-		}
-
-		if (_level.isPathTile(tile->x, tile->z) || !_gameState.trySpend(def->cost))
+		if (!_commands.handle(PlaceTower{ .defId = def->id, .x = tile->x, .z = tile->z }))
 		{
 			flashInvalid(tile->x, tile->z);
 			return;
@@ -1369,13 +1326,13 @@ namespace tower
 					const char* materialName = _ghostPlaceable ? GhostOkMaterial : GhostBadMaterial;
 					const uint32_t ghostMaterial = _engine.getMaterialSystem().getMaterialIndex(materialName);
 					drawGhostLit(_ghost, ghostMaterial);
-					if (_inspectTower == nullptr)
+					if (selectedTower() == nullptr)
 					{
 						drawGhostLit(_rangeRing, ghostMaterial);
 					}
 				}
 
-				if (_inspectTower != nullptr)
+				if (selectedTower() != nullptr)
 				{
 					const uint32_t okMaterial = _engine.getMaterialSystem().getMaterialIndex(GhostOkMaterial);
 					drawGhostLit(_rangeRing, okMaterial);
@@ -1434,7 +1391,7 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::startWave()
 	{
-		clearInspect();
+		clearInspect(false);
 		if (!_wave.tryStart())
 		{
 			return;
@@ -1449,7 +1406,7 @@ namespace tower
 		_wave.tick(delta);
 		if (!wasCombat && _wave.inCombat())
 		{
-			clearInspect();
+			clearInspect(false);
 		}
 		while (_wave.takeSpawn())
 		{
@@ -1477,7 +1434,7 @@ namespace tower
 			return;
 		}
 
-		clearInspect();
+		clearInspect(false);
 
 		if (!_gameState.won())
 		{
@@ -1640,9 +1597,9 @@ namespace tower
 				def->label + " (" + std::to_string(def->cost) + ")",
 				24);
 		}
-		if (_inspectTower != nullptr)
+		if (selectedTower() != nullptr)
 		{
-			const auto* tower = _inspectTower->GetComponent<TowerComponent>();
+			const auto* tower = selectedTower()->GetComponent<TowerComponent>();
 			const auto* def = (tower != nullptr) ? _towers.find(tower->defId) : nullptr;
 			if (def != nullptr)
 			{
@@ -1730,7 +1687,7 @@ namespace tower
 			chipX += chipSizes[i].x + chipGap;
 		}
 
-		const bool showInspect = _inspectTower != nullptr && !_wave.inCombat() && !matchEnded();
+		const bool showInspect = selectedTower() != nullptr && !_wave.inCombat() && !matchEnded();
 		if (showInspect)
 		{
 			_inspectPanel->hitTestEnabled = true;
@@ -1803,12 +1760,12 @@ namespace tower
 
 		if (matchEnded())
 		{
-			clearInspect();
+			clearInspect(false);
 		}
 
 		if (_engine.getInputManager().isKeyReleased(GLFW_KEY_ESCAPE))
 		{
-			clearInspect();
+			clearInspect(false);
 			_selectedTowerId.clear();
 		}
 
