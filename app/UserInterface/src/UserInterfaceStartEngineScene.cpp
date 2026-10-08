@@ -1,10 +1,14 @@
 #include "UserInterfaceStartEngineScene.hpp"
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
+#include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <helsinki/Renderer/Resource/SignedDistanceFieldFontResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/System/Events/CharEvent.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
@@ -14,6 +18,9 @@
 #include <helsinki/Ui/Pointer.hpp>
 #include <helsinki/Ui/Widget.hpp>
 #include <GLFW/glfw3.h>
+#include <algorithm>
+#include <limits>
+#include <optional>
 #include <string>
 
 namespace ui
@@ -21,7 +28,51 @@ namespace ui
 	namespace
 	{
 		constexpr float kTexWhite = 0.0f;
+		constexpr float kTexRoboto = 1.0f;
 		constexpr float kScrollPixels = 32.0f;
+
+		class SceneFontTypeface : public hl::ui::ITypeface
+		{
+		public:
+			explicit SceneFontTypeface(hl::FontResource* font) : _font(font) {}
+
+			glm::vec2 layoutText(
+				std::string_view text,
+				unsigned fontSize,
+				std::vector<hl::ui::GlyphVertex>& out) const override
+			{
+				out.clear();
+				if (_font == nullptr)
+				{
+					return { 0.0f, 0.0f };
+				}
+
+				const auto generated = _font->generateTextVertexes(std::string(text), fontSize);
+				if (generated.empty())
+				{
+					return { 0.0f, 0.0f };
+				}
+
+				glm::vec2 minPos{ std::numeric_limits<float>::max() };
+				glm::vec2 maxPos{ std::numeric_limits<float>::lowest() };
+				for (const auto& v : generated)
+				{
+					minPos = glm::min(minPos, v.pos);
+					maxPos = glm::max(maxPos, v.pos);
+				}
+
+				out.reserve(generated.size());
+				for (const auto& v : generated)
+				{
+					out.push_back(hl::ui::GlyphVertex{ .pos = v.pos - minPos, .uv = v.texCoord });
+				}
+
+				return maxPos - minPos;
+			}
+
+		private:
+			hl::FontResource* _font = nullptr;
+		};
 
 		class BatchPaint : public hl::ui::IPaint
 		{
@@ -35,7 +86,20 @@ namespace ui
 
 			void sprite(const hl::ui::Box&, glm::vec4, glm::vec3) override {}
 
-			void glyphs(const std::vector<hl::ui::GlyphVertex>&, glm::vec2, glm::vec3) override {}
+			void glyphs(
+				const std::vector<hl::ui::GlyphVertex>& verts,
+				glm::vec2 origin,
+				glm::vec3 color) override
+			{
+				std::vector<hl::Vertex22D> converted;
+				converted.reserve(verts.size());
+				for (const auto& v : verts)
+				{
+					converted.push_back(hl::Vertex22D{ .pos = v.pos, .texCoord = v.uv });
+				}
+
+				_batch->addGlyphs(converted, origin, color, kTexRoboto);
+			}
 
 			void pushClip(const hl::ui::Box& worldBox) override
 			{
@@ -82,6 +146,30 @@ namespace ui
 				.primaryDown = engine.getInputManager().isButtonDown(GLFW_MOUSE_BUTTON_1),
 				.primaryReleased = engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1)
 			};
+		}
+
+		std::optional<hl::ui::TextKey> textKeyFromGlfw(int key)
+		{
+			switch (key)
+			{
+			case GLFW_KEY_BACKSPACE:
+				return hl::ui::TextKey::Backspace;
+			case GLFW_KEY_DELETE:
+				return hl::ui::TextKey::Delete;
+			case GLFW_KEY_LEFT:
+				return hl::ui::TextKey::Left;
+			case GLFW_KEY_RIGHT:
+				return hl::ui::TextKey::Right;
+			case GLFW_KEY_HOME:
+				return hl::ui::TextKey::Home;
+			case GLFW_KEY_END:
+				return hl::ui::TextKey::End;
+			case GLFW_KEY_ENTER:
+			case GLFW_KEY_KP_ENTER:
+				return hl::ui::TextKey::Enter;
+			default:
+				return std::nullopt;
+			}
 		}
 	}
 
@@ -222,6 +310,10 @@ namespace ui
 			hl::MaterialSystem::FallbackTextureName,
 			resourceContext);
 
+		resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>(
+			"roboto",
+			resourceContext);
+
 		const hl::ResourceDefinition uiSheetDefinition
 		{
 			.name = "ui_sheet",
@@ -231,6 +323,11 @@ namespace ui
 				hl::ResourceDefinition::Child
 				{
 					.name = "white",
+					.type = "texture"
+				},
+				hl::ResourceDefinition::Child
+				{
+					.name = "roboto",
 					.type = "texture"
 				}
 			}
@@ -259,6 +356,8 @@ namespace ui
 			resourceManager,
 			renderpasses);
 
+		_typeface = std::make_unique<SceneFontTypeface>(
+			resourceManager.GetResource<hl::FontResource>("roboto"));
 		buildLayoutTree();
 		_uiBatch.initialise(device);
 
@@ -309,22 +408,11 @@ namespace ui
 		_checkbox = std::make_unique<hl::ui::Checkbox>(column.addChild());
 		_toggle = std::make_unique<hl::ui::Toggle>(column.addChild());
 
-		auto& charStrip = _layoutRoot->addChild();
-		charStrip.kind = hl::ui::Kind::Row;
-		charStrip.gap = 4.0f;
-		charStrip.setTopLeft({ 0.0f, 0.0f });
-		charStrip.relative = { 16.0f, 176.0f };
+		_fieldLabel = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
+		_fieldLabel->setText("type here", 16);
+		_fieldLabel->color = { 0.75f, 0.76f, 0.80f };
 
-		_charSlots.clear();
-		_typedCodepoints.clear();
-		for (int i = 0; i < 8; ++i)
-		{
-			auto& slot = addRow(_widgets, charStrip, { 28.0f, 28.0f }, { 0.18f, 0.19f, 0.22f });
-			_charSlots.push_back(&slot);
-		}
-
-		auto& repeat = addRow(_widgets, charStrip, { 28.0f, 28.0f }, { 0.20f, 0.20f, 0.22f });
-		_repeatMarker = &repeat;
+		_textField = std::make_unique<hl::ui::TextField>(column.addChild(), *_typeface);
 
 		auto& clipList = _layoutRoot->addChild();
 		clipList.kind = hl::ui::Kind::Column;
@@ -422,27 +510,6 @@ namespace ui
 				: glm::vec3{ 0.85f, 0.78f, 0.28f };
 		}
 
-		for (std::size_t i = 0; i < _charSlots.size(); ++i)
-		{
-			if (i < _typedCodepoints.size())
-			{
-				const float t = static_cast<float>(_typedCodepoints[i] % 256) / 255.0f;
-				_charSlots[i]->color = { t, 0.35f, 1.0f - t };
-			}
-			else
-			{
-				_charSlots[i]->color = { 0.18f, 0.19f, 0.22f };
-			}
-		}
-
-		if (_repeatMarker != nullptr)
-		{
-			_repeatMarker->color = _keyRepeatLit
-				? glm::vec3{ 0.95f, 0.85f, 0.30f }
-				: glm::vec3{ 0.20f, 0.20f, 0.22f };
-		}
-		_keyRepeatLit = false;
-
 		_uiBatch.setFullScissor(VkRect2D{
 			{ 0, 0 },
 			{ static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y) }
@@ -469,15 +536,21 @@ namespace ui
 		}
 		else if (const auto* typed = dynamic_cast<const hl::CharEvent*>(&event))
 		{
-			_typedCodepoints.push_back(typed->codepoint());
-			if (_typedCodepoints.size() > _charSlots.size())
+			hl::ui::dispatchChar(typed->codepoint());
+		}
+		else if (const auto* press = dynamic_cast<const hl::KeyPressEvent*>(&event))
+		{
+			if (const auto key = textKeyFromGlfw(press->GetKeyCode()))
 			{
-				_typedCodepoints.erase(_typedCodepoints.begin());
+				hl::ui::dispatchTextKey(*key);
 			}
 		}
-		else if (dynamic_cast<const hl::KeyRepeatEvent*>(&event) != nullptr)
+		else if (const auto* repeat = dynamic_cast<const hl::KeyRepeatEvent*>(&event))
 		{
-			_keyRepeatLit = true;
+			if (const auto key = textKeyFromGlfw(repeat->GetKeyCode()))
+			{
+				hl::ui::dispatchTextKey(*key);
+			}
 		}
 	}
 

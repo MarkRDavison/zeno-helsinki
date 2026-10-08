@@ -5,13 +5,20 @@
 #include <helsinki/Engine/Ui/UiBatch.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 #include <helsinki/Ui/Checkbox.hpp>
+#include <helsinki/Ui/Label.hpp>
 #include <helsinki/Ui/Layout/Layout.hpp>
+#include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Panel.hpp>
 #include <helsinki/Ui/Slider.hpp>
+#include <helsinki/Ui/TextField.hpp>
 #include <helsinki/Ui/Toggle.hpp>
-#include <cstdint>
 #include <memory>
 #include <vector>
+
+namespace hl
+{
+	class FontResource;
+}
 
 namespace ui
 {
@@ -42,16 +49,15 @@ namespace ui
 
 		const hl::EngineConfiguration& _engineConfig;
 		hl::UiBatch _uiBatch;
+		std::unique_ptr<hl::ui::ITypeface> _typeface;
 		std::unique_ptr<hl::ui::Node> _layoutRoot;
 		std::vector<std::unique_ptr<hl::ui::Widget>> _widgets;
 		std::unique_ptr<hl::ui::Slider> _slider;
 		std::unique_ptr<hl::ui::Checkbox> _checkbox;
 		std::unique_ptr<hl::ui::Toggle> _toggle;
+		std::unique_ptr<hl::ui::Label> _fieldLabel;
+		std::unique_ptr<hl::ui::TextField> _textField;
 		hl::ui::Panel* _clipHitRow = nullptr;
 		bool _clipHitOn = false;
-		std::vector<hl::ui::Panel*> _charSlots;
-		hl::ui::Panel* _repeatMarker = nullptr;
-		std::vector<uint32_t> _typedCodepoints;
-		bool _keyRepeatLit = false;
 	};
 }

@@ -5,6 +5,7 @@ namespace hl::ui
 	namespace
 	{
 		Widget* gPointerCapture = nullptr;
+		Widget* gKeyboardFocus = nullptr;
 	}
 
 	Widget::Widget(Node& node) :
@@ -16,6 +17,7 @@ namespace hl::ui
 	Widget::~Widget()
 	{
 		releasePointer();
+		releaseKeyboardFocus();
 		if (_node && _node->_widget == this)
 		{
 			_node->_widget = nullptr;
@@ -38,6 +40,29 @@ namespace hl::ui
 	bool Widget::hasPointerCapture() const
 	{
 		return gPointerCapture == this;
+	}
+
+	bool Widget::hasKeyboardFocus() const
+	{
+		return gKeyboardFocus == this;
+	}
+
+	void Widget::takeKeyboardFocus()
+	{
+		if (gKeyboardFocus != nullptr && gKeyboardFocus != this)
+		{
+			gKeyboardFocus->setFocused(false);
+		}
+
+		gKeyboardFocus = this;
+	}
+
+	void Widget::releaseKeyboardFocus()
+	{
+		if (gKeyboardFocus == this)
+		{
+			gKeyboardFocus = nullptr;
+		}
 	}
 
 	Widget* Widget::parentWidget() const
@@ -115,12 +140,33 @@ namespace hl::ui
 			? gPointerCapture
 			: hitTest(root, pointer.position);
 
+		if (pointer.primaryReleased && gKeyboardFocus != nullptr && gKeyboardFocus != start)
+		{
+			gKeyboardFocus->setFocused(false);
+		}
+
 		for (Widget* widget = start; widget != nullptr; widget = widget->parentWidget())
 		{
 			if (widget->handle(pointer) == EventResult::Consume)
 			{
 				return;
 			}
+		}
+	}
+
+	void dispatchChar(uint32_t codepoint)
+	{
+		if (gKeyboardFocus != nullptr)
+		{
+			gKeyboardFocus->handleChar(codepoint);
+		}
+	}
+
+	void dispatchTextKey(TextKey key)
+	{
+		if (gKeyboardFocus != nullptr)
+		{
+			gKeyboardFocus->handleKey(key);
 		}
 	}
 

@@ -5,8 +5,21 @@
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Pointer.hpp>
 
+#include <cstdint>
+
 namespace hl::ui
 {
+	enum class TextKey
+	{
+		Backspace,
+		Delete,
+		Left,
+		Right,
+		Home,
+		End,
+		Enter
+	};
+
 	class Widget : public NonCopyable
 	{
 	public:
@@ -19,13 +32,21 @@ namespace hl::ui
 
 		virtual void prepare() {}
 		virtual EventResult handle(const Pointer&) { return EventResult::Ignore; }
+		virtual EventResult handleChar(uint32_t) { return EventResult::Ignore; }
+		virtual EventResult handleKey(TextKey) { return EventResult::Ignore; }
+		virtual void setFocused(bool) {}
 		virtual void paint(IPaint&) const {}
 
 		void capturePointer();
 		void releasePointer();
 		bool hasPointerCapture() const;
+		bool hasKeyboardFocus() const;
 
 		bool hitTestEnabled = true;
+
+	protected:
+		void takeKeyboardFocus();
+		void releaseKeyboardFocus();
 
 	private:
 		Node* _node = nullptr;
@@ -33,6 +54,8 @@ namespace hl::ui
 
 	Widget* hitTest(const Node& root, glm::vec2 position);
 	void dispatch(Node& root, const Pointer& pointer);
+	void dispatchChar(uint32_t codepoint);
+	void dispatchTextKey(TextKey key);
 	bool applyScroll(Node& root, glm::vec2 position, glm::vec2 delta);
 	void prepareTree(Node& root);
 	void paintTree(const Node& root, IPaint& paint);
