@@ -14,6 +14,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/ParticleSystem.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <algorithm>
 #include <cassert>
 #include <future>
@@ -776,7 +777,8 @@ namespace hl
 
             vkCmdDraw(commandBuffer, 36, 1, 0, 0); // quad from 12 triangles
         }
-        else if (pipeline->Name == "model_pipeline")
+        else if (pipeline->Name == "model_pipeline"
+            || pipeline->Name == RenderGraphHelpers::ShadowPipelineName)
         {
             for (const auto& entity : _scene.getEntities())
             {

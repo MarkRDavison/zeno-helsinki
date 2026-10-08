@@ -17,6 +17,17 @@ namespace hl
 		static RenderpassInfo createParticleSimPass();
 		static PipelineInfo particleDrawPipelineInfo(const std::string& cameraMatrixResourceId);
 		static PipelineInfo particleQuadPipelineInfo(const std::string& cameraMatrixResourceId);
+
+		static constexpr const char* ShadowPassName = "shadow_pass";
+		static constexpr const char* ShadowPipelineName = "shadow_pipeline";
+		static constexpr const char* ShadowUboName = "shadow_ubo";
+		static constexpr const char* ShadowDepthName = "shadow_depth";
+
+		static RenderpassInfo createShadowMapPass(
+			const std::string& depthName,
+			uint32_t mapSize,
+			const std::string& shadowUboId = ShadowUboName);
+		static PipelineInfo shadowPipelineInfo(const std::string& shadowUboId = ShadowUboName);
 	};
 
 }

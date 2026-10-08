@@ -12,6 +12,11 @@ namespace sk
 	inline constexpr float CameraOrbitDegreesPerPixel = 0.25f;
 	inline constexpr float CameraPitchMin = -89.0f;
 	inline constexpr float CameraPitchMax = 89.0f;
+	inline constexpr glm::vec3 SceneSunDirection{ 0.45f, 0.85f, 0.30f };
+	inline constexpr uint32_t ShadowMapSize = 2048;
+	inline constexpr float ShadowOrthoHalfExtent = 4.0f;
+	inline constexpr float ShadowLightDistance = 20.0f;
+	inline constexpr float ShadowNear = 0.1f;
 
 	struct Prop
 	{

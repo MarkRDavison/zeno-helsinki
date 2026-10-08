@@ -1,5 +1,6 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
@@ -386,6 +387,95 @@ namespace hl
 			.enableBlending = true,
 			.additiveBlending = true,
 			.topology = PrimitiveTopology::TriangleList
+		};
+	}
+
+	PipelineInfo RenderGraphHelpers::shadowPipelineInfo(const std::string& shadowUboId)
+	{
+		return PipelineInfo
+		{
+			.name = ShadowPipelineName,
+			.shaderVert = std::string(RendererShaderRoot) + "/shadow.vert",
+			.shaderFrag = std::string(RendererShaderRoot) + "/shadow.frag",
+			.descriptorSets =
+			{
+				DescriptorSetInfo
+				{
+					.bindings =
+					{
+						DescriptorBinding
+						{
+							.binding = 0,
+							.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+							.stage = "VERTEX",
+							.resource = shadowUboId,
+							.count = 1,
+							.updateFrequency = DescriptorUpdateFrequency::PerFrame
+						}
+					}
+				}
+			},
+			.vertexInputInfo = VertexInputInfo
+			{
+				.attributes =
+				{
+					{
+						.name = "inPosition",
+						.format = VertexAttributeFormat::Vec3,
+						.location = 0,
+						.offset = offsetof(Vertex, pos)
+					},
+					{
+						.name = "inColor",
+						.format = VertexAttributeFormat::Vec3,
+						.location = 1,
+						.offset = offsetof(Vertex, color)
+					},
+					{
+						.name = "inTexCoord",
+						.format = VertexAttributeFormat::Vec2,
+						.location = 2,
+						.offset = offsetof(Vertex, texCoord)
+					},
+					{
+						.name = "inNormal",
+						.format = VertexAttributeFormat::Vec3,
+						.location = 3,
+						.offset = offsetof(Vertex, normal)
+					}
+				},
+				.stride = sizeof(Vertex)
+			},
+			.rasterState =
+			{
+				.cullMode = VK_CULL_MODE_FRONT_BIT
+			},
+			.pushConstantSize = sizeof(MaterialPushConstantObject)
+		};
+	}
+
+	RenderpassInfo RenderGraphHelpers::createShadowMapPass(
+		const std::string& depthName,
+		uint32_t mapSize,
+		const std::string& shadowUboId)
+	{
+		return RenderpassInfo
+		{
+			.name = ShadowPassName,
+			.outputs =
+			{
+				ResourceInfo
+				{
+					.name = depthName,
+					.type = ResourceType::Depth,
+					.format = "VK_FORMAT_D32_SFLOAT"
+				}
+			},
+			.pipelineGroups =
+			{
+				{ shadowPipelineInfo(shadowUboId) }
+			},
+			.extent = { .width = mapSize, .height = mapSize }
 		};
 	}
 }

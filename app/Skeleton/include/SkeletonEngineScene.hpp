@@ -46,6 +46,7 @@ namespace sk
 		bool _enableGpuParticles = false;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::ResourceHandle<hl::UniformBufferResource> _pointLightsUbo;
+		hl::ResourceHandle<hl::UniformBufferResource> _shadowUbo;
 		bool _specHeldOff = false;
 		float _cameraDistance = 0.0f;
 		bool _orbitDragging = false;

@@ -309,6 +309,7 @@ namespace hl
         UndefinedToColorAttachment,
         UndefinedToDepthAttachment,
         ColorAttachmentToSampled,
+        DepthAttachmentToSampled,
         ColorAttachmentToPresent
     };
 

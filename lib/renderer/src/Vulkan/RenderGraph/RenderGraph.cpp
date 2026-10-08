@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <regex>
 #include <unordered_set>
+#include <unordered_map>
 
 namespace hl
 {
@@ -87,12 +88,19 @@ namespace hl
 			{
 				// images/outputs
 
+				const uint32_t imageWidth = (ri.extent.width > 0 && ri.extent.height > 0)
+					? ri.extent.width
+					: width;
+				const uint32_t imageHeight = (ri.extent.width > 0 && ri.extent.height > 0)
+					? ri.extent.height
+					: height;
+
 				createImages(
 					device,
 					r,
 					ri,
-					width,
-					height,
+					imageWidth,
+					imageHeight,
 					imageCount,
 					isLastRenderpass);
 
@@ -522,8 +530,12 @@ namespace hl
 									colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 									colorBlending.logicOpEnable = VK_FALSE;
 									colorBlending.logicOp = VK_LOGIC_OP_COPY;
-									colorBlending.attachmentCount = 1;
-									colorBlending.pAttachments = &colorBlendAttachment;
+									const uint32_t colorAttachmentCount =
+										static_cast<uint32_t>(r->getColorFormats().size());
+									colorBlending.attachmentCount = colorAttachmentCount;
+									colorBlending.pAttachments = colorAttachmentCount == 0
+										? nullptr
+										: &colorBlendAttachment;
 									colorBlending.blendConstants[0] = 0.0f;
 									colorBlending.blendConstants[1] = 0.0f;
 									colorBlending.blendConstants[2] = 0.0f;
@@ -636,7 +648,13 @@ namespace hl
 		bool isLastRenderpass)
 	{
 		std::vector<VkClearValue> clearValues;
-		resources->setExtent({.width = width, .height = height});
+		const uint32_t imageWidth = (info.extent.width > 0 && info.extent.height > 0)
+			? info.extent.width
+			: width;
+		const uint32_t imageHeight = (info.extent.width > 0 && info.extent.height > 0)
+			? info.extent.height
+			: height;
+		resources->setExtent({ .width = imageWidth, .height = imageHeight });
 		const bool useMultiSampling = passUsesMultiSampling(info);
 
 		for (const auto& res : info.outputs)
@@ -714,8 +732,8 @@ namespace hl
 					attachment.images.push_back(image);
 
 					image->create(
-						width,
-						height,
+						imageWidth,
+						imageHeight,
 						1, // TODO
 						useMultiSampling
 							? device.msaaSamples()
@@ -753,8 +771,8 @@ namespace hl
 						attachment.resolveImages.push_back(resolveImage);
 
 						resolveImage->create(
-							width,
-							height,
+							imageWidth,
+							imageHeight,
 							1,
 							VK_SAMPLE_COUNT_1_BIT,
 							attachment.format,
@@ -791,8 +809,8 @@ namespace hl
 					attachment.images.push_back(image);
 
 					image->create(
-						width,
-						height,
+						imageWidth,
+						imageHeight,
 						1,
 						useMultiSampling
 							? device.msaaSamples()
@@ -1059,11 +1077,13 @@ namespace hl
 
 		std::unordered_set<std::string> bufferOutputNames;
 		std::unordered_set<std::string> imageOutputNames;
+		std::unordered_map<std::string, ResourceType> imageOutputTypes;
 		for (const auto& pass : renderpassInfo)
 		{
 			for (const auto& output : pass.outputs)
 			{
 				imageOutputNames.insert(output.name);
+				imageOutputTypes[output.name] = output.type;
 			}
 			for (const auto& bufferOutput : pass.bufferOutputs)
 			{
@@ -1092,11 +1112,16 @@ namespace hl
 					continue;
 				}
 
+				const auto typeIt = imageOutputTypes.find(input);
+				const bool depthInput = typeIt != imageOutputTypes.end()
+					&& typeIt->second == ResourceType::Depth;
 				edges.push_back(GraphImageBarrierEdge
 					{
 						.passName = pass.name,
 						.resourceName = input,
-						.kind = GraphImageBarrierKind::ColorAttachmentToSampled
+						.kind = depthInput
+							? GraphImageBarrierKind::DepthAttachmentToSampled
+							: GraphImageBarrierKind::ColorAttachmentToSampled
 					});
 			}
 		}

@@ -178,3 +178,47 @@ TEST_CASE("Buffer barrier edges connect compute SSBO producers to later graphics
 	REQUIRE(bufferEdges.front().passName == "scene_pass");
 	REQUIRE(bufferEdges.front().resourceName == "particle_ssbo");
 }
+
+TEST_CASE("Barrier edges map depth outputs sampled as depth, not color", "[graph-barriers]")
+{
+	const std::vector<hl::RenderpassInfo> passes{
+		{
+			.name = "shadow_pass",
+			.outputs = {
+				hl::ResourceInfo{
+					.name = "shadow_depth",
+					.type = hl::ResourceType::Depth,
+					.format = "VK_FORMAT_D32_SFLOAT"
+				}
+			}
+		},
+		{
+			.name = "scene_pass",
+			.inputs = { "shadow_depth" },
+			.outputs = {
+				hl::ResourceInfo{
+					.name = "scene_color",
+					.type = hl::ResourceType::Color,
+					.format = "VK_FORMAT_B8G8R8A8_SRGB"
+				}
+			}
+		}
+	};
+
+	const auto edges = hl::RenderGraph::generateImageBarrierEdges(passes);
+	REQUIRE(hasEdge(
+		edges,
+		"shadow_pass",
+		"shadow_depth",
+		hl::GraphImageBarrierKind::UndefinedToDepthAttachment));
+	REQUIRE(hasEdge(
+		edges,
+		"scene_pass",
+		"shadow_depth",
+		hl::GraphImageBarrierKind::DepthAttachmentToSampled));
+	REQUIRE_FALSE(hasEdge(
+		edges,
+		"scene_pass",
+		"shadow_depth",
+		hl::GraphImageBarrierKind::ColorAttachmentToSampled));
+}
