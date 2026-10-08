@@ -11,6 +11,7 @@
 #include <helsinki/Ui/Layout/Layout.hpp>
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Panel.hpp>
+#include <helsinki/Ui/RadioGroup.hpp>
 #include <helsinki/Ui/Slider.hpp>
 #include <helsinki/Ui/TextField.hpp>
 #include <helsinki/Ui/Toggle.hpp>
@@ -58,6 +59,8 @@ namespace ui
 		std::unique_ptr<hl::ui::Checkbox> _checkbox;
 		std::unique_ptr<hl::ui::Toggle> _toggle;
 		std::unique_ptr<hl::ui::Dropdown> _dropdown;
+		std::unique_ptr<hl::ui::RadioGroup> _radioVertical;
+		std::unique_ptr<hl::ui::RadioGroup> _radioHorizontal;
 		std::unique_ptr<hl::ui::Label> _fieldLabel;
 		std::unique_ptr<hl::ui::TextField> _textField;
 		std::unique_ptr<hl::ui::Button> _actionButton;

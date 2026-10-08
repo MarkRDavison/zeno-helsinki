@@ -436,6 +436,14 @@ namespace ui
 			"epsilon", "zeta", "eta", "theta"
 		});
 
+		_radioVertical = std::make_unique<hl::ui::RadioGroup>(column.addChild(), *_typeface);
+		_radioVertical->setOrientation(hl::ui::RadioOrientation::Vertical);
+		_radioVertical->setItems({ "Red", "Green", "Blue" });
+
+		_radioHorizontal = std::make_unique<hl::ui::RadioGroup>(column.addChild(), *_typeface);
+		_radioHorizontal->setOrientation(hl::ui::RadioOrientation::Horizontal);
+		_radioHorizontal->setItems({ "S", "M", "L" });
+
 		_fieldLabel = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
 		_fieldLabel->setText("type here", 16);
 		_fieldLabel->color = { 0.75f, 0.76f, 0.80f };
