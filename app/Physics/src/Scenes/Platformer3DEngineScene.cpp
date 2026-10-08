@@ -9,9 +9,13 @@
 
 namespace phys
 {
-	Platformer3DEngineScene::Platformer3DEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig)
+	Platformer3DEngineScene::Platformer3DEngineScene(
+		hl::Engine& engine,
+		const hl::EngineConfiguration& engineConfig,
+		hl::physics::Context& physicsContext)
 		: EngineScene(engine)
 		, _engineConfig(engineConfig)
+		, _physicsContext(physicsContext)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
 		_engine.getEventBus().AddListener(this);
@@ -64,7 +68,7 @@ namespace phys
 		{
 			if (ke->GetKeyCode() == GLFW_KEY_ESCAPE)
 			{
-				_engine.setScene(new TitleEngineScene(_engine, _engineConfig));
+				_engine.setScene(new TitleEngineScene(_engine, _engineConfig, _physicsContext));
 			}
 		}
 		else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))

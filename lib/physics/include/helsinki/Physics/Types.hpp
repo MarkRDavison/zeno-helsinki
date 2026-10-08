@@ -98,6 +98,7 @@ namespace hl::physics
 		float friction = 0.2f;
 		float restitution = 0.f;
 		bool sensor = false;
+		bool oneWay = false;
 		std::uint64_t userData = 0;
 	};
 

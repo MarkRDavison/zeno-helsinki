@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
+#include <helsinki/Physics/Context.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 
 namespace phys
@@ -9,7 +10,10 @@ namespace phys
 	class Platformer3DEngineScene : public hl::EngineScene, public hl::EventListener
 	{
 	public:
-		Platformer3DEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig);
+		Platformer3DEngineScene(
+			hl::Engine& engine,
+			const hl::EngineConfiguration& engineConfig,
+			hl::physics::Context& physicsContext);
 		~Platformer3DEngineScene();
 
 		void initialise(
@@ -27,5 +31,6 @@ namespace phys
 		void handleWindowSizeChange(int width, int height);
 
 		const hl::EngineConfiguration& _engineConfig;
+		hl::physics::Context& _physicsContext;
 	};
 }

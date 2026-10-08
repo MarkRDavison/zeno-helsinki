@@ -150,6 +150,126 @@ namespace hl::physics::test
 			REQUIRE(world.getPose(id).position.x < 3.5f);
 		}
 
+		SECTION("one-way platform pass from below then land")
+		{
+			World world(context, WorldSettings{});
+			addStaticBox(world, {20.f, 0.5f, 20.f}, {0.f, -0.5f, 0.f});
+
+			BodyDesc platform;
+			platform.shape.kind = Shape::Kind::Box;
+			platform.shape.halfExtents = {2.f, 0.15f, 2.f};
+			platform.motion = MotionType::Static;
+			platform.layer = Layer::NonMoving;
+			platform.pose.position = {0.f, 2.5f, 0.f};
+			platform.oneWay = true;
+			REQUIRE(world.createBody(platform).valid());
+
+			CharacterDesc desc;
+			desc.pose.position = {0.f, 1.f, 0.f};
+			desc.jumpSpeed = 8.f;
+			const CharacterId id = world.createCharacter(desc);
+			REQUIRE(id.valid());
+
+			const float dt = 1.f / 60.f;
+			bool landedFloor = false;
+			for (int i = 0; i < 180; ++i)
+			{
+				world.step(dt);
+				if (world.isGrounded(id) && world.getPose(id).position.y < 0.3f)
+				{
+					landedFloor = true;
+					break;
+				}
+			}
+			REQUIRE(landedFloor);
+
+			world.jump(id);
+			bool passedThrough = false;
+			for (int i = 0; i < 90; ++i)
+			{
+				world.step(dt);
+				if (world.getPose(id).position.y > 2.7f)
+				{
+					passedThrough = true;
+					break;
+				}
+			}
+			REQUIRE(passedThrough);
+
+			bool landedPlatform = false;
+			for (int i = 0; i < 180; ++i)
+			{
+				world.step(dt);
+				if (world.isGrounded(id) && world.getPose(id).position.y > 2.3f)
+				{
+					landedPlatform = true;
+					break;
+				}
+			}
+			REQUIRE(landedPlatform);
+		}
+
+		SECTION("air jump replaces vertical speed")
+		{
+			World world(context, WorldSettings{});
+			addStaticBox(world, {20.f, 0.5f, 20.f}, {0.f, -0.5f, 0.f});
+
+			CharacterDesc desc;
+			desc.pose.position = {0.f, 3.f, 0.f};
+			desc.jumpSpeed = 6.f;
+			const CharacterId id = world.createCharacter(desc);
+			REQUIRE(id.valid());
+
+			bool landed = false;
+			const float dt = 1.f / 60.f;
+			for (int i = 0; i < 180; ++i)
+			{
+				world.step(dt);
+				if (world.isGrounded(id))
+				{
+					landed = true;
+					break;
+				}
+			}
+			REQUIRE(landed);
+
+			world.jump(id);
+			for (int i = 0; i < 30; ++i)
+			{
+				world.step(dt);
+			}
+			REQUIRE_FALSE(world.isGrounded(id));
+
+			float prevY = world.getPose(id).position.y;
+			bool falling = false;
+			for (int i = 0; i < 120; ++i)
+			{
+				world.step(dt);
+				const float y = world.getPose(id).position.y;
+				if (y < prevY - 0.02f)
+				{
+					falling = true;
+					break;
+				}
+				prevY = y;
+			}
+			REQUIRE(falling);
+
+			const float yAtJump = world.getPose(id).position.y;
+			world.jump(id);
+			bool rose = false;
+			for (int i = 0; i < 20; ++i)
+			{
+				world.step(dt);
+				if (world.getPose(id).position.y > yAtJump + 0.2f)
+				{
+					rose = true;
+					break;
+				}
+			}
+			REQUIRE(rose);
+		}
+
 		SECTION("2D character stays at z 0")
 		{
 			World world(context, WorldSettings{ .dim = Dim::D2 });

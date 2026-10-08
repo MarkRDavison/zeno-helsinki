@@ -28,6 +28,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 namespace hl::physics
@@ -183,6 +184,33 @@ namespace hl::physics
 		private:
 			ContactQueue& _queue;
 		};
+
+		class CharacterOneWayListener final : public JPH::CharacterContactListener
+		{
+		public:
+			explicit CharacterOneWayListener(const std::unordered_set<std::uint32_t>& oneWayBodies)
+				: _oneWayBodies(oneWayBodies)
+			{
+			}
+
+			bool OnContactValidate(const JPH::CharacterVirtual* character, const JPH::CharacterContact& contact) override
+			{
+				if (contact.mBodyB.IsInvalid())
+				{
+					return true;
+				}
+				if (_oneWayBodies.find(toBodyId(contact.mBodyB).bits) == _oneWayBodies.end())
+				{
+					return true;
+				}
+				const bool floorHit = contact.mContactNormal.Dot(JPH::Vec3::sAxisY()) > 0.5f;
+				const bool goingUp = character->GetLinearVelocity().GetY() > 0.1f;
+				return floorHit && !goingUp;
+			}
+
+		private:
+			const std::unordered_set<std::uint32_t>& _oneWayBodies;
+		};
 	}
 
 	struct World::Impl
@@ -196,6 +224,8 @@ namespace hl::physics
 		JPH::JobSystemThreadPool jobSystem;
 		ContactQueue contactQueue;
 		WorldContactListener contactListener;
+		std::unordered_set<std::uint32_t> oneWayBodies;
+		CharacterOneWayListener characterListener;
 		JPH::PhysicsSystem physics;
 		std::function<void(const Contact&)> contactCallback;
 		std::vector<CharacterRecord> characters;
@@ -228,6 +258,7 @@ namespace hl::physics
 		Impl()
 			: tempAllocator(10 * 1024 * 1024)
 			, contactListener(contactQueue)
+			, characterListener(oneWayBodies)
 		{
 		}
 	};
@@ -274,6 +305,10 @@ namespace hl::physics
 
 		for (CharacterRecord& record : _impl->characters)
 		{
+			if (record.character != nullptr)
+			{
+				record.character->SetListener(nullptr);
+			}
 			record.character = nullptr;
 			record.occupied = false;
 		}
@@ -326,16 +361,40 @@ namespace hl::physics
 			else
 			{
 				const JPH::Vec3 horizontal(wish.GetX(), 0.f, wish.GetZ());
-				if (grounded)
+				if (record.pendingJump)
 				{
-					velocity = character.GetGroundVelocity() + horizontal;
-					if (record.pendingJump)
+					if (grounded)
 					{
+						velocity = character.GetGroundVelocity();
+						const JPH::Vec3 groundNormal = character.GetGroundNormal();
+						if (groundNormal.LengthSq() > 1.0e-6f)
+						{
+							velocity += horizontal - groundNormal * horizontal.Dot(groundNormal);
+						}
+						else
+						{
+							velocity += horizontal;
+						}
 						velocity += JPH::Vec3(0.f, record.jumpSpeed, 0.f);
 					}
 					else
 					{
-						velocity += gravity * delta;
+						velocity = horizontal + JPH::Vec3(0.f, record.jumpSpeed, 0.f);
+					}
+				}
+				else if (grounded)
+				{
+					// Stand/walk on the ground plane. Do not add world gravity here:
+					// downhill g on a walkable slope makes the character slide.
+					velocity = character.GetGroundVelocity();
+					const JPH::Vec3 groundNormal = character.GetGroundNormal();
+					if (groundNormal.LengthSq() > 1.0e-6f)
+					{
+						velocity += horizontal - groundNormal * horizontal.Dot(groundNormal);
+					}
+					else
+					{
+						velocity += horizontal;
 					}
 				}
 				else
@@ -353,7 +412,8 @@ namespace hl::physics
 		_impl->physics.Update(delta, 1, &_impl->tempAllocator, &_impl->jobSystem);
 
 		const JPH::ObjectLayer movingLayer = detail::toObjectLayer(Layer::Moving);
-		const JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
+		JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
+		updateSettings.mWalkStairsStepUp = JPH::Vec3::sZero();
 		JPH::ShapeFilter shapeFilter;
 		for (CharacterRecord& record : _impl->characters)
 		{
@@ -365,6 +425,8 @@ namespace hl::physics
 			JPH::CharacterVirtual& character = *record.character;
 			const JPH::Vec3 updateGravity = record.climbing ? JPH::Vec3::sZero() : gravity;
 			JPH::IgnoreSingleBodyFilter bodyFilter(character.GetInnerBodyID());
+			const JPH::RVec3 positionBefore = character.GetPosition();
+			const float upwardSpeed = character.GetLinearVelocity().GetY();
 			character.ExtendedUpdate(
 				delta,
 				updateGravity,
@@ -374,6 +436,20 @@ namespace hl::physics
 				bodyFilter,
 				shapeFilter,
 				_impl->tempAllocator);
+
+			// Collision does not write back to linear velocity. Hitting a ceiling
+			// would otherwise keep the jump speed and pin the character underneath.
+			if (!record.climbing && upwardSpeed > 0.f && delta > 0.f)
+			{
+				const float actualY =
+					static_cast<float>(character.GetPosition().GetY() - positionBefore.GetY()) / delta;
+				if (actualY < upwardSpeed * 0.25f)
+				{
+					JPH::Vec3 velocity = character.GetLinearVelocity();
+					velocity.SetY(0.f);
+					character.SetLinearVelocity(velocity);
+				}
+			}
 
 			if (dim2)
 			{
@@ -453,7 +529,12 @@ namespace hl::physics
 		{
 			return BodyId::invalid();
 		}
-		return toBodyId(id);
+		const BodyId body = toBodyId(id);
+		if (desc.oneWay)
+		{
+			_impl->oneWayBodies.insert(body.bits);
+		}
+		return body;
 	}
 
 	void World::destroyBody(BodyId id)
@@ -469,6 +550,7 @@ namespace hl::physics
 		{
 			return;
 		}
+		_impl->oneWayBodies.erase(id.bits);
 		bodies.RemoveBody(joltId);
 		bodies.DestroyBody(joltId);
 	}
@@ -664,6 +746,7 @@ namespace hl::physics
 		}
 		record.occupied = true;
 		record.character = character;
+		record.character->SetListener(&_impl->characterListener);
 		record.wish = glm::vec3{0.f};
 		record.climbing = false;
 		record.pendingJump = false;
@@ -678,6 +761,7 @@ namespace hl::physics
 		{
 			return;
 		}
+		record->character->SetListener(nullptr);
 		record->character = nullptr;
 		record->occupied = false;
 		record->wish = glm::vec3{0.f};
@@ -703,10 +787,6 @@ namespace hl::physics
 	{
 		CharacterRecord* record = _impl->characterAt(id);
 		if (record == nullptr || record->climbing)
-		{
-			return;
-		}
-		if (record->character->GetGroundState() != JPH::CharacterBase::EGroundState::OnGround)
 		{
 			return;
 		}

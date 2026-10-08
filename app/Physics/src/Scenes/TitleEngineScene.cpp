@@ -10,9 +10,13 @@
 
 namespace phys
 {
-	TitleEngineScene::TitleEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig)
+	TitleEngineScene::TitleEngineScene(
+		hl::Engine& engine,
+		const hl::EngineConfiguration& engineConfig,
+		hl::physics::Context& physicsContext)
 		: EngineScene(engine)
 		, _engineConfig(engineConfig)
+		, _physicsContext(physicsContext)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
 		_engine.getEventBus().AddListener(this);
@@ -117,11 +121,11 @@ namespace phys
 		}
 		else if (name == "platformer2d")
 		{
-			_engine.setScene(new Platformer2DEngineScene(_engine, _engineConfig));
+			_engine.setScene(new Platformer2DEngineScene(_engine, _engineConfig, _physicsContext));
 		}
 		else if (name == "platformer3d")
 		{
-			_engine.setScene(new Platformer3DEngineScene(_engine, _engineConfig));
+			_engine.setScene(new Platformer3DEngineScene(_engine, _engineConfig, _physicsContext));
 		}
 	}
 }

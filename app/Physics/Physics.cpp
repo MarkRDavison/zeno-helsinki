@@ -30,7 +30,7 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	engine.setScene(new phys::TitleEngineScene(engine, engineConfig));
+	engine.setScene(new phys::TitleEngineScene(engine, engineConfig, physicsContext));
 	engine.run();
 	physicsContext.shutdown();
 	return EXIT_SUCCESS;

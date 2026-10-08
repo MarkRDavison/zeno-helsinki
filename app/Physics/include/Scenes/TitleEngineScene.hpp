@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
+#include <helsinki/Physics/Context.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 
 namespace phys
@@ -9,7 +10,10 @@ namespace phys
 	class TitleEngineScene : public hl::EngineScene, public hl::EventListener
 	{
 	public:
-		TitleEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig);
+		TitleEngineScene(
+			hl::Engine& engine,
+			const hl::EngineConfiguration& engineConfig,
+			hl::physics::Context& physicsContext);
 		~TitleEngineScene();
 
 		void initialise(
@@ -28,5 +32,6 @@ namespace phys
 		void handleTextClicked(const std::string& name);
 
 		const hl::EngineConfiguration& _engineConfig;
+		hl::physics::Context& _physicsContext;
 	};
 }
