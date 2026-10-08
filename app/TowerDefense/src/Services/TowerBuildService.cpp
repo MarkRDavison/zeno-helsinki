@@ -1,6 +1,6 @@
 #include <Services/TowerBuildService.hpp>
 #include <AudioCatalog.hpp>
-#include <Components/EntityComponent.hpp>
+#include <BoardQuery.hpp>
 #include <Components/TeamComponent.hpp>
 #include <Components/TowerComponent.hpp>
 #include <SceneCatalog.hpp>
@@ -43,37 +43,7 @@ namespace tower
 
 	bool TowerBuildService::tileOccupied(int tx, int tz) const
 	{
-		for (auto* entity : _scene.getEntitiesByTag(TowerTag))
-		{
-			if (_scene.isPendingRemoval(entity->Id))
-			{
-				continue;
-			}
-
-			const auto* tower = entity->GetComponent<TowerComponent>();
-			if (tower != nullptr && tower->x == tx && tower->z == tz)
-			{
-				return true;
-			}
-		}
-
-		for (auto* entity : _scene.getEntitiesWithComponents<EntityComponent>())
-		{
-			if (_scene.isPendingRemoval(entity->Id))
-			{
-				continue;
-			}
-
-			const auto* placed = entity->GetComponent<EntityComponent>();
-			if (placed != nullptr
-				&& tx >= placed->x && tx < placed->x + placed->sizeX
-				&& tz >= placed->z && tz < placed->z + placed->sizeZ)
-			{
-				return true;
-			}
-		}
-
-		return false;
+		return ::tower::tileOccupied(_scene, tx, tz);
 	}
 
 	bool TowerBuildService::tryPlace(std::string_view defId, int x, int z)
@@ -86,9 +56,7 @@ namespace tower
 		const auto* def = _towers.find(defId);
 		if (def == nullptr
 			|| !matchAllowsTower(defId, _match)
-			|| !_level.isOnBoard(x, z)
-			|| _level.isPathTile(x, z)
-			|| tileOccupied(x, z))
+			|| tileUnbuildable(_level, _scene, x, z))
 		{
 			return false;
 		}

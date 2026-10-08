@@ -1,4 +1,6 @@
 [
   { "id": "bolt", "model": "marker", "damage": 1, "damageType": "physical", "speed": 6, "hitRadius": 0.35, "y": 0.4, "scale": [0.15, 0.15, 0.15] },
+  { "id": "slow_bolt", "model": "marker", "damage": 1, "damageType": "physical", "speed": 6, "hitRadius": 0.35, "y": 0.4, "scale": [0.15, 0.15, 0.15], "statuses": ["slow"] },
+  { "id": "poison_bolt", "model": "marker", "damage": 1, "damageType": "physical", "speed": 6, "hitRadius": 0.35, "y": 0.4, "scale": [0.15, 0.15, 0.15], "statuses": ["poison"] },
   { "id": "bite", "model": "marker", "damage": 2, "damageType": "physical", "speed": 10, "hitRadius": 0.5, "y": 0.35, "scale": [0.45, 0.08, 0.12] }
 ]

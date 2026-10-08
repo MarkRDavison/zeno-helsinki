@@ -19,5 +19,25 @@
       { "id": "double_cannon", "offset": [-0.35, 0.4, 0.2] },
       { "id": "double_cannon", "offset": [0.35, 0.4, 0.2] }
     ]
+  },
+  {
+    "id": "slow",
+    "model": "turret_single",
+    "label": "Slow",
+    "cost": 20,
+    "range": 3.0,
+    "weapons": [
+      { "id": "slow_cannon", "offset": [0, 0.4, 0.25] }
+    ]
+  },
+  {
+    "id": "poison",
+    "model": "turret_double",
+    "label": "Poison",
+    "cost": 30,
+    "range": 2.5,
+    "weapons": [
+      { "id": "poison_cannon", "offset": [0, 0.4, 0.25] }
+    ]
   }
 ]

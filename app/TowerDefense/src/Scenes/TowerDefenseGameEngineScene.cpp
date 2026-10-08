@@ -1,6 +1,7 @@
 #include "Scenes/TowerDefenseGameEngineScene.hpp"
 #include <Scenes/SceneHost.hpp>
 #include <AudioCatalog.hpp>
+#include <BoardQuery.hpp>
 #include <GroundPick.hpp>
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
@@ -558,7 +559,7 @@ namespace tower
 
 	bool TowerDefenseGameEngineScene::isOccupied(int tx, int tz) const
 	{
-		return towerAt(tx, tz) != nullptr || entityAt(tx, tz) != nullptr;
+		return tileOccupied(_scene, tx, tz);
 	}
 
 	hl::Entity* TowerDefenseGameEngineScene::towerAt(int tx, int tz) const
@@ -982,8 +983,7 @@ namespace tower
 			ring->SetPosition(_level.tileCenter(tile->x, tile->z, RangeRingY));
 			ring->SetScale(glm::vec3(def->range, 1.0f, def->range));
 		}
-		_ghostPlaceable = !_level.isPathTile(tile->x, tile->z)
-			&& entityAt(tile->x, tile->z) == nullptr
+		_ghostPlaceable = !tileUnbuildable(_level, _scene, tile->x, tile->z)
 			&& _gameState.gold() >= def->cost;
 		_ghostVisible = true;
 	}

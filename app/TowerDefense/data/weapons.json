@@ -1,5 +1,7 @@
 [
   { "id": "single_cannon", "projectile": "bolt", "fireCooldown": 0.7 },
   { "id": "double_cannon", "projectile": "bolt", "fireCooldown": 1.0 },
+  { "id": "slow_cannon", "projectile": "slow_bolt", "fireCooldown": 1.2 },
+  { "id": "poison_cannon", "projectile": "poison_bolt", "fireCooldown": 1.0 },
   { "id": "teeth", "projectile": "bite", "fireCooldown": 0.8 }
 ]
