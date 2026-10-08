@@ -21,7 +21,10 @@ namespace hl::ui
 		Enter,
 		Tab,
 		ShiftTab,
-		Space
+		Space,
+		Up,
+		Down,
+		Escape
 	};
 
 	class Widget : public NonCopyable
@@ -35,6 +38,7 @@ namespace hl::ui
 		Widget* parentWidget() const;
 
 		virtual void prepare() {}
+		virtual void afterLayout() {}
 		virtual EventResult handle(const Pointer&) { return EventResult::Ignore; }
 		virtual EventResult handleChar(uint32_t) { return EventResult::Ignore; }
 		virtual EventResult handleKey(TextKey) { return EventResult::Ignore; }
@@ -59,6 +63,7 @@ namespace hl::ui
 
 	Widget* hitTest(const Node& root, glm::vec2 position);
 	void dispatch(Node& root, const Pointer& pointer);
+	void dismissOpenOverlay(Widget* hit);
 	void dispatchChar(uint32_t codepoint);
 	void dispatchTextKey(Node& root, TextKey key);
 	void collectFocusables(const Node& root, std::vector<Widget*>& out);

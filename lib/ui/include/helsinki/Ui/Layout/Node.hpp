@@ -38,6 +38,7 @@ namespace hl::ui
 
 		Node& addChild(std::unique_ptr<Node> child);
 		Node& addChild();
+		std::unique_ptr<Node> releaseChild(Node& child);
 
 		void setFillParent();
 		void setPointAnchor(glm::vec2 anchor, glm::vec2 size, glm::vec2 pivot = { 0.5f, 0.5f });

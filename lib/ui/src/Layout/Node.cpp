@@ -59,6 +59,22 @@ namespace hl::ui
 		return addChild(std::make_unique<Node>());
 	}
 
+	std::unique_ptr<Node> Node::releaseChild(Node& child)
+	{
+		for (auto it = _children.begin(); it != _children.end(); ++it)
+		{
+			if (it->get() == &child)
+			{
+				auto out = std::move(*it);
+				_children.erase(it);
+				out->_parent = nullptr;
+				return out;
+			}
+		}
+
+		return {};
+	}
+
 	void Node::setFillParent()
 	{
 		anchorMin = { 0.0f, 0.0f };

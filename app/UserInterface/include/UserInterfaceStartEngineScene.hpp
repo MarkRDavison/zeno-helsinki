@@ -5,6 +5,7 @@
 #include <helsinki/Engine/Ui/UiBatch.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 #include <helsinki/Ui/Button.hpp>
+#include <helsinki/Ui/Dropdown.hpp>
 #include <helsinki/Ui/Checkbox.hpp>
 #include <helsinki/Ui/Label.hpp>
 #include <helsinki/Ui/Layout/Layout.hpp>
@@ -56,6 +57,7 @@ namespace ui
 		std::unique_ptr<hl::ui::Slider> _slider;
 		std::unique_ptr<hl::ui::Checkbox> _checkbox;
 		std::unique_ptr<hl::ui::Toggle> _toggle;
+		std::unique_ptr<hl::ui::Dropdown> _dropdown;
 		std::unique_ptr<hl::ui::Label> _fieldLabel;
 		std::unique_ptr<hl::ui::TextField> _textField;
 		std::unique_ptr<hl::ui::Button> _actionButton;

@@ -178,6 +178,10 @@ namespace ui
 				return hl::ui::TextKey::Enter;
 			case GLFW_KEY_SPACE:
 				return hl::ui::TextKey::Space;
+			case GLFW_KEY_UP:
+				return hl::ui::TextKey::Up;
+			case GLFW_KEY_DOWN:
+				return hl::ui::TextKey::Down;
 			default:
 				return std::nullopt;
 			}
@@ -426,6 +430,12 @@ namespace ui
 		_checkbox = std::make_unique<hl::ui::Checkbox>(column.addChild());
 		_toggle = std::make_unique<hl::ui::Toggle>(column.addChild());
 
+		_dropdown = std::make_unique<hl::ui::Dropdown>(column.addChild(), *_typeface);
+		_dropdown->setItems({
+			"alpha", "beta", "gamma", "delta",
+			"epsilon", "zeta", "eta", "theta"
+		});
+
 		_fieldLabel = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
 		_fieldLabel->setText("type here", 16);
 		_fieldLabel->color = { 0.75f, 0.76f, 0.80f };
@@ -592,6 +602,12 @@ namespace ui
 				hl::ui::dispatchTextKey(
 					*_layoutRoot,
 					shift ? hl::ui::TextKey::ShiftTab : hl::ui::TextKey::Tab);
+				return;
+			}
+
+			if (press->GetKeyCode() == GLFW_KEY_ESCAPE)
+			{
+				hl::ui::dispatchTextKey(*_layoutRoot, hl::ui::TextKey::Escape);
 				return;
 			}
 

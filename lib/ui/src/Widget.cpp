@@ -159,6 +159,11 @@ namespace hl::ui
 			gKeyboardFocus->setFocused(false);
 		}
 
+		if (pointer.primaryReleased)
+		{
+			dismissOpenOverlay(start);
+		}
+
 		for (Widget* widget = start; widget != nullptr; widget = widget->parentWidget())
 		{
 			if (widget->handle(pointer) == EventResult::Consume)
