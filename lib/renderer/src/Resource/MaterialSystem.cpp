@@ -1,5 +1,7 @@
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
-#include <iostream>
+#include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <helsinki/System/Resource/ResourceDefinition.hpp>
+#include <stdexcept>
 
 namespace hl
 {
@@ -29,10 +31,41 @@ namespace hl
 			context,
 			sizeof(MaterialStorageBufferObject),
 			maxMaterials);
+
+		if (!_resourceManager.HasResource<hl::ImageSamplerResource>(FallbackTextureName))
+		{
+			throw std::runtime_error("material albedo atlas requires fallback texture 'white'");
+		}
+
+		const ResourceDefinition albedoAtlas
+		{
+			.name = AlbedoAtlasName,
+			.type = "logical",
+			.resources =
+			{
+				{ .name = FallbackTextureName, .type = "texture" }
+			}
+		};
+
+		_albedoAtlasHandle = _resourceManager.LoadLogical(albedoAtlas, [this](const ResourceDefinition::Child& child)
+			{
+				return child.type == "texture"
+					&& _resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+			});
+
+		if (!_albedoAtlasHandle.IsValid())
+		{
+			throw std::runtime_error("failed to load material albedo atlas");
+		}
 	}
 
 	void MaterialSystem::destroy()
 	{
+		if (_albedoAtlasHandle.IsValid())
+		{
+			_resourceManager.Release(_albedoAtlasHandle.GetId());
+			_albedoAtlasHandle = {};
+		}
 		_resourceManager.Release(_materialStorageBufferHandle.GetId());
 	}
 
@@ -46,15 +79,14 @@ namespace hl
 		else
 		{
 			index = (uint32_t)_materialNameToIndexMap.size();
-
 			_materialNameToIndexMap.insert({ material.name, index });
-
 		}
 
 		auto materialObj = MaterialStorageBufferObject
 		{
 			.color = glm::vec4(material.diffuse, 1.0f),
-			.specular = glm::vec4(material.specular, material.shininess)
+			.specular = glm::vec4(material.specular, material.shininess),
+			.albedoIndex = 0
 		};
 
 		_materialStorageBufferHandle->writeToBuffer(&materialObj, index);

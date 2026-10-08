@@ -169,7 +169,11 @@ namespace tower
 					.binding = 2,
 					.type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
 					.stage = "FRAGMENT",
-					.resource = "white"
+					.resource = hl::MaterialSystem::AlbedoAtlasName,
+					.count = static_cast<uint32_t>(MAX_MATERIAL_TEXTURES),
+					.updateFrequency = hl::DescriptorUpdateFrequency::Static,
+					.partiallyBound = true,
+					.updateAfterBind = true
 				},
 				hl::DescriptorBinding
 				{

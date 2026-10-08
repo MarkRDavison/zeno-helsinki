@@ -79,6 +79,11 @@ namespace hl
 			}
 		}
 
+		for (auto& material : materials)
+		{
+			material.diffuseTex = MaterialSystem::FallbackTextureName;
+		}
+
 		return materials;
 	}
 

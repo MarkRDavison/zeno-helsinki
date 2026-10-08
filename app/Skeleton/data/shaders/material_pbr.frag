@@ -1,8 +1,15 @@
 #version 450
 
+#extension GL_EXT_nonuniform_qualifier : require
+
+// Keep in sync with MAX_MATERIAL_TEXTURES in RendererConfiguration.hpp
+#define MAX_MATERIAL_TEXTURES 64
+
 struct Material {
     vec4 color;
     vec4 specular;
+    uint albedoIndex;
+    uint pad[3];
 };
 
 layout(binding = 0) uniform UniformBufferObject {
@@ -14,7 +21,7 @@ layout(std430, binding = 1) readonly buffer MaterialBufferObject {
     Material materials[];
 };
 
-layout(binding = 2) uniform sampler2D texSampler;
+layout(binding = 2) uniform sampler2D texSamplers[MAX_MATERIAL_TEXTURES];
 
 layout(std140, binding = 3) uniform SunBuffer {
     vec3 direction;
@@ -41,7 +48,7 @@ layout(location = 0) out vec4 outColor;
 void main()
 {
     Material mat = materials[fragMaterialIndex];
-    vec3 albedo = texture(texSampler, fragTexCoord).rgb * mat.color.xyz;
+    vec3 albedo = texture(texSamplers[nonuniformEXT(mat.albedoIndex)], fragTexCoord).rgb * mat.color.xyz;
     vec3 n = normalize(fragNormal);
     vec3 sunDir = normalize(sun.direction);
     float ndotl = max(dot(n, sunDir), 0.0);

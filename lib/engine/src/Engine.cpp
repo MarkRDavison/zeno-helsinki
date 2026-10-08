@@ -415,11 +415,11 @@ namespace hl
 					.rootPath = _config.RootPath,
 				};
 
-				_materialSystem.create(_config.MaxMaterials);
-
 				_resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
 					hl::MaterialSystem::FallbackTextureName,
 					resourceContext);
+
+				_materialSystem.create(_config.MaxMaterials);
 
 				_resourceManager.Load<hl::UniformBufferResource>(
 					"camera_matrix_ubo",// TODO: To constant
