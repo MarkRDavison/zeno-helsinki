@@ -23,6 +23,8 @@ namespace hl::ui
 		float gap = 0.0f;
 		Edges padding{};
 		Align crossAlign = Align::Start;
+		bool clip = false;
+		glm::vec2 scrollOffset{ 0.0f, 0.0f };
 
 		Box local{};
 		Box world{};
@@ -52,6 +54,9 @@ namespace hl::ui
 
 		glm::vec2 measure();
 		void arrange(const Box& parentBox);
+		glm::vec2 contentSize() const;
+		glm::vec2 maxScroll() const;
+		void clampScroll();
 
 	private:
 		friend class Widget;

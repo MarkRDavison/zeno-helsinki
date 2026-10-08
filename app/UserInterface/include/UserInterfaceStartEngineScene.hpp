@@ -3,6 +3,7 @@
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/Ui/UiBatch.hpp>
+#include <helsinki/System/Events/EventListener.hpp>
 #include <helsinki/Ui/Checkbox.hpp>
 #include <helsinki/Ui/Layout/Layout.hpp>
 #include <helsinki/Ui/Panel.hpp>
@@ -13,13 +14,13 @@
 
 namespace ui
 {
-	class UserInterfaceStartEngineScene : public hl::EngineScene
+	class UserInterfaceStartEngineScene : public hl::EngineScene, public hl::EventListener
 	{
 	public:
 		UserInterfaceStartEngineScene(
 			hl::Engine& engine,
 			const hl::EngineConfiguration& engineConfig);
-		~UserInterfaceStartEngineScene() = default;
+		~UserInterfaceStartEngineScene();
 
 		void initialise(
 			const std::string& cameraMatrixResourceId,
@@ -32,6 +33,7 @@ namespace ui
 		void update(uint32_t currentFrame, float delta) override;
 		void updateGpuResources(uint32_t currentFrame) override;
 		void additionalCleanup() override;
+		void OnEvent(const hl::Event& event) override;
 
 	private:
 		void buildLayoutTree();
@@ -44,5 +46,7 @@ namespace ui
 		std::unique_ptr<hl::ui::Slider> _slider;
 		std::unique_ptr<hl::ui::Checkbox> _checkbox;
 		std::unique_ptr<hl::ui::Toggle> _toggle;
+		hl::ui::Panel* _clipHitRow = nullptr;
+		bool _clipHitOn = false;
 	};
 }

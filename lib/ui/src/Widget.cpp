@@ -60,6 +60,11 @@ namespace hl::ui
 
 	Widget* hitTest(const Node& root, glm::vec2 position)
 	{
+		if (root.clip && !root.world.contains(position))
+		{
+			return nullptr;
+		}
+
 		const auto& kids = root.children();
 		for (auto it = kids.rbegin(); it != kids.rend(); ++it)
 		{
@@ -76,6 +81,32 @@ namespace hl::ui
 		}
 
 		return nullptr;
+	}
+
+	bool applyScroll(Node& root, glm::vec2 position, glm::vec2 delta)
+	{
+		if (root.clip && !root.world.contains(position))
+		{
+			return false;
+		}
+
+		const auto& kids = root.children();
+		for (auto it = kids.rbegin(); it != kids.rend(); ++it)
+		{
+			if (applyScroll(**it, position, delta))
+			{
+				return true;
+			}
+		}
+
+		if (root.clip && root.world.contains(position))
+		{
+			root.scrollOffset += delta;
+			root.clampScroll();
+			return true;
+		}
+
+		return false;
 	}
 
 	void dispatch(Node& root, const Pointer& pointer)
@@ -113,9 +144,19 @@ namespace hl::ui
 			widget->paint(paint);
 		}
 
+		if (root.clip)
+		{
+			paint.pushClip(root.world);
+		}
+
 		for (const auto& child : root.children())
 		{
 			paintTree(*child, paint);
+		}
+
+		if (root.clip)
+		{
+			paint.popClip();
 		}
 	}
 }

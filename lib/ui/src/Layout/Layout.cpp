@@ -7,5 +7,6 @@ namespace hl::ui
 		root.measure();
 		root.bakePinnedFromMeasure();
 		root.arrange(viewport);
+		root.clampScroll();
 	}
 }

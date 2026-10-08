@@ -29,6 +29,8 @@ namespace hl::ui
 			const std::vector<GlyphVertex>& verts,
 			glm::vec2 origin,
 			glm::vec3 color) = 0;
+		virtual void pushClip(const Box& worldBox) { (void)worldBox; }
+		virtual void popClip() {}
 	};
 
 	class ITypeface

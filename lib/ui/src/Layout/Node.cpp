@@ -181,7 +181,7 @@ namespace hl::ui
 	void Node::bakePinnedFromMeasure()
 	{
 		const bool isContainer = kind != Kind::Absolute;
-		const bool shouldBake = isContainer || intrinsicSize.has_value();
+		const bool shouldBake = !clip && (isContainer || intrinsicSize.has_value());
 		if (shouldBake)
 		{
 			constexpr float pivot = 0.5f;
@@ -243,9 +243,57 @@ namespace hl::ui
 			return;
 		}
 
+		Box childParent = world;
+		if (clip)
+		{
+			childParent.pos -= scrollOffset;
+		}
+
 		for (auto& child : _children)
 		{
-			child->arrange(world);
+			child->arrange(childParent);
+		}
+	}
+
+	glm::vec2 Node::contentSize() const
+	{
+		if (kind == Kind::Column || kind == Kind::Row)
+		{
+			return _cachedMeasure;
+		}
+
+		if (_children.empty())
+		{
+			return world.size;
+		}
+
+		glm::vec2 extent{ 0.0f, 0.0f };
+		for (const auto& child : _children)
+		{
+			extent.x = std::max(extent.x, child->local.pos.x + child->local.size.x);
+			extent.y = std::max(extent.y, child->local.pos.y + child->local.size.y);
+		}
+
+		return extent;
+	}
+
+	glm::vec2 Node::maxScroll() const
+	{
+		const glm::vec2 content = contentSize();
+		return {
+			std::max(0.0f, content.x - world.size.x),
+			std::max(0.0f, content.y - world.size.y)
+		};
+	}
+
+	void Node::clampScroll()
+	{
+		const glm::vec2 max = maxScroll();
+		scrollOffset.x = std::clamp(scrollOffset.x, 0.0f, max.x);
+		scrollOffset.y = std::clamp(scrollOffset.y, 0.0f, max.y);
+		for (auto& child : _children)
+		{
+			child->clampScroll();
 		}
 	}
 
@@ -254,12 +302,14 @@ namespace hl::ui
 		const float innerLeft = world.pos.x + padding.left;
 		const float innerTop = world.pos.y + padding.top;
 		const float innerWidth = world.size.x - padding.left - padding.right;
-		float y = innerTop;
+		const float scrollY = clip ? scrollOffset.y : 0.0f;
+		const float scrollX = clip ? scrollOffset.x : 0.0f;
+		float y = innerTop - scrollY;
 
 		for (auto& child : _children)
 		{
 			const glm::vec2 childSize = child->measure();
-			const float x = innerLeft + crossOffset(innerWidth, childSize.x, crossAlign);
+			const float x = innerLeft - scrollX + crossOffset(innerWidth, childSize.x, crossAlign);
 			child->local.pos = { x - world.pos.x, y - world.pos.y };
 			child->local.size = childSize;
 			child->world.pos = { x, y };
@@ -274,12 +324,14 @@ namespace hl::ui
 		const float innerLeft = world.pos.x + padding.left;
 		const float innerTop = world.pos.y + padding.top;
 		const float innerHeight = world.size.y - padding.top - padding.bottom;
-		float x = innerLeft;
+		const float scrollY = clip ? scrollOffset.y : 0.0f;
+		const float scrollX = clip ? scrollOffset.x : 0.0f;
+		float x = innerLeft - scrollX;
 
 		for (auto& child : _children)
 		{
 			const glm::vec2 childSize = child->measure();
-			const float y = innerTop + crossOffset(innerHeight, childSize.y, crossAlign);
+			const float y = innerTop - scrollY + crossOffset(innerHeight, childSize.y, crossAlign);
 			child->local.pos = { x - world.pos.x, y - world.pos.y };
 			child->local.size = childSize;
 			child->world.pos = { x, y };

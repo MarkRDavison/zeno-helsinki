@@ -5,6 +5,7 @@
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
 #include <helsinki/Ui/Paint.hpp>
@@ -18,6 +19,7 @@ namespace ui
 	namespace
 	{
 		constexpr float kTexWhite = 0.0f;
+		constexpr float kScrollPixels = 32.0f;
 
 		class BatchPaint : public hl::ui::IPaint
 		{
@@ -33,9 +35,33 @@ namespace ui
 
 			void glyphs(const std::vector<hl::ui::GlyphVertex>&, glm::vec2, glm::vec3) override {}
 
+			void pushClip(const hl::ui::Box& worldBox) override
+			{
+				_batch->pushClip(worldBox);
+			}
+
+			void popClip() override
+			{
+				_batch->popClip();
+			}
+
 		private:
 			hl::UiBatch* _batch = nullptr;
 		};
+
+		hl::ui::Panel& addRow(
+			std::vector<std::unique_ptr<hl::ui::Widget>>& widgets,
+			hl::ui::Node& parent,
+			glm::vec2 size,
+			glm::vec3 color)
+		{
+			auto row = std::make_unique<hl::ui::Panel>(parent.addChild());
+			row->node().intrinsicSize = size;
+			row->color = color;
+			auto& ref = *row;
+			widgets.push_back(std::move(row));
+			return ref;
+		}
 
 		hl::ui::Pointer readPointer(hl::Engine& engine)
 		{
@@ -65,6 +91,12 @@ namespace ui
 		_engineConfig(engineConfig)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
+		_engine.getEventBus().AddListener(this);
+	}
+
+	UserInterfaceStartEngineScene::~UserInterfaceStartEngineScene()
+	{
+		_engine.getEventBus().RemoveListener(this);
 	}
 
 	void UserInterfaceStartEngineScene::initialise(
@@ -274,6 +306,80 @@ namespace ui
 		_slider = std::make_unique<hl::ui::Slider>(column.addChild());
 		_checkbox = std::make_unique<hl::ui::Checkbox>(column.addChild());
 		_toggle = std::make_unique<hl::ui::Toggle>(column.addChild());
+
+		auto& clipList = _layoutRoot->addChild();
+		clipList.kind = hl::ui::Kind::Column;
+		clipList.clip = true;
+		clipList.gap = 8.0f;
+		clipList.padding = hl::ui::Edges::all(8.0f);
+		clipList.setTopRight({ 220.0f, 280.0f });
+		clipList.relative = { -16.0f, 88.0f };
+
+		auto clipPanel = std::make_unique<hl::ui::Panel>(clipList);
+		clipPanel->color = { 0.12f, 0.14f, 0.18f };
+		_widgets.push_back(std::move(clipPanel));
+
+		const glm::vec3 rowColors[] = {
+			{ 0.70f, 0.32f, 0.32f },
+			{ 0.70f, 0.48f, 0.22f },
+			{ 0.85f, 0.78f, 0.28f },
+			{ 0.32f, 0.62f, 0.38f },
+			{ 0.28f, 0.52f, 0.72f },
+			{ 0.42f, 0.38f, 0.72f },
+			{ 0.62f, 0.32f, 0.58f },
+			{ 0.55f, 0.55f, 0.58f }
+		};
+		for (int i = 0; i < 8; ++i)
+		{
+			auto& row = addRow(_widgets, clipList, { 204.0f, 36.0f }, rowColors[i]);
+			if (i == 2)
+			{
+				_clipHitRow = &row;
+			}
+		}
+
+		auto& nestedOuter = _layoutRoot->addChild();
+		nestedOuter.clip = true;
+		nestedOuter.setTopRight({ 180.0f, 120.0f });
+		nestedOuter.relative = { -16.0f, 384.0f };
+
+		auto nestedPanel = std::make_unique<hl::ui::Panel>(nestedOuter);
+		nestedPanel->color = { 0.10f, 0.12f, 0.16f };
+		_widgets.push_back(std::move(nestedPanel));
+
+		auto& nestedInner = nestedOuter.addChild();
+		nestedInner.kind = hl::ui::Kind::Column;
+		nestedInner.clip = true;
+		nestedInner.gap = 6.0f;
+		nestedInner.setTopLeft({ 168.0f, 80.0f });
+		nestedInner.relative = { 6.0f, 6.0f };
+
+		auto nestedInnerPanel = std::make_unique<hl::ui::Panel>(nestedInner);
+		nestedInnerPanel->color = { 0.16f, 0.20f, 0.24f };
+		_widgets.push_back(std::move(nestedInnerPanel));
+
+		for (int i = 0; i < 6; ++i)
+		{
+			const float t = static_cast<float>(i) / 5.0f;
+			addRow(_widgets, nestedInner, { 168.0f, 28.0f }, { 0.25f + t * 0.5f, 0.55f, 0.65f - t * 0.3f });
+		}
+
+		auto& unclippedFrame = _layoutRoot->addChild();
+		unclippedFrame.setBottomRight({ 100.0f, 48.0f });
+		unclippedFrame.relative = { -16.0f, -16.0f };
+
+		auto unclippedPanel = std::make_unique<hl::ui::Panel>(unclippedFrame);
+		unclippedPanel->color = { 0.18f, 0.12f, 0.12f };
+		_widgets.push_back(std::move(unclippedPanel));
+
+		auto& unclipped = unclippedFrame.addChild();
+		unclipped.kind = hl::ui::Kind::Column;
+		unclipped.gap = 4.0f;
+		unclipped.setTopLeft({ 100.0f, 0.0f });
+
+		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.40f, 0.40f });
+		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.55f, 0.35f });
+		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.70f, 0.30f });
 	}
 
 	void UserInterfaceStartEngineScene::rebuildAndDraw()
@@ -282,11 +388,45 @@ namespace ui
 
 		const auto size = _engine.getInputManager().getFramebufferSize();
 		hl::ui::layout(*_layoutRoot, hl::ui::Box{ 0.0f, 0.0f, size.x, size.y });
-		hl::ui::dispatch(*_layoutRoot, readPointer(_engine));
+		const auto pointer = readPointer(_engine);
+		hl::ui::dispatch(*_layoutRoot, pointer);
 
+		if (_clipHitRow != nullptr)
+		{
+			if (pointer.primaryReleased && hl::ui::hitTest(*_layoutRoot, pointer.position) == _clipHitRow)
+			{
+				_clipHitOn = !_clipHitOn;
+			}
+
+			_clipHitRow->color = _clipHitOn
+				? glm::vec3{ 1.0f, 1.0f, 1.0f }
+				: glm::vec3{ 0.85f, 0.78f, 0.28f };
+		}
+
+		_uiBatch.setFullScissor(VkRect2D{
+			{ 0, 0 },
+			{ static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y) }
+		});
 		_uiBatch.begin();
 		BatchPaint paint(_uiBatch);
 		hl::ui::paintTree(*_layoutRoot, paint);
+	}
+
+	void UserInterfaceStartEngineScene::OnEvent(const hl::Event& event)
+	{
+		if (_layoutRoot == nullptr)
+		{
+			return;
+		}
+
+		if (const auto* scroll = dynamic_cast<const hl::ScrollEvent*>(&event))
+		{
+			const auto pointer = readPointer(_engine);
+			hl::ui::applyScroll(
+				*_layoutRoot,
+				pointer.position,
+				{ 0.0f, -static_cast<float>(scroll->getY()) * kScrollPixels });
+		}
 	}
 
 	void UserInterfaceStartEngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)

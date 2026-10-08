@@ -33,6 +33,7 @@ namespace hl::ui
 
 	Widget* hitTest(const Node& root, glm::vec2 position);
 	void dispatch(Node& root, const Pointer& pointer);
+	bool applyScroll(Node& root, glm::vec2 position, glm::vec2 delta);
 	void prepareTree(Node& root);
 	void paintTree(const Node& root, IPaint& paint);
 }

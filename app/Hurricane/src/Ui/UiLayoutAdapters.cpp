@@ -100,6 +100,16 @@ namespace hur
 		_batch->addGlyphs(converted, origin, color, static_cast<float>(UI_TEX_ROBOTO));
 	}
 
+	void UiBatchPaint::pushClip(const hl::ui::Box& worldBox)
+	{
+		_batch->pushClip(worldBox);
+	}
+
+	void UiBatchPaint::popClip()
+	{
+		_batch->popClip();
+	}
+
 	hl::RenderpassInfo makeMenuUiRenderpass(
 		const std::string& cameraMatrixResourceId,
 		const std::string& sheetName)
