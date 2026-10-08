@@ -13,5 +13,6 @@ namespace tower
 		int z = 0;
 		std::string defId;
 		std::vector<float> slotCooldown;
+		int focusEntityId = -1;
 	};
 }

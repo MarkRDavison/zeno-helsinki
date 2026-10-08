@@ -86,6 +86,9 @@ namespace tower
 		void spawnRangeRing(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void syncStatusRings();
 		void spawnPathRibbons(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
+		void spawnTargetLineMaterials();
+		void syncTargetLines();
+		hl::Entity* acquireTargetLine();
 		std::optional<TileCoord> hoveredTile() const;
 		void updateGhost();
 		void tryHandleBoardClick();
@@ -142,6 +145,7 @@ namespace tower
 		float _cameraDistanceTarget = 0.0f;
 		std::string _selectedTowerId;
 		hl::Entity* _inspectTower = nullptr;
+		std::vector<hl::Entity*> _targetLines;
 
 		hl::UiBatch _uiBatch;
 		std::unique_ptr<FontTypeface> _typeface;

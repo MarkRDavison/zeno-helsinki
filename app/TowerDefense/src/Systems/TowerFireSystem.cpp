@@ -73,15 +73,15 @@ namespace tower
 			tickSlotCooldowns(tower->slotCooldown, def->weapons.size(), delta);
 
 			const glm::vec3 tile = _level.tileCenter(tower->x, tower->z);
-			auto* creep = nearestInRangeWithTeam(_scene, tile, def->range, Team::Creep);
-			if (creep == nullptr)
+			auto* target = resolveTowerFireTarget(_scene, tile, def->range, tower->focusEntityId);
+			if (target == nullptr)
 			{
 				clampReadyCooldowns(tower->slotCooldown);
 				continue;
 			}
 
-			const glm::vec3 creepPos = creep->GetComponent<hl::TransformComponent>()->GetPosition();
-			const float yaw = glm::degrees(std::atan2(creepPos.x - tile.x, creepPos.z - tile.z));
+			const glm::vec3 targetPos = target->GetComponent<hl::TransformComponent>()->GetPosition();
+			const float yaw = glm::degrees(std::atan2(targetPos.x - tile.x, targetPos.z - tile.z));
 			turnTowardYaw(
 				*entity->GetComponent<hl::TransformComponent>(),
 				yaw + TowerYawOffset,
@@ -95,7 +95,7 @@ namespace tower
 				_projectiles,
 				tile,
 				aimedYaw,
-				*creep,
+				*target,
 				def->weapons,
 				tower->slotCooldown,
 				[&](float cooldown) { return matchFireCooldown(cooldown, _match); });

@@ -20,6 +20,7 @@
 #include <Systems/ProjectileSystem.hpp>
 #include <Systems/StatusSystem.hpp>
 #include <Status.hpp>
+#include <Targeting.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/MaterialPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
@@ -429,6 +430,7 @@ namespace tower
 		spawnGhost(resourceManager);
 		spawnRangeRing(resourceManager, resourceContext);
 		spawnPathRibbons(resourceManager, resourceContext);
+		spawnTargetLineMaterials();
 
 		auto* statuses = new StatusSystem(_scene, _statuses);
 		statuses->onKill = [this]() { onCreepKilled(); };
@@ -620,6 +622,10 @@ namespace tower
 	{
 		_invalidFlashRemaining = InvalidFlashSeconds;
 		_flashTower = towerAt(tx, tz);
+		if (_flashTower == nullptr)
+		{
+			_flashTower = entityAt(tx, tz);
+		}
 		_flashGhost = _flashTower == nullptr;
 	}
 
@@ -855,6 +861,95 @@ namespace tower
 		}
 	}
 
+	void TowerDefenseGameEngineScene::spawnTargetLineMaterials()
+	{
+		_engine.getMaterialSystem().addMaterial(hl::Material{
+			.name = TargetLineCreepMaterial,
+			.diffuse = TargetLineCreepColor
+		});
+		_engine.getMaterialSystem().addMaterial(hl::Material{
+			.name = TargetLineFocusMaterial,
+			.diffuse = TargetLineFocusColor
+		});
+	}
+
+	hl::Entity* TowerDefenseGameEngineScene::acquireTargetLine()
+	{
+		auto* model = _resourceManager->GetResource<hl::ModelResource>(PathRibbonModelId);
+		auto* entity = _scene.addEntity();
+		entity->AddTag(TargetLineTag);
+		entity->AddComponent<hl::TransformComponent>()->SetScale(glm::vec3(0.0f));
+		if (model != nullptr)
+		{
+			entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
+		}
+		entity->AddComponent<PathRibbonComponent>()->materialName = TargetLineCreepMaterial;
+		_targetLines.push_back(entity);
+		return entity;
+	}
+
+	void TowerDefenseGameEngineScene::syncTargetLines()
+	{
+		if (_resourceManager == nullptr)
+		{
+			return;
+		}
+
+		std::size_t used = 0;
+		for (auto* entity : _scene.getEntitiesWithComponents<hl::TransformComponent, TowerComponent>(TowerTag))
+		{
+			if (_scene.isPendingRemoval(entity->Id))
+			{
+				continue;
+			}
+
+			auto* tower = entity->GetComponent<TowerComponent>();
+			const auto* def = (tower != nullptr) ? _towers.find(tower->defId) : nullptr;
+			if (tower == nullptr || def == nullptr)
+			{
+				continue;
+			}
+
+			if (used >= _targetLines.size())
+			{
+				acquireTargetLine();
+			}
+
+			auto* line = _targetLines[used++];
+			auto* transform = line->GetComponent<hl::TransformComponent>();
+			const glm::vec3 from = _level.tileCenter(tower->x, tower->z, TargetLineY);
+			auto* target = resolveTowerFireTarget(_scene, from, def->range, tower->focusEntityId);
+			if (target == nullptr)
+			{
+				transform->SetScale(glm::vec3(0.0f));
+				continue;
+			}
+
+			const glm::vec3 targetPos = target->GetComponent<hl::TransformComponent>()->GetPosition();
+			const glm::vec3 to{ targetPos.x, TargetLineY, targetPos.z };
+			const glm::vec3 delta = to - from;
+			const float length = glm::length(delta);
+			if (length < 1e-6f)
+			{
+				transform->SetScale(glm::vec3(0.0f));
+				continue;
+			}
+
+			transform->SetPosition((from + to) * 0.5f);
+			transform->SetRotation(glm::vec3(0.0f, glm::degrees(std::atan2(delta.x, delta.z)), 0.0f));
+			transform->SetScale(glm::vec3(TargetLineWidth, 1.0f, length));
+			line->GetComponent<PathRibbonComponent>()->materialName =
+				tower->focusEntityId != TowerFocusNone
+				? TargetLineFocusMaterial
+				: TargetLineCreepMaterial;
+		}
+
+		for (std::size_t i = used; i < _targetLines.size(); ++i)
+		{
+			_targetLines[i]->GetComponent<hl::TransformComponent>()->SetScale(glm::vec3(0.0f));
+		}
+	}
+
 	std::optional<TileCoord> TowerDefenseGameEngineScene::hoveredTile() const
 	{
 		auto it = _cameras.find("Default");
@@ -974,8 +1069,9 @@ namespace tower
 			return;
 		}
 		const auto& input = _engine.getInputManager();
-		const bool released = input.isButtonReleased(GLFW_MOUSE_BUTTON_1);
-		if (!released)
+		const bool leftReleased = input.isButtonReleased(GLFW_MOUSE_BUTTON_1);
+		const bool rightReleased = input.isButtonReleased(GLFW_MOUSE_BUTTON_2);
+		if (!leftReleased && !rightReleased)
 		{
 			return;
 		}
@@ -987,6 +1083,64 @@ namespace tower
 		}
 
 		if (_wave.inCombat())
+		{
+			if (leftReleased)
+			{
+				if (auto* tower = towerAt(tile->x, tile->z))
+				{
+					if (_inspectTower == tower)
+					{
+						if (auto* component = tower->GetComponent<TowerComponent>())
+						{
+							component->focusEntityId = TowerFocusNone;
+						}
+						clearInspect();
+					}
+					else
+					{
+						setInspect(tower);
+					}
+					return;
+				}
+
+				if (_inspectTower != nullptr)
+				{
+					if (auto* component = _inspectTower->GetComponent<TowerComponent>())
+					{
+						component->focusEntityId = TowerFocusNone;
+					}
+					clearInspect();
+				}
+				return;
+			}
+
+			if (_inspectTower == nullptr)
+			{
+				return;
+			}
+
+			auto* selected = _inspectTower->GetComponent<TowerComponent>();
+			const auto* def = (selected != nullptr) ? _towers.find(selected->defId) : nullptr;
+			if (selected == nullptr || def == nullptr)
+			{
+				return;
+			}
+
+			auto* entity = entityAt(tile->x, tile->z);
+			if (entity == nullptr || !hasTeam(entity, Team::Neutral))
+			{
+				return;
+			}
+
+			const glm::vec3 from = _level.tileCenter(selected->x, selected->z);
+			if (!tryAssignTowerFocus(_scene, from, def->range, entity, selected->focusEntityId))
+			{
+				flashInvalid(tile->x, tile->z);
+			}
+			return;
+		}
+
+		if (!leftReleased)
 		{
 			return;
 		}
@@ -1060,6 +1214,7 @@ namespace tower
 			{
 				const auto cameraIndex = static_cast<uint32_t>(getCameraIndex("Default"));
 				const bool showPath = _engine.getInputManager().isKeyDown(GLFW_KEY_P);
+				const bool showTargets = _engine.getInputManager().isKeyDown(GLFW_KEY_T);
 				for (const auto& entity : pdd.scene->getEntities())
 				{
 					if (entity->HasTag(GhostTag)
@@ -1076,6 +1231,11 @@ namespace tower
 					}
 
 					if (entity->HasTag(PathRibbonTag) && !showPath)
+					{
+						continue;
+					}
+
+					if (entity->HasTag(TargetLineTag) && !showTargets)
 					{
 						continue;
 					}
@@ -1285,7 +1445,12 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::tickWave(float delta)
 	{
+		const bool wasCombat = _wave.inCombat();
 		_wave.tick(delta);
+		if (!wasCombat && _wave.inCombat())
+		{
+			clearInspect();
+		}
 		while (_wave.takeSpawn())
 		{
 			spawnCreep();
@@ -1311,6 +1476,8 @@ namespace tower
 		{
 			return;
 		}
+
+		clearInspect();
 
 		if (!_gameState.won())
 		{
@@ -1634,7 +1801,7 @@ namespace tower
 			tryClearWave();
 		}
 
-		if (matchEnded() || _wave.inCombat())
+		if (matchEnded())
 		{
 			clearInspect();
 		}
@@ -1649,6 +1816,7 @@ namespace tower
 		updateGhost();
 		syncInspectRing();
 		syncStatusRings();
+		syncTargetLines();
 		updateCameraOrbit();
 		updateCameraFollow(delta);
 

@@ -34,6 +34,13 @@ namespace tower
 		{ 0.95f, 0.40f, 0.35f },
 		{ 0.55f, 0.55f, 0.95f }
 	};
+	inline constexpr const char* TargetLineTag = "TARGET_LINE";
+	inline constexpr const char* TargetLineCreepMaterial = "target_line_creep";
+	inline constexpr const char* TargetLineFocusMaterial = "target_line_focus";
+	inline constexpr float TargetLineWidth = 0.08f;
+	inline constexpr float TargetLineY = 0.45f;
+	inline constexpr glm::vec3 TargetLineCreepColor{ 0.95f, 0.85f, 0.20f };
+	inline constexpr glm::vec3 TargetLineFocusColor{ 0.95f, 0.25f, 0.85f };
 	inline constexpr float InvalidFlashSeconds = 0.25f;
 	inline constexpr const char* ProjectileTag = "PROJECTILE";
 	inline constexpr int towerSellRefund(int cost)
