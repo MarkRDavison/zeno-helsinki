@@ -6,24 +6,10 @@
 #include <Services/LevelCatalog.hpp>
 #include <Services/MatchContext.hpp>
 #include <Services/WaveService.hpp>
+#include <TestCatalogJson.hpp>
 
 namespace
 {
-	constexpr auto kTypes = R"json(
-[
-  { "id": "physical", "name": "Physical", "description": "Bolts." },
-  { "id": "fire", "name": "Fire", "description": "Fire." },
-  { "id": "poison", "name": "Poison", "description": "Poison." }
-]
-)json";
-
-	constexpr auto kCreeps = R"json(
-[
-  { "id": "runner", "model": "creep_runner", "health": 2, "speed": 2.2 },
-  { "id": "tank", "model": "creep_tank", "health": 8, "speed": 0.85 }
-]
-)json";
-
 	constexpr auto kMapA = R"json(
 {
   "id": "map-a",
@@ -101,8 +87,8 @@ namespace
 
 		Catalogs()
 		{
-			types.loadFromText(kTypes, "damage-types.json");
-			creeps.loadFromText(kCreeps, "creeps.json", types);
+			types.loadFromText(tower::test::kTypes, "damage-types.json");
+			creeps.loadFromText(tower::test::kCreeps, "creeps.json", types);
 		}
 	};
 

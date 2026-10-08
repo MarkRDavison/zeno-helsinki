@@ -6,3 +6,4 @@ SET(MODULE_LIBS
 )
 
 testsubmodule("towerdefense" "${MODULE_LIBS}")
+TARGET_INCLUDE_DIRECTORIES(towerdefense-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
