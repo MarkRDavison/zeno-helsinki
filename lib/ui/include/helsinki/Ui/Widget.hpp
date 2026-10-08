@@ -6,6 +6,7 @@
 #include <helsinki/Ui/Pointer.hpp>
 
 #include <cstdint>
+#include <vector>
 
 namespace hl::ui
 {
@@ -17,7 +18,10 @@ namespace hl::ui
 		Right,
 		Home,
 		End,
-		Enter
+		Enter,
+		Tab,
+		ShiftTab,
+		Space
 	};
 
 	class Widget : public NonCopyable
@@ -34,7 +38,7 @@ namespace hl::ui
 		virtual EventResult handle(const Pointer&) { return EventResult::Ignore; }
 		virtual EventResult handleChar(uint32_t) { return EventResult::Ignore; }
 		virtual EventResult handleKey(TextKey) { return EventResult::Ignore; }
-		virtual void setFocused(bool) {}
+		virtual void setFocused(bool focused);
 		virtual void paint(IPaint&) const {}
 
 		void capturePointer();
@@ -43,6 +47,7 @@ namespace hl::ui
 		bool hasKeyboardFocus() const;
 
 		bool hitTestEnabled = true;
+		bool focusable = false;
 
 	protected:
 		void takeKeyboardFocus();
@@ -55,7 +60,9 @@ namespace hl::ui
 	Widget* hitTest(const Node& root, glm::vec2 position);
 	void dispatch(Node& root, const Pointer& pointer);
 	void dispatchChar(uint32_t codepoint);
-	void dispatchTextKey(TextKey key);
+	void dispatchTextKey(Node& root, TextKey key);
+	void collectFocusables(const Node& root, std::vector<Widget*>& out);
+	void cycleFocus(Node& root, bool reverse);
 	bool applyScroll(Node& root, glm::vec2 position, glm::vec2 delta);
 	void prepareTree(Node& root);
 	void paintTree(const Node& root, IPaint& paint);

@@ -100,13 +100,13 @@ namespace hl::ui::test
 		field.setFocused(true);
 		dispatchChar(static_cast<uint32_t>('A'));
 		dispatchChar(static_cast<uint32_t>('C'));
-		dispatchTextKey(TextKey::Left);
+		dispatchTextKey(*root, TextKey::Left);
 		dispatchChar(static_cast<uint32_t>('B'));
 		CHECK(field.text() == "ABC");
 
-		dispatchTextKey(TextKey::End);
-		dispatchTextKey(TextKey::Backspace);
-		dispatchTextKey(TextKey::Backspace);
+		dispatchTextKey(*root, TextKey::End);
+		dispatchTextKey(*root, TextKey::Backspace);
+		dispatchTextKey(*root, TextKey::Backspace);
 		CHECK(field.text() == "A");
 	}
 
@@ -118,7 +118,7 @@ namespace hl::ui::test
 		TextField field(root->addChild(), typeface);
 		field.setFocused(true);
 		dispatchChar(static_cast<uint32_t>('A'));
-		dispatchTextKey(TextKey::Enter);
+		dispatchTextKey(*root, TextKey::Enter);
 		CHECK(field.text() == "A");
 	}
 

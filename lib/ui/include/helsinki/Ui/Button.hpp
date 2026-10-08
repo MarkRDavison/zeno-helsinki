@@ -11,7 +11,9 @@ namespace hl::ui
 	public:
 		Button(Node& node, const ITypeface& typeface);
 
+		void prepare() override;
 		EventResult handle(const Pointer& pointer) override;
+		EventResult handleKey(TextKey key) override;
 		void paint(IPaint& paint) const override;
 
 		glm::vec3 hoverColor{ 1.0f, 1.0f, 0.0f };

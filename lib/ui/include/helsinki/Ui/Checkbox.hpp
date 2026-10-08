@@ -13,6 +13,7 @@ namespace hl::ui
 
 		void prepare() override;
 		EventResult handle(const Pointer& pointer) override;
+		EventResult handleKey(TextKey key) override;
 		void paint(IPaint& paint) const override;
 
 		void setChecked(bool checked);

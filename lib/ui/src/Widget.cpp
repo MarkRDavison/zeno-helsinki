@@ -1,5 +1,7 @@
 #include <helsinki/Ui/Widget.hpp>
 
+#include <cstddef>
+
 namespace hl::ui
 {
 	namespace
@@ -45,6 +47,18 @@ namespace hl::ui
 	bool Widget::hasKeyboardFocus() const
 	{
 		return gKeyboardFocus == this;
+	}
+
+	void Widget::setFocused(bool focused)
+	{
+		if (focused)
+		{
+			takeKeyboardFocus();
+		}
+		else
+		{
+			releaseKeyboardFocus();
+		}
 	}
 
 	void Widget::takeKeyboardFocus()
@@ -162,8 +176,67 @@ namespace hl::ui
 		}
 	}
 
-	void dispatchTextKey(TextKey key)
+	void collectFocusables(const Node& root, std::vector<Widget*>& out)
 	{
+		if (Widget* widget = root.widget(); widget != nullptr && widget->focusable)
+		{
+			out.push_back(widget);
+		}
+
+		for (const auto& child : root.children())
+		{
+			collectFocusables(*child, out);
+		}
+	}
+
+	void cycleFocus(Node& root, bool reverse)
+	{
+		std::vector<Widget*> list;
+		collectFocusables(root, list);
+		if (list.empty())
+		{
+			return;
+		}
+
+		int current = -1;
+		for (std::size_t i = 0; i < list.size(); ++i)
+		{
+			if (list[i]->hasKeyboardFocus())
+			{
+				current = static_cast<int>(i);
+				break;
+			}
+		}
+
+		int next = 0;
+		if (reverse)
+		{
+			next = current <= 0 ? static_cast<int>(list.size()) - 1 : current - 1;
+		}
+		else
+		{
+			next = (current < 0 || current + 1 == static_cast<int>(list.size()))
+				? 0
+				: current + 1;
+		}
+
+		list[static_cast<std::size_t>(next)]->setFocused(true);
+	}
+
+	void dispatchTextKey(Node& root, TextKey key)
+	{
+		if (key == TextKey::Tab)
+		{
+			cycleFocus(root, false);
+			return;
+		}
+
+		if (key == TextKey::ShiftTab)
+		{
+			cycleFocus(root, true);
+			return;
+		}
+
 		if (gKeyboardFocus != nullptr)
 		{
 			gKeyboardFocus->handleKey(key);

@@ -9,6 +9,7 @@ namespace hl::ui
 		_typeface(&typeface)
 	{
 		hitTestEnabled = true;
+		focusable = true;
 		node.clip = true;
 		node.padding = Edges::all(_padding);
 		node.intrinsicSize = glm::vec2{ 280.0f, 36.0f };
@@ -21,20 +22,6 @@ namespace hl::ui
 		notifyChanged();
 	}
 
-	void TextField::setFocused(bool focused)
-	{
-		if (focused)
-		{
-			takeKeyboardFocus();
-			_focused = true;
-		}
-		else
-		{
-			releaseKeyboardFocus();
-			_focused = false;
-		}
-	}
-
 	EventResult TextField::handle(const Pointer& pointer)
 	{
 		const bool inside = node().world.contains(pointer.position);
@@ -44,12 +31,12 @@ namespace hl::ui
 			return EventResult::Consume;
 		}
 
-		return inside || _focused ? EventResult::Consume : EventResult::Ignore;
+		return inside || hasKeyboardFocus() ? EventResult::Consume : EventResult::Ignore;
 	}
 
 	EventResult TextField::handleChar(uint32_t codepoint)
 	{
-		if (!_focused)
+		if (!hasKeyboardFocus())
 		{
 			return EventResult::Ignore;
 		}
@@ -67,7 +54,7 @@ namespace hl::ui
 
 	EventResult TextField::handleKey(TextKey key)
 	{
-		if (!_focused)
+		if (!hasKeyboardFocus())
 		{
 			return EventResult::Ignore;
 		}
@@ -128,7 +115,7 @@ namespace hl::ui
 	{
 		const auto& box = node().world;
 		paint.fill(box, background);
-		if (_focused)
+		if (hasKeyboardFocus())
 		{
 			const float inset = 1.0f;
 			if (box.size.x > inset * 2.0f && box.size.y > inset * 2.0f)
@@ -155,7 +142,7 @@ namespace hl::ui
 		};
 		paint.glyphs(_glyphs, origin, color);
 
-		if (_focused)
+		if (hasKeyboardFocus())
 		{
 			const float x = origin.x + caret;
 			const float h = std::max(12.0f, box.size.y - _padding * 2.0f);

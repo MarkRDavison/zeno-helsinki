@@ -16,8 +16,7 @@ namespace hl::ui
 
 		void setText(std::string text);
 		const std::string& text() const { return _text; }
-		bool focused() const { return _focused; }
-		void setFocused(bool focused) override;
+		bool focused() const { return hasKeyboardFocus(); }
 
 		EventResult handle(const Pointer& pointer) override;
 		EventResult handleChar(uint32_t codepoint) override;
@@ -38,7 +37,6 @@ namespace hl::ui
 		const ITypeface* _typeface = nullptr;
 		std::string _text;
 		std::size_t _caret = 0;
-		bool _focused = false;
 		float _padding = 8.0f;
 		std::vector<GlyphVertex> _glyphs;
 	};

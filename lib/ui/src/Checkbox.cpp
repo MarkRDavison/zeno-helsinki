@@ -7,6 +7,7 @@ namespace hl::ui
 	Checkbox::Checkbox(Node& node) :
 		Widget(node)
 	{
+		focusable = true;
 		node.intrinsicSize = glm::vec2{ 32.0f, 32.0f };
 	}
 
@@ -28,6 +29,7 @@ namespace hl::ui
 		const bool inside = node().world.contains(pointer.position);
 		if (inside && pointer.primaryReleased)
 		{
+			setFocused(true);
 			setChecked(!_checked);
 			if (onChanged)
 			{
@@ -38,10 +40,33 @@ namespace hl::ui
 		return inside ? EventResult::Consume : EventResult::Ignore;
 	}
 
+	EventResult Checkbox::handleKey(TextKey key)
+	{
+		if (key != TextKey::Enter && key != TextKey::Space)
+		{
+			return EventResult::Ignore;
+		}
+
+		setChecked(!_checked);
+		if (onChanged)
+		{
+			onChanged(_checked);
+		}
+
+		return EventResult::Consume;
+	}
+
 	void Checkbox::paint(IPaint& paint) const
 	{
 		const auto& box = node().world;
-		paint.fill(box, boxColor);
+		const glm::vec3 fill = hasKeyboardFocus()
+			? glm::vec3{
+				std::min(1.0f, boxColor.x + 0.18f),
+				std::min(1.0f, boxColor.y + 0.18f),
+				std::min(1.0f, boxColor.z + 0.18f)
+			}
+			: boxColor;
+		paint.fill(box, fill);
 
 		if (_checked)
 		{

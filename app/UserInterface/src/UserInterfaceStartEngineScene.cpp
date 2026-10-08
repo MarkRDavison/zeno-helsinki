@@ -167,6 +167,8 @@ namespace ui
 			case GLFW_KEY_ENTER:
 			case GLFW_KEY_KP_ENTER:
 				return hl::ui::TextKey::Enter;
+			case GLFW_KEY_SPACE:
+				return hl::ui::TextKey::Space;
 			default:
 				return std::nullopt;
 			}
@@ -414,6 +416,21 @@ namespace ui
 
 		_textField = std::make_unique<hl::ui::TextField>(column.addChild(), *_typeface);
 
+		_actionButton = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
+		_actionButton->setText("click / enter", 16);
+		_actionButton->color = { 0.95f, 0.95f, 0.97f };
+		_actionButton->onClick = [this]()
+		{
+			if (_actionButton->color.x > 0.7f)
+			{
+				_actionButton->color = { 1.0f, 0.5f, 0.0f };
+			}
+			else
+			{
+				_actionButton->color = { 0.95f, 0.95f, 0.97f };
+			}
+		};
+
 		auto& clipList = _layoutRoot->addChild();
 		clipList.kind = hl::ui::Kind::Column;
 		clipList.clip = true;
@@ -540,16 +557,32 @@ namespace ui
 		}
 		else if (const auto* press = dynamic_cast<const hl::KeyPressEvent*>(&event))
 		{
+			if (press->GetKeyCode() == GLFW_KEY_TAB)
+			{
+				const auto& input = _engine.getInputManager();
+				const bool shift = input.isKeyDown(GLFW_KEY_LEFT_SHIFT)
+					|| input.isKeyDown(GLFW_KEY_RIGHT_SHIFT);
+				hl::ui::dispatchTextKey(
+					*_layoutRoot,
+					shift ? hl::ui::TextKey::ShiftTab : hl::ui::TextKey::Tab);
+				return;
+			}
+
 			if (const auto key = textKeyFromGlfw(press->GetKeyCode()))
 			{
-				hl::ui::dispatchTextKey(*key);
+				hl::ui::dispatchTextKey(*_layoutRoot, *key);
 			}
 		}
 		else if (const auto* repeat = dynamic_cast<const hl::KeyRepeatEvent*>(&event))
 		{
+			if (repeat->GetKeyCode() == GLFW_KEY_TAB)
+			{
+				return;
+			}
+
 			if (const auto key = textKeyFromGlfw(repeat->GetKeyCode()))
 			{
-				hl::ui::dispatchTextKey(*key);
+				hl::ui::dispatchTextKey(*_layoutRoot, *key);
 			}
 		}
 	}

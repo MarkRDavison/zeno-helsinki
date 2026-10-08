@@ -4,6 +4,7 @@
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/Ui/UiBatch.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
+#include <helsinki/Ui/Button.hpp>
 #include <helsinki/Ui/Checkbox.hpp>
 #include <helsinki/Ui/Label.hpp>
 #include <helsinki/Ui/Layout/Layout.hpp>
@@ -57,6 +58,7 @@ namespace ui
 		std::unique_ptr<hl::ui::Toggle> _toggle;
 		std::unique_ptr<hl::ui::Label> _fieldLabel;
 		std::unique_ptr<hl::ui::TextField> _textField;
+		std::unique_ptr<hl::ui::Button> _actionButton;
 		hl::ui::Panel* _clipHitRow = nullptr;
 		bool _clipHitOn = false;
 	};

@@ -6,19 +6,44 @@ namespace hl::ui
 		Label(node, typeface)
 	{
 		hitTestEnabled = true;
+		focusable = true;
+	}
+
+	void Button::prepare()
+	{
+		Label::prepare();
+		setDrawColor(_hovered || hasKeyboardFocus() ? hoverColor : color);
 	}
 
 	EventResult Button::handle(const Pointer& pointer)
 	{
 		_hovered = node().world.contains(pointer.position);
-		setDrawColor(_hovered ? hoverColor : color);
+		if (_hovered && pointer.primaryReleased)
+		{
+			setFocused(true);
+			if (onClick)
+			{
+				onClick();
+			}
+		}
 
-		if (_hovered && pointer.primaryReleased && onClick)
+		setDrawColor(_hovered || hasKeyboardFocus() ? hoverColor : color);
+		return _hovered ? EventResult::Consume : EventResult::Ignore;
+	}
+
+	EventResult Button::handleKey(TextKey key)
+	{
+		if (key != TextKey::Enter && key != TextKey::Space)
+		{
+			return EventResult::Ignore;
+		}
+
+		if (onClick)
 		{
 			onClick();
 		}
 
-		return _hovered ? EventResult::Consume : EventResult::Ignore;
+		return EventResult::Consume;
 	}
 
 	void Button::paint(IPaint& paint) const
