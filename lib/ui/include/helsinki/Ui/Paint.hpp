@@ -14,6 +14,14 @@ namespace hl::ui
 		glm::vec2 uv{ 0.0f };
 	};
 
+	struct NineSlice
+	{
+		glm::vec4 uvRect{ 0.0f, 0.0f, 1.0f, 1.0f };
+		glm::vec2 sourceSize{ 32.0f, 32.0f };
+		Edges slice = Edges::all(8.0f);
+		glm::vec3 color{ 1.0f, 1.0f, 1.0f };
+	};
+
 	class IPaint
 	{
 	public:
@@ -25,6 +33,7 @@ namespace hl::ui
 		}
 		// uvRect is (u0, v0, u1, v1) in atlas space.
 		virtual void sprite(const Box& box, glm::vec4 uvRect, glm::vec3 color) = 0;
+		void nineSlice(const Box& dest, const NineSlice& spec);
 		virtual void glyphs(
 			const std::vector<GlyphVertex>& verts,
 			glm::vec2 origin,

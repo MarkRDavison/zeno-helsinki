@@ -29,6 +29,7 @@ namespace ui
 	{
 		constexpr float kTexWhite = 0.0f;
 		constexpr float kTexRoboto = 1.0f;
+		constexpr float kTexFrame = 2.0f;
 		constexpr float kScrollPixels = 32.0f;
 
 		class SceneFontTypeface : public hl::ui::ITypeface
@@ -84,7 +85,15 @@ namespace ui
 				_batch->addQuad(box, color, glm::vec4{ 0.0f, 0.0f, 1.0f, 1.0f }, kTexWhite);
 			}
 
-			void sprite(const hl::ui::Box&, glm::vec4, glm::vec3) override {}
+			void sprite(const hl::ui::Box& box, glm::vec4 uvRect, glm::vec3 color) override
+			{
+				const auto texCoords = glm::vec4(
+					uvRect.x,
+					uvRect.y,
+					uvRect.z - uvRect.x,
+					uvRect.w - uvRect.y);
+				_batch->addQuad(box, glm::vec4{ color, 1.0f }, texCoords, kTexFrame);
+			}
 
 			void glyphs(
 				const std::vector<hl::ui::GlyphVertex>& verts,
@@ -331,6 +340,11 @@ namespace ui
 				{
 					.name = "roboto",
 					.type = "texture"
+				},
+				hl::ResourceDefinition::Child
+				{
+					.name = "frame",
+					.type = "texture"
 				}
 			}
 		};
@@ -404,6 +418,8 @@ namespace ui
 
 		auto card = std::make_unique<hl::ui::Panel>(column);
 		card->color = { 0.16f, 0.17f, 0.22f };
+		card->borderWidth = 3.0f;
+		card->borderColor = { 0.32f, 0.34f, 0.40f };
 		_widgets.push_back(std::move(card));
 
 		_slider = std::make_unique<hl::ui::Slider>(column.addChild());
@@ -504,6 +520,17 @@ namespace ui
 		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.40f, 0.40f });
 		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.55f, 0.35f });
 		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.70f, 0.30f });
+
+		auto stretched = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
+		stretched->node().setBottomLeft({ 280.0f, 120.0f });
+		stretched->node().relative = { 16.0f, -16.0f };
+		stretched->nineSlice = hl::ui::NineSlice{
+			.uvRect = { 0.0f, 0.0f, 1.0f, 1.0f },
+			.sourceSize = { 32.0f, 32.0f },
+			.slice = hl::ui::Edges::all(8.0f),
+			.color = { 1.0f, 1.0f, 1.0f }
+		};
+		_widgets.push_back(std::move(stretched));
 	}
 
 	void UserInterfaceStartEngineScene::rebuildAndDraw()
