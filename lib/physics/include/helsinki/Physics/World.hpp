@@ -3,6 +3,7 @@
 #include <helsinki/Physics/Context.hpp>
 #include <helsinki/Physics/Types.hpp>
 #include <helsinki/System/Utils/NonCopyable.hpp>
+#include <functional>
 #include <memory>
 
 namespace hl::physics
@@ -24,6 +25,8 @@ namespace hl::physics
 		void setLinearVelocity(BodyId id, glm::vec3 velocity);
 		void addImpulse(BodyId id, glm::vec3 impulse);
 		void addForce(BodyId id, glm::vec3 force);
+
+		void setContactCallback(std::function<void(const Contact&)> callback);
 
 	private:
 		struct Impl;

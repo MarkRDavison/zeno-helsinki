@@ -87,4 +87,12 @@ namespace hl::physics
 		glm::vec3 gravity{0.f, -9.81f, 0.f};
 		std::uint32_t maxBodies = 1024;
 	};
+
+	struct Contact
+	{
+		BodyId bodyA;
+		BodyId bodyB;
+		glm::vec3 point{0.f};
+		glm::vec3 normal{0.f};
+	};
 }

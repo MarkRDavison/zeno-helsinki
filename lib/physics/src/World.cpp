@@ -1,11 +1,13 @@
 #include <helsinki/Physics/World.hpp>
 
+#include "ObjectLayer.hpp"
+
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
-#include <Jolt/Physics/Collision/ObjectLayer.h>
-#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
@@ -14,32 +16,16 @@
 #include <tracy/Tracy.hpp>
 
 #include <algorithm>
+#include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 
 namespace hl::physics
 {
 	namespace
 	{
-		constexpr JPH::ObjectLayer cObjectNonMoving = 0;
-		constexpr JPH::ObjectLayer cObjectMoving = 1;
-		constexpr JPH::BroadPhaseLayer cBroadphaseNonMoving(0);
-		constexpr JPH::BroadPhaseLayer cBroadphaseMoving(1);
-		constexpr unsigned cBroadphaseCount = 2;
 		constexpr float c2dBoxHalfExtentZ = 0.1f;
-
-		JPH::ObjectLayer toObjectLayer(Layer layer)
-		{
-			switch (layer)
-			{
-			case Layer::NonMoving:
-				return cObjectNonMoving;
-			case Layer::Moving:
-			case Layer::Sensor:
-				return cObjectMoving;
-			}
-			return cObjectMoving;
-		}
 
 		JPH::EMotionType toMotionType(MotionType motion)
 		{
@@ -92,63 +78,76 @@ namespace hl::physics
 			return JPH::BodyID(id.bits);
 		}
 
-		class BroadPhaseLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
+		struct ContactQueue
 		{
-		public:
-			JPH::uint GetNumBroadPhaseLayers() const override
+			std::mutex mutex;
+			std::vector<Contact> contacts;
+
+			void push(const Contact& contact)
 			{
-				return cBroadphaseCount;
+				std::lock_guard<std::mutex> lock(mutex);
+				contacts.push_back(contact);
 			}
 
-			JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override
+			std::vector<Contact> take()
 			{
-				return layer == cObjectNonMoving ? cBroadphaseNonMoving : cBroadphaseMoving;
-			}
-
-#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
-			const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const override
-			{
-				switch (static_cast<JPH::BroadPhaseLayer::Type>(layer))
-				{
-				case static_cast<JPH::BroadPhaseLayer::Type>(cBroadphaseNonMoving):
-					return "NON_MOVING";
-				case static_cast<JPH::BroadPhaseLayer::Type>(cBroadphaseMoving):
-					return "MOVING";
-				default:
-					return "INVALID";
-				}
-			}
-#endif
-		};
-
-		class ObjectVsBroadPhaseLayerFilterImpl final : public JPH::ObjectVsBroadPhaseLayerFilter
-		{
-		public:
-			bool ShouldCollide(JPH::ObjectLayer layer, JPH::BroadPhaseLayer broadphase) const override
-			{
-				if (layer == cObjectNonMoving)
-				{
-					return broadphase == cBroadphaseMoving;
-				}
-				return true;
+				std::lock_guard<std::mutex> lock(mutex);
+				std::vector<Contact> pending;
+				pending.swap(contacts);
+				return pending;
 			}
 		};
 
-		class ObjectLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter
+		Contact makeContact(const JPH::Body& bodyA, const JPH::Body& bodyB, const JPH::ContactManifold& manifold)
+		{
+			Contact contact;
+			contact.bodyA = toBodyId(bodyA.GetID());
+			contact.bodyB = toBodyId(bodyB.GetID());
+			if (manifold.mRelativeContactPointsOn1.size() > 0)
+			{
+				contact.point = toGlm(manifold.GetWorldSpaceContactPointOn1(0));
+			}
+			contact.normal = toGlm(manifold.mWorldSpaceNormal);
+			return contact;
+		}
+
+		class WorldContactListener final : public JPH::ContactListener
 		{
 		public:
-			bool ShouldCollide(JPH::ObjectLayer a, JPH::ObjectLayer b) const override
+			explicit WorldContactListener(ContactQueue& queue)
+				: _queue(queue)
 			{
-				if (a == cObjectNonMoving)
-				{
-					return b == cObjectMoving;
-				}
-				if (b == cObjectNonMoving)
-				{
-					return a == cObjectMoving;
-				}
-				return true;
 			}
+
+			JPH::ValidateResult OnContactValidate(
+				const JPH::Body&,
+				const JPH::Body&,
+				JPH::RVec3Arg,
+				const JPH::CollideShapeResult&) override
+			{
+				return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
+			}
+
+			void OnContactAdded(
+				const JPH::Body& bodyA,
+				const JPH::Body& bodyB,
+				const JPH::ContactManifold& manifold,
+				JPH::ContactSettings&) override
+			{
+				_queue.push(makeContact(bodyA, bodyB, manifold));
+			}
+
+			void OnContactPersisted(
+				const JPH::Body& bodyA,
+				const JPH::Body& bodyB,
+				const JPH::ContactManifold& manifold,
+				JPH::ContactSettings&) override
+			{
+				_queue.push(makeContact(bodyA, bodyB, manifold));
+			}
+
+		private:
+			ContactQueue& _queue;
 		};
 	}
 
@@ -156,15 +155,19 @@ namespace hl::physics
 	{
 		Context* context = nullptr;
 		Dim dim = Dim::D3;
-		BroadPhaseLayerInterfaceImpl broadPhaseLayers;
-		ObjectVsBroadPhaseLayerFilterImpl objectVsBroadPhase;
-		ObjectLayerPairFilterImpl objectLayerPairs;
+		detail::BroadPhaseLayerInterfaceImpl broadPhaseLayers;
+		detail::ObjectVsBroadPhaseLayerFilterImpl objectVsBroadPhase;
+		detail::ObjectLayerPairFilterImpl objectLayerPairs;
 		JPH::TempAllocatorImpl tempAllocator;
 		JPH::JobSystemThreadPool jobSystem;
+		ContactQueue contactQueue;
+		WorldContactListener contactListener;
 		JPH::PhysicsSystem physics;
+		std::function<void(const Contact&)> contactCallback;
 
 		Impl()
 			: tempAllocator(10 * 1024 * 1024)
+			, contactListener(contactQueue)
 		{
 		}
 	};
@@ -197,6 +200,7 @@ namespace hl::physics
 			_impl->objectVsBroadPhase,
 			_impl->objectLayerPairs);
 		_impl->physics.SetGravity(toVec3(settings.gravity));
+		_impl->physics.SetContactListener(&_impl->contactListener);
 	}
 
 	World::~World()
@@ -205,6 +209,8 @@ namespace hl::physics
 		{
 			return;
 		}
+
+		_impl->physics.SetContactListener(nullptr);
 
 		JPH::BodyIDVector ids;
 		_impl->physics.GetBodies(ids);
@@ -228,6 +234,15 @@ namespace hl::physics
 
 		ZoneScopedN("PhysicsStep");
 		_impl->physics.Update(delta, 1, &_impl->tempAllocator, &_impl->jobSystem);
+
+		const std::vector<Contact> pending = _impl->contactQueue.take();
+		if (_impl->contactCallback)
+		{
+			for (const Contact& contact : pending)
+			{
+				_impl->contactCallback(contact);
+			}
+		}
 	}
 
 	BodyId World::createBody(const BodyDesc& desc)
@@ -264,7 +279,7 @@ namespace hl::physics
 			toRVec3(position),
 			toQuat(desc.pose.rotation),
 			toMotionType(desc.motion),
-			toObjectLayer(desc.layer));
+			detail::toObjectLayer(desc.layer));
 		settings.mFriction = desc.friction;
 		settings.mRestitution = desc.restitution;
 		settings.mIsSensor = desc.sensor;
@@ -410,5 +425,10 @@ namespace hl::physics
 			return;
 		}
 		bodies.AddForce(joltId, toVec3(force));
+	}
+
+	void World::setContactCallback(std::function<void(const Contact&)> callback)
+	{
+		_impl->contactCallback = std::move(callback);
 	}
 }
