@@ -1,0 +1,10 @@
+#pragma once
+
+namespace phys
+{
+	class PhysicsConfig
+	{
+	public:
+		static constexpr const char RootPath[] = "${CMAKE_CURRENT_SOURCE_DIR}";
+	};
+}
