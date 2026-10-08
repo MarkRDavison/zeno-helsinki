@@ -82,8 +82,15 @@ namespace hl
 	{
 		m_Window = _window;
 	}
+
+	void InputManager::pushChar(uint32_t codepoint)
+	{
+		_charsThisFrame.push_back(codepoint);
+	}
+
 	void InputManager::updateEndOfFrame()
 	{
+		_charsThisFrame.clear();
 		_lastMousePosition = getMousePosition();
 
 		for (auto& [button, state] : _wasButtonDown)

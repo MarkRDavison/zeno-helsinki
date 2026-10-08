@@ -2,6 +2,7 @@
 
 #include <helsinki/System/HelsinkiTracy.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
+#include <helsinki/System/Events/CharEvent.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
@@ -31,6 +32,18 @@ namespace hl
 			KeyReleaseEvent event(key);
 			app->sendEvent(event);
 		}
+		else if (action == GLFW_REPEAT)
+		{
+			KeyRepeatEvent event(key);
+			app->sendEvent(event);
+		}
+	}
+	static void charCallback(GLFWwindow* window, unsigned int codepoint)
+	{
+		auto app = reinterpret_cast<Engine*>(glfwGetWindowUserPointer(window));
+		app->getInputManager().pushChar(codepoint);
+		CharEvent event(codepoint);
+		app->sendEvent(event);
 	}
 	static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset)
 	{
@@ -379,6 +392,7 @@ namespace hl
 		glfwSetWindowUserPointer(_window, this);
 		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
 		glfwSetKeyCallback(_window, keyCallback);
+		glfwSetCharCallback(_window, charCallback);
 		glfwSetScrollCallback(_window, scrollCallback);
 		_inputManager.setWindow(_window);
 		glfwGetWindowPos(_window, &_windowedX, &_windowedY);

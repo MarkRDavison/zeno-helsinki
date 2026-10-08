@@ -31,4 +31,17 @@ namespace hl
 		int _keyCode;
 	};
 
+	class KeyRepeatEvent : public Event
+	{
+	public:
+		explicit KeyRepeatEvent(int keyCode) : _keyCode(keyCode) {}
+
+		int GetKeyCode() const { return _keyCode; }
+
+		DEFINE_EVENT_TYPE(KeyRepeatEvent)
+
+	private:
+		int _keyCode;
+	};
+
 }

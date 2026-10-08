@@ -1,7 +1,9 @@
 #pragma once
 
 #include <helsinki/System/glm.hpp>
+#include <cstdint>
 #include <unordered_map>
+#include <vector>
 
 struct GLFWwindow;
 
@@ -23,6 +25,8 @@ namespace hl
 		bool isButtonReleased(int _button) const;
 
 		void setWindow(GLFWwindow* _window);
+		void pushChar(uint32_t codepoint);
+		const std::vector<uint32_t>& charsThisFrame() const { return _charsThisFrame; }
 
 		void updateEndOfFrame();
 	private:
@@ -30,6 +34,7 @@ namespace hl
 		mutable std::unordered_map<int, bool> _wasKeyDown;
 		mutable std::unordered_map<int, bool> _wasButtonDown;
 		mutable glm::vec2 _lastMousePosition;
+		std::vector<uint32_t> _charsThisFrame;
 	};
 
 }

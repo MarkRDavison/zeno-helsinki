@@ -9,6 +9,7 @@
 #include <helsinki/Ui/Panel.hpp>
 #include <helsinki/Ui/Slider.hpp>
 #include <helsinki/Ui/Toggle.hpp>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -48,5 +49,9 @@ namespace ui
 		std::unique_ptr<hl::ui::Toggle> _toggle;
 		hl::ui::Panel* _clipHitRow = nullptr;
 		bool _clipHitOn = false;
+		std::vector<hl::ui::Panel*> _charSlots;
+		hl::ui::Panel* _repeatMarker = nullptr;
+		std::vector<uint32_t> _typedCodepoints;
+		bool _keyRepeatLit = false;
 	};
 }

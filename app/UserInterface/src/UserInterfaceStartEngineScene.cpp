@@ -5,6 +5,8 @@
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <helsinki/System/Events/CharEvent.hpp>
+#include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
@@ -307,6 +309,23 @@ namespace ui
 		_checkbox = std::make_unique<hl::ui::Checkbox>(column.addChild());
 		_toggle = std::make_unique<hl::ui::Toggle>(column.addChild());
 
+		auto& charStrip = _layoutRoot->addChild();
+		charStrip.kind = hl::ui::Kind::Row;
+		charStrip.gap = 4.0f;
+		charStrip.setTopLeft({ 0.0f, 0.0f });
+		charStrip.relative = { 16.0f, 176.0f };
+
+		_charSlots.clear();
+		_typedCodepoints.clear();
+		for (int i = 0; i < 8; ++i)
+		{
+			auto& slot = addRow(_widgets, charStrip, { 28.0f, 28.0f }, { 0.18f, 0.19f, 0.22f });
+			_charSlots.push_back(&slot);
+		}
+
+		auto& repeat = addRow(_widgets, charStrip, { 28.0f, 28.0f }, { 0.20f, 0.20f, 0.22f });
+		_repeatMarker = &repeat;
+
 		auto& clipList = _layoutRoot->addChild();
 		clipList.kind = hl::ui::Kind::Column;
 		clipList.clip = true;
@@ -403,6 +422,27 @@ namespace ui
 				: glm::vec3{ 0.85f, 0.78f, 0.28f };
 		}
 
+		for (std::size_t i = 0; i < _charSlots.size(); ++i)
+		{
+			if (i < _typedCodepoints.size())
+			{
+				const float t = static_cast<float>(_typedCodepoints[i] % 256) / 255.0f;
+				_charSlots[i]->color = { t, 0.35f, 1.0f - t };
+			}
+			else
+			{
+				_charSlots[i]->color = { 0.18f, 0.19f, 0.22f };
+			}
+		}
+
+		if (_repeatMarker != nullptr)
+		{
+			_repeatMarker->color = _keyRepeatLit
+				? glm::vec3{ 0.95f, 0.85f, 0.30f }
+				: glm::vec3{ 0.20f, 0.20f, 0.22f };
+		}
+		_keyRepeatLit = false;
+
 		_uiBatch.setFullScissor(VkRect2D{
 			{ 0, 0 },
 			{ static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y) }
@@ -426,6 +466,18 @@ namespace ui
 				*_layoutRoot,
 				pointer.position,
 				{ 0.0f, -static_cast<float>(scroll->getY()) * kScrollPixels });
+		}
+		else if (const auto* typed = dynamic_cast<const hl::CharEvent*>(&event))
+		{
+			_typedCodepoints.push_back(typed->codepoint());
+			if (_typedCodepoints.size() > _charSlots.size())
+			{
+				_typedCodepoints.erase(_typedCodepoints.begin());
+			}
+		}
+		else if (dynamic_cast<const hl::KeyRepeatEvent*>(&event) != nullptr)
+		{
+			_keyRepeatLit = true;
 		}
 	}
 
