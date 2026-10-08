@@ -106,6 +106,8 @@ namespace tower
 					list,
 					_statuses,
 					shot->damageType);
+				// Attacker damage / {type}_damage channels unused in sim (zeros).
+				// outgoingDamage is Catch2-tested; do not pass real channels until a later slice.
 				const float dealt = outgoingDamage(shot->damage, 0.0f, 0.0f);
 				applyHit(health->current, dealt, resist);
 

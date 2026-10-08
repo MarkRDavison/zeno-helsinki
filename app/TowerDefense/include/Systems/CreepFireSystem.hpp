@@ -12,6 +12,7 @@ namespace tower
 	class CreepFireSystem : public hl::System
 	{
 	public:
+		// matchFireCooldown is towers only (TowerFireSystem). Creeps use catalog cooldown.
 		CreepFireSystem(
 			hl::Scene& scene,
 			hl::ResourceManager& resourceManager,
