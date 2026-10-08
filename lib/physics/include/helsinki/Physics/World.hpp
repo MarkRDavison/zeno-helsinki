@@ -5,6 +5,7 @@
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <functional>
 #include <memory>
+#include <optional>
 
 namespace hl::physics
 {
@@ -27,6 +28,8 @@ namespace hl::physics
 		void addForce(BodyId id, glm::vec3 force);
 
 		void setContactCallback(std::function<void(const Contact&)> callback);
+
+		std::optional<RayHit> castRay(glm::vec3 origin, glm::vec3 endOffset, float maxFraction = 1.f) const;
 
 	private:
 		struct Impl;

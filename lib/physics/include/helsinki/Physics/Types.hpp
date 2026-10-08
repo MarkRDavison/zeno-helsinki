@@ -95,4 +95,12 @@ namespace hl::physics
 		glm::vec3 point{0.f};
 		glm::vec3 normal{0.f};
 	};
+
+	struct RayHit
+	{
+		BodyId body;
+		float fraction = 0.f;
+		glm::vec3 point{0.f};
+		glm::vec3 normal{0.f};
+	};
 }

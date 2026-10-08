@@ -7,7 +7,11 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
+#include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
+#include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
@@ -430,5 +434,29 @@ namespace hl::physics
 	void World::setContactCallback(std::function<void(const Contact&)> callback)
 	{
 		_impl->contactCallback = std::move(callback);
+	}
+
+	std::optional<RayHit> World::castRay(glm::vec3 origin, glm::vec3 endOffset, float maxFraction) const
+	{
+		const JPH::RRayCast ray(toRVec3(origin), toVec3(endOffset) * maxFraction);
+		JPH::RayCastResult hit;
+		if (!_impl->physics.GetNarrowPhaseQuery().CastRay(ray, hit))
+		{
+			return std::nullopt;
+		}
+
+		RayHit result;
+		result.body = toBodyId(hit.mBodyID);
+		result.fraction = hit.mFraction;
+		result.point = toGlm(ray.GetPointOnRay(hit.mFraction));
+
+		JPH::BodyLockRead lock(_impl->physics.GetBodyLockInterface(), hit.mBodyID);
+		if (lock.Succeeded())
+		{
+			result.normal = toGlm(lock.GetBody().GetWorldSpaceSurfaceNormal(
+				hit.mSubShapeID2,
+				ray.GetPointOnRay(hit.mFraction)));
+		}
+		return result;
 	}
 }
