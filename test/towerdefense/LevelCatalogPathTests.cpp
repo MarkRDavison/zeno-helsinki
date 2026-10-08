@@ -448,6 +448,301 @@ TEST_CASE("stream missing spawnInterval is load fail", "[tower][paths][catalog]"
 		std::runtime_error);
 }
 
+TEST_CASE("path entry missing name is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("path entry missing path is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main" } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("path with fewer than 2 tiles is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("off-board path tile is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [8, 0] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("duplicate wave name is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "a",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    },
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "b",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("wave missing name is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("wave missing streams is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [ { "name": "1" } ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("empty streams array is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [ { "name": "1", "streams": [] } ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("stream missing name is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("stream missing path is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "spawnInterval": 1,
+          "spawns": [ { "id": "runner", "count": 1 } ]
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("stream missing spawns is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
+TEST_CASE("empty spawns array is load fail", "[tower][paths][catalog]")
+{
+	tower::LevelCatalog level;
+	CHECK_THROWS_AS(
+		loadLevel(
+			level,
+			wrap(R"json(
+  "paths": [ { "name": "main", "path": [ [0, 0], [0, 1] ] } ],
+  "entities": [],
+  "waves": [
+    {
+      "name": "1",
+      "streams": [
+        {
+          "name": "main",
+          "path": "main",
+          "spawnInterval": 1,
+          "spawns": []
+        }
+      ]
+    }
+  ]
+)json")),
+		std::runtime_error);
+}
+
 TEST_CASE("on-path entity placement loads", "[tower][paths][entity]")
 {
 	tower::LevelCatalog level;

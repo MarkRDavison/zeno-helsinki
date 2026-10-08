@@ -136,3 +136,14 @@ TEST_CASE("tryClear waits until every stream is empty", "[tower][paths][wave]")
 	CHECK_FALSE(fixture.wave.tryClear(false));
 	CHECK(fixture.wave.tryClear(true));
 }
+
+TEST_CASE("tryClear is false while the board is not empty", "[tower][paths][wave]")
+{
+	Fixture fixture;
+	REQUIRE(fixture.wave.tryStart());
+	drain(fixture.wave);
+	fixture.wave.tick(1.0f);
+	drain(fixture.wave);
+	CHECK_FALSE(fixture.wave.tryClear(false));
+	CHECK(fixture.wave.tryClear(true));
+}

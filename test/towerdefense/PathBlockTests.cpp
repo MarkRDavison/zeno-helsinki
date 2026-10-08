@@ -64,3 +64,28 @@ TEST_CASE("resume when path entity is gone", "[tower][paths][stall]")
 	const std::vector<tower::TileCoord> path{ { 0, 0 }, { 0, 1 }, { 0, 2 } };
 	CHECK_FALSE(tower::firstBlockedTile(path, 0, tower::PathBlockFootprint{ 9, 9, 1, 1 }).has_value());
 }
+
+TEST_CASE("range greater than 0 can stall earlier than the approach tile", "[tower][paths][stall]")
+{
+	const std::vector<tower::TileCoord> path{ { 0, 0 }, { 0, 1 }, { 0, 2 } };
+	const tower::PathBlockFootprint gate{ 0, 2, 1, 1 };
+	const auto approach = tower::stallApproachIndex(path, 0, gate);
+	REQUIRE(approach.has_value());
+	CHECK(*approach == 1);
+
+	const glm::vec3 onStart{ 0.0f, 0.0f, 0.0f };
+	const glm::vec3 occupiedCenter{ 0.0f, 0.0f, 2.0f };
+	CHECK_FALSE(tower::shouldStall(onStart, occupiedCenter, 0.0f));
+	CHECK(tower::shouldStall(onStart, occupiedCenter, 2.0f));
+}
+
+TEST_CASE("one footprint can block two paths", "[tower][paths][stall]")
+{
+	const std::vector<tower::TileCoord> pathA{ { 0, 0 }, { 0, 1 } };
+	const std::vector<tower::TileCoord> pathB{ { 1, 0 }, { 1, 1 } };
+	const tower::PathBlockFootprint gate{ 0, 1, 2, 1 };
+	REQUIRE(tower::firstBlockedTile(pathA, 0, gate).has_value());
+	CHECK(tower::firstBlockedTile(pathA, 0, gate)->x == 0);
+	REQUIRE(tower::firstBlockedTile(pathB, 0, gate).has_value());
+	CHECK(tower::firstBlockedTile(pathB, 0, gate)->x == 1);
+}
