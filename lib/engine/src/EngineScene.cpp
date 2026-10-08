@@ -13,6 +13,7 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <helsinki/Renderer/Resource/ParticleSystem.hpp>
 #include <algorithm>
 #include <cassert>
 #include <future>
@@ -178,6 +179,18 @@ namespace hl
 							continue;
 						}
 
+						if (pipeline->Name == ParticleSystem::ComputePipelineName)
+						{
+							registerPipelineDraw(pipeline->Name, [this](PipelineDrawData& pdd)
+								{
+									_engine.getParticleSystem().recordCompute(
+										pdd.commandBuffer,
+										pdd.pipeline,
+										pdd.currentFrame);
+								});
+							continue;
+						}
+
 						registerPipelineDraw(pipeline->Name, [](PipelineDrawData& pdd)
 							{
 								ZoneScopedN("compute dispatch");
@@ -187,6 +200,45 @@ namespace hl
 									pdd.pipeline->getPipeline());
 								vkCmdDispatch(pdd.commandBuffer, 1, 1, 1);
 							});
+					}
+				}
+			}
+		}
+
+		for (uint32_t layer = 0; layer < _renderGraph->getNumberLayers(); ++layer)
+		{
+			for (const auto& renderpassName : _renderGraph->getSortedNodesByNameForLayer(layer))
+			{
+				const auto& renderpass = _renderGraph->getRenderpassByName(renderpassName);
+				for (const auto& group : renderpass->getPipelineGroups())
+				{
+					for (auto* pipeline : group)
+					{
+						if (_pipelineDraws.contains(pipeline->Name))
+						{
+							continue;
+						}
+
+						if (pipeline->Name == ParticleSystem::DrawPipelineName)
+						{
+							registerPipelineDraw(pipeline->Name, [this](PipelineDrawData& pdd)
+								{
+									_engine.getParticleSystem().recordDraw(
+										pdd.commandBuffer,
+										pdd.pipeline,
+										pdd.currentFrame);
+								});
+						}
+						else if (pipeline->Name == ParticleSystem::QuadPipelineName)
+						{
+							registerPipelineDraw(pipeline->Name, [this](PipelineDrawData& pdd)
+								{
+									_engine.getParticleSystem().recordDrawQuads(
+										pdd.commandBuffer,
+										pdd.pipeline,
+										pdd.currentFrame);
+								});
+						}
 					}
 				}
 			}

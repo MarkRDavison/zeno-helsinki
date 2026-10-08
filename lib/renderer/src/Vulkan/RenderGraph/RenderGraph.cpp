@@ -8,6 +8,7 @@
 #include <sstream>
 #include <filesystem>
 #include <regex>
+#include <unordered_set>
 
 namespace hl
 {
@@ -451,7 +452,9 @@ namespace hl
 
 									VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 									inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-									inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+									inputAssembly.topology = p.topology == PrimitiveTopology::PointList
+										? VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+										: VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 									inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 									VkPipelineViewportStateCreateInfo viewportState{};
@@ -491,12 +494,24 @@ namespace hl
 									if (p.enableBlending)
 									{
 										colorBlendAttachment.blendEnable = VK_TRUE;
-										colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-										colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-										colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-										colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-										colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-										colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+										if (p.additiveBlending)
+										{
+											colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+											colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+											colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+											colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+											colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+											colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+										}
+										else
+										{
+											colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+											colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+											colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+											colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+											colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+											colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+										}
 									}
 									else
 									{
@@ -1042,6 +1057,20 @@ namespace hl
 
 		const auto& lastPassName = renderpassInfo.back().name;
 
+		std::unordered_set<std::string> bufferOutputNames;
+		std::unordered_set<std::string> imageOutputNames;
+		for (const auto& pass : renderpassInfo)
+		{
+			for (const auto& output : pass.outputs)
+			{
+				imageOutputNames.insert(output.name);
+			}
+			for (const auto& bufferOutput : pass.bufferOutputs)
+			{
+				bufferOutputNames.insert(bufferOutput);
+			}
+		}
+
 		for (const auto& pass : renderpassInfo)
 		{
 			for (const auto& output : pass.outputs)
@@ -1058,6 +1087,11 @@ namespace hl
 
 			for (const auto& input : pass.inputs)
 			{
+				if (bufferOutputNames.contains(input) && !imageOutputNames.contains(input))
+				{
+					continue;
+				}
+
 				edges.push_back(GraphImageBarrierEdge
 					{
 						.passName = pass.name,
@@ -1076,6 +1110,39 @@ namespace hl
 						.passName = lastPassName,
 						.resourceName = output.name,
 						.kind = GraphImageBarrierKind::ColorAttachmentToPresent
+					});
+			}
+		}
+
+		return edges;
+	}
+
+	std::vector<GraphBufferBarrierEdge> RenderGraph::generateBufferBarrierEdges(
+		const std::vector<hl::RenderpassInfo>& renderpassInfo)
+	{
+		std::vector<GraphBufferBarrierEdge> edges;
+		std::unordered_set<std::string> bufferOutputNames;
+		for (const auto& pass : renderpassInfo)
+		{
+			for (const auto& bufferOutput : pass.bufferOutputs)
+			{
+				bufferOutputNames.insert(bufferOutput);
+			}
+		}
+
+		for (const auto& pass : renderpassInfo)
+		{
+			for (const auto& input : pass.inputs)
+			{
+				if (!bufferOutputNames.contains(input))
+				{
+					continue;
+				}
+
+				edges.push_back(GraphBufferBarrierEdge
+					{
+						.passName = pass.name,
+						.resourceName = input
 					});
 			}
 		}

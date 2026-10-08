@@ -9,7 +9,10 @@ namespace td
 	class TwoDimensionalEngineScene : public hl::EngineScene
 	{
 	public:
-		TwoDimensionalEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig);
+		TwoDimensionalEngineScene(
+			hl::Engine& engine,
+			const hl::EngineConfiguration& engineConfig,
+			bool enableGpuParticles);
 		void initialise(
 			const std::string& cameraMatrixResourceId,
 			hl::VulkanDevice& device,
@@ -21,6 +24,7 @@ namespace td
 		void update(uint32_t currentFrame, float delta) override;
 	private:
 		const hl::EngineConfiguration& _engineConfig;
+		bool _enableGpuParticles = false;
 		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;
 	};
 

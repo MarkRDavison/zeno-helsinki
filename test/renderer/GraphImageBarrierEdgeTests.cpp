@@ -131,3 +131,50 @@ TEST_CASE("Barrier edges map MSAA scene color to sampled on the post pass", "[gr
 		"swapchain_color",
 		hl::GraphImageBarrierKind::ColorAttachmentToPresent));
 }
+
+TEST_CASE("Buffer barrier edges connect compute SSBO producers to later graphics inputs", "[graph-barriers]")
+{
+	const std::vector<hl::RenderpassInfo> passes{
+		{
+			.name = "particle_sim_pass",
+			.bufferOutputs = { "particle_ssbo" },
+			.pipelineGroups = {
+				{
+					hl::PipelineInfo{
+						.name = "particle_sim_pipeline",
+						.shaderComp = "particle_sim.comp",
+						.bindPoint = hl::PipelineBindPoint::Compute
+					}
+				}
+			}
+		},
+		{
+			.name = "scene_pass",
+			.inputs = { "particle_ssbo" },
+			.outputs = {
+				hl::ResourceInfo{ .name = "scene_color", .type = hl::ResourceType::Color }
+			},
+			.pipelineGroups = {
+				{
+					hl::PipelineInfo{
+						.name = "particle_pipeline",
+						.shaderVert = "particle.vert",
+						.shaderFrag = "particle.frag"
+					}
+				}
+			}
+		}
+	};
+
+	const auto imageEdges = hl::RenderGraph::generateImageBarrierEdges(passes);
+	REQUIRE_FALSE(hasEdge(
+		imageEdges,
+		"scene_pass",
+		"particle_ssbo",
+		hl::GraphImageBarrierKind::ColorAttachmentToSampled));
+
+	const auto bufferEdges = hl::RenderGraph::generateBufferBarrierEdges(passes);
+	REQUIRE(bufferEdges.size() == 1);
+	REQUIRE(bufferEdges.front().passName == "scene_pass");
+	REQUIRE(bufferEdges.front().resourceName == "particle_ssbo");
+}

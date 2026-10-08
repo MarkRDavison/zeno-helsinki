@@ -13,6 +13,7 @@ static void registerServices(hl::ServiceProvider& services)
 
 int main()
 {
+	constexpr bool EnableGpuParticles = false;
 
 	hl::ServiceProvider serviceProvider;
 
@@ -24,7 +25,7 @@ int main()
 	engineConfig.applyConfig("/data/config.json", std::string(td::TwoDimensionalConfig::RootPath));
 
 	engine.init(engineConfig);
-	engine.setScene(new td::TwoDimensionalEngineScene(engine, engineConfig));
+	engine.setScene(new td::TwoDimensionalEngineScene(engine, engineConfig, EnableGpuParticles));
 	engine.run();
 
 	return 0;

@@ -6,6 +6,7 @@
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <helsinki/Renderer/Resource/ParticleSystem.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/FrameResources.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
@@ -37,6 +38,7 @@ namespace hl
 
 		TextSystem& getTextSystem() { return _textSystem; }
 		MaterialSystem& getMaterialSystem() { return _materialSystem; }
+		ParticleSystem& getParticleSystem() { return _particleSystem; }
 		InputManager& getInputManager() { return _inputManager; }
 		EventBus& getEventBus() { return _eventBus; }
 
@@ -68,7 +70,9 @@ namespace hl
 
 		ResourceManager _resourceManager;
 		MaterialSystem _materialSystem;
+		ParticleSystem _particleSystem;
 		TextSystem _textSystem;
+		uint32_t _particleSimSteps = 0;
 
 		EngineConfiguration _config;
 		uint32_t _currentFrame = 0;

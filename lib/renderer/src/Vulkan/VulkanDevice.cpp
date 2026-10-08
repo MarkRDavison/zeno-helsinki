@@ -137,7 +137,11 @@ namespace hl
 		VkPhysicalDeviceFeatures supportedFeatures{};
 		vkGetPhysicalDeviceFeatures(d, &supportedFeatures);
 
-		return queueIndices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+		return queueIndices.isComplete()
+			&& extensionsSupported
+			&& swapChainAdequate
+			&& supportedFeatures.samplerAnisotropy
+			&& supportedFeatures.largePoints;
 	}
 
 	void VulkanDevice::pickPhysicalDevice()
@@ -224,6 +228,7 @@ namespace hl
 		features2.pNext = &vulkan12;
 		features2.features.samplerAnisotropy = VK_TRUE;
 		features2.features.sampleRateShading = VK_TRUE;
+		features2.features.largePoints = VK_TRUE;
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

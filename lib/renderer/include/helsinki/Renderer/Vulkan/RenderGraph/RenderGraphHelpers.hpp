@@ -13,6 +13,10 @@ namespace hl
 
 		static RenderpassInfo createCompositeRenderpassInfo(
 			const std::vector<std::string>& inputs);
+
+		static RenderpassInfo createParticleSimPass();
+		static PipelineInfo particleDrawPipelineInfo(const std::string& cameraMatrixResourceId);
+		static PipelineInfo particleQuadPipelineInfo(const std::string& cameraMatrixResourceId);
 	};
 
 }

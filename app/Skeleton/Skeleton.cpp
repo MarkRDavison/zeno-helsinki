@@ -13,6 +13,8 @@ static void registerServices(hl::ServiceProvider& services)
 
 int main()
 {
+	constexpr bool EnableGpuParticles = false;
+
 	hl::ServiceProvider serviceProvider;
 
 	registerServices(serviceProvider);
@@ -23,7 +25,7 @@ int main()
 	engineConfig.applyConfig("/data/config.json", std::string(sk::SkeletonConfig::RootPath));
 
 	engine.init(engineConfig);
-	engine.setScene(new sk::SkeletonEngineScene(engine, engineConfig));
+	engine.setScene(new sk::SkeletonEngineScene(engine, engineConfig, EnableGpuParticles));
 	engine.run();
 
 	return EXIT_SUCCESS;

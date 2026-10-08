@@ -1,0 +1,68 @@
+#version 450
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct Particle
+{
+	vec3 position;
+	float life;
+	vec3 velocity;
+	float pad;
+};
+
+layout(std430, binding = 0) buffer ParticleSSBO
+{
+	Particle particles[];
+};
+
+layout(std140, binding = 1) uniform EmitterUBO
+{
+	vec4 origin;
+	vec4 gravity;
+	uvec4 counts;
+	uvec4 limits;
+} emitter;
+
+void main()
+{
+	uint id = gl_GlobalInvocationID.x;
+	uint maxP = emitter.limits.y;
+	if (id >= maxP)
+	{
+		return;
+	}
+
+	uint curr = emitter.counts.y;
+	uint prev = 1u - curr;
+	Particle p = particles[prev * maxP + id];
+	float dt = 1.0 / 60.0;
+
+	for (uint s = 0u; s < emitter.counts.x; ++s)
+	{
+		if (p.life <= 0.0)
+		{
+			float n = float(id);
+			if (emitter.counts.z == 1u)
+			{
+				vec3 dir = vec3(cos(n * 0.37), sin(n * 0.53), 0.0);
+				p.velocity = dir * (80.0 + mod(n, 40.0));
+				p.position = emitter.origin.xyz;
+			}
+			else
+			{
+				vec3 dir = vec3(cos(n * 0.37), 0.4 + 0.4 * sin(n * 0.19), sin(n * 0.41));
+				p.velocity = dir * 0.85;
+				p.position = emitter.origin.xyz;
+			}
+			p.life = 1.2 + mod(n * 0.07, 0.8);
+		}
+		else
+		{
+			p.velocity += emitter.gravity.xyz * dt;
+			p.position += p.velocity * dt;
+			p.life -= dt;
+		}
+	}
+
+	particles[curr * maxP + id] = p;
+}

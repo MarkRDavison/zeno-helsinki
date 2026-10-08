@@ -13,7 +13,10 @@ namespace sk
 	class SkeletonEngineScene : public hl::EngineScene
 	{
 	public:
-		SkeletonEngineScene(hl::Engine& engine, const hl::EngineConfiguration& engineConfig);
+		SkeletonEngineScene(
+			hl::Engine& engine,
+			const hl::EngineConfiguration& engineConfig,
+			bool enableGpuParticles);
 		void initialise(
 			const std::string& cameraMatrixResourceId,
 			hl::VulkanDevice& device,
@@ -29,6 +32,7 @@ namespace sk
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 
 		const hl::EngineConfiguration& _engineConfig;
+		bool _enableGpuParticles = false;
 		hl::ResourceHandle<hl::UniformBufferResource> _sunUbo;
 		hl::ResourceHandle<hl::UniformBufferResource> _pointLightsUbo;
 		bool _specHeldOff = false;

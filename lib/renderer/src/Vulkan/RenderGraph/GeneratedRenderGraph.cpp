@@ -564,6 +564,19 @@ namespace hl
 				}
 			}
 		}
+
+		for (const auto& edge : RenderGraph::generateBufferBarrierEdges(_renderGraph))
+		{
+			if (edge.passName != passName)
+			{
+				continue;
+			}
+
+			auto& buffer = _resourceManager
+				.GetResource<StorageBufferResource>(edge.resourceName)
+				->getBuffer();
+			VulkanCommandBuffer::storageWriteToVertexRead(_device, commandBuffer, buffer._buffer);
+		}
 	}
 
 	void GeneratedRenderGraph::recordPostPassBarriers(

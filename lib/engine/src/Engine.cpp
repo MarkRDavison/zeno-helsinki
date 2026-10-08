@@ -54,6 +54,7 @@ namespace hl
 		_syncContext(_device),
 		_resourceManager(),
 		_materialSystem(_device, _resourceManager),
+		_particleSystem(_device, _resourceManager),
 		_textSystem(_device, _transferCommandPool, _resourceManager)
 	{
 
@@ -212,10 +213,12 @@ namespace hl
 
 			glfwPollEvents();
 
+			_particleSimSteps = 0;
 			while (accumulator >= delta)
 			{
 				update(delta);
 				ups++;
+				_particleSimSteps++;
 
 				accumulator -= delta;
 			}
@@ -234,6 +237,7 @@ namespace hl
 		destroyScene();
 
 		_textSystem.destroy();
+		_particleSystem.destroy();
 		_materialSystem.destroy();
 
 		_swapChain.destroy();
@@ -296,7 +300,9 @@ namespace hl
 			throw std::runtime_error("failed to acquire swap chain image!");
 		}
 
+		_particleSystem.setSimSteps(_particleSimSteps);
 		_currentEngineScene->updateGpuResources(_currentFrame);
+		_particleSystem.updateGpuResources(_currentFrame);
 
 		const auto primaryCommandBuffer = _currentEngineScene->draw(_currentFrame, imageIndex);
 
@@ -420,6 +426,7 @@ namespace hl
 					resourceContext);
 
 				_materialSystem.create(_config.MaxMaterials);
+				_particleSystem.create();
 
 				_resourceManager.Load<hl::UniformBufferResource>(
 					"camera_matrix_ubo",// TODO: To constant

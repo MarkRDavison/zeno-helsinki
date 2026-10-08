@@ -55,6 +55,33 @@ namespace hl
 		VulkanCommandBuffer::pipelineBarrier2(device, commandBuffer, dependencyInfo);
 	}
 
+	void VulkanCommandBuffer::storageWriteToVertexRead(
+		VulkanDevice& device,
+		VkCommandBuffer commandBuffer,
+		VkBuffer buffer)
+	{
+		assert(commandBuffer != VK_NULL_HANDLE);
+		assert(buffer != VK_NULL_HANDLE);
+
+		VkBufferMemoryBarrier2 barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		barrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.buffer = buffer;
+		barrier.offset = 0;
+		barrier.size = VK_WHOLE_SIZE;
+
+		VkDependencyInfo dependencyInfo{};
+		dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dependencyInfo.bufferMemoryBarrierCount = 1;
+		dependencyInfo.pBufferMemoryBarriers = &barrier;
+		VulkanCommandBuffer::pipelineBarrier2(device, commandBuffer, dependencyInfo);
+	}
+
 	void VulkanCommandBuffer::pipelineBarrier2(
 		VulkanDevice& device,
 		VkCommandBuffer commandBuffer,

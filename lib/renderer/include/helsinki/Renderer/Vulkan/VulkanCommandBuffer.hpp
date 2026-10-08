@@ -14,6 +14,7 @@ namespace hl
 		static void undefinedToDepthAttachment(VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image);
 		static void colorAttachmentToSampled(VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image);
 		static void colorAttachmentToPresent(VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image);
+		static void storageWriteToVertexRead(VulkanDevice& device, VkCommandBuffer commandBuffer, VkBuffer buffer);
 
 	public: // private: TODO: to private
 		VulkanDevice& _device;

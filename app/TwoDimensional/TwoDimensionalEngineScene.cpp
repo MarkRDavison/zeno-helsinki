@@ -24,6 +24,7 @@
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <helsinki/Renderer/Resource/ParticleSystem.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 
 namespace td
@@ -31,10 +32,12 @@ namespace td
 
 	TwoDimensionalEngineScene::TwoDimensionalEngineScene(
         hl::Engine& engine,
-        const hl::EngineConfiguration& engineConfig
+        const hl::EngineConfiguration& engineConfig,
+        bool enableGpuParticles
     ) :
         EngineScene(engine),
-        _engineConfig(engineConfig)
+        _engineConfig(engineConfig),
+        _enableGpuParticles(enableGpuParticles)
     {
         _cameras.insert({ "Default", new hl::Camera2D() });
     }
@@ -122,6 +125,16 @@ namespace td
             // TODO: ref vars for the outputs???
             hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "scene_color", "text_color" })
         };
+
+        if (_enableGpuParticles)
+        {
+            renderpasses.front().inputs = { hl::ParticleSystem::StorageBufferName };
+            renderpasses.front().pipelineGroups.push_back(
+                { hl::RenderGraphHelpers::particleDrawPipelineInfo(cameraMatrixResourceId) });
+            renderpasses.insert(
+                renderpasses.begin(),
+                hl::RenderGraphHelpers::createParticleSimPass());
+        }
 
         hl::ResourceContext resourceContext
         {
@@ -284,6 +297,14 @@ namespace td
                     vkCmdDraw(pdd.commandBuffer, 6, 1, 0, 0);
                 }
             });
+
+        if (_enableGpuParticles)
+        {
+            _engine.getParticleSystem().setEmitter(
+                hl::ParticleSpace::Ortho2D,
+                0,
+                glm::vec3(400.0f, 300.0f, 0.0f));
+        }
     }
 
     void TwoDimensionalEngineScene::update(uint32_t /*currentFrame*/, float delta)

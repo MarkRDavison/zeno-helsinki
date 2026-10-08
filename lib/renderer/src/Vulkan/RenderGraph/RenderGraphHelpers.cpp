@@ -3,6 +3,8 @@
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
+#include <helsinki/Renderer/Resource/ParticleSystem.hpp>
+#include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 #include <string>
 
 namespace hl
@@ -229,4 +231,161 @@ namespace hl
             }
         };
     }
+
+	RenderpassInfo RenderGraphHelpers::createParticleSimPass()
+	{
+		return RenderpassInfo
+		{
+			.name = ParticleSystem::SimPassName,
+			.bufferOutputs = { ParticleSystem::StorageBufferName },
+			.pipelineGroups =
+			{
+				{
+					PipelineInfo
+					{
+						.name = ParticleSystem::ComputePipelineName,
+						.shaderComp = std::string(RendererShaderRoot) + "/particle_sim.comp",
+						.bindPoint = PipelineBindPoint::Compute,
+						.descriptorSets =
+						{
+							DescriptorSetInfo
+							{
+								.bindings =
+								{
+									DescriptorBinding
+									{
+										.binding = 0,
+										.type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+										.stage = "COMPUTE",
+										.resource = ParticleSystem::StorageBufferName
+									},
+									DescriptorBinding
+									{
+										.binding = 1,
+										.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+										.stage = "COMPUTE",
+										.resource = ParticleSystem::EmitterUniformBufferName
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		};
+	}
+
+	PipelineInfo RenderGraphHelpers::particleDrawPipelineInfo(const std::string& cameraMatrixResourceId)
+	{
+		return PipelineInfo
+		{
+			.name = ParticleSystem::DrawPipelineName,
+			.shaderVert = std::string(RendererShaderRoot) + "/particle.vert",
+			.shaderFrag = std::string(RendererShaderRoot) + "/particle.frag",
+			.descriptorSets =
+			{
+				DescriptorSetInfo
+				{
+					.bindings =
+					{
+						DescriptorBinding
+						{
+							.binding = 0,
+							.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+							.stage = "VERTEX",
+							.resource = cameraMatrixResourceId,
+							.count = MAX_CAMERAS
+						},
+						DescriptorBinding
+						{
+							.binding = 1,
+							.type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+							.stage = "VERTEX",
+							.resource = ParticleSystem::StorageBufferName
+						},
+						DescriptorBinding
+						{
+							.binding = 2,
+							.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+							.stage = "VERTEX",
+							.resource = ParticleSystem::EmitterUniformBufferName
+						}
+					}
+				}
+			},
+			.depthState =
+			{
+				.testEnable = false,
+				.writeEnable = false
+			},
+			.rasterState =
+			{
+				.cullMode = VK_CULL_MODE_NONE
+			},
+			.enableBlending = true,
+			.additiveBlending = true,
+			.topology = PrimitiveTopology::PointList
+		};
+	}
+
+	PipelineInfo RenderGraphHelpers::particleQuadPipelineInfo(const std::string& cameraMatrixResourceId)
+	{
+		return PipelineInfo
+		{
+			.name = ParticleSystem::QuadPipelineName,
+			.shaderVert = std::string(RendererShaderRoot) + "/particle_quad.vert",
+			.shaderFrag = std::string(RendererShaderRoot) + "/particle_quad.frag",
+			.descriptorSets =
+			{
+				DescriptorSetInfo
+				{
+					.bindings =
+					{
+						DescriptorBinding
+						{
+							.binding = 0,
+							.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+							.stage = "VERTEX",
+							.resource = cameraMatrixResourceId,
+							.count = MAX_CAMERAS
+						},
+						DescriptorBinding
+						{
+							.binding = 1,
+							.type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+							.stage = "VERTEX",
+							.resource = ParticleSystem::StorageBufferName
+						},
+						DescriptorBinding
+						{
+							.binding = 2,
+							.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+							.stage = "VERTEX",
+							.resource = ParticleSystem::EmitterUniformBufferName
+						},
+						DescriptorBinding
+						{
+							.binding = 3,
+							.type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+							.stage = "FRAGMENT",
+							.resource = MaterialSystem::FallbackTextureName,
+							.updateFrequency = DescriptorUpdateFrequency::Static
+						}
+					}
+				}
+			},
+			.depthState =
+			{
+				.testEnable = false,
+				.writeEnable = false
+			},
+			.rasterState =
+			{
+				.cullMode = VK_CULL_MODE_NONE
+			},
+			.enableBlending = true,
+			.additiveBlending = true,
+			.topology = PrimitiveTopology::TriangleList
+		};
+	}
 }

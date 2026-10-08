@@ -196,6 +196,12 @@ namespace hl
         Compute
     };
 
+    enum class PrimitiveTopology
+    {
+        TriangleList,
+        PointList
+    };
+
     struct PipelineInfo
     {
         std::string name;
@@ -208,6 +214,8 @@ namespace hl
         DepthState depthState;
         RasterState rasterState;
         bool enableBlending = false;
+        bool additiveBlending = false;
+        PrimitiveTopology topology{ PrimitiveTopology::TriangleList };
         uint32_t pushConstantSize;
         ViewportInfo viewport;
     };
@@ -311,6 +319,12 @@ namespace hl
         GraphImageBarrierKind kind;
     };
 
+    struct GraphBufferBarrierEdge
+    {
+        std::string passName;
+        std::string resourceName;
+    };
+
     class RenderGraph
     {
         RenderGraph() = delete;
@@ -342,6 +356,7 @@ namespace hl
 
         static std::unordered_map<std::string, Node> generateDAG(const std::vector<hl::RenderpassInfo>& renderpassInfo);
         static std::vector<GraphImageBarrierEdge> generateImageBarrierEdges(const std::vector<hl::RenderpassInfo>& renderpassInfo);
+        static std::vector<GraphBufferBarrierEdge> generateBufferBarrierEdges(const std::vector<hl::RenderpassInfo>& renderpassInfo);
     };
 
 }

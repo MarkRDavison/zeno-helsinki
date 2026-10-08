@@ -8,6 +8,7 @@
 #include <helsinki/Renderer/Resource/CubemapTextureResource.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
+#include <helsinki/Renderer/Resource/ParticleSystem.hpp>
 #include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
@@ -25,10 +26,12 @@ namespace sk
 
     SkeletonEngineScene::SkeletonEngineScene(
         hl::Engine& engine,
-        const hl::EngineConfiguration& engineConfig
+        const hl::EngineConfiguration& engineConfig,
+        bool enableGpuParticles
     ) :
         EngineScene(engine),
-        _engineConfig(engineConfig)
+        _engineConfig(engineConfig),
+        _enableGpuParticles(enableGpuParticles)
     {
         // EngineScene destructor deletes cameras stored in _cameras.
         _cameras.insert({ "Default", new hl::Camera(
@@ -40,23 +43,8 @@ namespace sk
 
     std::vector<hl::RenderpassInfo> SkeletonEngineScene::buildRenderpasses() const
     {
-        return
+        std::vector<hl::RenderpassInfo> renderpasses
         {
-            hl::RenderpassInfo
-            {
-                .name = "noop_compute_pass",
-                .pipelineGroups =
-                {
-                    {
-                        hl::PipelineInfo
-                        {
-                            .name = "noop_compute_pipeline",
-                            .shaderComp = std::string(hl::RendererShaderRoot) + "/noop.comp",
-                            .bindPoint = hl::PipelineBindPoint::Compute
-                        }
-                    }
-                }
-            },
             hl::RenderpassInfo
             {
                 .name = "scene_pass",
@@ -373,6 +361,18 @@ namespace sk
             },
             hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "post_color", "ui_color" })
         };
+
+        if (_enableGpuParticles)
+        {
+            renderpasses.front().inputs = { hl::ParticleSystem::StorageBufferName };
+            renderpasses.front().pipelineGroups.push_back(
+                { hl::RenderGraphHelpers::particleQuadPipelineInfo("camera_matrix_ubo") });
+            renderpasses.insert(
+                renderpasses.begin(),
+                hl::RenderGraphHelpers::createParticleSimPass());
+        }
+
+        return renderpasses;
     }
 
     void SkeletonEngineScene::spawnScene(
@@ -477,6 +477,14 @@ namespace sk
             renderpasses);
 
         registerPipelineDraw("ui_pipeline", [](hl::PipelineDrawData&) {});
+
+        if (_enableGpuParticles)
+        {
+            _engine.getParticleSystem().setEmitter(
+                hl::ParticleSpace::World3D,
+                0,
+                glm::vec3(0.0f, 0.5f, 0.0f));
+        }
 	}
 
     void SkeletonEngineScene::update(uint32_t /*currentFrame*/, float delta)
