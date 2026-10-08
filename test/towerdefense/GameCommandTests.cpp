@@ -210,6 +210,18 @@ namespace
 			}
 			return false;
 		}
+
+		int firstLiveTowerId() const
+		{
+			for (auto* entity : scene.getEntitiesByTag(tower::TowerTag))
+			{
+				if (!scene.isPendingRemoval(entity->Id))
+				{
+					return entity->Id;
+				}
+			}
+			return tower::NoTowerSelected;
+		}
 	};
 }
 
@@ -328,4 +340,89 @@ TEST_CASE("skirmish PlaceTower allows catalog ids not in ownedTowers", "[tower][
 	REQUIRE(fixture.match.ownedTowers.empty());
 	REQUIRE(fixture.commands.handle(tower::PlaceTower{ .defId = "double", .x = 4, .z = 4 }));
 	CHECK(fixture.hasTowerAt(4, 4));
+}
+
+TEST_CASE("PlaceTower is false after match ended", "[tower][command]")
+{
+	Fixture fixture;
+	fixture.gameState.setWon();
+	const int gold = fixture.gameState.gold();
+	CHECK_FALSE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 3, .z = 3 }));
+	CHECK(fixture.gameState.gold() == gold);
+	CHECK(fixture.liveTowerCount() == 0);
+}
+
+TEST_CASE("SellSelected refunds gold and removes the tower", "[tower][command]")
+{
+	Fixture fixture;
+	const int gold = fixture.gameState.gold();
+	REQUIRE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 3, .z = 3 }));
+	REQUIRE(fixture.commands.handle(tower::SelectTower{ .towerEntityId = fixture.firstLiveTowerId() }));
+	REQUIRE(fixture.commands.handle(tower::SellSelected{}));
+	CHECK(fixture.gameState.gold() == gold - 15 + tower::towerSellRefund(15));
+	CHECK(fixture.liveTowerCount() == 0);
+	CHECK(fixture.gameState.selectedTowerId() == tower::NoTowerSelected);
+}
+
+TEST_CASE("SellSelected is false with no inspect", "[tower][command]")
+{
+	Fixture fixture;
+	fixture.addTower();
+	const int gold = fixture.gameState.gold();
+	CHECK_FALSE(fixture.commands.handle(tower::SellSelected{}));
+	CHECK(fixture.gameState.gold() == gold);
+	CHECK(fixture.liveTowerCount() == 1);
+}
+
+TEST_CASE("SellSelected is false while in combat", "[tower][command]")
+{
+	Fixture fixture;
+	REQUIRE(fixture.commands.handle(tower::PlaceTower{ .defId = "single", .x = 3, .z = 3 }));
+	REQUIRE(fixture.commands.handle(tower::SelectTower{ .towerEntityId = fixture.firstLiveTowerId() }));
+	REQUIRE(fixture.wave.tryStart());
+	REQUIRE(fixture.wave.inCombat());
+	const int gold = fixture.gameState.gold();
+	CHECK_FALSE(fixture.commands.handle(tower::SellSelected{}));
+	CHECK(fixture.gameState.gold() == gold);
+	CHECK(fixture.liveTowerCount() == 1);
+}
+
+TEST_CASE("SellSelected is false after match ended", "[tower][command]")
+{
+	Fixture fixture;
+	auto* gun = fixture.addTower();
+	REQUIRE(fixture.commands.handle(tower::SelectTower{ .towerEntityId = gun->Id }));
+	fixture.gameState.setWon();
+	CHECK_FALSE(fixture.commands.handle(tower::SellSelected{}));
+	CHECK(fixture.liveTowerCount() == 1);
+}
+
+TEST_CASE("DeselectTower keeps focus when clearFocus is false", "[tower][command]")
+{
+	Fixture fixture;
+	auto* gun = fixture.addTower();
+	auto* rock = fixture.addNeutral(2, 3, true);
+	REQUIRE(fixture.commands.handle(tower::SelectTower{ .towerEntityId = gun->Id }));
+	REQUIRE(fixture.commands.handle(tower::AssignTowerFocus{ .targetEntityId = rock->Id }));
+	REQUIRE(fixture.commands.handle(tower::DeselectTower{ .clearFocus = false }));
+	CHECK(fixture.gameState.selectedTowerId() == tower::NoTowerSelected);
+	CHECK(gun->GetComponent<tower::TowerComponent>()->focusEntityId == rock->Id);
+}
+
+TEST_CASE("DeselectTower clears focus when clearFocus is true", "[tower][command]")
+{
+	Fixture fixture;
+	auto* gun = fixture.addTower();
+	auto* rock = fixture.addNeutral(2, 3, true);
+	REQUIRE(fixture.commands.handle(tower::SelectTower{ .towerEntityId = gun->Id }));
+	REQUIRE(fixture.commands.handle(tower::AssignTowerFocus{ .targetEntityId = rock->Id }));
+	REQUIRE(fixture.commands.handle(tower::DeselectTower{ .clearFocus = true }));
+	CHECK(fixture.gameState.selectedTowerId() == tower::NoTowerSelected);
+	CHECK(gun->GetComponent<tower::TowerComponent>()->focusEntityId == tower::NoTowerSelected);
+}
+
+TEST_CASE("DeselectTower is false with no inspect", "[tower][command]")
+{
+	Fixture fixture;
+	CHECK_FALSE(fixture.commands.handle(tower::DeselectTower{}));
 }
