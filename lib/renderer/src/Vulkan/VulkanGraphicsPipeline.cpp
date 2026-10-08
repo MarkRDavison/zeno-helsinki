@@ -22,14 +22,38 @@ namespace hl
     }
 
     std::vector<uint32_t> VulkanGraphicsPipeline::readParseCompileShader(
-        const std::string& shaderSource, 
+        const std::string& shaderSource,
         bool vertex)
     {
-        // TODO: Compute etc
+        return readParseCompileShader(
+            shaderSource,
+            vertex ? ShaderCompileStage::Vertex : ShaderCompileStage::Fragment);
+    }
+
+    std::vector<uint32_t> VulkanGraphicsPipeline::readParseCompileShader(
+        const std::string& shaderSource,
+        ShaderCompileStage compileStage)
+    {
         ZoneScoped;
-        
-        ZoneNameF("readParseCompileShader: %s", vertex ? "Vertex" : "Fragment");
-        EShLanguage stage = vertex ? EShLanguage::EShLangVertex : EShLanguage::EShLangFragment;
+
+        EShLanguage stage = EShLangVertex;
+        const char* stageName = "Vertex";
+        switch (compileStage)
+        {
+        case ShaderCompileStage::Vertex:
+            stage = EShLangVertex;
+            stageName = "Vertex";
+            break;
+        case ShaderCompileStage::Fragment:
+            stage = EShLangFragment;
+            stageName = "Fragment";
+            break;
+        case ShaderCompileStage::Compute:
+            stage = EShLangCompute;
+            stageName = "Compute";
+            break;
+        }
+        ZoneNameF("readParseCompileShader: %s", stageName);
 
         glslang::TShader shader(stage);
         const char* sources[] = { shaderSource.c_str() };

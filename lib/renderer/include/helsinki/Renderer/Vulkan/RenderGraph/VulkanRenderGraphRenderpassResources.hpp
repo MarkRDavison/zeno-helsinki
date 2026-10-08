@@ -46,6 +46,8 @@ namespace hl
 		VkSampleCountFlagBits getRasterizationSamples() const;
 		bool writesToSwapchain() const;
 		bool usesMultiSampling() const;
+		void setIsCompute(bool isCompute);
+		bool isCompute() const;
 
 		const std::string Name;
 
@@ -63,6 +65,7 @@ namespace hl
 		VkFormat _depthFormat{ VK_FORMAT_UNDEFINED };
 		VkSampleCountFlagBits _rasterizationSamples{ VK_SAMPLE_COUNT_1_BIT };
 		bool _writesToSwapchain{ false };
+		bool _isCompute{ false };
 	};
 
 }

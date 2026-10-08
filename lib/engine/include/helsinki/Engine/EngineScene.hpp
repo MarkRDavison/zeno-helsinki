@@ -10,7 +10,9 @@
 #include <helsinki/Engine/Scene/Scene.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
+#include <functional>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace hl

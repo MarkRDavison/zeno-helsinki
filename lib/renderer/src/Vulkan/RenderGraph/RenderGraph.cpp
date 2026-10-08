@@ -78,6 +78,9 @@ namespace hl
 
 			renderpasses.push_back(r);
 
+			const bool isComputePass = passIsCompute(ri);
+			r->setIsCompute(isComputePass);
+
 			const bool useMultiSampling = passUsesMultiSampling(ri);
 
 			{
@@ -270,6 +273,7 @@ namespace hl
 							auto& pipeline = r->addPipeline(p.name);
 
 							pipeline.addViewportInfo(p.viewport.mode, p.viewport.width, p.viewport.height);
+							pipeline.setBindPoint(p.bindPoint);
 
 							VkPipelineLayout pipelineLayout;
 
@@ -277,7 +281,9 @@ namespace hl
 								ZoneScopedN("Create Pipeline Layout");
 								// TODO: Not complete
 								VkPushConstantRange pushConstantRange{};
-								pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+								pushConstantRange.stageFlags = p.bindPoint == PipelineBindPoint::Compute
+									? VK_SHADER_STAGE_COMPUTE_BIT
+									: VK_SHADER_STAGE_VERTEX_BIT;
 								pushConstantRange.offset = 0;
 								pushConstantRange.size = p.pushConstantSize;
 								// todo: compare this size to physicalDeviceProperties.limits.maxPushConstantsSize
@@ -312,6 +318,51 @@ namespace hl
 								pipeline.addPipelineLayout(pipelineLayout);
 							}
 
+							if (p.bindPoint == PipelineBindPoint::Compute)
+							{
+								ZoneScopedN("Create Compute Pipeline");
+
+								const auto computeShaderContents = readShaderSource(p.shaderComp);
+								const auto computeSpirv = VulkanGraphicsPipeline::readParseCompileShader(
+									computeShaderContents,
+									VulkanGraphicsPipeline::ShaderCompileStage::Compute);
+
+								VkShaderModule computeShaderModule{ VK_NULL_HANDLE };
+								VkShaderModuleCreateInfo computeModuleInfo{};
+								computeModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+								computeModuleInfo.codeSize = computeSpirv.size() * sizeof(uint32_t);
+								computeModuleInfo.pCode = computeSpirv.data();
+								CHECK_VK_RESULT(vkCreateShaderModule(device.handle(), &computeModuleInfo, nullptr, &computeShaderModule));
+
+								VkPipelineShaderStageCreateInfo computeStage{};
+								computeStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+								computeStage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+								computeStage.module = computeShaderModule;
+								computeStage.pName = "main";
+
+								VkComputePipelineCreateInfo computePipelineInfo{};
+								computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+								computePipelineInfo.stage = computeStage;
+								computePipelineInfo.layout = pipelineLayout;
+
+								VkPipeline pl{ VK_NULL_HANDLE };
+								CHECK_VK_RESULT(vkCreateComputePipelines(
+									device.handle(),
+									VK_NULL_HANDLE,
+									1,
+									&computePipelineInfo,
+									nullptr,
+									&pl));
+
+								device.setDebugName(
+									reinterpret_cast<uint64_t>(pl),
+									VK_OBJECT_TYPE_PIPELINE,
+									(r->Name + "_" + p.name + "_ComputePipeline").c_str());
+
+								pipeline.addPipeline(pl);
+								vkDestroyShaderModule(device.handle(), computeShaderModule, nullptr);
+							}
+							else
 							{
 								VkShaderModule vertexShaderModule;
 								VkShaderModule fragmentShaderModule;
@@ -834,6 +885,11 @@ namespace hl
 			flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
 		}
 
+		if (stage.contains("COMPUTE"))
+		{
+			flags |= VK_SHADER_STAGE_COMPUTE_BIT;
+		}
+
 		return flags;
 	}
 
@@ -860,9 +916,16 @@ namespace hl
 
 		for (const auto& r : renderpassInfo)
 		{
+			passIsCompute(r);
+
 			for (const auto& o : r.outputs)
 			{
 				whoWritesWhatOutput.insert({ o.name, r.name });
+			}
+
+			for (const auto& bufferOutput : r.bufferOutputs)
+			{
+				whoWritesWhatOutput.insert({ bufferOutput, r.name });
 			}
 		}
 

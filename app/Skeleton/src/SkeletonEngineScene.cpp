@@ -44,6 +44,21 @@ namespace sk
         {
             hl::RenderpassInfo
             {
+                .name = "noop_compute_pass",
+                .pipelineGroups =
+                {
+                    {
+                        hl::PipelineInfo
+                        {
+                            .name = "noop_compute_pipeline",
+                            .shaderComp = std::string(hl::RendererShaderRoot) + "/noop.comp",
+                            .bindPoint = hl::PipelineBindPoint::Compute
+                        }
+                    }
+                }
+            },
+            hl::RenderpassInfo
+            {
                 .name = "scene_pass",
                 .inputs = {},
                 .outputs =

@@ -201,6 +201,16 @@ namespace hl
 		return _writesToSwapchain;
 	}
 
+	void VulkanRenderGraphRenderpassResources::setIsCompute(bool isCompute)
+	{
+		_isCompute = isCompute;
+	}
+
+	bool VulkanRenderGraphRenderpassResources::isCompute() const
+	{
+		return _isCompute;
+	}
+
 	bool VulkanRenderGraphRenderpassResources::usesMultiSampling() const
 	{
 		return _rasterizationSamples != VK_SAMPLE_COUNT_1_BIT;

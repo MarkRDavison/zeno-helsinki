@@ -31,6 +31,10 @@ namespace hl
 		_width = width;
 		_height = height;
 	}
+	void VulkanRenderGraphPipelineResources::setBindPoint(PipelineBindPoint bindPoint)
+	{
+		_bindPoint = bindPoint;
+	}
 
 	VkDescriptorSet VulkanRenderGraphPipelineResources::getDescriptorSet(uint32_t index)
 	{

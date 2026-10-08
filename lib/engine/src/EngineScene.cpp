@@ -125,6 +125,12 @@ namespace hl
 					const auto& renderpass = _renderGraph->getRenderpassByName(renderpassesForLayer[rpIndex]);
 					auto& secondaryCommandsForGroups = secondaryCommandsForLayerAndGroups[rpIndex];
 
+					if (renderpass->isCompute())
+					{
+						secondaryCommandsForGroups.clear();
+						continue;
+					}
+
 					secondaryCommandsForGroups.resize(renderpass->getPipelineGroups().size());
 
 					uint32_t groupIndex = 0;
@@ -148,6 +154,39 @@ namespace hl
 							("SecondaryCommandBuffer_" + std::to_string(i) + "_" + renderpass->Name + "_Group_" + std::to_string(groupIndex)).c_str());
 
 						groupIndex++;
+					}
+				}
+			}
+		}
+
+		for (uint32_t layer = 0; layer < _renderGraph->getNumberLayers(); ++layer)
+		{
+			for (const auto& renderpassName : _renderGraph->getSortedNodesByNameForLayer(layer))
+			{
+				const auto& renderpass = _renderGraph->getRenderpassByName(renderpassName);
+				if (!renderpass->isCompute())
+				{
+					continue;
+				}
+
+				for (const auto& group : renderpass->getPipelineGroups())
+				{
+					for (auto* pipeline : group)
+					{
+						if (_pipelineDraws.contains(pipeline->Name))
+						{
+							continue;
+						}
+
+						registerPipelineDraw(pipeline->Name, [](PipelineDrawData& pdd)
+							{
+								ZoneScopedN("compute dispatch");
+								vkCmdBindPipeline(
+									pdd.commandBuffer,
+									VK_PIPELINE_BIND_POINT_COMPUTE,
+									pdd.pipeline->getPipeline());
+								vkCmdDispatch(pdd.commandBuffer, 1, 1, 1);
+							});
 					}
 				}
 			}
@@ -249,8 +288,38 @@ namespace hl
                 ZoneScoped;
                 ZoneNameF("record command buffer for %s", renderpassName.c_str());
 
-                const auto& renderpass = _renderGraph->getRenderpassByName(renderpassName);
+				const auto& renderpass = _renderGraph->getRenderpassByName(renderpassName);
 				assert(renderpass != nullptr);
+
+				if (renderpass->isCompute())
+				{
+					_renderGraph->recordPrePassBarriers(
+						frame.primaryCmd,
+						renderpassName,
+						currentFrame,
+						imageIndex);
+
+					for (const auto& group : renderpass->getPipelineGroups())
+					{
+						for (auto* pipeline : group)
+						{
+							renderPipelineDraw(
+								frame.primaryCmd,
+								renderpassName,
+								pipeline,
+								currentFrame);
+						}
+					}
+
+					_renderGraph->recordPostPassBarriers(
+						frame.primaryCmd,
+						renderpassName,
+						imageIndex);
+
+					++renderpassIndex;
+					continue;
+				}
+
                 const auto& clearValues = renderpass->getClearValues();
                 const bool isLastRenderpass = lastRenderpassName == renderpass->Name;
                 const uint32_t attachmentSlot = isLastRenderpass ? imageIndex : currentFrame;

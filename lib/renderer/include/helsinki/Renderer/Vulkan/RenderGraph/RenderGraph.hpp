@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <limits>
 
 namespace hl
 {
@@ -189,11 +190,19 @@ namespace hl
         uint32_t height;
     };
 
+    enum class PipelineBindPoint
+    {
+        Graphics,
+        Compute
+    };
+
     struct PipelineInfo
     {
         std::string name;
         std::string shaderVert;
         std::string shaderFrag;
+        std::string shaderComp;
+        PipelineBindPoint bindPoint{ PipelineBindPoint::Graphics };
         std::vector<DescriptorSetInfo> descriptorSets;
         std::optional<VertexInputInfo> vertexInputInfo;
         DepthState depthState;
@@ -208,6 +217,7 @@ namespace hl
         std::string name;
         std::vector<std::string> inputs;
         std::vector<ResourceInfo> outputs;
+        std::vector<std::string> bufferOutputs;
         std::vector<std::vector<PipelineInfo>> pipelineGroups;
         VkExtent2D extent{};
     };
@@ -230,6 +240,50 @@ namespace hl
         }
 
         return first;
+    }
+
+    inline bool passIsCompute(const RenderpassInfo& pass)
+    {
+        std::optional<PipelineBindPoint> bindPoint;
+        for (const auto& group : pass.pipelineGroups)
+        {
+            for (const auto& pipeline : group)
+            {
+                if (bindPoint.has_value() && *bindPoint != pipeline.bindPoint)
+                {
+                    throw std::runtime_error(
+                        "Pass '" + pass.name + "' mixes graphics and compute pipelines");
+                }
+                bindPoint = pipeline.bindPoint;
+
+                if (pipeline.bindPoint == PipelineBindPoint::Graphics && !pipeline.shaderComp.empty())
+                {
+                    throw std::runtime_error(
+                        "Pass '" + pass.name + "' graphics pipeline '" + pipeline.name
+                        + "' must not set shaderComp");
+                }
+                if (pipeline.bindPoint == PipelineBindPoint::Compute
+                    && (!pipeline.shaderVert.empty() || !pipeline.shaderFrag.empty()))
+                {
+                    throw std::runtime_error(
+                        "Pass '" + pass.name + "' compute pipeline '" + pipeline.name
+                        + "' must not set shaderVert/shaderFrag");
+                }
+            }
+        }
+
+        if (!bindPoint.has_value() || *bindPoint == PipelineBindPoint::Graphics)
+        {
+            return false;
+        }
+
+        if (!pass.outputs.empty())
+        {
+            throw std::runtime_error(
+                "Compute pass '" + pass.name + "' must not have color/depth outputs");
+        }
+
+        return true;
     }
 
     struct RenderpassAttachment

@@ -14,9 +14,19 @@ namespace hl
 
 		void destroy();
 
+		enum class ShaderCompileStage
+		{
+			Vertex,
+			Fragment,
+			Compute
+		};
+
 		static std::vector<uint32_t> readParseCompileShader(
 			const std::string& shaderSource,
 			bool vertex);
+		static std::vector<uint32_t> readParseCompileShader(
+			const std::string& shaderSource,
+			ShaderCompileStage stage);
 
 	public: // private: TODO: to private
 		VulkanDevice& _device;

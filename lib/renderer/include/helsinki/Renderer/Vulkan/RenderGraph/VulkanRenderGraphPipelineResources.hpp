@@ -21,6 +21,7 @@ namespace hl
 		void addPipeline(VkPipeline pipeline);
 		void addDescriptorSets(std::vector<VkDescriptorSet> descriptorSets);
 		void addViewportInfo(ViewportMode mode, uint32_t width, uint32_t height);
+		void setBindPoint(PipelineBindPoint bindPoint);
 
 		VkDescriptorSet getDescriptorSet(uint32_t index);
 		VkPipeline getPipeline() const;
@@ -29,6 +30,7 @@ namespace hl
 		ViewportMode getViewportMode() const { return _mode; }
 		uint32_t getViewportWidth() const { return _width; }
 		uint32_t getViewportHeight() const { return _height; }
+		PipelineBindPoint getBindPoint() const { return _bindPoint; }
 
 		void destroy();
 
@@ -40,6 +42,7 @@ namespace hl
 		ViewportMode _mode{}; 
 		uint32_t _width;
 		uint32_t _height;
+		PipelineBindPoint _bindPoint{ PipelineBindPoint::Graphics };
 	};
 
 }
