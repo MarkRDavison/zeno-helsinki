@@ -1,5 +1,7 @@
 #version 450
 
+#extension GL_EXT_nonuniform_qualifier : require
+
 #include "ui_constants.glsl"
 
 layout(binding = 1) uniform sampler2D texSamplers[MAX_UI_TEXTURES];
@@ -12,9 +14,10 @@ layout(location = 0) out vec4 outFragColor;
 
 void main()
 {
-    vec4 tex = texture(texSamplers[int(fragTexIndex)], fragTexCoord);
+    const int texIndex = int(fragTexIndex);
+    vec4 tex = texture(texSamplers[nonuniformEXT(texIndex)], fragTexCoord);
 
-    if (int(fragTexIndex) == 1)
+    if (texIndex == 1)
     {
         float dist = tex.r - 0.15;
         float smoothing = fwidth(dist);

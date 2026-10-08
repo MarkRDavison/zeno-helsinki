@@ -60,6 +60,44 @@ TEST_CASE("descriptorSetLayoutsCompatible fails on binding count mismatch", "[de
 	REQUIRE_FALSE(hl::descriptorSetLayoutsCompatible(a, b));
 }
 
+TEST_CASE("descriptorSetLayoutsCompatible fails on partiallyBound mismatch", "[descriptors]")
+{
+	const std::vector<hl::DescriptorSetInfo> a{
+		{ .name = "s", .bindings = { binding(1, "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER", "FRAGMENT", 64) } },
+	};
+	auto b = a;
+	b[0].bindings[0].partiallyBound = true;
+	b[0].bindings[0].updateAfterBind = true;
+
+	REQUIRE_FALSE(hl::descriptorSetLayoutsCompatible(a, b));
+}
+
+TEST_CASE("descriptorSetLayoutsCompatible accepts matching array flags", "[descriptors]")
+{
+	auto left = binding(1, "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER", "FRAGMENT", 64);
+	left.partiallyBound = true;
+	left.updateAfterBind = true;
+	auto right = left;
+	right.resource = "other_atlas";
+
+	const std::vector<hl::DescriptorSetInfo> a{ { .name = "a", .bindings = { left } } };
+	const std::vector<hl::DescriptorSetInfo> b{ { .name = "b", .bindings = { right } } };
+
+	REQUIRE(hl::descriptorSetLayoutsCompatible(a, b));
+}
+
+TEST_CASE("descriptorArrayWriteCount writes children when partially bound", "[descriptors]")
+{
+	REQUIRE(hl::descriptorArrayWriteCount(64, 3, true) == 3);
+	REQUIRE(hl::descriptorArrayWriteCount(64, 64, true) == 64);
+}
+
+TEST_CASE("descriptorArrayWriteCount pads to binding count when not partially bound", "[descriptors]")
+{
+	REQUIRE(hl::descriptorArrayWriteCount(64, 3, false) == 64);
+	REQUIRE(hl::descriptorArrayWriteCount(4, 4, false) == 4);
+}
+
 TEST_CASE("descriptorSetLayoutsCompatible fails empty vs non-empty", "[descriptors]")
 {
 	const std::vector<hl::DescriptorSetInfo> empty{};

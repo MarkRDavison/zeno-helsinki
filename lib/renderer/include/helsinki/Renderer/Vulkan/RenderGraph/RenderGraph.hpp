@@ -70,7 +70,36 @@ namespace hl
         std::optional<std::string> resource; // name of the resource bound to this descriptor
         uint32_t count{ 1 };
         DescriptorUpdateFrequency updateFrequency{ DescriptorUpdateFrequency::PerFrame };
+        bool partiallyBound{ false };
+        bool updateAfterBind{ false };
     };
+
+    inline uint32_t descriptorArrayWriteCount(
+        uint32_t bindingCount,
+        uint32_t childCount,
+        bool partiallyBound)
+    {
+        if (partiallyBound)
+        {
+            return childCount;
+        }
+
+        return bindingCount;
+    }
+
+    inline VkDescriptorBindingFlags descriptorBindingVkFlags(const DescriptorBinding& binding)
+    {
+        VkDescriptorBindingFlags flags = 0;
+        if (binding.partiallyBound)
+        {
+            flags |= VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+        }
+        if (binding.updateAfterBind)
+        {
+            flags |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+        }
+        return flags;
+    }
 
     struct DescriptorSetInfo
     {
@@ -83,7 +112,9 @@ namespace hl
         return a.binding == b.binding
             && a.type == b.type
             && a.stage == b.stage
-            && a.count == b.count;
+            && a.count == b.count
+            && a.partiallyBound == b.partiallyBound
+            && a.updateAfterBind == b.updateAfterBind;
     }
 
     inline bool descriptorSetLayoutsCompatible(

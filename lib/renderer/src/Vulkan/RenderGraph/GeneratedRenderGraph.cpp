@@ -289,16 +289,24 @@ namespace hl
                                                     });
                                             }
 
-                                            if (imageInfos.size() == imageInfoStart)
+                                            const auto childCount = static_cast<uint32_t>(imageInfos.size() - imageInfoStart);
+                                            if (childCount == 0)
                                             {
                                                 throw std::runtime_error("Logical resource has no children for sampler array binding");
                                             }
-
-                                            const auto& fallbackInfo = imageInfos[imageInfoStart];
-
-                                            while (imageInfos.size() - imageInfoStart < b.count)
+                                            if (childCount > b.count)
                                             {
-                                                imageInfos.push_back(fallbackInfo);
+                                                throw std::runtime_error("Logical resource has more children than sampler array binding count");
+                                            }
+
+                                            const auto writeCount = hl::descriptorArrayWriteCount(b.count, childCount, b.partiallyBound);
+                                            if (!b.partiallyBound)
+                                            {
+                                                const auto& fallbackInfo = imageInfos[imageInfoStart];
+                                                while (imageInfos.size() - imageInfoStart < writeCount)
+                                                {
+                                                    imageInfos.push_back(fallbackInfo);
+                                                }
                                             }
 
                                             descriptorWrites.emplace_back(VkWriteDescriptorSet
@@ -307,7 +315,7 @@ namespace hl
                                                     .dstSet = getDescriptorSet(r.name, p.name, i),
                                                     .dstBinding = b.binding,
                                                     .dstArrayElement = 0,
-                                                    .descriptorCount = b.count,
+                                                    .descriptorCount = writeCount,
                                                     .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                     .pImageInfo = &imageInfos[imageInfoStart]
                                                 });

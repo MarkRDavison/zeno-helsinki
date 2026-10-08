@@ -55,7 +55,9 @@ namespace hl
                                         .stage = "VERTEX&FRAGMENT",
                                         .resource = TextSystem::RasterAtlasName,
                                         .count = MAX_FONTS,
-                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static
+                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static,
+                                        .partiallyBound = true,
+                                        .updateAfterBind = true
                                     }
                                 }
                             }
@@ -118,7 +120,9 @@ namespace hl
                                         .stage = "VERTEX&FRAGMENT",
                                         .resource = TextSystem::SdfAtlasName,
                                         .count = MAX_FONTS,
-                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static
+                                        .updateFrequency = hl::DescriptorUpdateFrequency::Static,
+                                        .partiallyBound = true,
+                                        .updateAfterBind = true
                                     }
                                 }
                             }

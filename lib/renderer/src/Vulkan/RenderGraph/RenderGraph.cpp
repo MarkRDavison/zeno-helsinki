@@ -133,6 +133,7 @@ namespace hl
 					if (totalSets > 0)
 					{
 						std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCounts;
+						bool poolUpdateAfterBind = false;
 
 						for (const auto& pg : ri.pipelineGroups)
 						{
@@ -143,6 +144,7 @@ namespace hl
 									for (const auto& b : ds.bindings)
 									{
 										descriptorTypeCounts[extractDescriptorType(b.type)] += b.count;
+										poolUpdateAfterBind = poolUpdateAfterBind || b.updateAfterBind;
 									}
 								}
 							}
@@ -160,6 +162,10 @@ namespace hl
 
 						VkDescriptorPoolCreateInfo poolCreateInfo{};
 						poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+						if (poolUpdateAfterBind)
+						{
+							poolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+						}
 						poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 						poolCreateInfo.pPoolSizes = poolSizes.data();
 						poolCreateInfo.maxSets = static_cast<uint32_t>(imageCount) * totalSets;
@@ -199,6 +205,8 @@ namespace hl
 						}
 
 						std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
+						std::vector<VkDescriptorBindingFlags> layoutBindingFlags;
+						bool layoutUpdateAfterBind = false;
 
 						if (!pg.empty())
 						{
@@ -215,6 +223,10 @@ namespace hl
 											.stageFlags = extractStage(b.stage),
 											.pImmutableSamplers = nullptr
 										});
+									const auto flags = descriptorBindingVkFlags(b);
+									layoutBindingFlags.push_back(flags);
+									layoutUpdateAfterBind = layoutUpdateAfterBind
+										|| ((flags & VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT) != 0);
 								}
 							}
 						}
@@ -224,8 +236,18 @@ namespace hl
 						if (!layoutBindings.empty())
 						{
 							ZoneScopedN("Create Descriptor Set Layout");
+							VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{};
+							bindingFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+							bindingFlagsInfo.bindingCount = static_cast<uint32_t>(layoutBindingFlags.size());
+							bindingFlagsInfo.pBindingFlags = layoutBindingFlags.data();
+
 							VkDescriptorSetLayoutCreateInfo layoutInfo{};
 							layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+							layoutInfo.pNext = &bindingFlagsInfo;
+							if (layoutUpdateAfterBind)
+							{
+								layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+							}
 							layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
 							layoutInfo.pBindings = layoutBindings.data();
 

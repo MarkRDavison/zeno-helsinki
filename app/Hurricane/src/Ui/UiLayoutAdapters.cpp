@@ -148,7 +148,9 @@ namespace hur
 										.stage = "FRAGMENT",
 										.resource = sheetName,
 										.count = static_cast<uint32_t>(MAX_UI_TEXTURES),
-										.updateFrequency = hl::DescriptorUpdateFrequency::Static
+										.updateFrequency = hl::DescriptorUpdateFrequency::Static,
+										.partiallyBound = true,
+										.updateAfterBind = true
 									}
 								}
 							}
