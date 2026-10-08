@@ -92,12 +92,8 @@ namespace tower
 			catalogJson::fail("campaign node '" + nodeId + "' is not playable");
 		}
 
-		auto& config = _root.get<hl::EngineConfiguration>();
-		_root.get<LevelCatalog>().load(
-			config.RootPath + "/data/" + node->level,
-			_root.get<CreepCatalog>(),
-			_root.get<EntityCatalog>());
-		launchLoadedGame(&nodeId);
+		const auto& config = _root.get<hl::EngineConfiguration>();
+		launchLoadedGame(config.RootPath + "/data/" + node->level, &nodeId);
 	}
 
 	void SceneHost::goGame(const std::string& id)
@@ -108,18 +104,18 @@ namespace tower
 			catalogJson::fail("unknown level id '" + id + "'");
 		}
 
-		auto& config = _root.get<hl::EngineConfiguration>();
-		_root.get<LevelCatalog>().load(
-			config.RootPath + "/data/" + entry->file,
-			_root.get<CreepCatalog>(),
-			_root.get<EntityCatalog>());
-		launchLoadedGame(nullptr);
+		const auto& config = _root.get<hl::EngineConfiguration>();
+		launchLoadedGame(config.RootPath + "/data/" + entry->file, nullptr);
 	}
 
-	void SceneHost::launchLoadedGame(const std::string* campaignNodeId)
+	void SceneHost::launchLoadedGame(const std::string& levelPath, const std::string* campaignNodeId)
 	{
 		auto& config = _root.get<hl::EngineConfiguration>();
 		_pendingScope = _root.createScope();
+		_pendingScope->get<LevelCatalog>().load(
+			levelPath,
+			_root.get<CreepCatalog>(),
+			_root.get<EntityCatalog>());
 		auto& match = _pendingScope->get<MatchContext>();
 		if (campaignNodeId != nullptr)
 		{
@@ -146,7 +142,7 @@ namespace tower
 			_root.get<StatusCatalog>(),
 			_root.get<StatusCategoryCatalog>(),
 			_root.get<EntityCatalog>(),
-			_root.get<LevelCatalog>(),
+			_pendingScope->get<LevelCatalog>(),
 			_root.get<hl::audio::Audio>()));
 	}
 

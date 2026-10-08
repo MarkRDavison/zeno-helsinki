@@ -37,7 +37,7 @@ static void registerServices(hl::ServiceProvider& services)
 	services.registerService<tower::WeaponCatalog, tower::WeaponCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::TowerCatalog, tower::TowerCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::EntityCatalog, tower::EntityCatalog>(hl::ServiceLifetime::Singleton);
-	services.registerService<tower::LevelCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Singleton);
+	services.registerService<tower::LevelCatalog, tower::LevelCatalog>(hl::ServiceLifetime::Scoped);
 	services.registerService<tower::LevelsCatalog, tower::LevelsCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::CampaignCatalog, tower::CampaignCatalog>(hl::ServiceLifetime::Singleton);
 	services.registerService<tower::ResearchCatalog, tower::ResearchCatalog>(hl::ServiceLifetime::Singleton);

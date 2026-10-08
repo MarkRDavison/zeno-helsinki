@@ -23,7 +23,7 @@ namespace tower
 		void onSceneDestroyed();
 
 	private:
-		void launchLoadedGame(const std::string* campaignNodeId);
+		void launchLoadedGame(const std::string& levelPath, const std::string* campaignNodeId);
 
 		hl::Engine& _engine;
 		hl::ServiceProvider& _root;
