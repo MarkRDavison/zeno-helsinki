@@ -5,6 +5,13 @@
 namespace sk
 {
 	inline constexpr const char* RotateTag = "ROTATE";
+	inline constexpr glm::vec3 CameraTarget{ 0.0f, 0.0f, 0.0f };
+	inline constexpr float CameraDistanceMin = 1.2f;
+	inline constexpr float CameraDistanceMax = 12.0f;
+	inline constexpr float CameraZoomStep = 0.4f;
+	inline constexpr float CameraOrbitDegreesPerPixel = 0.25f;
+	inline constexpr float CameraPitchMin = -89.0f;
+	inline constexpr float CameraPitchMax = 89.0f;
 
 	struct Prop
 	{

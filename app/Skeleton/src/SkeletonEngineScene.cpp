@@ -18,6 +18,8 @@
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <helsinki/System/Events/ScrollEvent.hpp>
+#include <helsinki/System/Infrastructure/Camera.hpp>
 #include <GLFW/glfw3.h>
 #include <algorithm>
 
@@ -34,11 +36,19 @@ namespace sk
         _enableGpuParticles(enableGpuParticles)
     {
         // EngineScene destructor deletes cameras stored in _cameras.
-        _cameras.insert({ "Default", new hl::Camera(
-            glm::vec3(2.0f, 0.5f, -2.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f),
-            135.0f,
-            -5.0f) });
+        const glm::vec3 startPos{ 2.0f, 0.5f, -2.0f };
+        constexpr float startYaw = 135.0f;
+        constexpr float startPitch = -5.0f;
+        _cameraDistance = glm::length(startPos);
+        auto* camera = new hl::Camera(startPos, glm::vec3(0.0f, 1.0f, 0.0f), startYaw, startPitch);
+        camera->setLookAtPose(CameraTarget, startYaw, startPitch, _cameraDistance);
+        _cameras.insert({ "Default", camera });
+        _engine.getEventBus().AddListener(this);
+    }
+
+    SkeletonEngineScene::~SkeletonEngineScene()
+    {
+        _engine.getEventBus().RemoveListener(this);
     }
 
     std::vector<hl::RenderpassInfo> SkeletonEngineScene::buildRenderpasses() const
@@ -495,6 +505,8 @@ namespace sk
 
     void SkeletonEngineScene::updateGpuResources(uint32_t currentFrame)
     {
+        updateOrbit();
+
         if (_sunUbo)
         {
             SunUniformBufferObject ubo{};
@@ -519,5 +531,68 @@ namespace sk
             }
             _pointLightsUbo.Get()->getUniformBuffer(currentFrame).writeToBuffer(&lights, 0);
         }
+    }
+
+    void SkeletonEngineScene::updateOrbit()
+    {
+        auto* camera = defaultCamera();
+        if (camera == nullptr)
+        {
+            return;
+        }
+
+        const auto& input = _engine.getInputManager();
+        float yaw = camera->getYaw();
+        float pitch = camera->getPitch();
+
+        if (input.isButtonDown(GLFW_MOUSE_BUTTON_LEFT))
+        {
+            const glm::vec2 mouse = input.getMousePosition();
+            if (!_orbitDragging)
+            {
+                _orbitDragging = true;
+                _orbitStartMouse = mouse;
+                _orbitStartYaw = yaw;
+                _orbitStartPitch = pitch;
+            }
+
+            yaw = _orbitStartYaw - (mouse.x - _orbitStartMouse.x) * CameraOrbitDegreesPerPixel;
+            pitch = std::clamp(
+                _orbitStartPitch - (mouse.y - _orbitStartMouse.y) * CameraOrbitDegreesPerPixel,
+                CameraPitchMin,
+                CameraPitchMax);
+        }
+        else
+        {
+            _orbitDragging = false;
+        }
+
+        camera->setLookAtPose(CameraTarget, yaw, pitch, _cameraDistance);
+    }
+
+    hl::Camera* SkeletonEngineScene::defaultCamera() const
+    {
+        auto it = _cameras.find("Default");
+        if (it == _cameras.end())
+        {
+            return nullptr;
+        }
+
+        return dynamic_cast<hl::Camera*>(it->second);
+    }
+
+    void SkeletonEngineScene::OnEvent(const hl::Event& event)
+    {
+        const auto* scroll = dynamic_cast<const hl::ScrollEvent*>(&event);
+        if (scroll == nullptr)
+        {
+            return;
+        }
+
+        const float delta = static_cast<float>(scroll->getY()) * CameraZoomStep;
+        _cameraDistance = std::clamp(
+            _cameraDistance - delta,
+            CameraDistanceMin,
+            CameraDistanceMax);
     }
 }
