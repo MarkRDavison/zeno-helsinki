@@ -1,9 +1,8 @@
 #include <Services/TowerBuildService.hpp>
 #include <AudioCatalog.hpp>
 #include <BoardQuery.hpp>
-#include <Components/TeamComponent.hpp>
+#include <Spawn.hpp>
 #include <Components/TowerComponent.hpp>
-#include <SceneCatalog.hpp>
 #include <Services/GameStateService.hpp>
 #include <Services/LevelCatalog.hpp>
 #include <Services/MatchContext.hpp>
@@ -11,9 +10,6 @@
 #include <Services/TowerSelectionService.hpp>
 #include <Services/WaveService.hpp>
 #include <helsinki/Audio/Audio.hpp>
-#include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
-#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
-#include <helsinki/Renderer/Resource/ModelResource.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 
 namespace tower
@@ -66,22 +62,7 @@ namespace tower
 			return false;
 		}
 
-		auto* entity = _scene.addEntity();
-		entity->AddTag(TowerTag);
-		entity->AddComponent<TeamComponent>()->team = Team::Tower;
-		auto* tower = entity->AddComponent<TowerComponent>();
-		tower->x = x;
-		tower->z = z;
-		tower->defId = def->id;
-		tower->slotCooldown.assign(def->weapons.size(), 0.0f);
-		entity->AddComponent<hl::TransformComponent>()->SetPosition(_level.tileCenter(x, z));
-		if (_resources != nullptr)
-		{
-			if (auto* model = _resources->GetResource<hl::ModelResource>(def->model))
-			{
-				entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
-			}
-		}
+		spawnTower(_scene, *def, _level, x, z, _resources);
 
 		if (_audio != nullptr)
 		{

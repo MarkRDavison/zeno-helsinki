@@ -2,6 +2,7 @@
 #include <Scenes/SceneHost.hpp>
 #include <AudioCatalog.hpp>
 #include <BoardQuery.hpp>
+#include <Spawn.hpp>
 #include <GroundPick.hpp>
 #include <SceneCatalog.hpp>
 #include <SunUniformBufferObject.hpp>
@@ -431,7 +432,7 @@ namespace tower
 		{
 			resourceManager.Load<hl::ModelResource>(def.model, resourceContext);
 		}
-		spawnEntities(resourceManager, resourceContext);
+		tower::spawnEntities(_scene, _level, _entities, &resourceManager);
 		spawnGhost(resourceManager);
 		spawnRangeRing(resourceManager, resourceContext);
 		spawnPathRibbons(resourceManager, resourceContext);
@@ -493,48 +494,6 @@ namespace tower
 				entity->AddComponent<hl::ModelComponent>()->setModelId(
 					dark ? black->GetId() : white->GetId());
 			}
-		}
-	}
-
-	void TowerDefenseGameEngineScene::spawnEntities(
-		hl::ResourceManager& resourceManager,
-		hl::ResourceContext&)
-	{
-		for (const auto& placement : _level.entities())
-		{
-			const auto* def = _entities.find(placement.id);
-			if (def == nullptr)
-			{
-				throw std::runtime_error(
-					std::string("Unknown entity id '") + placement.id + "'");
-			}
-
-			auto* model = resourceManager.GetResource<hl::ModelResource>(def->model);
-			auto* entity = _scene.addEntity();
-			entity->AddComponent<TeamComponent>()->team = Team::Neutral;
-			auto* placed = entity->AddComponent<EntityComponent>();
-			placed->x = placement.x;
-			placed->z = placement.z;
-			placed->sizeX = def->sizeX;
-			placed->sizeZ = def->sizeZ;
-			placed->resist = def->resist;
-			if (def->health > 0.0f)
-			{
-				auto* health = entity->AddComponent<HealthComponent>();
-				health->max = def->health;
-				health->current = def->health;
-			}
-			const auto minCorner = _level.tileCenter(placement.x, placement.z);
-			const auto maxCorner = _level.tileCenter(
-				placement.x + def->sizeX - 1,
-				placement.z + def->sizeZ - 1);
-			auto* transform = entity->AddComponent<hl::TransformComponent>();
-			transform->SetPosition((minCorner + maxCorner) * 0.5f);
-			transform->SetScale(glm::vec3(
-				static_cast<float>(def->sizeX),
-				1.0f,
-				static_cast<float>(def->sizeZ)));
-			entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
 		}
 	}
 
@@ -616,34 +575,7 @@ namespace tower
 
 	void TowerDefenseGameEngineScene::spawnCreep()
 	{
-		const auto& def = _wave.nextCreep();
-		auto* model = _resourceManager->GetResource<hl::ModelResource>(def.model);
-		const auto& start = _level.path(_wave.nextPathName()).front();
-		auto* entity = _scene.addEntity();
-		entity->AddTag(CreepTag);
-		entity->AddComponent<TeamComponent>()->team = Team::Creep;
-		auto* transform = entity->AddComponent<hl::TransformComponent>();
-		transform->SetPosition(_level.tileCenter(start.x, start.z));
-		transform->SetScale(glm::vec3(def.scale));
-		entity->AddComponent<hl::ModelComponent>()->setModelId(model->GetId());
-		auto* follow = entity->AddComponent<PathFollowComponent>();
-		follow->pathName = _wave.nextPathName();
-		follow->fromIndex = 0;
-		follow->t = 0.0f;
-		follow->baseSpeed = def.speed;
-		follow->speed = def.speed;
-		auto* creep = entity->AddComponent<CreepComponent>();
-		creep->resist = def.resist;
-		creep->baseHealth = def.health;
-		creep->baseSpeed = def.speed;
-		creep->scale = def.scale;
-		creep->range = def.range;
-		creep->slots = def.slots;
-		creep->slotCooldown.assign(def.slots.size(), 0.0f);
-		entity->AddComponent<StatusListComponent>();
-		auto* health = entity->AddComponent<HealthComponent>();
-		health->max = def.health;
-		health->current = def.health;
+		tower::spawnCreep(_scene, _wave.nextCreep(), _level, _wave.nextPathName(), _resourceManager);
 	}
 
 	void TowerDefenseGameEngineScene::spawnGhost(hl::ResourceManager& resourceManager)

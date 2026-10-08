@@ -82,7 +82,6 @@ namespace tower
 		std::vector<hl::RenderpassInfo> buildRenderpasses() const;
 		void spawnScene(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void spawnBoard(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
-		void spawnEntities(hl::ResourceManager& resourceManager, hl::ResourceContext& resourceContext);
 		void selectPlaceTool(const std::string& defId);
 		void spawnCreep();
 		void spawnGhost(hl::ResourceManager& resourceManager);
