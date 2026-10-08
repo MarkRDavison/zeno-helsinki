@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <helsinki/Physics/Physics.hpp>
+#include <cmath>
 
 namespace hl::physics::test
 {
@@ -57,6 +58,41 @@ namespace hl::physics::test
 		const float settledY = world.getPose(sphereId).position.y;
 		REQUIRE(settledY > 0.4f);
 		REQUIRE(settledY < 1.0f);
+	}
+
+	TEST_CASE_METHOD(WorldFixture, "2D dynamic box stays in XY plane", "[Physics]")
+	{
+		World world(context, WorldSettings{ .dim = Dim::D2 });
+
+		BodyDesc floor;
+		floor.shape.kind = Shape::Kind::Box;
+		floor.shape.halfExtents = {10.f, 0.5f, 5.f};
+		floor.motion = MotionType::Static;
+		floor.layer = Layer::NonMoving;
+		floor.pose.position = {0.f, -0.5f, 0.f};
+		REQUIRE(world.createBody(floor).valid());
+
+		BodyDesc box;
+		box.shape.kind = Shape::Kind::Box;
+		box.shape.halfExtents = {0.5f, 0.5f, 4.f};
+		box.motion = MotionType::Dynamic;
+		box.layer = Layer::Moving;
+		box.pose.position = {0.5f, 2.f, 3.f};
+		const BodyId boxId = world.createBody(box);
+		REQUIRE(boxId.valid());
+		REQUIRE(world.getPose(boxId).position.z == Catch::Approx(0.f).margin(1.e-4f));
+
+		world.setLinearVelocity(boxId, {1.f, 0.f, 8.f});
+		const float dt = 1.f / 60.f;
+		for (int i = 0; i < 180; ++i)
+		{
+			world.step(dt);
+		}
+
+		const Pose pose = world.getPose(boxId);
+		REQUIRE(pose.position.z == Catch::Approx(0.f).margin(1.e-3f));
+		REQUIRE(std::abs(pose.rotation.x) == Catch::Approx(0.f).margin(1.e-3f));
+		REQUIRE(std::abs(pose.rotation.y) == Catch::Approx(0.f).margin(1.e-3f));
 	}
 
 	TEST_CASE_METHOD(WorldFixture, "create and destroy hundreds of bodies", "[Physics]")

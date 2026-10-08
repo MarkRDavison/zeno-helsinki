@@ -26,6 +26,7 @@ namespace hl::physics
 		constexpr JPH::BroadPhaseLayer cBroadphaseNonMoving(0);
 		constexpr JPH::BroadPhaseLayer cBroadphaseMoving(1);
 		constexpr unsigned cBroadphaseCount = 2;
+		constexpr float c2dBoxHalfExtentZ = 0.1f;
 
 		JPH::ObjectLayer toObjectLayer(Layer layer)
 		{
@@ -154,6 +155,7 @@ namespace hl::physics
 	struct World::Impl
 	{
 		Context* context = nullptr;
+		Dim dim = Dim::D3;
 		BroadPhaseLayerInterfaceImpl broadPhaseLayers;
 		ObjectVsBroadPhaseLayerFilterImpl objectVsBroadPhase;
 		ObjectLayerPairFilterImpl objectLayerPairs;
@@ -176,6 +178,7 @@ namespace hl::physics
 		}
 
 		_impl->context = &context;
+		_impl->dim = settings.dim;
 
 		const unsigned hardware = std::thread::hardware_concurrency();
 		const int workers = static_cast<int>(hardware > 1 ? hardware - 1 : 1);
@@ -229,11 +232,18 @@ namespace hl::physics
 
 	BodyId World::createBody(const BodyDesc& desc)
 	{
+		const bool dim2 = _impl->dim == Dim::D2;
+		glm::vec3 halfExtents = desc.shape.halfExtents;
+		if (dim2 && desc.shape.kind == Shape::Kind::Box)
+		{
+			halfExtents.z = c2dBoxHalfExtentZ;
+		}
+
 		JPH::RefConst<JPH::Shape> shape;
 		switch (desc.shape.kind)
 		{
 		case Shape::Kind::Box:
-			shape = new JPH::BoxShape(toVec3(desc.shape.halfExtents));
+			shape = new JPH::BoxShape(toVec3(halfExtents));
 			break;
 		case Shape::Kind::Sphere:
 			shape = new JPH::SphereShape(desc.shape.radius);
@@ -243,9 +253,15 @@ namespace hl::physics
 			throw std::runtime_error("hl::physics::World::createBody: shape kind not implemented");
 		}
 
+		glm::vec3 position = desc.pose.position;
+		if (dim2)
+		{
+			position.z = 0.f;
+		}
+
 		JPH::BodyCreationSettings settings(
 			shape,
-			toRVec3(desc.pose.position),
+			toRVec3(position),
 			toQuat(desc.pose.rotation),
 			toMotionType(desc.motion),
 			toObjectLayer(desc.layer));
@@ -253,6 +269,10 @@ namespace hl::physics
 		settings.mRestitution = desc.restitution;
 		settings.mIsSensor = desc.sensor;
 		settings.mUserData = desc.userData;
+		if (dim2 && desc.motion != MotionType::Static)
+		{
+			settings.mAllowedDOFs = JPH::EAllowedDOFs::Plane2D;
+		}
 		if (desc.motion != MotionType::Static && desc.mass > 0.f)
 		{
 			settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
@@ -320,7 +340,12 @@ namespace hl::physics
 		{
 			return;
 		}
-		bodies.SetPositionAndRotation(joltId, toRVec3(pose.position), toQuat(pose.rotation), JPH::EActivation::Activate);
+		glm::vec3 position = pose.position;
+		if (_impl->dim == Dim::D2)
+		{
+			position.z = 0.f;
+		}
+		bodies.SetPositionAndRotation(joltId, toRVec3(position), toQuat(pose.rotation), JPH::EActivation::Activate);
 	}
 
 	glm::vec3 World::getLinearVelocity(BodyId id) const
