@@ -444,7 +444,7 @@ namespace ui
 		{
 			hl::ui::Node& clipPage = _tabs->addPage("Clipped rows");
 			padPage(clipPage);
-			clipPage.gap = 8.0f;
+			_scrollView = std::make_unique<hl::ui::ScrollView>(clipPage.addChild());
 			const glm::vec3 rowColors[] = {
 				{ 0.70f, 0.32f, 0.32f },
 				{ 0.70f, 0.48f, 0.22f },
@@ -457,7 +457,7 @@ namespace ui
 			};
 			for (int i = 0; i < 8; ++i)
 			{
-				auto& row = addRow(_widgets, clipPage, { 204.0f, 36.0f }, rowColors[i]);
+				auto& row = addRow(_widgets, _scrollView->content(), { 204.0f, 36.0f }, rowColors[i]);
 				if (i == 2)
 				{
 					_clipHitRow = &row;
