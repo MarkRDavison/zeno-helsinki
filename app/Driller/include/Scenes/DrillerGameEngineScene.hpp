@@ -2,6 +2,8 @@
 
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
+#include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
+#include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <Core/Session.hpp>
 
 namespace drl
@@ -27,6 +29,7 @@ namespace drl
 	private:
 		const hl::EngineConfiguration& _engineConfig;
 		Session& _session;
+		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;
 	};
 
 }
