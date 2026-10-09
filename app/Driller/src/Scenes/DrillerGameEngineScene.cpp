@@ -1,4 +1,5 @@
 #include <Scenes/DrillerGameEngineScene.hpp>
+#include <Core/DigJobClick.hpp>
 #include <Core/GameCommand.hpp>
 #include <Core/TileCoordinates.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
@@ -124,6 +125,11 @@ namespace drl
 										}
 									}
 								}
+							},
+							.depthState =
+							{
+								.writeEnable = true,
+								.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
 							},
 							.rasterState =
 							{
@@ -302,11 +308,15 @@ namespace drl
 		}
 		else
 		{
-			_session.commandService().execute(GameCommand::digTile(
+			const bool shiftRange =
+				_engine.getInputManager().isKeyDown(GLFW_KEY_LEFT_SHIFT)
+				|| _engine.getInputManager().isKeyDown(GLFW_KEY_RIGHT_SHIFT);
+			enqueueDigJobs(
+				_session.commandService(),
+				_session.terrainService(),
 				tile.y,
 				tile.x,
-				CommandSource::Player,
-				CommandContext::DiggingTile));
+				shiftRange);
 		}
 	}
 
