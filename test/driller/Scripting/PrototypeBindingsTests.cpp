@@ -12,6 +12,7 @@
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <helsinki/System/glm.hpp>
+#include <format>
 #include <string>
 
 namespace drl
@@ -65,6 +66,8 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	const auto bunkId = prototypeIdFromName("Building_Bunk");
 	REQUIRE(f.buildings.isPrototypeRegistered(bunkId));
 	const auto& bunk = f.buildings.getPrototype(bunkId);
+	REQUIRE(bunk.label == "Bunk");
+	REQUIRE(bunk.cost == 50);
 	REQUIRE(bunk.size == glm::ivec2(2, 1));
 	REQUIRE(bunk.texture == glm::ivec2(3, 0));
 	REQUIRE(bunk.requiredWorkers.empty());
@@ -73,6 +76,8 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	const auto hutId = prototypeIdFromName("Building_Builders_Hut");
 	REQUIRE(f.buildings.isPrototypeRegistered(hutId));
 	const auto& hut = f.buildings.getPrototype(hutId);
+	REQUIRE(hut.label == "Builders Hut");
+	REQUIRE(hut.cost == 100);
 	REQUIRE(hut.size == glm::ivec2(2, 1));
 	REQUIRE(hut.texture == glm::ivec2(5, 0));
 	REQUIRE(hut.requiredWorkers.at("Worker_Builder") == 2);
@@ -80,6 +85,8 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	const auto mineId = prototypeIdFromName("Building_Mine");
 	REQUIRE(f.buildings.isPrototypeRegistered(mineId));
 	const auto& mine = f.buildings.getPrototype(mineId);
+	REQUIRE(mine.label == "Mine");
+	REQUIRE(mine.cost == 150);
 	REQUIRE(mine.size == glm::ivec2(3, 1));
 	REQUIRE(mine.texture == glm::ivec2(7, 0));
 	REQUIRE(mine.requiredWorkers.at("Worker_Miner") == 1);
@@ -90,6 +97,8 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	const auto refineId = prototypeIdFromName("Building_Refining");
 	REQUIRE(f.buildings.isPrototypeRegistered(refineId));
 	const auto& refine = f.buildings.getPrototype(refineId);
+	REQUIRE(refine.label == "Refining");
+	REQUIRE(refine.cost == 250);
 	REQUIRE(refine.size == glm::ivec2(4, 1));
 	REQUIRE(refine.texture == glm::ivec2(10, 0));
 	REQUIRE(refine.requiredWorkers.at("Worker_Refiner") == 2);
@@ -127,6 +136,58 @@ TEST_CASE("missing prototypes table throws LuaError", "[drl][Scripting]")
 	Fixture f;
 	f.lua.runString("x = 1");
 	REQUIRE_THROWS_AS(applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles), hl::scripting::LuaError);
+}
+
+namespace
+{
+
+	void applyBuildingStub(Fixture& f, const std::string& buildingRow)
+	{
+		f.lua.runString(
+			"prototypes = { jobs = {}, workers = {}, shuttles = {}, buildings = { "
+			+ buildingRow
+			+ " } }");
+		applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles);
+	}
+
+	constexpr const char* kValidBuildingFields = R"(
+        name = "Building_Bunk",
+        size = { x = 2, y = 1 },
+        texture = { x = 3, y = 0 },
+)";
+
+}
+
+TEST_CASE("building prototype missing label throws LuaError", "[drl][Scripting]")
+{
+	Fixture f;
+	REQUIRE_THROWS_AS(
+		applyBuildingStub(f, std::format("{{ {} cost = 50 }}", kValidBuildingFields)),
+		hl::scripting::LuaError);
+}
+
+TEST_CASE("building prototype empty label throws LuaError", "[drl][Scripting]")
+{
+	Fixture f;
+	REQUIRE_THROWS_AS(
+		applyBuildingStub(f, std::format("{{ {} label = \"\", cost = 50 }}", kValidBuildingFields)),
+		hl::scripting::LuaError);
+}
+
+TEST_CASE("building prototype missing cost throws LuaError", "[drl][Scripting]")
+{
+	Fixture f;
+	REQUIRE_THROWS_AS(
+		applyBuildingStub(f, std::format("{{ {} label = \"Bunk\" }}", kValidBuildingFields)),
+		hl::scripting::LuaError);
+}
+
+TEST_CASE("building prototype negative cost throws LuaError", "[drl][Scripting]")
+{
+	Fixture f;
+	REQUIRE_THROWS_AS(
+		applyBuildingStub(f, std::format("{{ {} label = \"Bunk\", cost = -1 }}", kValidBuildingFields)),
+		hl::scripting::LuaError);
 }
 
 }

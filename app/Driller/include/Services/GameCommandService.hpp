@@ -2,6 +2,7 @@
 
 #include <Core/GameCommand.hpp>
 #include <Services/BuildingPlacementService.hpp>
+#include <Services/BuildingPrototypeService.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/ShuttleCreationService.hpp>
@@ -13,6 +14,7 @@ namespace drl
 {
 
 	inline constexpr long long kPlayerShaftDigCostPerLevel = 100;
+	inline constexpr const char* kJobBuildBuilding = "Job_Build_Building";
 
 	class IGameCommandService
 	{
@@ -35,6 +37,7 @@ namespace drl
 			IJobCreationService& jobs,
 			IWorkerCreationService& workers,
 			IBuildingPlacementService& buildings,
+			IBuildingPrototypeService& buildingPrototypes,
 			IShuttleCreationService& shuttles,
 			IUpgradeService& upgrades);
 		~GameCommandService() override = default;
@@ -47,7 +50,7 @@ namespace drl
 		bool handleDigShaft(CommandSource source, const DigShaft& event);
 		bool handleDigTile(const DigTile& event);
 		bool handleAddResource(const AddResource& event);
-		bool handleCreateJob(const CreateJob& event);
+		bool handleCreateJob(CommandSource source, const CreateJob& event);
 		bool handleCreateWorker(const CreateWorker& event);
 		bool handlePlaceBuilding(const PlaceBuilding& event);
 		bool handleCreateShuttle(const CreateShuttle& event);
@@ -58,6 +61,7 @@ namespace drl
 		IJobCreationService& _jobs;
 		IWorkerCreationService& _workers;
 		IBuildingPlacementService& _buildings;
+		IBuildingPrototypeService& _buildingPrototypes;
 		IShuttleCreationService& _shuttles;
 		IUpgradeService& _upgrades;
 		long long _tick{ 0 };

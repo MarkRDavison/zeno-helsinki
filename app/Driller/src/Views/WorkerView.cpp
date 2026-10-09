@@ -28,7 +28,7 @@ namespace drl
 		for (const WorkerInstance& worker : _workerData.workers)
 		{
 			const glm::vec3 position(
-				_originX + worker.position.x * _tileSize - width * 0.5f,
+				_originX + (worker.position.x + 0.5f) * _tileSize - width * 0.5f,
 				_originY + worker.position.y * _tileSize - height,
 				0.0f);
 
@@ -36,7 +36,8 @@ namespace drl
 			{
 				.model = glm::translate(glm::mat4(1.0f), position),
 				.size = glm::vec2(width, height),
-				.frameIndex = kFrameWorker
+				.frameIndex = kFrameWorker,
+				.cameraIndex = _cameraIndex
 			};
 
 			vkCmdPushConstants(

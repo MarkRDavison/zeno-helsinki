@@ -8,6 +8,7 @@ layout(push_constant) uniform PushConstants {
     vec2 offset;
     int frameIndex;
     int cameraIndex;
+    vec4 color;
 } pc; 
 
 
@@ -22,7 +23,8 @@ layout(binding = 1) readonly buffer SpriteFrameSSBO {
     vec4 frames[]; // each vec4 = (u0, v0, u1, v1)
 };
 
-layout(location = 0) out vec2 fragTexCoord; 
+layout(location = 0) out vec2 fragTexCoord;
+layout(location = 1) out vec4 fragColor; 
 
 const vec2 corners[4] = vec2[]( 
     vec2(0.0, 0.0), // bottom-left 
@@ -54,4 +56,5 @@ void main() {
     // Compute UVs from SSBO frame
     vec4 uvRect = frames[uint(pc.frameIndex)];
     fragTexCoord = uvRect.xy + corners[ci] * (uvRect.zw - uvRect.xy);
+    fragColor = pc.color;
 }

@@ -13,19 +13,17 @@ namespace drl
 		if (input.isKeyDown(kUiKeyEscape) && !_activeBuilding.empty())
 		{
 			clearActiveBuilding();
-			return;
 		}
+	}
 
-		const std::vector<std::string>& names = _buildingPrototypes.registeredNames();
-		const int count = static_cast<int>(names.size()) < 9
-			? static_cast<int>(names.size())
-			: 9;
-		for (int offset = 0; offset < count; ++offset)
+	void UiService::selectBuilding(const std::string& prototypeName)
+	{
+		for (const std::string& name : _buildingPrototypes.registeredNames())
 		{
-			if (input.isKeyDown(kUiKey1 + offset))
+			if (name == prototypeName)
 			{
+				_activeBuilding = prototypeName;
 				_currentState = UiState::PlacingBuilding;
-				_activeBuilding = names[static_cast<unsigned>(offset)];
 				return;
 			}
 		}

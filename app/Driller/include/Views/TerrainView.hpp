@@ -12,6 +12,7 @@ namespace drl
 		TerrainView(const TerrainData& terrainData, float originX, float originY, float tileSize);
 
 		void draw(hl::PipelineDrawData& pdd) const;
+		void setCameraIndex(int cameraIndex) { _cameraIndex = cameraIndex; }
 
 		float originX() const { return _originX; }
 		float originY() const { return _originY; }
@@ -24,6 +25,7 @@ namespace drl
 		float _originX;
 		float _originY;
 		float _tileSize;
+		int _cameraIndex{ 0 };
 	};
 
 }

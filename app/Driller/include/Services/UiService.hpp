@@ -7,7 +7,6 @@ namespace drl
 {
 
 	inline constexpr int kUiKeyEscape = 256;
-	inline constexpr int kUiKey1 = 49;
 
 	enum class UiState
 	{
@@ -30,6 +29,7 @@ namespace drl
 		virtual ~IUiService() = 0;
 
 		virtual void update(const IUiInput& input) = 0;
+		virtual void selectBuilding(const std::string& prototypeName) = 0;
 		virtual std::string getActiveBuildingType() const = 0;
 		virtual UiState getCurrentState() const = 0;
 		virtual void clearActiveBuilding() = 0;
@@ -44,6 +44,7 @@ namespace drl
 		~UiService() override = default;
 
 		void update(const IUiInput& input) override;
+		void selectBuilding(const std::string& prototypeName) override;
 		std::string getActiveBuildingType() const override;
 		UiState getCurrentState() const override;
 		void clearActiveBuilding() override;

@@ -12,6 +12,7 @@ namespace hl
 		alignas(8) glm::vec2 offset;
 		alignas(4) int frameIndex;
 		alignas(4) int cameraIndex;
+		alignas(16) glm::vec4 color{ 1.0f, 1.0f, 1.0f, 1.0f };
 	};
 
 }

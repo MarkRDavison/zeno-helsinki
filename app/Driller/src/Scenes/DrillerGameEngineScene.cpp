@@ -9,6 +9,7 @@
 #include <helsinki/Engine/Input/InputManager.hpp>
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
+#include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
@@ -20,9 +21,11 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
+#include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 #include <format>
+#include <stdexcept>
 
 namespace drl
 {
@@ -52,6 +55,10 @@ namespace drl
 			static_cast<float>(engineConfig.Width) * 0.5f,
 			kTileSize,
 			kTileSize),
+		_buildingGhostView(
+			static_cast<float>(engineConfig.Width) * 0.5f,
+			kTileSize,
+			kTileSize),
 		_jobView(
 			session.gameData().job,
 			static_cast<float>(engineConfig.Width) * 0.5f,
@@ -69,7 +76,20 @@ namespace drl
 			kTileSize,
 			kTileSize)
 	{
-		_cameras.insert({ "Default", new hl::Camera2D() });
+		_cameras.insert({ "Ui", new hl::Camera2D() });
+		_gameCamera = new GameCamera();
+		_cameras.insert({ "Game", _gameCamera });
+		if (getCameraIndex("Ui") != 0)
+		{
+			throw std::runtime_error("Ui camera must be UBO slot 0 (ui.vert/text.vert)");
+		}
+		bindGameCameraToViews();
+		_engine.getEventBus().AddListener(this);
+	}
+
+	DrillerGameEngineScene::~DrillerGameEngineScene()
+	{
+		_engine.getEventBus().RemoveListener(this);
 	}
 
 	void DrillerGameEngineScene::initialise(
@@ -153,6 +173,54 @@ namespace drl
 							.enableBlending = true,
 							.pushConstantSize = sizeof(hl::SpritePushConstantObject)
 						}
+					},
+					{
+						hl::PipelineInfo
+						{
+							.name = "ui_pipeline",
+							.shaderVert = std::string(hl::RendererShaderRoot) + "/ui.vert",
+							.shaderFrag = std::string(hl::RendererShaderRoot) + "/ui.frag",
+							.descriptorSets =
+							{
+								hl::DescriptorSetInfo
+								{
+									.bindings =
+									{
+										hl::DescriptorBinding
+										{
+											.binding = 0,
+											.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+											.stage = "VERTEX",
+											.resource = cameraMatrixResourceId,
+											.count = MAX_CAMERAS,
+											.updateFrequency = hl::DescriptorUpdateFrequency::Static
+										},
+										hl::DescriptorBinding
+										{
+											.binding = 1,
+											.type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+											.stage = "FRAGMENT",
+											.resource = "ui_sheet",
+											.count = static_cast<uint32_t>(MAX_UI_TEXTURES),
+											.updateFrequency = hl::DescriptorUpdateFrequency::Static,
+											.partiallyBound = true,
+											.updateAfterBind = true
+										}
+									}
+								}
+							},
+							.vertexInputInfo = hl::RenderGraphHelpers::uiVertexInputInfo(),
+							.depthState =
+							{
+								.testEnable = false,
+								.writeEnable = false
+							},
+							.rasterState =
+							{
+								.cullMode = VK_CULL_MODE_NONE
+							},
+							.enableBlending = true
+						}
 					}
 				}
 			},
@@ -209,6 +277,38 @@ namespace drl
 		resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
 			"roboto",
 			resourceContext);
+
+		resourceManager.LoadLogical(
+			hl::ResourceDefinition
+			{
+				.name = "ui_sheet",
+				.type = "logical",
+				.resources =
+				{
+					hl::ResourceDefinition::Child
+					{
+						.name = "white",
+						.type = "texture"
+					},
+					hl::ResourceDefinition::Child
+					{
+						.name = "roboto",
+						.type = "texture"
+					}
+				}
+			},
+			[&](const hl::ResourceDefinition::Child& child)
+			{
+				if (child.type != "texture")
+				{
+					return false;
+				}
+
+				resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+					child.name,
+					resourceContext);
+				return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+			});
 
 		resourceManager.LoadLogical(
 			hl::ResourceDefinition
@@ -271,10 +371,40 @@ namespace drl
 			{
 				_terrainView.draw(pdd);
 				_buildingView.draw(pdd);
+				_buildingGhostView.draw(
+					pdd,
+					_session.uiService().getCurrentState(),
+					_session.uiService().getActiveBuildingType(),
+					_hoveredTile,
+					_session.buildingPrototypeService(),
+					_session.buildingPlacementService(),
+					_session.economyService());
 				_jobView.draw(pdd);
 				_workerView.draw(pdd);
 				_shuttleView.draw(pdd);
 			});
+
+		_uiBatch.initialise(device);
+		_buildBar.initialise(
+			resourceManager.GetResource<hl::FontResource>("roboto"),
+			_session.buildingPrototypeService(),
+			_session.uiService());
+		registerPipelineDraw(
+			"ui_pipeline",
+			[this](hl::PipelineDrawData& pdd) -> void
+			{
+				_uiBatch.draw(pdd);
+			});
+	}
+
+	void DrillerGameEngineScene::updateGpuResources(uint32_t currentFrame)
+	{
+		_uiBatch.updateGpuResources(currentFrame);
+	}
+
+	void DrillerGameEngineScene::additionalCleanup()
+	{
+		_uiBatch.destroy();
 	}
 
 	void DrillerGameEngineScene::update(uint32_t /*currentFrame*/, float delta)
@@ -311,16 +441,50 @@ namespace drl
 			"roboto",
 			32);
 
-		if (!_engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1))
+		const auto& input = _engine.getInputManager();
+		const auto framebuffer = input.getFramebufferSize();
+		const auto mouse = framebufferMouse();
+
+		if (input.isButtonDown(GLFW_MOUSE_BUTTON_MIDDLE))
+		{
+			if (_panning)
+			{
+				_gameCamera->panByScreenDelta(mouse - _lastPanMouse);
+			}
+			_panning = true;
+			_lastPanMouse = mouse;
+		}
+		else
+		{
+			_panning = false;
+		}
+
+		_hoveredTile = pixelToTile(
+			_gameCamera->screenToWorld(mouse),
+			_terrainView.originX(),
+			_terrainView.originY(),
+			_terrainView.tileSize());
+
+		_buildBar.syncEnabled(economy);
+		const hl::ui::Pointer pointer
+		{
+			.position = mouse,
+			.primaryDown = input.isButtonDown(GLFW_MOUSE_BUTTON_1),
+			.primaryReleased = input.isButtonReleased(GLFW_MOUSE_BUTTON_1)
+		};
+		_buildBar.tick(_uiBatch, framebuffer, pointer);
+
+		if (!input.isButtonReleased(GLFW_MOUSE_BUTTON_1))
 		{
 			return;
 		}
 
-		const auto tile = pixelToTile(
-			_engine.getInputManager().getMousePosition(),
-			_terrainView.originX(),
-			_terrainView.originY(),
-			_terrainView.tileSize());
+		if (_buildBar.hits(mouse))
+		{
+			return;
+		}
+
+		const auto tile = _hoveredTile;
 
 		if (_session.uiService().getCurrentState() == UiState::PlacingBuilding)
 		{
@@ -367,6 +531,45 @@ namespace drl
 				tile.x,
 				shiftRange);
 		}
+	}
+
+	void DrillerGameEngineScene::OnEvent(const hl::Event& event)
+	{
+		const auto* scroll = dynamic_cast<const hl::ScrollEvent*>(&event);
+		if (scroll == nullptr || scroll->getY() == 0)
+		{
+			return;
+		}
+
+		const float factor = scroll->getY() > 0
+			? GameCamera::ZoomStep
+			: 1.0f / GameCamera::ZoomStep;
+		_gameCamera->zoomAt(framebufferMouse(), factor);
+	}
+
+	glm::vec2 DrillerGameEngineScene::framebufferMouse() const
+	{
+		const auto& input = _engine.getInputManager();
+		const auto window = input.getWindowSize();
+		const auto framebuffer = input.getFramebufferSize();
+		auto mouse = input.getMousePosition();
+		if (window.x > 0.0f && window.y > 0.0f)
+		{
+			mouse.x *= framebuffer.x / window.x;
+			mouse.y *= framebuffer.y / window.y;
+		}
+		return mouse;
+	}
+
+	void DrillerGameEngineScene::bindGameCameraToViews()
+	{
+		const int gameCameraIndex = static_cast<int>(getCameraIndex("Game"));
+		_terrainView.setCameraIndex(gameCameraIndex);
+		_buildingView.setCameraIndex(gameCameraIndex);
+		_buildingGhostView.setCameraIndex(gameCameraIndex);
+		_jobView.setCameraIndex(gameCameraIndex);
+		_workerView.setCameraIndex(gameCameraIndex);
+		_shuttleView.setCameraIndex(gameCameraIndex);
 	}
 
 }

@@ -48,7 +48,7 @@ struct Fixture
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
 		UpgradeData upgradeData;
 		UpgradeService upgrades{ upgradeData };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation, upgrades };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades };
 
 		Fixture()
 		{
@@ -187,6 +187,103 @@ TEST_CASE("CreateJob unknown prototype refuses", "[drl][GameCommandService]")
 		CommandContext::CreatingJob)));
 	REQUIRE(f.jobData.jobs.empty());
 	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
+}
+
+TEST_CASE("player CreateJob Job_Build_Building pays then creates", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype job{};
+	job.name = kJobBuildBuilding;
+	job.work = 5.0f;
+	f.prototypes.registerPrototype(std::move(job));
+	BuildingPrototype bunk{};
+	bunk.name = "Building_Bunk";
+	bunk.cost = 50;
+	f.buildingPrototypes.registerPrototype(std::move(bunk));
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		kJobBuildBuilding,
+		"Building_Bunk",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::PlacingBuilding)));
+	REQUIRE(f.jobData.jobs.size() == 1);
+	REQUIRE(f.economy.get(ResourceMoney) == 450);
+}
+
+TEST_CASE("player CreateJob Job_Build_Building cannot afford refuses", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype job{};
+	job.name = kJobBuildBuilding;
+	job.work = 5.0f;
+	f.prototypes.registerPrototype(std::move(job));
+	BuildingPrototype bunk{};
+	bunk.name = "Building_Bunk";
+	bunk.cost = 50;
+	f.buildingPrototypes.registerPrototype(std::move(bunk));
+	f.economy.set(ResourceMoney, 49);
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+
+	REQUIRE_FALSE(f.commands.execute(GameCommand::createJob(
+		kJobBuildBuilding,
+		"Building_Bunk",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::PlacingBuilding)));
+	REQUIRE(f.jobData.jobs.empty());
+	REQUIRE(f.economy.get(ResourceMoney) == 49);
+}
+
+TEST_CASE("setup CreateJob Job_Build_Building does not charge", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype job{};
+	job.name = kJobBuildBuilding;
+	job.work = 5.0f;
+	f.prototypes.registerPrototype(std::move(job));
+	BuildingPrototype bunk{};
+	bunk.name = "Building_Bunk";
+	bunk.cost = 50;
+	f.buildingPrototypes.registerPrototype(std::move(bunk));
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		kJobBuildBuilding,
+		"Building_Bunk",
+		0,
+		1,
+		CommandSource::Setup,
+		CommandContext::PlacingBuilding)));
+	REQUIRE(f.jobData.jobs.size() == 1);
+	REQUIRE(f.economy.get(ResourceMoney) == 500);
+}
+
+TEST_CASE("player CreateJob Job_Build_Building unknown building does not pay", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype job{};
+	job.name = kJobBuildBuilding;
+	job.work = 5.0f;
+	f.prototypes.registerPrototype(std::move(job));
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+
+	REQUIRE_FALSE(f.commands.execute(GameCommand::createJob(
+		kJobBuildBuilding,
+		"Building_Missing",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::PlacingBuilding)));
+	REQUIRE(f.jobData.jobs.empty());
+	REQUIRE(f.economy.get(ResourceMoney) == 500);
 }
 
 TEST_CASE("CreateWorker succeeds at coordinates", "[drl][GameCommandService]")

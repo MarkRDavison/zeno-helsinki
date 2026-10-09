@@ -39,6 +39,7 @@ namespace drl
 			_jobCreationService,
 			_workerCreationService,
 			_buildingPlacementService,
+			_buildingPrototypeService,
 			_shuttleCreationService,
 			_upgradeService)
 		, _game(_commandService, _simSpeed)

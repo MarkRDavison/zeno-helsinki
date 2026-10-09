@@ -187,13 +187,22 @@ namespace drl
 			sol::optional<int> sizeY = size["y"];
 			sol::optional<int> textureX = texture["x"];
 			sol::optional<int> textureY = texture["y"];
+			sol::optional<std::string> label = row["label"];
+			sol::optional<long long> cost = row["cost"];
 			if (!name || name->empty() || !sizeX || !sizeY || !textureX || !textureY)
 			{
 				throw hl::scripting::LuaError("building prototype is missing name, size, or texture");
 			}
 
+			if (!label || label->empty() || !cost || *cost < 0)
+			{
+				throw hl::scripting::LuaError("building prototype is missing label or cost");
+			}
+
 			BuildingPrototype prototype{};
 			prototype.name = *name;
+			prototype.label = *label;
+			prototype.cost = *cost;
 			prototype.size = glm::ivec2(*sizeX, *sizeY);
 			prototype.texture = glm::ivec2(*textureX, *textureY);
 

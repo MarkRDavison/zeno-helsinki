@@ -18,7 +18,7 @@ namespace drl
 
 		terrain.initialiseTile(level, column);
 		commands.execute(GameCommand::createJob(
-			"Job_Build_Building",
+			kJobBuildBuilding,
 			buildingPrototypeName,
 			level,
 			column,

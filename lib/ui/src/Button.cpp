@@ -29,6 +29,7 @@ namespace hl::ui
 	void Button::prepare()
 	{
 		_hovered = false;
+		opacity = enabled ? 1.0f : 0.45f;
 		Label::prepare();
 		applyDrawColor();
 		if (!chrome())
@@ -44,7 +45,7 @@ namespace hl::ui
 	EventResult Button::handle(const Pointer& pointer)
 	{
 		_hovered = node().world.contains(pointer.position);
-		if (_hovered && pointer.primaryReleased)
+		if (enabled && _hovered && pointer.primaryReleased)
 		{
 			setFocused(true);
 			if (onClick)
@@ -59,6 +60,11 @@ namespace hl::ui
 
 	EventResult Button::handleKey(TextKey key)
 	{
+		if (!enabled)
+		{
+			return EventResult::Ignore;
+		}
+
 		if (key != TextKey::Enter && key != TextKey::Space)
 		{
 			return EventResult::Ignore;
@@ -84,7 +90,7 @@ namespace hl::ui
 				variant == ButtonVariant::Filled ? fill : resolvedBorderColor();
 			if (width > 0.0f)
 			{
-				paint.fill(box, glm::vec4{ edge, 1.0f });
+				paint.fill(box, glm::vec4{ edge, opacity });
 				const float inset = width * 2.0f;
 				if (box.size.x > inset && box.size.y > inset)
 				{
@@ -95,12 +101,12 @@ namespace hl::ui
 							box.size.x - inset,
 							box.size.y - inset
 						},
-						glm::vec4{ fill, 1.0f });
+						glm::vec4{ fill, opacity });
 				}
 			}
 			else
 			{
-				paint.fill(box, glm::vec4{ fill, 1.0f });
+				paint.fill(box, glm::vec4{ fill, opacity });
 			}
 
 			origin.x += (box.size.x - textLayoutSize().x) * 0.5f;

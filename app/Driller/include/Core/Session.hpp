@@ -60,6 +60,8 @@ namespace drl
 		const WorkerJobUpdateService& workerJobUpdateService() const { return _workerJobUpdateService; }
 		BuildingPrototypeService& buildingPrototypeService() { return _buildingPrototypeService; }
 		const BuildingPrototypeService& buildingPrototypeService() const { return _buildingPrototypeService; }
+		BuildingPlacementService& buildingPlacementService() { return _buildingPlacementService; }
+		const BuildingPlacementService& buildingPlacementService() const { return _buildingPlacementService; }
 		ShuttlePrototypeService& shuttlePrototypeService() { return _shuttlePrototypeService; }
 		const ShuttlePrototypeService& shuttlePrototypeService() const { return _shuttlePrototypeService; }
 		UpgradeService& upgradeService() { return _upgradeService; }

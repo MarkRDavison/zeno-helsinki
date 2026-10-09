@@ -100,6 +100,8 @@ prototypes = {
     buildings = {
         {
             name = "Building_Bunk",
+            label = "Bunk",
+            cost = 50,
             size = {
                 x = 2,
                 y = 1
@@ -113,6 +115,8 @@ prototypes = {
         },
         {
             name = "Building_Builders_Hut",
+            label = "Builders Hut",
+            cost = 100,
             size = {
                 x = 2,
                 y = 1
@@ -130,6 +134,8 @@ prototypes = {
         },
         {
             name = "Building_Mine",
+            label = "Mine",
+            cost = 150,
             size = {
                 x = 3,
                 y = 1
@@ -156,6 +162,8 @@ prototypes = {
         },
         {
             name = "Building_Refining",
+            label = "Refining",
+            cost = 250,
             size = {
                 x = 4,
                 y = 1

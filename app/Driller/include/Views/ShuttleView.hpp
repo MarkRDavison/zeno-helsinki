@@ -18,6 +18,7 @@ namespace drl
 			float tileSize);
 
 		void draw(hl::PipelineDrawData& pdd) const;
+		void setCameraIndex(int cameraIndex) { _cameraIndex = cameraIndex; }
 
 	private:
 		void drawCell(hl::PipelineDrawData& pdd, float tileX, float tileY, int frameIndex) const;
@@ -27,6 +28,7 @@ namespace drl
 		float _originX;
 		float _originY;
 		float _tileSize;
+		int _cameraIndex{ 0 };
 	};
 
 }

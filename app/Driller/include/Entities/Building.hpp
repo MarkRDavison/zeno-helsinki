@@ -22,6 +22,8 @@ namespace drl
 	struct BuildingPrototype
 	{
 		std::string name;
+		std::string label;
+		long long cost{ 0 };
 		glm::ivec2 size{ 0, 0 };
 		glm::ivec2 texture{ 0, 0 };
 		std::unordered_map<std::string, int> requiredWorkers;

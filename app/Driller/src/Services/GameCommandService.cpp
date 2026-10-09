@@ -13,6 +13,7 @@ namespace drl
 		IJobCreationService& jobs,
 		IWorkerCreationService& workers,
 		IBuildingPlacementService& buildings,
+		IBuildingPrototypeService& buildingPrototypes,
 		IShuttleCreationService& shuttles,
 		IUpgradeService& upgrades)
 		: _terrain(terrain)
@@ -20,6 +21,7 @@ namespace drl
 		, _jobs(jobs)
 		, _workers(workers)
 		, _buildings(buildings)
+		, _buildingPrototypes(buildingPrototypes)
 		, _shuttles(shuttles)
 		, _upgrades(upgrades)
 	{
@@ -45,7 +47,7 @@ namespace drl
 				}
 				else if constexpr (std::is_same_v<T, CreateJob>)
 				{
-					return handleCreateJob(payload);
+					return handleCreateJob(command.source, payload);
 				}
 				else if constexpr (std::is_same_v<T, CreateWorker>)
 				{
@@ -112,12 +114,47 @@ namespace drl
 		return true;
 	}
 
-	bool GameCommandService::handleCreateJob(const CreateJob& event)
+	bool GameCommandService::handleCreateJob(CommandSource source, const CreateJob& event)
 	{
-		return _jobs.createJob(
+		const bool playerBuild =
+			source == CommandSource::Player && event.prototypeName == kJobBuildBuilding;
+
+		long long cost = 0;
+		if (playerBuild)
+		{
+			if (event.additionalPrototypeName.empty())
+			{
+				return false;
+			}
+
+			const long long buildingId = prototypeIdFromName(event.additionalPrototypeName);
+			if (!_buildingPrototypes.isPrototypeRegistered(buildingId))
+			{
+				return false;
+			}
+
+			cost = _buildingPrototypes.getPrototype(buildingId).cost;
+			if (!_economy.canAfford(ResourceMoney, cost))
+			{
+				return false;
+			}
+
+			if (!_economy.pay(ResourceMoney, cost))
+			{
+				return false;
+			}
+		}
+
+		const bool created = _jobs.createJob(
 			jobPrototypeIdFromName(event.prototypeName),
 			jobPrototypeIdFromName(event.additionalPrototypeName),
 			glm::ivec2(event.column, event.level));
+		if (playerBuild && !created)
+		{
+			_economy.add(ResourceMoney, cost);
+		}
+
+		return created;
 	}
 
 	bool GameCommandService::handleCreateWorker(const CreateWorker& event)

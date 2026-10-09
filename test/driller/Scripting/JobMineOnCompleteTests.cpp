@@ -58,7 +58,7 @@ namespace JobMineOnCompleteTests
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
 		UpgradeData upgradeData;
 		UpgradeService upgrades{ upgradeData };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation, upgrades };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades };
 		WorkerJobUpdateService jobUpdate{ workerData, jobData, terrain, jobPrototypes };
 
 		explicit Fixture(hl::scripting::LuaState& lua)

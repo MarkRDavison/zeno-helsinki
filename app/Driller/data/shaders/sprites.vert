@@ -7,19 +7,23 @@ layout(push_constant) uniform PushConstants {
     vec2 size;
     vec2 offset;
     int frameIndex;
+    int cameraIndex;
+    vec4 color;
 } pc; 
 
-layout(binding = 0) uniform UniformBufferObject { 
-    mat4 view; 
-    mat4 proj; 
-} ubo; 
+layout(binding = 0) uniform CameraBuffer
+{
+    mat4 view;
+    mat4 proj;
+} ubo[4]; 
 
 // SSBO containing all frames in the spritesheet
 layout(binding = 1) readonly buffer SpriteFrameSSBO {
     vec4 frames[]; // each vec4 = (u0, v0, u1, v1)
 };
 
-layout(location = 0) out vec2 fragTexCoord; 
+layout(location = 0) out vec2 fragTexCoord;
+layout(location = 1) out vec4 fragColor; 
 
 const vec2 corners[4] = vec2[]( 
     vec2(0.0, 0.0), // bottom-left 
@@ -46,9 +50,10 @@ void main() {
     vec4 worldPos = pc.model * vec4(pos2D.x, pos2D.y, 0.0, 1.0); 
     
     // Full transform: model * view * projection 
-    gl_Position = ubo.proj * ubo.view * worldPos; 
+    gl_Position = ubo[pc.cameraIndex].proj * ubo[pc.cameraIndex].view * worldPos; 
     
     // Compute UVs from SSBO frame
     vec4 uvRect = frames[uint(pc.frameIndex)];
     fragTexCoord = uvRect.xy + corners[ci] * (uvRect.zw - uvRect.xy);
+    fragColor = pc.color;
 }

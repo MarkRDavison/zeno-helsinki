@@ -34,6 +34,7 @@ namespace hl::ui
 		glm::vec3 resolvedBorderColor() const { return resolve(borderColor, theme().border); }
 		float resolvedBorderWidth() const;
 		std::function<void()> onClick;
+		bool enabled{ true };
 
 	private:
 		bool chrome() const { return variant != ButtonVariant::Text; }

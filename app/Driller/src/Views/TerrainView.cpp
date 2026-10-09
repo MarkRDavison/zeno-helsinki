@@ -32,7 +32,8 @@ namespace drl
 		{
 			.model = glm::translate(glm::mat4(1.0f), position),
 			.size = glm::vec2(_tileSize, _tileSize),
-			.frameIndex = frameIndex
+			.frameIndex = frameIndex,
+			.cameraIndex = _cameraIndex
 		};
 
 		vkCmdPushConstants(

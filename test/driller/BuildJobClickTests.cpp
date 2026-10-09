@@ -48,7 +48,7 @@ namespace BuildJobClickTests
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
 		UpgradeData upgradeData;
 		UpgradeService upgrades{ upgradeData };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation, upgrades };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades };
 
 		Fixture()
 		{
@@ -56,7 +56,17 @@ namespace BuildJobClickTests
 			prototype.name = "Job_Build_Building";
 			prototype.work = 5.0f;
 			jobPrototypes.registerPrototype(std::move(prototype));
+			BuildingPrototype bunk{};
+			bunk.name = "Building_Bunk";
+			bunk.cost = 50;
+			buildingPrototypes.registerPrototype(std::move(bunk));
+			economy.set(ResourceMoney, 500);
 			REQUIRE(terrain.digShaft(0));
+		}
+
+		void enqueueBunk(int level, int column)
+		{
+			enqueueBuildJob(commands, terrain, level, column, "Building_Bunk");
 		}
 	};
 
@@ -66,12 +76,13 @@ namespace BuildJobClickTests
 		{
 			Fixture f;
 			REQUIRE(f.terrain.digTile(0, column));
-			enqueueBuildJob(f.commands, f.terrain, 0, column, "Building_Bunk");
+			f.enqueueBunk(0, column);
 			REQUIRE(f.jobData.jobs.size() == 1);
 			REQUIRE(f.jobData.jobs[0].prototypeId == jobPrototypeIdFromName("Job_Build_Building"));
 			REQUIRE(f.jobData.jobs[0].additionalPrototypeId == prototypeIdFromName("Building_Bunk"));
 			REQUIRE(f.jobData.jobs[0].tile == glm::ivec2(column, 0));
 			REQUIRE(f.terrain.getTile(0, column).jobReserved);
+			REQUIRE(f.economy.get(ResourceMoney) == 450);
 		}
 	}
 
@@ -81,12 +92,50 @@ namespace BuildJobClickTests
 		{
 			Fixture f;
 			REQUIRE_FALSE(f.terrain.doesTileExist(0, column));
-			enqueueBuildJob(f.commands, f.terrain, 0, column, "Building_Bunk");
+			f.enqueueBunk(0, column);
 			REQUIRE(f.terrain.doesTileExist(0, column));
 			REQUIRE(f.jobData.jobs.size() == 1);
 			REQUIRE(f.terrain.getTile(0, column).jobReserved);
 			REQUIRE_FALSE(f.terrain.isTileDugOut(0, column));
+			REQUIRE(f.economy.get(ResourceMoney) == 450);
 		}
+	}
+
+	TEST_CASE("enqueueBuildJob refuses when the player cannot afford", "[drl][BuildJobClick]")
+	{
+		for (const int column : { 1, -1 })
+		{
+			Fixture f;
+			REQUIRE(f.terrain.digTile(0, column));
+			f.economy.set(ResourceMoney, 49);
+			f.enqueueBunk(0, column);
+			REQUIRE(f.jobData.jobs.empty());
+			REQUIRE(f.economy.get(ResourceMoney) == 49);
+			REQUIRE_FALSE(f.terrain.getTile(0, column).jobReserved);
+		}
+	}
+
+	TEST_CASE("enqueueBuildJob with zero cost still creates a job", "[drl][BuildJobClick]")
+	{
+		Fixture f;
+		BuildingPrototype freeHut{};
+		freeHut.name = "Building_Free";
+		freeHut.cost = 0;
+		f.buildingPrototypes.registerPrototype(std::move(freeHut));
+		REQUIRE(f.terrain.digTile(0, 1));
+		enqueueBuildJob(f.commands, f.terrain, 0, 1, "Building_Free");
+		REQUIRE(f.jobData.jobs.size() == 1);
+		REQUIRE(f.economy.get(ResourceMoney) == 500);
+	}
+
+	TEST_CASE("enqueueBuildJob unknown prototype does not pay", "[drl][BuildJobClick]")
+	{
+		Fixture f;
+		REQUIRE(f.terrain.digTile(0, 1));
+		enqueueBuildJob(f.commands, f.terrain, 0, 1, "Building_Missing");
+		REQUIRE(f.jobData.jobs.empty());
+		REQUIRE(f.economy.get(ResourceMoney) == 500);
+		REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
 	}
 
 }

@@ -35,7 +35,8 @@ namespace drl
 			{
 				.model = glm::translate(glm::mat4(1.0f), position),
 				.size = glm::vec2(kMarkerSize, kMarkerSize),
-				.frameIndex = kFrameJobMarker
+				.frameIndex = kFrameJobMarker,
+				.cameraIndex = _cameraIndex
 			};
 
 			vkCmdPushConstants(

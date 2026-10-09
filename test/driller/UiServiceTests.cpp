@@ -35,32 +35,26 @@ namespace UiServiceTests
 		}
 	};
 
-	TEST_CASE("key 1 selects first registered building", "[drl][UiService]")
+	TEST_CASE("selectBuilding selects a registered prototype", "[drl][UiService]")
 	{
 		Fixture f;
-		FakeUiInput input;
-		input.down.insert(kUiKey1);
-		f.ui.update(input);
+		f.ui.selectBuilding("Building_Bunk");
 		REQUIRE(f.ui.getCurrentState() == UiState::PlacingBuilding);
 		REQUIRE(f.ui.getActiveBuildingType() == "Building_Bunk");
 	}
 
-	TEST_CASE("key 2 selects second registered building", "[drl][UiService]")
+	TEST_CASE("selectBuilding unknown name is a no-op", "[drl][UiService]")
 	{
 		Fixture f;
-		FakeUiInput input;
-		input.down.insert(kUiKey1 + 1);
-		f.ui.update(input);
-		REQUIRE(f.ui.getCurrentState() == UiState::PlacingBuilding);
-		REQUIRE(f.ui.getActiveBuildingType() == "Building_Builders_Hut");
+		f.ui.selectBuilding("Building_Missing");
+		REQUIRE(f.ui.getCurrentState() == UiState::Default);
+		REQUIRE(f.ui.getActiveBuildingType().empty());
 	}
 
 	TEST_CASE("escape clears active building", "[drl][UiService]")
 	{
 		Fixture f;
-		FakeUiInput select;
-		select.down.insert(kUiKey1);
-		f.ui.update(select);
+		f.ui.selectBuilding("Building_Bunk");
 		REQUIRE(f.ui.getCurrentState() == UiState::PlacingBuilding);
 
 		FakeUiInput escape;
@@ -73,10 +67,19 @@ namespace UiServiceTests
 	TEST_CASE("clearActiveBuilding returns to default", "[drl][UiService]")
 	{
 		Fixture f;
-		FakeUiInput input;
-		input.down.insert(kUiKey1);
-		f.ui.update(input);
+		f.ui.selectBuilding("Building_Builders_Hut");
 		f.ui.clearActiveBuilding();
+		REQUIRE(f.ui.getCurrentState() == UiState::Default);
+		REQUIRE(f.ui.getActiveBuildingType().empty());
+	}
+
+	TEST_CASE("digit keys do not select a building", "[drl][UiService]")
+	{
+		Fixture f;
+		FakeUiInput input;
+		input.down.insert(49);
+		input.down.insert(50);
+		f.ui.update(input);
 		REQUIRE(f.ui.getCurrentState() == UiState::Default);
 		REQUIRE(f.ui.getActiveBuildingType().empty());
 	}
