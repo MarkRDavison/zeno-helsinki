@@ -14,6 +14,7 @@
 #include <Services/ShuttleScheduleService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/UiService.hpp>
+#include <Services/UpgradeService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerJobUpdateService.hpp>
 #include <Services/WorkerMovementService.hpp>
@@ -61,6 +62,8 @@ namespace drl
 		const BuildingPrototypeService& buildingPrototypeService() const { return _buildingPrototypeService; }
 		ShuttlePrototypeService& shuttlePrototypeService() { return _shuttlePrototypeService; }
 		const ShuttlePrototypeService& shuttlePrototypeService() const { return _shuttlePrototypeService; }
+		UpgradeService& upgradeService() { return _upgradeService; }
+		const UpgradeService& upgradeService() const { return _upgradeService; }
 		UiService& uiService() { return _uiService; }
 		const UiService& uiService() const { return _uiService; }
 		GameCommandService& commandService() { return _commandService; }
@@ -93,6 +96,7 @@ namespace drl
 		ShuttlePrototypeService _shuttlePrototypeService;
 		ShuttleCreationService _shuttleCreationService;
 		ShuttleScheduleService _shuttleScheduleService;
+		UpgradeService _upgradeService;
 		UiService _uiService;
 		GameCommandService _commandService;
 		Game _game;

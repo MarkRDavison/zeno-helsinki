@@ -31,6 +31,7 @@ namespace drl
 			_workerCreationService,
 			_shuttlePrototypeService,
 			_economyService)
+		, _upgradeService(_gameData.upgrade)
 		, _uiService(_buildingPrototypeService)
 		, _commandService(
 			_terrainService,
@@ -38,7 +39,8 @@ namespace drl
 			_jobCreationService,
 			_workerCreationService,
 			_buildingPlacementService,
-			_shuttleCreationService)
+			_shuttleCreationService,
+			_upgradeService)
 		, _game(_commandService, _simSpeed)
 	{
 		bindPrototypeUserTypes(_lua.raw());

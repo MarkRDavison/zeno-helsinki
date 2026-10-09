@@ -4,6 +4,7 @@
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/UpgradeData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 
 namespace drl
@@ -16,6 +17,7 @@ namespace drl
 		WorkerData worker;
 		BuildingData building;
 		ShuttleData shuttle;
+		UpgradeData upgrade;
 	};
 
 }

@@ -25,6 +25,7 @@ namespace drl
 		CreatingWorker,
 		PlacingBuilding,
 		CreatingShuttle,
+		AddingUpgrade,
 		Undefined
 	};
 
@@ -126,11 +127,30 @@ namespace drl
 		long long prototypeId{ 0 };
 	};
 
+	struct AddUpgrade
+	{
+		AddUpgrade() = default;
+		AddUpgrade(std::string upgradeName, float value)
+			: upgradeId(prototypeIdFromName(upgradeName))
+			, value(value)
+		{
+		}
+
+		AddUpgrade(long long upgradeId, float value)
+			: upgradeId(upgradeId)
+			, value(value)
+		{
+		}
+
+		long long upgradeId{ 0 };
+		float value{ 0.0f };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
 		CommandContext context{ CommandContext::Undefined };
-		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker, PlaceBuilding, CreateShuttle> payload;
+		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker, PlaceBuilding, CreateShuttle, AddUpgrade> payload;
 
 		GameCommand() = default;
 
@@ -177,6 +197,13 @@ namespace drl
 		}
 
 		GameCommand(const CreateShuttle& event, CommandContext commandContext, CommandSource commandSource)
+			: source(commandSource)
+			, context(commandContext)
+			, payload(event)
+		{
+		}
+
+		GameCommand(const AddUpgrade& event, CommandContext commandContext, CommandSource commandSource)
 			: source(commandSource)
 			, context(commandContext)
 			, payload(event)
@@ -268,6 +295,30 @@ namespace drl
 		{
 			return GameCommand(
 				CreateShuttle{ prototypeId },
+				commandContext,
+				commandSource);
+		}
+
+		static GameCommand addUpgrade(
+			std::string upgradeName,
+			float value,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(
+				AddUpgrade{ std::move(upgradeName), value },
+				commandContext,
+				commandSource);
+		}
+
+		static GameCommand addUpgrade(
+			long long upgradeId,
+			float value,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(
+				AddUpgrade{ upgradeId, value },
 				commandContext,
 				commandSource);
 		}

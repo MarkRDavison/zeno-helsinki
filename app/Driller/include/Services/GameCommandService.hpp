@@ -6,6 +6,7 @@
 #include <Services/JobCreationService.hpp>
 #include <Services/ShuttleCreationService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/UpgradeService.hpp>
 #include <Services/WorkerCreationService.hpp>
 
 namespace drl
@@ -34,7 +35,8 @@ namespace drl
 			IJobCreationService& jobs,
 			IWorkerCreationService& workers,
 			IBuildingPlacementService& buildings,
-			IShuttleCreationService& shuttles);
+			IShuttleCreationService& shuttles,
+			IUpgradeService& upgrades);
 		~GameCommandService() override = default;
 
 		bool execute(const GameCommand& command) override;
@@ -49,6 +51,7 @@ namespace drl
 		bool handleCreateWorker(const CreateWorker& event);
 		bool handlePlaceBuilding(const PlaceBuilding& event);
 		bool handleCreateShuttle(const CreateShuttle& event);
+		bool handleAddUpgrade(const AddUpgrade& event);
 
 		ITerrainAlterationService& _terrain;
 		IEconomyResourceService& _economy;
@@ -56,6 +59,7 @@ namespace drl
 		IWorkerCreationService& _workers;
 		IBuildingPlacementService& _buildings;
 		IShuttleCreationService& _shuttles;
+		IUpgradeService& _upgrades;
 		long long _tick{ 0 };
 	};
 

@@ -3,6 +3,7 @@
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/ShuttleData.hpp>
+#include <Entities/Data/UpgradeData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Scripting/CommandBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
@@ -16,6 +17,7 @@
 #include <Services/ShuttleCreationService.hpp>
 #include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/UpgradeService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <Services/WorkerRecruitmentService.hpp>
@@ -55,7 +57,9 @@ constexpr const char* kResourcesChunk = R"(
 		ShuttleData shuttleData;
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation };
+		UpgradeData upgradeData;
+		UpgradeService upgrades{ upgradeData };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation, upgrades };
 
 		Fixture()
 		{

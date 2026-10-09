@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <Core/GameCommand.hpp>
 #include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
@@ -25,11 +26,12 @@
 #include <Services/WorkerPrototypeService.hpp>
 #include <Services/WorkerRecruitmentService.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
+#include <helsinki/System/glm.hpp>
 #include <string>
 
 namespace drl
 {
-namespace JobDigOnCompleteTests
+namespace JobRefineOnCompleteTests
 {
 
 	std::string shipped(const char* relative)
@@ -71,42 +73,70 @@ namespace JobDigOnCompleteTests
 			lua.runFile(shipped("Scripts/Base/prototypes.lua"));
 			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes, buildingPrototypes, shuttlePrototypes);
 		}
+
+		void digFootprint(int startColumn, int width)
+		{
+			REQUIRE(commands.execute(GameCommand::digShaft(0, CommandSource::Setup, CommandContext::DiggingShaft)));
+			if (startColumn > 0)
+			{
+				for (int x = 1; x <= startColumn + width - 1; ++x)
+				{
+					REQUIRE(commands.execute(GameCommand::digTile(0, x, CommandSource::Setup, CommandContext::DiggingTile)));
+				}
+			}
+			else
+			{
+				for (int x = -1; x >= startColumn; --x)
+				{
+					REQUIRE(commands.execute(GameCommand::digTile(0, x, CommandSource::Setup, CommandContext::DiggingTile)));
+				}
+			}
+		}
 	};
 
-	TEST_CASE("shipped Job_Dig onComplete issues System DigTile", "[drl][Scripting][Job_Dig]")
+	TEST_CASE("shipped Job_Refine onComplete stores upgrade and does not add ore", "[drl][Scripting][Job_Refine]")
 	{
-		hl::scripting::LuaState lua;
-		Fixture f(lua);
+		for (const int startColumn : { 1, -4 })
+		{
+			hl::scripting::LuaState lua;
+			Fixture f(lua);
+			f.digFootprint(startColumn, 4);
+			REQUIRE(f.commands.execute(GameCommand::placeBuilding(
+				"Building_Refining",
+				0,
+				startColumn,
+				CommandSource::Setup,
+				CommandContext::PlacingBuilding)));
+			REQUIRE(f.jobData.jobs.size() == 2);
+			JobInstance& job = f.jobData.jobs.front();
+			REQUIRE(job.prototypeId == jobPrototypeIdFromName("Job_Refine"));
+			REQUIRE(job.work == 32.0f);
 
-		REQUIRE(f.commands.execute(GameCommand::digShaft(0, CommandSource::Setup, CommandContext::DiggingShaft)));
-		f.terrain.initialiseTile(0, 1);
-		REQUIRE(f.terrain.doesTileExist(0, 1));
-		REQUIRE_FALSE(f.terrain.isTileDugOut(0, 1));
-		REQUIRE(f.commands.execute(GameCommand::createJob(
-			"Job_Dig",
-			"",
-			0,
-			1,
-			CommandSource::Player,
-			CommandContext::CreatingJob)));
+			REQUIRE(f.commands.execute(GameCommand::createWorker(
+				"Worker_Refiner",
+				glm::vec2(static_cast<float>(startColumn), 0.0f),
+				CommandSource::Setup,
+				CommandContext::CreatingWorker)));
+			WorkerInstance& worker = f.workerData.workers.back();
+			worker.allocatedJobId = job.id;
+			worker.state = WorkerState::WorkingJob;
+			job.allocatedWorkerId = worker.id;
 
-		REQUIRE(f.jobData.jobs.size() == 1);
-		JobInstance& job = f.jobData.jobs.front();
-		REQUIRE(job.work == 2.0f);
+			f.jobUpdate.update(32.0f);
+			REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.001f, 0.0001f));
+			REQUIRE(f.economy.get(ResourceOre) == 0);
+			REQUIRE(f.jobData.jobs.size() == 2);
+			REQUIRE(job.work == 32.0f);
+			REQUIRE(worker.allocatedJobId == job.id);
+			REQUIRE(job.allocatedWorkerId == worker.id);
+			REQUIRE_FALSE(job.requiresRemoval);
 
-		WorkerInstance& worker = f.workerData.workers.emplace_back();
-		worker.id = 1;
-		worker.allocatedJobId = job.id;
-		worker.state = WorkerState::WorkingJob;
-		job.allocatedWorkerId = worker.id;
-
-		f.jobUpdate.update(2.0f);
-
-		REQUIRE(f.terrain.isTileDugOut(0, 1));
-		REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
-		REQUIRE(f.jobData.jobs.empty());
-		REQUIRE(f.workerData.workers.front().state == WorkerState::Idle);
-		REQUIRE(f.workerData.workers.front().allocatedJobId == 0);
+			f.jobUpdate.update(32.0f);
+			REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.002f, 0.0001f));
+			REQUIRE(f.economy.get(ResourceOre) == 0);
+			REQUIRE(job.work == 32.0f);
+			REQUIRE(worker.state == WorkerState::WorkingJob);
+		}
 	}
 
 }

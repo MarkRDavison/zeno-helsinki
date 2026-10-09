@@ -17,6 +17,7 @@ namespace drl
 				{ "CreatingWorker", CommandContext::CreatingWorker },
 				{ "PlacingBuilding", CommandContext::PlacingBuilding },
 				{ "CreatingShuttle", CommandContext::CreatingShuttle },
+				{ "AddingUpgrade", CommandContext::AddingUpgrade },
 				{ "Undefined", CommandContext::Undefined },
 			});
 
@@ -71,6 +72,12 @@ namespace drl
 			sol::constructors<CreateShuttle(std::string), CreateShuttle(long long)>(),
 			"prototypeId", &CreateShuttle::prototypeId);
 
+		lua.new_usertype<AddUpgrade>(
+			"AddUpgradeEvent",
+			sol::constructors<AddUpgrade(std::string, float), AddUpgrade(long long, float)>(),
+			"upgradeId", &AddUpgrade::upgradeId,
+			"value", &AddUpgrade::value);
+
 		lua.new_usertype<GameCommand>(
 			"GameCommand",
 			sol::constructors<
@@ -80,7 +87,8 @@ namespace drl
 				GameCommand(const CreateJob&, CommandContext, CommandSource),
 				GameCommand(const CreateWorker&, CommandContext, CommandSource),
 				GameCommand(const PlaceBuilding&, CommandContext, CommandSource),
-				GameCommand(const CreateShuttle&, CommandContext, CommandSource)
+				GameCommand(const CreateShuttle&, CommandContext, CommandSource),
+				GameCommand(const AddUpgrade&, CommandContext, CommandSource)
 			>());
 
 		lua.set_function(

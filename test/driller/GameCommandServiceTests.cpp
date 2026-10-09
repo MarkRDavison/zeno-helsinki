@@ -4,6 +4,7 @@
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/ShuttleData.hpp>
+#include <Entities/Data/UpgradeData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Entities/Shuttle.hpp>
 #include <Entities/Worker.hpp>
@@ -16,9 +17,11 @@
 #include <Services/ShuttleCreationService.hpp>
 #include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/UpgradeService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <Services/WorkerRecruitmentService.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 namespace drl
 {
@@ -43,7 +46,9 @@ struct Fixture
 		ShuttleData shuttleData;
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation };
+		UpgradeData upgradeData;
+		UpgradeService upgrades{ upgradeData };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation, upgrades };
 
 		Fixture()
 		{
@@ -264,6 +269,51 @@ TEST_CASE("CreateShuttle succeeds with registered prototype", "[drl][GameCommand
 	REQUIRE(f.shuttleData.shuttles.size() == 1);
 	REQUIRE(f.shuttleData.shuttles[0].state == ShuttleState::Idle);
 	REQUIRE(f.shuttleData.shuttles[0].position == kShuttleStartingPosition);
+}
+
+TEST_CASE("AddUpgrade Upgrade_Refine accumulates multiplier", "[drl][GameCommandService]")
+{
+	Fixture f;
+	REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.0f, 0.0001f));
+	REQUIRE(f.commands.execute(GameCommand::addUpgrade(
+		"Upgrade_Refine",
+		0.001f,
+		CommandSource::System,
+		CommandContext::AddingUpgrade)));
+	REQUIRE(f.commands.execute(GameCommand::addUpgrade(
+		"Upgrade_Refine",
+		0.001f,
+		CommandSource::System,
+		CommandContext::AddingUpgrade)));
+	REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.002f, 0.0001f));
+}
+
+TEST_CASE("AddUpgrade unknown name succeeds without changing multiplier", "[drl][GameCommandService]")
+{
+	Fixture f;
+	REQUIRE(f.commands.execute(GameCommand::addUpgrade(
+		"Upgrade_Missing",
+		0.5f,
+		CommandSource::System,
+		CommandContext::AddingUpgrade)));
+	REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.0f, 0.0001f));
+}
+
+TEST_CASE("AddResource ore yield is unchanged after AddUpgrade", "[drl][GameCommandService]")
+{
+	Fixture f;
+	REQUIRE(f.commands.execute(GameCommand::addUpgrade(
+		"Upgrade_Refine",
+		0.001f,
+		CommandSource::System,
+		CommandContext::AddingUpgrade)));
+	REQUIRE(f.commands.execute(GameCommand::addResource(
+		ResourceOre,
+		12,
+		CommandSource::System,
+		CommandContext::AddResource)));
+	REQUIRE(f.economy.get(ResourceOre) == 12);
+	REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.001f, 0.0001f));
 }
 
 }

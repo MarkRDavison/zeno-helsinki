@@ -4,6 +4,7 @@
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/ShuttleData.hpp>
+#include <Entities/Data/UpgradeData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Services/BuildingPlacementService.hpp>
 #include <Services/BuildingPrototypeService.hpp>
@@ -14,6 +15,7 @@
 #include <Services/ShuttleCreationService.hpp>
 #include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/UpgradeService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <Services/WorkerRecruitmentService.hpp>
@@ -54,7 +56,9 @@ class RecordingTickService : public IGameTickService
 		ShuttleData shuttleData;
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation };
+		UpgradeData upgradeData;
+		UpgradeService upgrades{ upgradeData };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation, upgrades };
 };
 
 TEST_CASE("Game::update scales tick delta by SimSpeed", "[drl][Game]")
