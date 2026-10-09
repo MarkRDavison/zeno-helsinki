@@ -45,6 +45,30 @@ namespace drl
 			return object.as<sol::table>();
 		}
 
+		void logProtectedError(sol::protected_function_result& result)
+		{
+			const sol::error err = result;
+			std::cerr << "[hl::scripting] " << err.what() << '\n';
+		}
+
+		std::function<void(const JobInstance&)> wrapOnComplete(const sol::object& completeObject)
+		{
+			if (!completeObject.valid() || completeObject.get_type() != sol::type::function)
+			{
+				return {};
+			}
+
+			sol::protected_function fn = completeObject;
+			return [fn](const JobInstance& job)
+			{
+				sol::protected_function_result result = fn(job);
+				if (!result.valid())
+				{
+					logProtectedError(result);
+				}
+			};
+		}
+
 		std::function<glm::vec2(const JobInstance&, const JobPrototype&)> wrapCalculateOffset(
 			const sol::object& offsetObject)
 		{
@@ -59,8 +83,7 @@ namespace drl
 				sol::protected_function_result result = fn(job);
 				if (!result.valid())
 				{
-					const sol::error err = result;
-					std::cerr << "[hl::scripting] " << err.what() << '\n';
+					logProtectedError(result);
 					return glm::vec2(0.0f, 0.0f);
 				}
 
@@ -103,10 +126,7 @@ namespace drl
 			prototype.name = *name;
 			prototype.repeats = *repeats;
 			prototype.work = *work;
-			if (row["onComplete"].get_type() == sol::type::function)
-			{
-				prototype.onComplete = row["onComplete"];
-			}
+			prototype.onComplete = wrapOnComplete(row["onComplete"]);
 			prototype.calculateOffset = wrapCalculateOffset(row["calculateOffset"]);
 			jobs.registerPrototype(std::move(prototype));
 		}

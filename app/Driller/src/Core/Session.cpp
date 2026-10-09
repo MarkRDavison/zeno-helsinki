@@ -15,6 +15,7 @@ namespace drl
 		, _jobCreationService(_gameData.job, _jobPrototypeService, _terrainService)
 		, _workerCreationService(_gameData.worker, _workerPrototypeService)
 		, _workerMovementService(_gameData.worker, _gameData.job, _terrainService)
+		, _workerJobUpdateService(_gameData.worker, _gameData.job, _terrainService, _jobPrototypeService)
 		, _jobAllocationService(_gameData.job, _gameData.worker, _terrainService, _workerPrototypeService)
 		, _commandService(_terrainService, _economyService, _jobCreationService, _workerCreationService)
 		, _game(_commandService, _simSpeed)
@@ -22,6 +23,7 @@ namespace drl
 		bindPrototypeUserTypes(_lua.raw());
 		bindGameCommands(_lua.raw(), _commandService);
 		_game.addTickService(_workerMovementService);
+		_game.addTickService(_workerJobUpdateService);
 		_game.addTickService(_jobAllocationService);
 	}
 
