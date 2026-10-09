@@ -7,17 +7,12 @@
 #include <Services/TerrainAlterationService.hpp>
 #include <helsinki/System/glm.hpp>
 
-using drl::JobCreationService;
-using drl::JobData;
-using drl::JobPrototype;
-using drl::JobPrototypeService;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::jobPrototypeIdFromName;
-
-namespace
+namespace drl
 {
-	struct Fixture
+namespace JobCreationServiceTests
+{
+
+struct Fixture
 	{
 		TerrainData terrainData;
 		JobData jobData;
@@ -32,8 +27,7 @@ namespace
 			prototype.work = work;
 			prototypes.registerPrototype(std::move(prototype));
 		}
-	};
-}
+};
 
 TEST_CASE("unknown prototype fails", "[drl][JobCreationService]")
 {
@@ -90,7 +84,7 @@ TEST_CASE("calculateOffset is applied", "[drl][JobCreationService]")
 	JobPrototype prototype{};
 	prototype.name = "Job_Dig";
 	prototype.work = 1.0f;
-	prototype.calculateOffset = [](const drl::JobInstance&, const JobPrototype&)
+	prototype.calculateOffset = [](const JobInstance&, const JobPrototype&)
 	{
 		return glm::vec2(0.25f, 0.5f);
 	};
@@ -101,4 +95,7 @@ TEST_CASE("calculateOffset is applied", "[drl][JobCreationService]")
 	REQUIRE(f.jobs.createJob(jobPrototypeIdFromName("Job_Dig"), 0, glm::ivec2(2, 0)));
 	REQUIRE_THAT(f.jobData.jobs[0].offset.x, Catch::Matchers::WithinAbs(0.25f, 0.0001f));
 	REQUIRE_THAT(f.jobData.jobs[0].offset.y, Catch::Matchers::WithinAbs(0.5f, 0.0001f));
+}
+
+}
 }

@@ -11,22 +11,12 @@
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 
-using drl::EconomyResourceService;
-using drl::Game;
-using drl::GameCommandService;
-using drl::IGameTickService;
-using drl::JobCreationService;
-using drl::JobData;
-using drl::JobPrototypeService;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::WorkerCreationService;
-using drl::WorkerData;
-using drl::WorkerPrototypeService;
-
-namespace
+namespace drl
 {
-	class RecordingTickService : public IGameTickService
+namespace GameTests
+{
+
+class RecordingTickService : public IGameTickService
 	{
 	public:
 		void update(float delta) override
@@ -51,8 +41,7 @@ namespace
 		WorkerPrototypeService workerPrototypes;
 		WorkerCreationService workerCreation{ workerData, workerPrototypes };
 		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
-	};
-}
+};
 
 TEST_CASE("Game::update scales tick delta by SimSpeed", "[drl][Game]")
 {
@@ -91,4 +80,7 @@ TEST_CASE("Game::update still ticks commands with no tick services", "[drl][Game
 	game.update(1.0f);
 	game.update(1.0f);
 	REQUIRE(f.commands.currentTick() == 2);
+}
+
+}
 }

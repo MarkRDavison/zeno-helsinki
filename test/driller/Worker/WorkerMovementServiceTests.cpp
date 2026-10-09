@@ -8,18 +8,12 @@
 #include <Services/WorkerMovementService.hpp>
 #include <helsinki/System/glm.hpp>
 
-using drl::JobData;
-using drl::JobInstance;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::WorkerData;
-using drl::WorkerInstance;
-using drl::WorkerMovementService;
-using drl::WorkerState;
-
-namespace
+namespace drl
 {
-	struct Fixture
+namespace WorkerMovementServiceTests
+{
+
+struct Fixture
 	{
 		TerrainData terrainData;
 		JobData jobData;
@@ -43,8 +37,7 @@ namespace
 			worker.position = position;
 			return worker;
 		}
-	};
-}
+};
 
 TEST_CASE("idle worker with assigned job id starts moving to job", "[drl][WorkerMovementService]")
 {
@@ -138,4 +131,7 @@ TEST_CASE("idle worker does not wander onto unreachable tiles", "[drl][WorkerMov
 	REQUIRE(worker.state == WorkerState::Idle);
 	REQUIRE(worker.position == glm::vec2(0.0f, 1.0f));
 	REQUIRE(worker.wanderBackoff > 0.0f);
+}
+
+}
 }

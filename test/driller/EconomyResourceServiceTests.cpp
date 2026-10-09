@@ -1,9 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Services/EconomyResourceService.hpp>
 
-using drl::EconomyResourceService;
-using drl::ResourceMoney;
-using drl::ResourceOre;
+namespace drl
+{
+namespace EconomyResourceServiceTests
+{
 
 TEST_CASE("set and get resource amounts", "[drl][EconomyResourceService]")
 {
@@ -61,4 +62,7 @@ TEST_CASE("add ore increases amount", "[drl][EconomyResourceService]")
 	economy.add(ResourceOre, 25);
 	economy.add(ResourceOre, 5);
 	REQUIRE(economy.get(ResourceOre) == 30);
+}
+
+}
 }

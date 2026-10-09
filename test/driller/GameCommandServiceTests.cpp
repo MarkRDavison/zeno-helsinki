@@ -12,28 +12,12 @@
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 
-using drl::CommandContext;
-using drl::CommandSource;
-using drl::EconomyResourceService;
-using drl::GameCommand;
-using drl::GameCommandService;
-using drl::JobCreationService;
-using drl::JobData;
-using drl::JobPrototype;
-using drl::JobPrototypeService;
-using drl::ResourceMoney;
-using drl::ResourceOre;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::WorkerCreationService;
-using drl::WorkerData;
-using drl::WorkerPrototype;
-using drl::WorkerPrototypeService;
-using drl::WorkerState;
-
-namespace
+namespace drl
 {
-	struct Fixture
+namespace GameCommandServiceTests
+{
+
+struct Fixture
 	{
 		TerrainData data;
 		JobData jobData;
@@ -53,8 +37,7 @@ namespace
 			economy.setMax(ResourceMoney, -1);
 			economy.set(ResourceMoney, 500);
 		}
-	};
-}
+};
 
 TEST_CASE("tick is monotonic from 0", "[drl][GameCommandService]")
 {
@@ -211,4 +194,7 @@ TEST_CASE("CreateWorker unknown prototype refuses", "[drl][GameCommandService]")
 		CommandSource::Setup,
 		CommandContext::CreatingWorker)));
 	REQUIRE(f.workerData.workers.empty());
+}
+
+}
 }

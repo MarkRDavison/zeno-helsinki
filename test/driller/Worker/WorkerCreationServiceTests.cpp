@@ -5,12 +5,10 @@
 #include <Services/WorkerPrototypeService.hpp>
 #include <helsinki/System/glm.hpp>
 
-using drl::WorkerCreationService;
-using drl::WorkerData;
-using drl::WorkerPrototype;
-using drl::WorkerPrototypeService;
-using drl::WorkerState;
-using drl::prototypeIdFromName;
+namespace drl
+{
+namespace WorkerCreationServiceTests
+{
 
 TEST_CASE("unknown prototype fails", "[drl][WorkerCreationService]")
 {
@@ -36,4 +34,7 @@ TEST_CASE("creates worker at coordinates", "[drl][WorkerCreationService]")
 	REQUIRE(data.workers[0].state == WorkerState::Idle);
 	REQUIRE(data.workers[0].prototypeId == prototypeIdFromName("Worker_Builder"));
 	REQUIRE(data.workers[0].id != 0);
+}
+
+}
 }

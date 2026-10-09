@@ -10,21 +10,12 @@
 #include <Services/WorkerPrototypeService.hpp>
 #include <helsinki/System/glm.hpp>
 
-using drl::JobAllocationService;
-using drl::JobData;
-using drl::JobInstance;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::WorkerData;
-using drl::WorkerInstance;
-using drl::WorkerPrototype;
-using drl::WorkerPrototypeService;
-using drl::jobPrototypeIdFromName;
-using drl::prototypeIdFromName;
-
-namespace
+namespace drl
 {
-	struct Fixture
+namespace JobAllocationServiceTests
+{
+
+struct Fixture
 	{
 		TerrainData terrainData;
 		JobData jobData;
@@ -66,8 +57,7 @@ namespace
 				REQUIRE(terrain.digTile(level, column));
 			}
 		}
-	};
-}
+};
 
 TEST_CASE("allocate jobs does nothing with no entities", "[drl][JobAllocationService]")
 {
@@ -158,4 +148,7 @@ TEST_CASE("allocateJobs cap assigns only the requested number", "[drl][JobAlloca
 	REQUIRE(firstWorker.allocatedJobId == firstJob.id);
 	REQUIRE(secondJob.allocatedWorkerId == 0);
 	REQUIRE(secondWorker.allocatedJobId == 0);
+}
+
+}
 }

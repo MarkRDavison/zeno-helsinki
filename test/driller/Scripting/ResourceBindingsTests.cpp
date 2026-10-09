@@ -17,28 +17,12 @@
 #include <helsinki/System/glm.hpp>
 #include <string>
 
-using drl::applyPrototypesTable;
-using drl::applyResourcesTable;
-using drl::bindGameCommands;
-using drl::bindPrototypeUserTypes;
-using drl::EconomyResourceService;
-using drl::GameCommandService;
-using drl::JobCreationService;
-using drl::JobData;
-using drl::JobPrototypeService;
-using drl::ResourceMoney;
-using drl::ResourceOre;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::WorkerCreationService;
-using drl::WorkerData;
-using drl::WorkerPrototypeService;
-using hl::scripting::LuaError;
-using hl::scripting::LuaState;
-
-namespace
+namespace drl
 {
-	constexpr const char* kResourcesChunk = R"(
+namespace ResourceBindingsTests
+{
+
+constexpr const char* kResourcesChunk = R"(
 		resources = {
 			{ name = "Resource_Ore", max = -1, amount = 0 },
 			{ name = "Resource_Money", max = -1, amount = 500 }
@@ -47,7 +31,7 @@ namespace
 
 	struct Fixture
 	{
-		LuaState lua;
+		hl::scripting::LuaState lua;
 		TerrainData data;
 		JobData jobData;
 		TerrainAlterationService terrain{ data };
@@ -66,10 +50,9 @@ namespace
 		}
 	};
 
-	std::string shipped(const char* relative)
-	{
-		return std::string(DRILLER_DATA_DIR) + "/" + relative;
-	}
+std::string shipped(const char* relative)
+{
+	return std::string(DRILLER_DATA_DIR) + "/" + relative;
 }
 
 TEST_CASE("resources table loads ore and money", "[drl][Scripting]")
@@ -87,20 +70,20 @@ TEST_CASE("missing resources global throws LuaError", "[drl][Scripting]")
 {
 	Fixture f;
 	f.lua.runString("x = 1");
-	REQUIRE_THROWS_AS(applyResourcesTable(f.lua.raw()["resources"], f.economy), LuaError);
+	REQUIRE_THROWS_AS(applyResourcesTable(f.lua.raw()["resources"], f.economy), hl::scripting::LuaError);
 }
 
 TEST_CASE("resource entry missing name throws LuaError", "[drl][Scripting]")
 {
 	Fixture f;
 	f.lua.runString(R"(resources = { { max = -1, amount = 0 } })");
-	REQUIRE_THROWS_AS(applyResourcesTable(f.lua.raw()["resources"], f.economy), LuaError);
+	REQUIRE_THROWS_AS(applyResourcesTable(f.lua.raw()["resources"], f.economy), hl::scripting::LuaError);
 }
 
 TEST_CASE("runFile missing path throws LuaError", "[drl][Scripting]")
 {
 	Fixture f;
-	REQUIRE_THROWS_AS(f.lua.runFile("Z:/definitely/missing/resources.lua"), LuaError);
+	REQUIRE_THROWS_AS(f.lua.runFile("Z:/definitely/missing/resources.lua"), hl::scripting::LuaError);
 }
 
 TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][Scripting]")
@@ -118,4 +101,7 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	REQUIRE(f.economy.get(ResourceMoney) == 500);
 	REQUIRE(f.workerData.workers.size() == 1);
 	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
+}
+
+}
 }

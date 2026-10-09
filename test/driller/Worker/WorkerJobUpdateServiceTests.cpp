@@ -12,24 +12,11 @@
 #include <helsinki/Scripting/LuaState.hpp>
 #include <helsinki/System/glm.hpp>
 
-using drl::JobData;
-using drl::JobInstance;
-using drl::JobPrototype;
-using drl::JobPrototypeService;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::WorkerData;
-using drl::WorkerInstance;
-using drl::WorkerJobUpdateService;
-using drl::WorkerPrototypeService;
-using drl::WorkerState;
-using drl::applyPrototypesTable;
-using drl::bindPrototypeUserTypes;
-using drl::jobPrototypeIdFromName;
-using hl::scripting::LuaState;
-
-namespace
+namespace drl
 {
+namespace WorkerJobUpdateServiceTests
+{
+
 	struct Fixture
 	{
 		TerrainData terrainData;
@@ -74,155 +61,157 @@ namespace
 			terrain.getTile(level, column).jobReserved = true;
 		}
 	};
-}
 
-TEST_CASE("updateWorkerJob decreases work remaining", "[drl][WorkerJobUpdateService]")
-{
-	Fixture f;
-	f.registerJob("Job_Dig", 3.0f, false);
-	f.reserveTile(0, 1);
-	JobInstance& job = f.addJob(1, "Job_Dig", 3.0f, glm::ivec2(1, 0));
-	WorkerInstance& worker = f.addWorker(22, job.id);
-	job.allocatedWorkerId = worker.id;
-
-	f.service.updateWorkerJob(1.0f, worker, job);
-	REQUIRE(job.work == 2.0f);
-	f.service.updateWorkerJob(1.0f, worker, job);
-	REQUIRE(job.work == 1.0f);
-	f.service.updateWorkerJob(1.0f, worker, job);
-	REQUIRE(job.work == 0.0f);
-}
-
-TEST_CASE("non-repeat job completion unassigns worker and clears reserve", "[drl][WorkerJobUpdateService]")
-{
-	Fixture f;
-	f.registerJob("Job_Dig", 3.0f, false);
-	f.reserveTile(0, 1);
-	JobInstance& job = f.addJob(1, "Job_Dig", 3.0f, glm::ivec2(1, 0));
-	WorkerInstance& worker = f.addWorker(22, job.id);
-	job.allocatedWorkerId = worker.id;
-	worker.idleTime = 4.0f;
-
-	f.service.updateWorkerJob(3.0f, worker, job);
-
-	REQUIRE(job.requiresRemoval);
-	REQUIRE(job.allocatedWorkerId == 0);
-	REQUIRE(worker.allocatedJobId == 0);
-	REQUIRE(worker.state == WorkerState::Idle);
-	REQUIRE(worker.idleTime == 0.0f);
-	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
-}
-
-TEST_CASE("repeating job keeps worker and refills work", "[drl][WorkerJobUpdateService]")
-{
-	Fixture f;
-	f.registerJob("Job_Mine", 3.0f, true);
-	JobInstance& job = f.addJob(1, "Job_Mine", 3.0f, glm::ivec2(1, 0));
-	WorkerInstance& worker = f.addWorker(22, job.id);
-	job.allocatedWorkerId = worker.id;
-
-	f.service.updateWorkerJob(1.5f, worker, job);
-	REQUIRE(job.work == 1.5f);
-	f.service.updateWorkerJob(1.5f, worker, job);
-
-	REQUIRE(job.work == 3.0f);
-	REQUIRE(worker.allocatedJobId == job.id);
-	REQUIRE(job.allocatedWorkerId == worker.id);
-	REQUIRE_FALSE(job.requiresRemoval);
-}
-
-TEST_CASE("onComplete runs when a non-repeat job completes", "[drl][WorkerJobUpdateService]")
-{
-	Fixture f;
-	bool invoked = false;
-	JobPrototype prototype{};
-	prototype.name = "Job_Dig";
-	prototype.work = 3.0f;
-	prototype.repeats = false;
-	prototype.onComplete = [&invoked](const JobInstance&)
+	TEST_CASE("updateWorkerJob decreases work remaining", "[drl][WorkerJobUpdateService]")
 	{
-		invoked = true;
-	};
-	f.jobPrototypes.registerPrototype(std::move(prototype));
-	f.reserveTile(0, 1);
-	JobInstance& job = f.addJob(1, "Job_Dig", 3.0f, glm::ivec2(1, 0));
-	WorkerInstance& worker = f.addWorker(22, job.id);
-	job.allocatedWorkerId = worker.id;
+		Fixture f;
+		f.registerJob("Job_Dig", 3.0f, false);
+		f.reserveTile(0, 1);
+		JobInstance& job = f.addJob(1, "Job_Dig", 3.0f, glm::ivec2(1, 0));
+		WorkerInstance& worker = f.addWorker(22, job.id);
+		job.allocatedWorkerId = worker.id;
 
-	f.service.updateWorkerJob(3.0f, worker, job);
+		f.service.updateWorkerJob(1.0f, worker, job);
+		REQUIRE(job.work == 2.0f);
+		f.service.updateWorkerJob(1.0f, worker, job);
+		REQUIRE(job.work == 1.0f);
+		f.service.updateWorkerJob(1.0f, worker, job);
+		REQUIRE(job.work == 0.0f);
+	}
 
-	REQUIRE(invoked);
-}
-
-TEST_CASE("onComplete runs each time a repeating job completes", "[drl][WorkerJobUpdateService]")
-{
-	Fixture f;
-	int invokedCount = 0;
-	JobPrototype prototype{};
-	prototype.name = "Job_Mine";
-	prototype.work = 3.0f;
-	prototype.repeats = true;
-	prototype.onComplete = [&invokedCount](const JobInstance&)
+	TEST_CASE("non-repeat job completion unassigns worker and clears reserve", "[drl][WorkerJobUpdateService]")
 	{
-		++invokedCount;
-	};
-	f.jobPrototypes.registerPrototype(std::move(prototype));
-	JobInstance& job = f.addJob(1, "Job_Mine", 3.0f, glm::ivec2(1, 0));
-	WorkerInstance& worker = f.addWorker(22, job.id);
-	job.allocatedWorkerId = worker.id;
+		Fixture f;
+		f.registerJob("Job_Dig", 3.0f, false);
+		f.reserveTile(0, 1);
+		JobInstance& job = f.addJob(1, "Job_Dig", 3.0f, glm::ivec2(1, 0));
+		WorkerInstance& worker = f.addWorker(22, job.id);
+		job.allocatedWorkerId = worker.id;
+		worker.idleTime = 4.0f;
 
-	f.service.updateWorkerJob(3.0f, worker, job);
-	REQUIRE(invokedCount == 1);
-	f.service.updateWorkerJob(3.0f, worker, job);
-	REQUIRE(invokedCount == 2);
-	f.service.updateWorkerJob(3.0f, worker, job);
-	REQUIRE(invokedCount == 3);
-}
+		f.service.updateWorkerJob(3.0f, worker, job);
 
-TEST_CASE("removeCompletedJobs erases only flagged jobs", "[drl][WorkerJobUpdateService]")
-{
-	Fixture f;
-	f.jobData.jobs.emplace_back().requiresRemoval = false;
-	f.jobData.jobs.emplace_back().requiresRemoval = true;
-	f.jobData.jobs.emplace_back().requiresRemoval = false;
-	f.jobData.jobs.emplace_back().requiresRemoval = true;
+		REQUIRE(job.requiresRemoval);
+		REQUIRE(job.allocatedWorkerId == 0);
+		REQUIRE(worker.allocatedJobId == 0);
+		REQUIRE(worker.state == WorkerState::Idle);
+		REQUIRE(worker.idleTime == 0.0f);
+		REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
+	}
 
-	f.service.removeCompletedJobs();
+	TEST_CASE("repeating job keeps worker and refills work", "[drl][WorkerJobUpdateService]")
+	{
+		Fixture f;
+		f.registerJob("Job_Mine", 3.0f, true);
+		JobInstance& job = f.addJob(1, "Job_Mine", 3.0f, glm::ivec2(1, 0));
+		WorkerInstance& worker = f.addWorker(22, job.id);
+		job.allocatedWorkerId = worker.id;
 
-	REQUIRE(f.jobData.jobs.size() == 2);
-	REQUIRE_FALSE(f.jobData.jobs[0].requiresRemoval);
-	REQUIRE_FALSE(f.jobData.jobs[1].requiresRemoval);
-}
+		f.service.updateWorkerJob(1.5f, worker, job);
+		REQUIRE(job.work == 1.5f);
+		f.service.updateWorkerJob(1.5f, worker, job);
 
-TEST_CASE("Lua onComplete error does not throw and still completes the job", "[drl][WorkerJobUpdateService]")
-{
-	LuaState lua;
-	Fixture f;
-	WorkerPrototypeService workers;
-	bindPrototypeUserTypes(lua.raw());
-	lua.runString(R"(
-prototypes = {
-	jobs = {
+		REQUIRE(job.work == 3.0f);
+		REQUIRE(worker.allocatedJobId == job.id);
+		REQUIRE(job.allocatedWorkerId == worker.id);
+		REQUIRE_FALSE(job.requiresRemoval);
+	}
+
+	TEST_CASE("onComplete runs when a non-repeat job completes", "[drl][WorkerJobUpdateService]")
+	{
+		Fixture f;
+		bool invoked = false;
+		JobPrototype prototype{};
+		prototype.name = "Job_Dig";
+		prototype.work = 3.0f;
+		prototype.repeats = false;
+		prototype.onComplete = [&invoked](const JobInstance&)
 		{
-			name = "Job_Dig",
-			repeats = false,
-			work = 1.0,
-			onComplete = function(job)
-				error("boom")
-			end
-		}
-	},
-	workers = {}
-}
-)", "onComplete-error");
-	applyPrototypesTable(lua.raw()["prototypes"], f.jobPrototypes, workers);
-	f.reserveTile(0, 1);
-	JobInstance& job = f.addJob(1, "Job_Dig", 1.0f, glm::ivec2(1, 0));
-	WorkerInstance& worker = f.addWorker(22, job.id);
-	job.allocatedWorkerId = worker.id;
+			invoked = true;
+		};
+		f.jobPrototypes.registerPrototype(std::move(prototype));
+		f.reserveTile(0, 1);
+		JobInstance& job = f.addJob(1, "Job_Dig", 3.0f, glm::ivec2(1, 0));
+		WorkerInstance& worker = f.addWorker(22, job.id);
+		job.allocatedWorkerId = worker.id;
 
-	REQUIRE_NOTHROW(f.service.updateWorkerJob(1.0f, worker, job));
-	REQUIRE(job.requiresRemoval);
-	REQUIRE(worker.state == WorkerState::Idle);
-	REQUIRE(worker.allocatedJobId == 0);
+		f.service.updateWorkerJob(3.0f, worker, job);
+
+		REQUIRE(invoked);
+	}
+
+	TEST_CASE("onComplete runs each time a repeating job completes", "[drl][WorkerJobUpdateService]")
+	{
+		Fixture f;
+		int invokedCount = 0;
+		JobPrototype prototype{};
+		prototype.name = "Job_Mine";
+		prototype.work = 3.0f;
+		prototype.repeats = true;
+		prototype.onComplete = [&invokedCount](const JobInstance&)
+		{
+			++invokedCount;
+		};
+		f.jobPrototypes.registerPrototype(std::move(prototype));
+		JobInstance& job = f.addJob(1, "Job_Mine", 3.0f, glm::ivec2(1, 0));
+		WorkerInstance& worker = f.addWorker(22, job.id);
+		job.allocatedWorkerId = worker.id;
+
+		f.service.updateWorkerJob(3.0f, worker, job);
+		REQUIRE(invokedCount == 1);
+		f.service.updateWorkerJob(3.0f, worker, job);
+		REQUIRE(invokedCount == 2);
+		f.service.updateWorkerJob(3.0f, worker, job);
+		REQUIRE(invokedCount == 3);
+	}
+
+	TEST_CASE("removeCompletedJobs erases only flagged jobs", "[drl][WorkerJobUpdateService]")
+	{
+		Fixture f;
+		f.jobData.jobs.emplace_back().requiresRemoval = false;
+		f.jobData.jobs.emplace_back().requiresRemoval = true;
+		f.jobData.jobs.emplace_back().requiresRemoval = false;
+		f.jobData.jobs.emplace_back().requiresRemoval = true;
+
+		f.service.removeCompletedJobs();
+
+		REQUIRE(f.jobData.jobs.size() == 2);
+		REQUIRE_FALSE(f.jobData.jobs[0].requiresRemoval);
+		REQUIRE_FALSE(f.jobData.jobs[1].requiresRemoval);
+	}
+
+	TEST_CASE("Lua onComplete error does not throw and still completes the job", "[drl][WorkerJobUpdateService]")
+	{
+		hl::scripting::LuaState lua;
+		Fixture f;
+		WorkerPrototypeService workers;
+		bindPrototypeUserTypes(lua.raw());
+		lua.runString(R"(
+	prototypes = {
+		jobs = {
+			{
+				name = "Job_Dig",
+				repeats = false,
+				work = 1.0,
+				onComplete = function(job)
+					error("boom")
+				end
+			}
+		},
+		workers = {}
+	}
+	)", "onComplete-error");
+		applyPrototypesTable(lua.raw()["prototypes"], f.jobPrototypes, workers);
+		f.reserveTile(0, 1);
+		JobInstance& job = f.addJob(1, "Job_Dig", 1.0f, glm::ivec2(1, 0));
+		WorkerInstance& worker = f.addWorker(22, job.id);
+		job.allocatedWorkerId = worker.id;
+
+		REQUIRE_NOTHROW(f.service.updateWorkerJob(1.0f, worker, job));
+		REQUIRE(job.requiresRemoval);
+		REQUIRE(worker.state == WorkerState::Idle);
+		REQUIRE(worker.allocatedJobId == 0);
+	}
+
+}
 }

@@ -15,30 +15,14 @@
 #include <helsinki/Scripting/LuaState.hpp>
 #include <helsinki/System/glm.hpp>
 
-using drl::bindGameCommands;
-using drl::bindPrototypeUserTypes;
-using drl::EconomyResourceService;
-using drl::GameCommandService;
-using drl::JobCreationService;
-using drl::JobData;
-using drl::JobPrototype;
-using drl::JobPrototypeService;
-using drl::ResourceMoney;
-using drl::ResourceOre;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::WorkerCreationService;
-using drl::WorkerData;
-using drl::WorkerPrototype;
-using drl::WorkerPrototypeService;
-using hl::scripting::LuaError;
-using hl::scripting::LuaState;
-
-namespace
+namespace drl
 {
-	struct Fixture
+namespace CommandBindingTests
+{
+
+struct Fixture
 	{
-		LuaState lua;
+		hl::scripting::LuaState lua;
 		TerrainData data;
 		JobData jobData;
 		TerrainAlterationService terrain{ data };
@@ -59,8 +43,7 @@ namespace
 			bindPrototypeUserTypes(lua.raw());
 			bindGameCommands(lua.raw(), commands);
 		}
-	};
-}
+};
 
 TEST_CASE("cmd Setup DigShaft does not charge", "[drl][Scripting]")
 {
@@ -145,5 +128,8 @@ TEST_CASE("cmd CreateWorkerEvent uses vec2f coordinates", "[drl][Scripting]")
 TEST_CASE("bad chunk throws LuaError", "[drl][Scripting]")
 {
 	Fixture f;
-	REQUIRE_THROWS_AS(f.lua.runString("this is not lua"), LuaError);
+	REQUIRE_THROWS_AS(f.lua.runString("this is not lua"), hl::scripting::LuaError);
+}
+
+}
 }

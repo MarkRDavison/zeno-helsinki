@@ -12,24 +12,14 @@
 #include <helsinki/System/glm.hpp>
 #include <string>
 
-using drl::applyPrototypesTable;
-using drl::bindPrototypeUserTypes;
-using drl::JobCreationService;
-using drl::JobData;
-using drl::JobPrototypeService;
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-using drl::WorkerPrototypeService;
-using drl::jobPrototypeIdFromName;
-using drl::prototypeIdFromName;
-using hl::scripting::LuaError;
-using hl::scripting::LuaState;
-
-namespace
+namespace drl
 {
-	struct Fixture
+namespace PrototypeBindingsTests
+{
+
+struct Fixture
 	{
-		LuaState lua;
+		hl::scripting::LuaState lua;
 		TerrainData terrainData;
 		JobData jobData;
 		TerrainAlterationService terrain{ terrainData };
@@ -43,10 +33,9 @@ namespace
 		}
 	};
 
-	std::string shipped(const char* relative)
-	{
-		return std::string(DRILLER_DATA_DIR) + "/" + relative;
-	}
+std::string shipped(const char* relative)
+{
+	return std::string(DRILLER_DATA_DIR) + "/" + relative;
 }
 
 TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][Scripting]")
@@ -86,5 +75,8 @@ TEST_CASE("missing prototypes table throws LuaError", "[drl][Scripting]")
 {
 	Fixture f;
 	f.lua.runString("x = 1");
-	REQUIRE_THROWS_AS(applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers), LuaError);
+	REQUIRE_THROWS_AS(applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers), hl::scripting::LuaError);
+}
+
+}
 }

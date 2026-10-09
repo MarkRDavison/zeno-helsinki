@@ -3,17 +3,16 @@
 #include <Services/TerrainAlterationService.hpp>
 #include <stdexcept>
 
-using drl::TerrainAlterationService;
-using drl::TerrainData;
-
-namespace
+namespace drl
 {
-	struct Fixture
-	{
-		TerrainData data;
-		TerrainAlterationService service{ data };
-	};
-}
+namespace TerrainAlterationServiceTests
+{
+
+struct Fixture
+{
+	TerrainData data;
+	TerrainAlterationService service{ data };
+};
 
 TEST_CASE("digShaft level 0 succeeds from initial shaft", "[drl][TerrainAlterationService]")
 {
@@ -154,4 +153,7 @@ TEST_CASE("isLevelNextShaftLevel true only for shaftLevel+1", "[drl][TerrainAlte
 	REQUIRE(f.service.isLevelNextShaftLevel(1));
 	REQUIRE_FALSE(f.service.isLevelNextShaftLevel(0));
 	REQUIRE_FALSE(f.service.isLevelNextShaftLevel(2));
+}
+
+}
 }

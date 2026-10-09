@@ -1,7 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Core/TileCoordinates.hpp>
 
-using drl::pixelToTile;
+namespace drl
+{
+namespace TileCoordinatesTests
+{
 
 TEST_CASE("pixelToTile maps origin to shaft cell", "[drl][TileCoordinates]")
 {
@@ -37,4 +40,7 @@ TEST_CASE("pixelToTile maps above the mine to a negative level", "[drl][TileCoor
 	const glm::ivec2 tile = pixelToTile({ 640.0f, 63.0f }, 640.0f, 64.0f, 64.0f);
 	REQUIRE(tile.x == 0);
 	REQUIRE(tile.y == -1);
+}
+
+}
 }
