@@ -2,6 +2,7 @@
 
 #include <Entities/Data/GameData.hpp>
 #include <Services/EconomyResourceService.hpp>
+#include <Services/GameCommandService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <string>
 
@@ -26,6 +27,8 @@ namespace drl
 		const TerrainAlterationService& terrainService() const { return _terrainService; }
 		EconomyResourceService& economyService() { return _economyService; }
 		const EconomyResourceService& economyService() const { return _economyService; }
+		GameCommandService& commandService() { return _commandService; }
+		const GameCommandService& commandService() const { return _commandService; }
 
 	private:
 		bool _settingsLoaded{ false };
@@ -35,6 +38,7 @@ namespace drl
 		GameData _gameData;
 		TerrainAlterationService _terrainService;
 		EconomyResourceService _economyService;
+		GameCommandService _commandService;
 	};
 
 }

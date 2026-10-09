@@ -1,5 +1,5 @@
 #include <Scenes/DrillerGameEngineScene.hpp>
-#include <Core/PlayerDig.hpp>
+#include <Core/GameCommand.hpp>
 #include <Core/TileCoordinates.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <GLFW/glfw3.h>
@@ -279,11 +279,18 @@ namespace drl
 
 		if (tile.x == 0)
 		{
-			tryPlayerDigShaft(_session.terrainService(), economy, tile.y);
+			_session.commandService().execute(GameCommand::digShaft(
+				tile.y,
+				CommandSource::Player,
+				CommandContext::DiggingShaft));
 		}
 		else
 		{
-			_session.terrainService().digTile(tile.y, tile.x);
+			_session.commandService().execute(GameCommand::digTile(
+				tile.y,
+				tile.x,
+				CommandSource::Player,
+				CommandContext::DiggingTile));
 		}
 	}
 

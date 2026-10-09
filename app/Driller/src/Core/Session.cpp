@@ -9,6 +9,7 @@ namespace drl
 
 	Session::Session()
 		: _terrainService(_gameData.terrain)
+		, _commandService(_terrainService, _economyService)
 	{
 	}
 
