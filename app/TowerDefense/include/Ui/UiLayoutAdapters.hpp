@@ -47,6 +47,10 @@ namespace tower
 			const std::vector<hl::ui::GlyphVertex>& verts,
 			glm::vec2 origin,
 			glm::vec3 color) override;
+		void glyphs(
+			const std::vector<hl::ui::GlyphVertex>& verts,
+			glm::vec2 origin,
+			glm::vec4 color) override;
 
 	private:
 		hl::UiBatch* _batch = nullptr;

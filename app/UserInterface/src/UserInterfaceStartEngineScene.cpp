@@ -101,6 +101,14 @@ namespace ui
 				glm::vec2 origin,
 				glm::vec3 color) override
 			{
+				glyphs(verts, origin, glm::vec4{ color, 1.0f });
+			}
+
+			void glyphs(
+				const std::vector<hl::ui::GlyphVertex>& verts,
+				glm::vec2 origin,
+				glm::vec4 color) override
+			{
 				std::vector<hl::Vertex22D> converted;
 				converted.reserve(verts.size());
 				for (const auto& v : verts)
@@ -638,6 +646,88 @@ namespace ui
 			});
 		}
 
+		_snackbar = std::make_unique<hl::ui::SnackbarHost>(*_layoutRoot, *_typeface);
+
+		{
+			hl::ui::Node& page = _tabs->addPage("Snackbar");
+			padPage(page);
+
+			auto fire = [this](hl::ui::SnackbarType type, const char* title, const char* description)
+			{
+				hl::ui::SnackbarItem item;
+				item.type = type;
+				item.title = title;
+				item.description = description;
+				item.persistent = _snackPersistent != nullptr && _snackPersistent->checked();
+				_snackbar->show(std::move(item));
+			};
+
+			_snackSuccess = std::make_unique<hl::ui::Button>(page.addChild(), *_typeface);
+			_snackSuccess->setText("success");
+			_snackSuccess->onClick = [fire]()
+			{
+				fire(hl::ui::SnackbarType::Success, "Saved", "Changes were stored.");
+			};
+
+			_snackWarning = std::make_unique<hl::ui::Button>(page.addChild(), *_typeface);
+			_snackWarning->setText("warning");
+			_snackWarning->onClick = [fire]()
+			{
+				fire(hl::ui::SnackbarType::Warning, "Check this", "Something needs your attention.");
+			};
+
+			_snackError = std::make_unique<hl::ui::Button>(page.addChild(), *_typeface);
+			_snackError->setText("error");
+			_snackError->onClick = [fire]()
+			{
+				fire(hl::ui::SnackbarType::Error, "Failed", "The request could not be completed.");
+			};
+
+			_snackInfo = std::make_unique<hl::ui::Button>(page.addChild(), *_typeface);
+			_snackInfo->setText("info");
+			_snackInfo->onClick = [fire]()
+			{
+				fire(hl::ui::SnackbarType::Info, "Heads up", "This is an informational note.");
+			};
+
+			auto persistLabel = std::make_unique<hl::ui::Label>(page.addChild(), *_typeface);
+			persistLabel->setText("persistent");
+			persistLabel->color = hl::ui::theme().muted;
+			_widgets.push_back(std::move(persistLabel));
+			_snackPersistent = std::make_unique<hl::ui::Checkbox>(page.addChild());
+			_snackPersistent->setChecked(false);
+
+			_snackCorner = std::make_unique<hl::ui::Dropdown>(page.addChild(), *_typeface);
+			_snackCorner->setItems({ "Top left", "Top right", "Bottom left", "Bottom right" });
+			_snackCorner->setSelectedIndex(3);
+			_snackCorner->onChanged = [this](int index)
+			{
+				const hl::ui::SnackbarCorner corners[] = {
+					hl::ui::SnackbarCorner::TopLeft,
+					hl::ui::SnackbarCorner::TopRight,
+					hl::ui::SnackbarCorner::BottomLeft,
+					hl::ui::SnackbarCorner::BottomRight
+				};
+				if (index >= 0 && index < 4)
+				{
+					_snackbar->corner = corners[index];
+				}
+			};
+
+			_snackMaxLabel = std::make_unique<hl::ui::Label>(page.addChild(), *_typeface);
+			_snackMaxLabel->setText("max visible 3");
+			_snackMaxLabel->color = hl::ui::theme().muted;
+			_snackMax = std::make_unique<hl::ui::Slider>(page.addChild());
+			_snackMax->setValue(0.5f);
+			_snackMax->onChanged = [this](float value)
+			{
+				const int maxVisible = 1 + static_cast<int>(value * 4.0f + 0.5f);
+				_snackbar->maxVisible = std::clamp(maxVisible, 1, 5);
+				_snackMaxLabel->setText("max visible " + std::to_string(*_snackbar->maxVisible));
+			};
+			_snackbar->maxVisible = 3;
+		}
+
 		for (const char* title : { "More beta", "More gamma" })
 		{
 			auto label = std::make_unique<hl::ui::Label>(_tabs->addPage(title).addChild(), *_typeface);
@@ -739,6 +829,7 @@ namespace ui
 	void UserInterfaceStartEngineScene::update(uint32_t /*currentFrame*/, float delta)
 	{
 		_tooltip->tick(delta);
+		_snackbar->tick(delta);
 		rebuildAndDraw();
 	}
 

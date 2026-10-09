@@ -29,6 +29,14 @@ namespace hl::ui
 		glm::vec3 hover{ 0.32f, 0.34f, 0.42f };
 		glm::vec3 accent{ 1.0f, 0.5f, 0.0f };
 		glm::vec3 border{ 0.08f, 0.09f, 0.12f };
+		glm::vec3 success{ 0.12f, 0.42f, 0.24f };
+		glm::vec3 successMuted{ 0.62f, 0.82f, 0.68f };
+		glm::vec3 warning{ 0.62f, 0.38f, 0.08f };
+		glm::vec3 warningMuted{ 0.86f, 0.72f, 0.42f };
+		glm::vec3 error{ 0.62f, 0.16f, 0.16f };
+		glm::vec3 errorMuted{ 0.86f, 0.58f, 0.58f };
+		glm::vec3 info{ 0.16f, 0.38f, 0.68f };
+		glm::vec3 infoMuted{ 0.58f, 0.72f, 0.88f };
 		glm::vec4 scrim{ 0.0f, 0.0f, 0.0f, 0.55f };
 
 		float padding = 8.0f;
@@ -39,6 +47,10 @@ namespace hl::ui
 		float controlWidth = 280.0f;
 		float controlHeight = 32.0f;
 		glm::vec2 viewportSize{ 280.0f, 240.0f };
+
+		float snackbarDuration = 4.0f;
+		float snackbarFade = 0.35f;
+		int snackbarMaxVisible = 3;
 	};
 
 	Theme& theme();

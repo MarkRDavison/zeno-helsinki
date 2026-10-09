@@ -27,6 +27,11 @@ namespace hl
 			glm::vec2 offset,
 			glm::vec3 colour,
 			float texIndex);
+		void addGlyphs(
+			const std::vector<hl::Vertex22D>& glyphs,
+			glm::vec2 offset,
+			glm::vec4 colour,
+			float texIndex);
 		void updateGpuResources(uint32_t currentFrame);
 		void draw(PipelineDrawData& pdd) const;
 		void destroy();

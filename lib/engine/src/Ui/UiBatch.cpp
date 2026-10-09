@@ -171,11 +171,20 @@ namespace hl
 		glm::vec3 colour,
 		float texIndex)
 	{
+		addGlyphs(glyphs, offset, glm::vec4{ colour, 1.0f }, texIndex);
+	}
+
+	void UiBatch::addGlyphs(
+		const std::vector<hl::Vertex22D>& glyphs,
+		glm::vec2 offset,
+		glm::vec4 colour,
+		float texIndex)
+	{
 		for (const auto& glyph : glyphs)
 		{
 			_vertices.push_back(hl::VertexUi2{
 				.pos = glyph.pos + offset,
-				.color = glm::vec4{ colour, 1.0f },
+				.color = colour,
 				.texCoord = glyph.texCoord,
 				.texIndex = texIndex,
 				.sdf = 1.0f });

@@ -38,6 +38,13 @@ namespace hl::ui
 			const std::vector<GlyphVertex>& verts,
 			glm::vec2 origin,
 			glm::vec3 color) = 0;
+		virtual void glyphs(
+			const std::vector<GlyphVertex>& verts,
+			glm::vec2 origin,
+			glm::vec4 color)
+		{
+			glyphs(verts, origin, glm::vec3{ color });
+		}
 		virtual void pushClip(const Box& worldBox) { (void)worldBox; }
 		virtual void popClip() {}
 	};

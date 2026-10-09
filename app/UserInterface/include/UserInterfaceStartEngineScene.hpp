@@ -18,6 +18,7 @@
 #include <helsinki/Ui/RadioGroup.hpp>
 #include <helsinki/Ui/ScrollView.hpp>
 #include <helsinki/Ui/Slider.hpp>
+#include <helsinki/Ui/Snackbar.hpp>
 #include <helsinki/Ui/Tabs.hpp>
 #include <helsinki/Ui/TextField.hpp>
 #include <helsinki/Ui/Toggle.hpp>
@@ -89,6 +90,15 @@ namespace ui
 		std::unique_ptr<hl::ui::Button> _filledButton;
 		std::unique_ptr<hl::ui::Button> _textButton;
 		std::unique_ptr<hl::ui::Tooltip> _tooltip;
+		std::unique_ptr<hl::ui::SnackbarHost> _snackbar;
+		std::unique_ptr<hl::ui::Button> _snackSuccess;
+		std::unique_ptr<hl::ui::Button> _snackWarning;
+		std::unique_ptr<hl::ui::Button> _snackError;
+		std::unique_ptr<hl::ui::Button> _snackInfo;
+		std::unique_ptr<hl::ui::Checkbox> _snackPersistent;
+		std::unique_ptr<hl::ui::Dropdown> _snackCorner;
+		std::unique_ptr<hl::ui::Slider> _snackMax;
+		std::unique_ptr<hl::ui::Label> _snackMaxLabel;
 		hl::ui::Panel* _clipHitRow = nullptr;
 		bool _clipHitOn = false;
 	};

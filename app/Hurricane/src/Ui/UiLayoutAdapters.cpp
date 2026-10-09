@@ -91,6 +91,14 @@ namespace hur
 		glm::vec2 origin,
 		glm::vec3 color)
 	{
+		glyphs(verts, origin, glm::vec4{ color, 1.0f });
+	}
+
+	void UiBatchPaint::glyphs(
+		const std::vector<hl::ui::GlyphVertex>& verts,
+		glm::vec2 origin,
+		glm::vec4 color)
+	{
 		std::vector<hl::Vertex22D> converted;
 		converted.reserve(verts.size());
 		for (const auto& v : verts)

@@ -19,6 +19,7 @@ namespace hl::ui
 		void paint(IPaint& paint) const override;
 
 		std::optional<glm::vec3> color;
+		float opacity = 1.0f;
 		glm::vec3 resolvedColor() const { return resolve(color, theme().foreground); }
 
 	protected:

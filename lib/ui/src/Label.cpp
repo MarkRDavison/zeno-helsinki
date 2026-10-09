@@ -35,6 +35,6 @@ namespace hl::ui
 
 	void Label::paintGlyphs(IPaint& paint, glm::vec2 origin) const
 	{
-		paint.glyphs(_glyphs, origin, _drawColor);
+		paint.glyphs(_glyphs, origin, glm::vec4{ _drawColor, opacity });
 	}
 }
