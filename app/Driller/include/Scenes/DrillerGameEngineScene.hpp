@@ -8,6 +8,7 @@
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <Core/Session.hpp>
 #include <Views/BuildBar.hpp>
+#include <Views/StatusBar.hpp>
 #include <Views/BuildingGhostView.hpp>
 #include <Views/BuildingView.hpp>
 #include <Views/GameCamera.hpp>
@@ -57,6 +58,7 @@ namespace drl
 		glm::ivec2 _hoveredTile{ 0, -1 };
 		glm::vec2 _lastPanMouse{ 0.0f, 0.0f };
 		bool _panning{ false };
+		StatusBar _statusBar;
 		BuildBar _buildBar;
 		hl::UiBatch _uiBatch;
 		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;

@@ -3,6 +3,7 @@
 #include <Scripting/CommandBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Scripting/ResourceBindings.hpp>
+#include <Scripting/UpgradeBindings.hpp>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
 #include <filesystem>
@@ -102,8 +103,10 @@ namespace drl
 
 		const auto scriptsDirectory = std::filesystem::path(_dataDirectory) / "Scripts" / "Base";
 		_lua.runFile((scriptsDirectory / "resources.lua").string());
-
 		applyResourcesTable(_lua.raw()["resources"], _economyService);
+
+		_lua.runFile((scriptsDirectory / "upgrades.lua").string());
+		applyUpgradesTable(_lua.raw()["upgrades"], _upgradeService);
 
 		_lua.runFile((scriptsDirectory / "prototypes.lua").string());
 		applyPrototypesTable(

@@ -34,8 +34,8 @@ namespace ResourceBindingsTests
 
 constexpr const char* kResourcesChunk = R"(
 		resources = {
-			{ name = "Resource_Ore", max = -1, amount = 0 },
-			{ name = "Resource_Money", max = -1, amount = 500 }
+			{ name = "Resource_Ore", max = -1, amount = 0, order = 1, label = "Ore", description = "rock" },
+			{ name = "Resource_Money", max = -1, amount = 500, order = 2, label = "Money", description = "cash" }
 		}
 	)";
 
@@ -83,6 +83,8 @@ TEST_CASE("resources table loads ore and money", "[drl][Scripting]")
 	REQUIRE(f.economy.get(ResourceMoney) == 500);
 	REQUIRE(f.economy.getMax(ResourceOre) == -1);
 	REQUIRE(f.economy.getMax(ResourceMoney) == -1);
+	REQUIRE(f.economy.getLabel(ResourceOre) == "Ore");
+	REQUIRE(f.economy.getOrder(ResourceMoney) == 2);
 }
 
 TEST_CASE("missing resources global throws LuaError", "[drl][Scripting]")
@@ -97,6 +99,33 @@ TEST_CASE("resource entry missing name throws LuaError", "[drl][Scripting]")
 	Fixture f;
 	f.lua.runString(R"(resources = { { max = -1, amount = 0 } })");
 	REQUIRE_THROWS_AS(applyResourcesTable(f.lua.raw()["resources"], f.economy), hl::scripting::LuaError);
+}
+
+TEST_CASE("resource entry missing order label or description throws LuaError", "[drl][Scripting]")
+{
+	Fixture f;
+	f.lua.runString(R"(resources = { { name = "Resource_Ore", max = -1, amount = 0, label = "Ore", description = "rock" } })");
+	REQUIRE_THROWS_AS(applyResourcesTable(f.lua.raw()["resources"], f.economy), hl::scripting::LuaError);
+	f.lua.runString(R"(resources = { { name = "Resource_Ore", max = -1, amount = 0, order = 1, description = "rock" } })");
+	REQUIRE_THROWS_AS(applyResourcesTable(f.lua.raw()["resources"], f.economy), hl::scripting::LuaError);
+	f.lua.runString(R"(resources = { { name = "Resource_Ore", max = -1, amount = 0, order = 1, label = "Ore" } })");
+	REQUIRE_THROWS_AS(applyResourcesTable(f.lua.raw()["resources"], f.economy), hl::scripting::LuaError);
+}
+
+TEST_CASE("resource HUD order follows order field not lua table order", "[drl][Scripting]")
+{
+	Fixture f;
+	f.lua.runString(R"(
+		resources = {
+			{ name = "Resource_Money", max = -1, amount = 500, order = 2, label = "Money", description = "cash" },
+			{ name = "Resource_Ore", max = -1, amount = 0, order = 1, label = "Ore", description = "rock" }
+		}
+	)");
+	applyResourcesTable(f.lua.raw()["resources"], f.economy);
+	const auto names = f.economy.registeredHudNames();
+	REQUIRE(names.size() == 2);
+	REQUIRE(names[0] == ResourceOre);
+	REQUIRE(names[1] == ResourceMoney);
 }
 
 TEST_CASE("runFile missing path throws LuaError", "[drl][Scripting]")

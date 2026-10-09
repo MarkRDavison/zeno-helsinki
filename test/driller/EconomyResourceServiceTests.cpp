@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Services/EconomyResourceService.hpp>
+#include <stdexcept>
 
 namespace drl
 {
@@ -62,6 +63,26 @@ TEST_CASE("add ore increases amount", "[drl][EconomyResourceService]")
 	economy.add(ResourceOre, 25);
 	economy.add(ResourceOre, 5);
 	REQUIRE(economy.get(ResourceOre) == 30);
+}
+
+TEST_CASE("registeredHudNames sorts by order not insertion", "[drl][EconomyResourceService]")
+{
+	EconomyResourceService economy;
+	economy.setHud(ResourceMoney, 2, "Money", "cash");
+	economy.setHud(ResourceOre, 1, "Ore", "rock");
+	const auto names = economy.registeredHudNames();
+	REQUIRE(names.size() == 2);
+	REQUIRE(names[0] == ResourceOre);
+	REQUIRE(names[1] == ResourceMoney);
+	REQUIRE(economy.getLabel(ResourceOre) == "Ore");
+	REQUIRE(economy.getDescription(ResourceMoney) == "cash");
+}
+
+TEST_CASE("duplicate resource HUD order throws", "[drl][EconomyResourceService]")
+{
+	EconomyResourceService economy;
+	economy.setHud(ResourceOre, 1, "Ore", "rock");
+	REQUIRE_THROWS_AS(economy.setHud(ResourceMoney, 1, "Money", "cash"), std::invalid_argument);
 }
 
 }

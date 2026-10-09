@@ -7,8 +7,6 @@
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <GLFW/glfw3.h>
 #include <helsinki/Engine/Input/InputManager.hpp>
-#include <helsinki/Engine/ECS/Components/TextComponent.hpp>
-#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
@@ -26,7 +24,6 @@
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 #include <algorithm>
-#include <format>
 #include <stdexcept>
 
 namespace drl
@@ -380,29 +377,6 @@ namespace drl
 				return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
 			});
 
-		{
-			auto entity = _scene.addEntity("hud_ore");
-			entity->AddTag("TEXT");
-			entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(4.0f, 0.0f, 0.0f));
-			entity->AddComponent<hl::TextComponent>()->setString(
-				_engine.getTextSystem(),
-				"Ore: 0",
-				"roboto",
-				32);
-			entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-		}
-		{
-			auto entity = _scene.addEntity("hud_money");
-			entity->AddTag("TEXT");
-			entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(4.0f, 32.0f, 0.0f));
-			entity->AddComponent<hl::TextComponent>()->setString(
-				_engine.getTextSystem(),
-				"Money: 500",
-				"roboto",
-				32);
-			entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-		}
-
 		EngineScene::initialise(
 			cameraMatrixResourceId,
 			device,
@@ -450,8 +424,13 @@ namespace drl
 			});
 
 		_uiBatch.initialise(device);
+		auto* roboto = resourceManager.GetResource<hl::FontResource>("roboto");
+		_statusBar.initialise(
+			roboto,
+			_session.economyService(),
+			_session.upgradeService());
 		_buildBar.initialise(
-			resourceManager.GetResource<hl::FontResource>("roboto"),
+			roboto,
 			_session.buildingPrototypeService(),
 			_session.uiService());
 		registerPipelineDraw(
@@ -494,18 +473,6 @@ namespace drl
 		SceneUiInput uiInput(_engine.getInputManager());
 		_session.uiService().update(uiInput);
 
-		auto& economy = _session.economyService();
-		_scene.getEntity("hud_ore")->GetComponent<hl::TextComponent>()->setString(
-			_engine.getTextSystem(),
-			std::format("Ore: {}", economy.get(ResourceOre)),
-			"roboto",
-			32);
-		_scene.getEntity("hud_money")->GetComponent<hl::TextComponent>()->setString(
-			_engine.getTextSystem(),
-			std::format("Money: {}", economy.get(ResourceMoney)),
-			"roboto",
-			32);
-
 		const auto& input = _engine.getInputManager();
 		const auto framebuffer = input.getFramebufferSize();
 		const auto mouse = framebufferMouse();
@@ -530,6 +497,7 @@ namespace drl
 			_terrainView.originY(),
 			_terrainView.tileSize());
 
+		auto& economy = _session.economyService();
 		_buildBar.syncEnabled(economy);
 		const hl::ui::Pointer pointer
 		{
@@ -537,14 +505,22 @@ namespace drl
 			.primaryDown = input.isButtonDown(GLFW_MOUSE_BUTTON_1),
 			.primaryReleased = input.isButtonReleased(GLFW_MOUSE_BUTTON_1)
 		};
+		_uiBatch.begin();
 		_buildBar.tick(_uiBatch, framebuffer, pointer);
+		_statusBar.tick(
+			_uiBatch,
+			framebuffer,
+			pointer,
+			delta,
+			economy,
+			_session.upgradeService());
 
 		if (!input.isButtonReleased(GLFW_MOUSE_BUTTON_1))
 		{
 			return;
 		}
 
-		if (_buildBar.hits(mouse))
+		if (_statusBar.hits(mouse) || _buildBar.hits(mouse))
 		{
 			return;
 		}

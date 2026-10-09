@@ -1,12 +1,10 @@
-#include <Views/BuildBar.hpp>
-#include <Services/PrototypeService.hpp>
+#include <Views/StatusBar.hpp>
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Ui/Layout/Layout.hpp>
 #include <helsinki/Ui/Theme.hpp>
 #include <helsinki/Ui/Widget.hpp>
 #include <algorithm>
-#include <format>
 #include <limits>
 
 namespace drl
@@ -17,6 +15,22 @@ namespace drl
 		constexpr float kTexWhite = 0.0f;
 		constexpr float kTexRoboto = 1.0f;
 		constexpr unsigned kBarFontSize = 18;
+		constexpr glm::vec2 kIconSize{ 24.0f, 24.0f };
+		constexpr float kChipGap = 8.0f;
+		constexpr float kIconTextGap = 6.0f;
+		constexpr glm::vec2 kBarPad{ 16.0f, 8.0f };
+
+		glm::vec3 placeholderTint(std::size_t index)
+		{
+			constexpr glm::vec3 tints[] = {
+				{ 0.72f, 0.48f, 0.28f },
+				{ 0.86f, 0.72f, 0.22f },
+				{ 0.32f, 0.72f, 0.42f },
+				{ 0.38f, 0.58f, 0.86f },
+				{ 0.72f, 0.42f, 0.68f }
+			};
+			return tints[index % (sizeof(tints) / sizeof(tints[0]))];
+		}
 
 		class SceneFontTypeface : public hl::ui::ITypeface
 		{
@@ -109,12 +123,11 @@ namespace drl
 		};
 	}
 
-	void BuildBar::initialise(
+	void StatusBar::initialise(
 		hl::FontResource* font,
-		const BuildingPrototypeService& buildingPrototypes,
-		IUiService& ui)
+		const IEconomyResourceService& economy,
+		const IUpgradeService& upgrades)
 	{
-		_ui = &ui;
 		_typeface = std::make_unique<SceneFontTypeface>(font);
 		_root = std::make_unique<hl::ui::Node>();
 		_root->setFillParent();
@@ -124,80 +137,100 @@ namespace drl
 		_panel->opacity = 0.92f;
 		_panel->hitTestEnabled = true;
 
-		for (const std::string& name : buildingPrototypes.registeredNames())
+		const auto specs = collectStatusBarChips(economy, upgrades);
+		for (std::size_t i = 0; i < specs.size(); ++i)
 		{
-			const BuildingPrototype& prototype =
-				buildingPrototypes.getPrototype(prototypeIdFromName(name));
-			auto button = std::make_unique<hl::ui::Button>(
-				_panel->node().addChild(),
-				*_typeface);
-			button->setText(std::format("{} ({})", prototype.label, prototype.cost), kBarFontSize);
-			button->onClick = [this, name]()
-			{
-				if (_ui != nullptr)
-				{
-					_ui->selectBuilding(name);
-				}
-			};
+			ChipWidgets chip;
+			chip.spec = specs[i];
+			chip.panel = std::make_unique<hl::ui::Panel>(_panel->node().addChild());
+			chip.panel->opacity = 0.0f;
+			chip.panel->hitTestEnabled = true;
 
-			Slot slot{};
-			slot.cost = prototype.cost;
-			slot.button = std::move(button);
-			_slots.push_back(std::move(slot));
+			chip.icon = std::make_unique<hl::ui::Image>(chip.panel->node().addChild());
+			chip.icon->size = kIconSize;
+			chip.icon->color = placeholderTint(i);
+
+			chip.value = std::make_unique<hl::ui::Label>(chip.panel->node().addChild(), *_typeface);
+			chip.value->setText("0", kBarFontSize);
+
+			_chips.push_back(std::move(chip));
 		}
+
+		_tooltip = std::make_unique<hl::ui::Tooltip>(_root->addChild(), *_typeface);
+		_tooltip->delay = 0.0f;
+		syncValues(economy, upgrades);
 	}
 
-	void BuildBar::syncEnabled(const IEconomyResourceService& economy)
+	void StatusBar::syncValues(
+		const IEconomyResourceService& economy,
+		const IUpgradeService& upgrades)
 	{
-		for (Slot& slot : _slots)
+		for (ChipWidgets& chip : _chips)
 		{
-			if (slot.button != nullptr)
-			{
-				slot.button->enabled = economy.canAfford(ResourceMoney, slot.cost);
-			}
+			const std::string value = formatStatusValue(chip.spec, economy, upgrades);
+			chip.value->setText(value, kBarFontSize);
+			chip.panel->tooltip = formatStatusTooltip(chip.spec.label, value, chip.spec.description);
 		}
 	}
 
-	void BuildBar::tick(hl::UiBatch& batch, glm::vec2 framebufferSize, const hl::ui::Pointer& pointer)
+	void StatusBar::tick(
+		hl::UiBatch& batch,
+		glm::vec2 framebufferSize,
+		const hl::ui::Pointer& pointer,
+		float dt,
+		const IEconomyResourceService& economy,
+		const IUpgradeService& upgrades)
 	{
 		if (_root == nullptr)
 		{
 			return;
 		}
 
+		syncValues(economy, upgrades);
 		hl::ui::prepareTree(*_root);
 
-		constexpr glm::vec2 barPad{ 16.0f, 8.0f };
-		constexpr float chipGap = 8.0f;
-		float chipsWidth = 0.0f;
-		float chipsHeight = 0.0f;
-		std::vector<glm::vec2> chipSizes(_slots.size());
-		for (std::size_t i = 0; i < _slots.size(); ++i)
+		float chipsHeight = kIconSize.y;
+		std::vector<glm::vec2> chipSizes(_chips.size());
+		for (std::size_t i = 0; i < _chips.size(); ++i)
 		{
-			chipSizes[i] = _slots[i].button->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
-			chipsWidth += chipSizes[i].x;
+			const glm::vec2 textSize = _chips[i].value->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+			chipSizes[i] = {
+				kIconSize.x + kIconTextGap + textSize.x,
+				std::max(kIconSize.y, textSize.y)
+			};
 			chipsHeight = std::max(chipsHeight, chipSizes[i].y);
 		}
-		if (!_slots.empty())
-		{
-			chipsWidth += chipGap * static_cast<float>(_slots.size() - 1);
-		}
 
-		_panel->node().setBottomCenter(
-			{ chipsWidth + barPad.x * 2.0f, chipsHeight + barPad.y * 2.0f });
+		const float barHeight = chipsHeight + kBarPad.y * 2.0f;
+		_panel->node().setTopLeft({ framebufferSize.x, barHeight });
 		_panel->node().relative = { 0.0f, 0.0f };
 
-		float chipX = barPad.x;
-		for (std::size_t i = 0; i < _slots.size(); ++i)
+		float chipX = kBarPad.x;
+		for (std::size_t i = 0; i < _chips.size(); ++i)
 		{
-			_slots[i].button->node().setTopLeft(chipSizes[i]);
-			_slots[i].button->node().relative = { chipX, barPad.y };
-			_slots[i].button->node().intrinsicSize.reset();
-			chipX += chipSizes[i].x + chipGap;
+			ChipWidgets& chip = _chips[i];
+			chip.panel->node().setTopLeft(chipSizes[i]);
+			chip.panel->node().relative = { chipX, kBarPad.y };
+			chip.panel->node().intrinsicSize.reset();
+
+			chip.icon->node().setCenterLeft(kIconSize);
+			chip.icon->node().relative = { 0.0f, 0.0f };
+			chip.icon->node().intrinsicSize.reset();
+
+			const glm::vec2 textSize = chip.value->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
+			chip.value->node().setCenterLeft(textSize);
+			chip.value->node().relative = { kIconSize.x + kIconTextGap, 0.0f };
+			chip.value->node().intrinsicSize.reset();
+
+			chipX += chipSizes[i].x + kChipGap;
 		}
 
 		hl::ui::layout(*_root, hl::ui::Box{ 0.0f, 0.0f, framebufferSize.x, framebufferSize.y });
 		hl::ui::dispatch(*_root, pointer);
+		if (_tooltip != nullptr)
+		{
+			_tooltip->tick(dt);
+		}
 
 		batch.setFullScissor(VkRect2D{
 			{ 0, 0 },
@@ -208,7 +241,7 @@ namespace drl
 		hl::ui::paintTree(*_root, paint);
 	}
 
-	bool BuildBar::hits(glm::vec2 position) const
+	bool StatusBar::hits(glm::vec2 position) const
 	{
 		if (_root == nullptr)
 		{
