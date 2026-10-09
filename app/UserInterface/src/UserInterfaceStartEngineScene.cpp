@@ -398,6 +398,12 @@ namespace ui
 		_widgets.push_back(std::move(card));
 
 		_slider = std::make_unique<hl::ui::Slider>(column.addChild());
+		_progressBar = std::make_unique<hl::ui::ProgressBar>(column.addChild());
+		_slider->onChanged = [this](float value)
+		{
+			_progressBar->setValue(value);
+		};
+		_progressBar->setValue(_slider->value());
 		_checkbox = std::make_unique<hl::ui::Checkbox>(column.addChild());
 		_toggle = std::make_unique<hl::ui::Toggle>(column.addChild());
 

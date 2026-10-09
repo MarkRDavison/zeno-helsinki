@@ -11,6 +11,7 @@
 #include <helsinki/Ui/Layout/Layout.hpp>
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Panel.hpp>
+#include <helsinki/Ui/ProgressBar.hpp>
 #include <helsinki/Ui/RadioGroup.hpp>
 #include <helsinki/Ui/Slider.hpp>
 #include <helsinki/Ui/TextField.hpp>
@@ -56,6 +57,7 @@ namespace ui
 		std::unique_ptr<hl::ui::Node> _layoutRoot;
 		std::vector<std::unique_ptr<hl::ui::Widget>> _widgets;
 		std::unique_ptr<hl::ui::Slider> _slider;
+		std::unique_ptr<hl::ui::ProgressBar> _progressBar;
 		std::unique_ptr<hl::ui::Checkbox> _checkbox;
 		std::unique_ptr<hl::ui::Toggle> _toggle;
 		std::unique_ptr<hl::ui::Dropdown> _dropdown;
