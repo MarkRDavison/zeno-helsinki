@@ -11,7 +11,10 @@ namespace hl
 	class TextureResource : public ImageSamplerResource
 	{
 	public:
-		explicit TextureResource(const std::string& id, ResourceContext& context);
+		explicit TextureResource(
+			const std::string& id,
+			ResourceContext& context,
+			VulkanTextureSampling sampling = VulkanTextureSampling::ColorSrgb);
 
 		bool Load() override;
 		void Unload() override;
@@ -21,5 +24,6 @@ namespace hl
 	protected:
 		ResourceContext _resourceContext;
 		VulkanTexture _texture;
+		VulkanTextureSampling _sampling{ VulkanTextureSampling::ColorSrgb };
 	};
 }

@@ -8,12 +8,14 @@
 namespace hl
 {
 	TextureResource::TextureResource(
-		const std::string& id, 
-		ResourceContext& context
-	) : 
+		const std::string& id,
+		ResourceContext& context,
+		VulkanTextureSampling sampling
+	) :
 		ImageSamplerResource(id),
 		_resourceContext(context),
-		_texture(*context.device)
+		_texture(*context.device),
+		_sampling(sampling)
 	{
 	}
 
@@ -26,7 +28,7 @@ namespace hl
 			return Resource::Load();
 		}
 
-		auto sampling = VulkanTextureSampling::ColorSrgb;
+		auto sampling = _sampling;
 		if (_resourceContext.resourceManager != nullptr
 			&& _resourceContext.resourceManager->HasResource<FontResource>(GetId()))
 		{

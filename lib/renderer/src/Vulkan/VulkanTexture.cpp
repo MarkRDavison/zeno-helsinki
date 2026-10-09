@@ -20,12 +20,18 @@ namespace hl
 
 		uint32_t mipLevelsFor(VulkanTextureSampling sampling, uint32_t width, uint32_t height)
 		{
-			if (sampling == VulkanTextureSampling::SdfUnorm)
+			if (sampling == VulkanTextureSampling::SdfUnorm
+				|| sampling == VulkanTextureSampling::PixelArtSrgb)
 			{
 				return 1;
 			}
 
 			return static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+		}
+
+		bool generatesMips(VulkanTextureSampling sampling)
+		{
+			return sampling == VulkanTextureSampling::ColorSrgb;
 		}
 
 		VkImageUsageFlags usageFor(VulkanTextureSampling sampling)
@@ -128,22 +134,22 @@ namespace hl
 			stagingBuffer.destroy();
 		}
 
-		if (sampling == VulkanTextureSampling::SdfUnorm)
-		{
-			_image.transitionImageLayout(
-				commandPool,
-				format,
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				_mipLevels);
-		}
-		else
+		if (generatesMips(sampling))
 		{
 			_image.generateMipmaps(
 				commandPool,
 				format,
 				texWidth,
 				texHeight,
+				_mipLevels);
+		}
+		else
+		{
+			_image.transitionImageLayout(
+				commandPool,
+				format,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				_mipLevels);
 		}
 
@@ -203,22 +209,22 @@ namespace hl
 
 		stagingBuffer.destroy();
 
-		if (sampling == VulkanTextureSampling::SdfUnorm)
-		{
-			_image.transitionImageLayout(
-				commandPool,
-				format,
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				_mipLevels);
-		}
-		else
+		if (generatesMips(sampling))
 		{
 			_image.generateMipmaps(
 				commandPool,
 				format,
 				static_cast<int32_t>(width),
 				static_cast<int32_t>(height),
+				_mipLevels);
+		}
+		else
+		{
+			_image.transitionImageLayout(
+				commandPool,
+				format,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				_mipLevels);
 		}
 
@@ -236,27 +242,29 @@ namespace hl
 		vkGetPhysicalDeviceProperties(_device.physicalDevice(), &properties); // TODO: CACHE
 
 		const bool sdf = sampling == VulkanTextureSampling::SdfUnorm;
+		const bool pixelArt = sampling == VulkanTextureSampling::PixelArtSrgb;
+		const bool clampLod = sdf || pixelArt;
 
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerInfo.magFilter = VK_FILTER_LINEAR;
-		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		samplerInfo.addressModeU = sdf
+		samplerInfo.magFilter = pixelArt ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+		samplerInfo.minFilter = pixelArt ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+		samplerInfo.addressModeU = clampLod
 			? VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
 			: VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerInfo.addressModeV = samplerInfo.addressModeU;
 		samplerInfo.addressModeW = samplerInfo.addressModeU;
-		samplerInfo.anisotropyEnable = sdf ? VK_FALSE : VK_TRUE;
-		samplerInfo.maxAnisotropy = sdf ? 1.0f : properties.limits.maxSamplerAnisotropy;
+		samplerInfo.anisotropyEnable = clampLod ? VK_FALSE : VK_TRUE;
+		samplerInfo.maxAnisotropy = clampLod ? 1.0f : properties.limits.maxSamplerAnisotropy;
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 		samplerInfo.compareEnable = VK_FALSE;
 		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-		samplerInfo.mipmapMode = sdf
+		samplerInfo.mipmapMode = clampLod
 			? VK_SAMPLER_MIPMAP_MODE_NEAREST
 			: VK_SAMPLER_MIPMAP_MODE_LINEAR;
 		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = sdf ? 0.0f : VK_LOD_CLAMP_NONE;
+		samplerInfo.maxLod = clampLod ? 0.0f : VK_LOD_CLAMP_NONE;
 		samplerInfo.mipLodBias = 0.0f;
 
 		CHECK_VK_RESULT(vkCreateSampler(_device.handle(), &samplerInfo, nullptr, &_sampler));

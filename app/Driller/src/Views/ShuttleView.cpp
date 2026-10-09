@@ -66,9 +66,6 @@ namespace drl
 		for (const ShuttleInstance& shuttle : _shuttleData.shuttles)
 		{
 			const ShuttlePrototype& prototype = _shuttlePrototypes.getPrototype(shuttle.prototypeId);
-			const glm::vec2 offset(
-				-(static_cast<float>(prototype.size.x) - 1.0f) / 2.0f,
-				0.0f);
 
 			for (int y = 0; y <= prototype.size.y - 1; ++y)
 			{
@@ -76,11 +73,8 @@ namespace drl
 				{
 					const int frameIndex =
 						(prototype.texture.x + x) + (prototype.texture.y + y) * kAtlasColumns;
-					drawCell(
-						pdd,
-						shuttle.position.x + offset.x + static_cast<float>(x),
-						shuttle.position.y + offset.y - static_cast<float>(y),
-						frameIndex);
+					const glm::vec2 tile = shuttleCellTile(shuttle.position, prototype.size, x, y);
+					drawCell(pdd, tile.x, tile.y, frameIndex);
 				}
 			}
 		}

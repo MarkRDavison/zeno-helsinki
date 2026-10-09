@@ -39,5 +39,18 @@ namespace ShuttleCreationServiceTests
 		REQUIRE(data.shuttles[0].leavingPosition == kShuttleLeavingPosition);
 	}
 
+	TEST_CASE("shuttleCellTile sits the last atlas row one tile above the surface", "[drl][ShuttleCreationService]")
+	{
+		const glm::ivec2 size{ 3, 2 };
+		const glm::vec2 position{ 0.0f, 0.0f };
+		const glm::vec2 topLeft = shuttleCellTile(position, size, 0, 0);
+		const glm::vec2 bottomCenter = shuttleCellTile(position, size, 1, 1);
+		REQUIRE(topLeft.x == -1.0f);
+		REQUIRE(topLeft.y == -2.0f);
+		REQUIRE(bottomCenter.x == 0.0f);
+		REQUIRE(bottomCenter.y == -1.0f);
+		REQUIRE(topLeft.y < bottomCenter.y);
+	}
+
 }
 }

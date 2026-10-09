@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <Core/TileCoordinates.hpp>
 
 namespace drl
@@ -40,6 +41,28 @@ TEST_CASE("pixelToTile maps above the mine to a negative level", "[drl][TileCoor
 	const glm::ivec2 tile = pixelToTile({ 640.0f, 63.0f }, 640.0f, 64.0f, 64.0f);
 	REQUIRE(tile.x == 0);
 	REQUIRE(tile.y == -1);
+}
+
+TEST_CASE("atlasUvRect insets half a texel and stays inside the sheet", "[drl][TileCoordinates]")
+{
+	constexpr float kTileSize = 64.0f;
+	constexpr float kTexSize = 1024.0f;
+	const glm::vec4 first = atlasUvRect(0, 0, kTileSize, kTexSize);
+	REQUIRE(first.x == Catch::Approx(0.5f / kTexSize));
+	REQUIRE(first.y == Catch::Approx(0.5f / kTexSize));
+	REQUIRE(first.z == Catch::Approx((kTileSize - 0.5f) / kTexSize));
+	REQUIRE(first.w == Catch::Approx((kTileSize - 0.5f) / kTexSize));
+	REQUIRE(first.x >= 0.0f);
+	REQUIRE(first.y >= 0.0f);
+
+	const glm::vec4 last = atlasUvRect(15, 15, kTileSize, kTexSize);
+	REQUIRE(last.z == Catch::Approx((kTexSize - 0.5f) / kTexSize));
+	REQUIRE(last.w == Catch::Approx((kTexSize - 0.5f) / kTexSize));
+	REQUIRE(last.z <= 1.0f);
+	REQUIRE(last.w <= 1.0f);
+
+	const glm::vec4 neighbour = atlasUvRect(1, 0, kTileSize, kTexSize);
+	REQUIRE(first.z < neighbour.x);
 }
 
 }

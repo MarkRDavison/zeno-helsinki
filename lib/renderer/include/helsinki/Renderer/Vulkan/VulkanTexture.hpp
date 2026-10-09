@@ -12,7 +12,8 @@ namespace hl
 	enum class VulkanTextureSampling
 	{
 		ColorSrgb,
-		SdfUnorm
+		SdfUnorm,
+		PixelArtSrgb
 	};
 
 	class VulkanTexture

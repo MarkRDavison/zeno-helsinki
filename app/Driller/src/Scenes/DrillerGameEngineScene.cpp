@@ -239,7 +239,8 @@ namespace drl
 
 		resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
 			"tile_sprite_sheet",
-			resourceContext);
+			resourceContext,
+			hl::VulkanTextureSampling::PixelArtSrgb);
 		resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
 			hl::MaterialSystem::FallbackTextureName,
 			resourceContext);
@@ -260,11 +261,7 @@ namespace drl
 				{
 					hl::FrameDataStorageBufferObject frame
 					{
-						.uvRect = glm::vec4(
-							kTileSize * static_cast<float>(col),
-							kTileSize * static_cast<float>(row),
-							kTileSize * static_cast<float>(col + 1),
-							kTileSize * static_cast<float>(row + 1)) / kTexSize
+						.uvRect = atlasUvRect(col, row, kTileSize, kTexSize)
 					};
 					ssbo->writeToBuffer(&frame, static_cast<uint32_t>(col + row * kAtlasColumns));
 				}
