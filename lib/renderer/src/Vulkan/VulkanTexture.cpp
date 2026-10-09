@@ -9,6 +9,37 @@
 
 namespace hl
 {
+	namespace
+	{
+		VkFormat formatFor(VulkanTextureSampling sampling)
+		{
+			return sampling == VulkanTextureSampling::SdfUnorm
+				? VK_FORMAT_R8G8B8A8_UNORM
+				: VK_FORMAT_R8G8B8A8_SRGB;
+		}
+
+		uint32_t mipLevelsFor(VulkanTextureSampling sampling, uint32_t width, uint32_t height)
+		{
+			if (sampling == VulkanTextureSampling::SdfUnorm)
+			{
+				return 1;
+			}
+
+			return static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+		}
+
+		VkImageUsageFlags usageFor(VulkanTextureSampling sampling)
+		{
+			VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+			if (sampling == VulkanTextureSampling::ColorSrgb)
+			{
+				usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+			}
+
+			return usage;
+		}
+	}
+
 	VulkanTexture::VulkanTexture(
 		VulkanDevice& device
 	) :
@@ -18,25 +49,41 @@ namespace hl
 
 	}
 
-	void VulkanTexture::create(VulkanCommandPool& commandPool, const std::string& filepath)
+	void VulkanTexture::create(
+		VulkanCommandPool& commandPool,
+		const std::string& filepath,
+		VulkanTextureSampling sampling)
 	{
-		create(commandPool, std::vector<std::string>{ filepath });
+		create(commandPool, std::vector<std::string>{ filepath }, sampling);
 	}
-	void VulkanTexture::create(VulkanCommandPool& commandPool, const std::vector<std::string>& filepaths)
+
+	void VulkanTexture::create(
+		VulkanCommandPool& commandPool,
+		const std::vector<std::string>& filepaths,
+		VulkanTextureSampling sampling)
 	{
 		assert(filepaths.size() == 1 || filepaths.size() == 6);
+		assert(sampling != VulkanTextureSampling::SdfUnorm || filepaths.size() == 1);
 
+		const VkFormat format = formatFor(sampling);
 		int texWidth = 0, texHeight = 0, texChannels = 0;
 
 		for (size_t i = 0; i < filepaths.size(); ++i)
 		{
 			stbi_uc* pixels = stbi_load(filepaths[i].c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 			VkDeviceSize imageSize = texWidth * texHeight * 4;
-			_mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
 			if (!pixels)
 			{
 				throw std::runtime_error("failed to load texture image!");
+			}
+
+			if (i == 0)
+			{
+				_mipLevels = mipLevelsFor(
+					sampling,
+					static_cast<uint32_t>(texWidth),
+					static_cast<uint32_t>(texHeight));
 			}
 
 			VulkanBuffer stagingBuffer(_device);
@@ -57,15 +104,15 @@ namespace hl
 					texHeight,
 					_mipLevels,
 					VK_SAMPLE_COUNT_1_BIT,
-					VK_FORMAT_R8G8B8A8_SRGB,
+					format,
 					VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+					usageFor(sampling),
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 					(uint32_t)filepaths.size());
 
 				_image.transitionImageLayout(
 					commandPool,
-					VK_FORMAT_R8G8B8A8_SRGB,
+					format,
 					VK_IMAGE_LAYOUT_UNDEFINED,
 					VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 					_mipLevels);
@@ -77,34 +124,51 @@ namespace hl
 				static_cast<uint32_t>(texWidth),
 				static_cast<uint32_t>(texHeight),
 				(uint32_t)i);
-			//transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating mipmaps
 
 			stagingBuffer.destroy();
 		}
 
-		_image.generateMipmaps(
-			commandPool,
-			VK_FORMAT_R8G8B8A8_SRGB,
-			texWidth,
-			texHeight,
-			_mipLevels);
+		if (sampling == VulkanTextureSampling::SdfUnorm)
+		{
+			_image.transitionImageLayout(
+				commandPool,
+				format,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				_mipLevels);
+		}
+		else
+		{
+			_image.generateMipmaps(
+				commandPool,
+				format,
+				texWidth,
+				texHeight,
+				_mipLevels);
+		}
 
 		_image.createImageView(
-			VK_FORMAT_R8G8B8A8_SRGB,
+			format,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			_mipLevels);
 
-		createSampler();
+		createSampler(sampling);
 	}
 
-	void VulkanTexture::create(VulkanCommandPool& commandPool, const uint8_t* rgba, uint32_t width, uint32_t height)
+	void VulkanTexture::create(
+		VulkanCommandPool& commandPool,
+		const uint8_t* rgba,
+		uint32_t width,
+		uint32_t height,
+		VulkanTextureSampling sampling)
 	{
 		assert(rgba != nullptr);
 		assert(width > 0 && height > 0);
 
-		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
-		_mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+		const VkFormat format = formatFor(sampling);
+		_mipLevels = mipLevelsFor(sampling, width, height);
 
+		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
 		VulkanBuffer stagingBuffer(_device);
 		stagingBuffer.create(
 			imageSize,
@@ -117,15 +181,15 @@ namespace hl
 			height,
 			_mipLevels,
 			VK_SAMPLE_COUNT_1_BIT,
-			VK_FORMAT_R8G8B8A8_SRGB,
+			format,
 			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			usageFor(sampling),
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			1);
 
 		_image.transitionImageLayout(
 			commandPool,
-			VK_FORMAT_R8G8B8A8_SRGB,
+			format,
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			_mipLevels);
@@ -139,42 +203,60 @@ namespace hl
 
 		stagingBuffer.destroy();
 
-		_image.generateMipmaps(
-			commandPool,
-			VK_FORMAT_R8G8B8A8_SRGB,
-			static_cast<int32_t>(width),
-			static_cast<int32_t>(height),
-			_mipLevels);
+		if (sampling == VulkanTextureSampling::SdfUnorm)
+		{
+			_image.transitionImageLayout(
+				commandPool,
+				format,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				_mipLevels);
+		}
+		else
+		{
+			_image.generateMipmaps(
+				commandPool,
+				format,
+				static_cast<int32_t>(width),
+				static_cast<int32_t>(height),
+				_mipLevels);
+		}
 
 		_image.createImageView(
-			VK_FORMAT_R8G8B8A8_SRGB,
+			format,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			_mipLevels);
 
-		createSampler();
+		createSampler(sampling);
 	}
 
-	void VulkanTexture::createSampler()
+	void VulkanTexture::createSampler(VulkanTextureSampling sampling)
 	{
 		VkPhysicalDeviceProperties properties{};
 		vkGetPhysicalDeviceProperties(_device.physicalDevice(), &properties); // TODO: CACHE
+
+		const bool sdf = sampling == VulkanTextureSampling::SdfUnorm;
 
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		samplerInfo.magFilter = VK_FILTER_LINEAR;
 		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.anisotropyEnable = VK_TRUE;
-		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+		samplerInfo.addressModeU = sdf
+			? VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+			: VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = samplerInfo.addressModeU;
+		samplerInfo.addressModeW = samplerInfo.addressModeU;
+		samplerInfo.anisotropyEnable = sdf ? VK_FALSE : VK_TRUE;
+		samplerInfo.maxAnisotropy = sdf ? 1.0f : properties.limits.maxSamplerAnisotropy;
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 		samplerInfo.compareEnable = VK_FALSE;
 		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipmapMode = sdf
+			? VK_SAMPLER_MIPMAP_MODE_NEAREST
+			: VK_SAMPLER_MIPMAP_MODE_LINEAR;
 		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+		samplerInfo.maxLod = sdf ? 0.0f : VK_LOD_CLAMP_NONE;
 		samplerInfo.mipLodBias = 0.0f;
 
 		CHECK_VK_RESULT(vkCreateSampler(_device.handle(), &samplerInfo, nullptr, &_sampler));

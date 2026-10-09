@@ -23,7 +23,7 @@ namespace hl::ui
 			{
 				const auto& items = _owner->items();
 				const std::string& text = items.empty() ? _empty : items[static_cast<std::size_t>(_index)];
-				const glm::vec2 textSize = _typeface->layoutText(text, _owner->fontSize, _glyphs);
+				const glm::vec2 textSize = _typeface->layoutText(text, _owner->resolvedFontSize(), _glyphs);
 				const float height = std::max(_owner->markSize, textSize.y + 4.0f);
 				node().intrinsicSize = glm::vec2{
 					_owner->markSize + _owner->labelGap + textSize.x,

@@ -10,16 +10,21 @@ namespace hl::ui
 		hitTestEnabled = false;
 	}
 
-	void Label::setText(std::string text, unsigned fontSize)
+	void Label::setText(std::string text)
 	{
 		_text = std::move(text);
-		_fontSize = fontSize;
+	}
+
+	void Label::setText(std::string text, unsigned size)
+	{
+		_text = std::move(text);
+		fontSize = size;
 	}
 
 	void Label::prepare()
 	{
 		_drawColor = color;
-		const glm::vec2 size = _typeface->layoutText(_text, _fontSize, _glyphs);
+		const glm::vec2 size = _typeface->layoutText(_text, resolvedFontSize(), _glyphs);
 		node().intrinsicSize = size;
 	}
 

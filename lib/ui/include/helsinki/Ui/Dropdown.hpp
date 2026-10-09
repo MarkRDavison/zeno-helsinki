@@ -39,7 +39,6 @@ namespace hl::ui
 		void pick(int index);
 		void setHighlight(int index);
 
-		unsigned fontSize = 16;
 		float maxListHeight = 140.0f;
 		float itemHeight = 28.0f;
 		glm::vec3 color{ 0.95f, 0.95f, 0.97f };

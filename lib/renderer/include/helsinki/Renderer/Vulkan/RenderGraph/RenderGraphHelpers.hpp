@@ -28,6 +28,8 @@ namespace hl
 			uint32_t mapSize,
 			const std::string& shadowUboId = ShadowUboName);
 		static PipelineInfo shadowPipelineInfo(const std::string& shadowUboId = ShadowUboName);
+
+		static VertexInputInfo uiVertexInputInfo();
 	};
 
 }

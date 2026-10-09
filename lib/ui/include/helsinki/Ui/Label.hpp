@@ -12,7 +12,8 @@ namespace hl::ui
 	public:
 		Label(Node& node, const ITypeface& typeface);
 
-		void setText(std::string text, unsigned fontSize);
+		void setText(std::string text);
+		void setText(std::string text, unsigned size);
 		void prepare() override;
 		void paint(IPaint& paint) const override;
 
@@ -25,7 +26,6 @@ namespace hl::ui
 	private:
 		const ITypeface* _typeface = nullptr;
 		std::string _text;
-		unsigned _fontSize = 16;
 		std::vector<GlyphVertex> _glyphs;
 		glm::vec3 _drawColor{ 1.0f, 1.0f, 1.0f };
 	};

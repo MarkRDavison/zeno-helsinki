@@ -37,7 +37,6 @@ namespace hl::ui
 		void setHoverIndex(int index);
 		int hoverIndex() const { return _hover; }
 
-		unsigned fontSize = 16;
 		float markSize = 18.0f;
 		float labelGap = 8.0f;
 		glm::vec3 color{ 0.95f, 0.95f, 0.97f };

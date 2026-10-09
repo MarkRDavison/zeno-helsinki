@@ -9,18 +9,35 @@
 
 namespace hl
 {
+	enum class VulkanTextureSampling
+	{
+		ColorSrgb,
+		SdfUnorm
+	};
+
 	class VulkanTexture
 	{
 	public:
 		VulkanTexture(VulkanDevice& device);
 
-		void create(VulkanCommandPool& commandPool, const std::string& filepath);
-		void create(VulkanCommandPool& commandPool, const std::vector<std::string>& filepaths);
-		void create(VulkanCommandPool& commandPool, const uint8_t* rgba, uint32_t width, uint32_t height);
+		void create(
+			VulkanCommandPool& commandPool,
+			const std::string& filepath,
+			VulkanTextureSampling sampling = VulkanTextureSampling::ColorSrgb);
+		void create(
+			VulkanCommandPool& commandPool,
+			const std::vector<std::string>& filepaths,
+			VulkanTextureSampling sampling = VulkanTextureSampling::ColorSrgb);
+		void create(
+			VulkanCommandPool& commandPool,
+			const uint8_t* rgba,
+			uint32_t width,
+			uint32_t height,
+			VulkanTextureSampling sampling = VulkanTextureSampling::ColorSrgb);
 		void destroy();
 
 	private:
-		void createSampler();
+		void createSampler(VulkanTextureSampling sampling);
 
 	public: // private: TODO: to private
 		VulkanDevice& _device;

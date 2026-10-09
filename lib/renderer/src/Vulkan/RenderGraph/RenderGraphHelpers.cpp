@@ -478,4 +478,45 @@ namespace hl
 			.extent = { .width = mapSize, .height = mapSize }
 		};
 	}
+
+	VertexInputInfo RenderGraphHelpers::uiVertexInputInfo()
+	{
+		return VertexInputInfo
+		{
+			.attributes =
+			{
+				{
+					.name = "inPosition",
+					.format = VertexAttributeFormat::Vec2,
+					.location = 0,
+					.offset = offsetof(VertexUi2, pos)
+				},
+				{
+					.name = "inColor",
+					.format = VertexAttributeFormat::Vec4,
+					.location = 1,
+					.offset = offsetof(VertexUi2, color)
+				},
+				{
+					.name = "inTexCoord",
+					.format = VertexAttributeFormat::Vec2,
+					.location = 2,
+					.offset = offsetof(VertexUi2, texCoord)
+				},
+				{
+					.name = "inTexIndex",
+					.format = VertexAttributeFormat::Float,
+					.location = 3,
+					.offset = offsetof(VertexUi2, texIndex)
+				},
+				{
+					.name = "inSdf",
+					.format = VertexAttributeFormat::Float,
+					.location = 4,
+					.offset = offsetof(VertexUi2, sdf)
+				}
+			},
+			.stride = sizeof(VertexUi2)
+		};
+	}
 }

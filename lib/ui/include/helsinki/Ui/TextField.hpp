@@ -24,7 +24,6 @@ namespace hl::ui
 		void prepare() override;
 		void paint(IPaint& paint) const override;
 
-		unsigned fontSize = 18;
 		glm::vec3 color{ 0.95f, 0.95f, 0.97f };
 		glm::vec3 background{ 0.12f, 0.13f, 0.16f };
 		glm::vec3 caretColor{ 1.0f, 0.7f, 0.2f };

@@ -108,7 +108,7 @@ namespace hl::ui
 			node().intrinsicSize = glm::vec2{ 280.0f, 36.0f };
 		}
 
-		_typeface->layoutText(_text, fontSize, _glyphs);
+		_typeface->layoutText(_text, resolvedFontSize(), _glyphs);
 	}
 
 	void TextField::paint(IPaint& paint) const
@@ -163,7 +163,7 @@ namespace hl::ui
 	float TextField::caretX() const
 	{
 		std::vector<GlyphVertex> prefix;
-		const glm::vec2 size = _typeface->layoutText(_text.substr(0, _caret), fontSize, prefix);
+		const glm::vec2 size = _typeface->layoutText(_text.substr(0, _caret), resolvedFontSize(), prefix);
 		return size.x;
 	}
 }

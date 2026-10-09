@@ -129,33 +129,39 @@ namespace hl
 			.pos = { box.pos.x, box.pos.y },
 			.color = colour,
 			.texCoord = glm::vec2{ texCoords.x, texCoords.y },
-			.texIndex = texIndex });
+			.texIndex = texIndex,
+			.sdf = 0.0f });
 		_vertices.push_back(hl::VertexUi2{
 			.pos = { box.pos.x + box.size.x, box.pos.y },
 			.color = colour,
 			.texCoord = glm::vec2{ texCoords.x + texCoords.z, texCoords.y },
-			.texIndex = texIndex });
+			.texIndex = texIndex,
+			.sdf = 0.0f });
 		_vertices.push_back(hl::VertexUi2{
 			.pos = { box.pos.x + box.size.x, box.pos.y + box.size.y },
 			.color = colour,
 			.texCoord = glm::vec2{ texCoords.x + texCoords.z, texCoords.y + texCoords.w },
-			.texIndex = texIndex });
+			.texIndex = texIndex,
+			.sdf = 0.0f });
 
 		_vertices.push_back(hl::VertexUi2{
 			.pos = { box.pos.x, box.pos.y },
 			.color = colour,
 			.texCoord = glm::vec2{ texCoords.x, texCoords.y },
-			.texIndex = texIndex });
+			.texIndex = texIndex,
+			.sdf = 0.0f });
 		_vertices.push_back(hl::VertexUi2{
 			.pos = { box.pos.x + box.size.x, box.pos.y + box.size.y },
 			.color = colour,
 			.texCoord = glm::vec2{ texCoords.x + texCoords.z, texCoords.y + texCoords.w },
-			.texIndex = texIndex });
+			.texIndex = texIndex,
+			.sdf = 0.0f });
 		_vertices.push_back(hl::VertexUi2{
 			.pos = { box.pos.x, box.pos.y + box.size.y },
 			.color = colour,
 			.texCoord = glm::vec2{ texCoords.x, texCoords.y + texCoords.w },
-			.texIndex = texIndex });
+			.texIndex = texIndex,
+			.sdf = 0.0f });
 		addVertexCount(6);
 	}
 
@@ -171,7 +177,8 @@ namespace hl
 				.pos = glyph.pos + offset,
 				.color = glm::vec4{ colour, 1.0f },
 				.texCoord = glyph.texCoord,
-				.texIndex = texIndex });
+				.texIndex = texIndex,
+				.sdf = 1.0f });
 		}
 
 		addVertexCount(static_cast<uint32_t>(glyphs.size()));

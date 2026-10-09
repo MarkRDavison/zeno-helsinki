@@ -4,8 +4,10 @@
 #include <helsinki/Ui/Layout/Node.hpp>
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Pointer.hpp>
+#include <helsinki/Ui/Theme.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace hl::ui
@@ -52,6 +54,9 @@ namespace hl::ui
 
 		bool hitTestEnabled = true;
 		bool focusable = false;
+		std::optional<unsigned> fontSize;
+
+		unsigned resolvedFontSize() const;
 
 	protected:
 		void takeKeyboardFocus();

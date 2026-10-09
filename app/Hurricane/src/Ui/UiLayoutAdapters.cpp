@@ -11,6 +11,7 @@
 #include <helsinki/Renderer/Resource/SignedDistanceFieldFontResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <GLFW/glfw3.h>
@@ -165,37 +166,7 @@ namespace hur
 								}
 							}
 						},
-						.vertexInputInfo = hl::VertexInputInfo
-						{
-							.attributes =
-							{
-								{
-									.name = "inPosition",
-									.format = hl::VertexAttributeFormat::Vec2,
-									.location = 0,
-									.offset = offsetof(hl::VertexUi2, pos)
-								},
-								{
-									.name = "inColor",
-									.format = hl::VertexAttributeFormat::Vec4,
-									.location = 1,
-									.offset = offsetof(hl::VertexUi2, color)
-								},
-								{
-									.name = "inTexCoord",
-									.format = hl::VertexAttributeFormat::Vec2,
-									.location = 2,
-									.offset = offsetof(hl::VertexUi2, texCoord)
-								},
-								{
-									.name = "inTexIndex",
-									.format = hl::VertexAttributeFormat::Float,
-									.location = 3,
-									.offset = offsetof(hl::VertexUi2, texIndex)
-								}
-							},
-							.stride = sizeof(hl::VertexUi2)
-						},
+						.vertexInputInfo = hl::RenderGraphHelpers::uiVertexInputInfo(),
 						.depthState =
 						{
 							.testEnable = false,

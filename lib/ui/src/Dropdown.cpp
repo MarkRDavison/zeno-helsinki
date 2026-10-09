@@ -25,7 +25,7 @@ namespace hl::ui
 			{
 				const auto& items = _owner->items();
 				const std::string& text = items.empty() ? _empty : items[static_cast<std::size_t>(_index)];
-				_typeface->layoutText(text, _owner->fontSize, _glyphs);
+				_typeface->layoutText(text, _owner->resolvedFontSize(), _glyphs);
 				node().intrinsicSize = glm::vec2{ 200.0f, _owner->itemHeight };
 			}
 
@@ -216,7 +216,7 @@ namespace hl::ui
 			node().intrinsicSize = glm::vec2{ 220.0f, 32.0f };
 		}
 
-		_typeface->layoutText(selectedText(), fontSize, _glyphs);
+		_typeface->layoutText(selectedText(), resolvedFontSize(), _glyphs);
 	}
 
 	void Dropdown::afterLayout()

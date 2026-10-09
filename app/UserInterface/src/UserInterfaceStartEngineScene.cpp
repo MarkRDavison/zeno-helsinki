@@ -9,6 +9,7 @@
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/System/Events/CharEvent.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
@@ -265,37 +266,7 @@ namespace ui
 									}
 								}
 							},
-							.vertexInputInfo = hl::VertexInputInfo
-							{
-								.attributes =
-								{
-									{
-										.name = "inPosition",
-										.format = hl::VertexAttributeFormat::Vec2,
-										.location = 0,
-										.offset = offsetof(hl::VertexUi2, pos)
-									},
-									{
-										.name = "inColor",
-										.format = hl::VertexAttributeFormat::Vec4,
-										.location = 1,
-										.offset = offsetof(hl::VertexUi2, color)
-									},
-									{
-										.name = "inTexCoord",
-										.format = hl::VertexAttributeFormat::Vec2,
-										.location = 2,
-										.offset = offsetof(hl::VertexUi2, texCoord)
-									},
-									{
-										.name = "inTexIndex",
-										.format = hl::VertexAttributeFormat::Float,
-										.location = 3,
-										.offset = offsetof(hl::VertexUi2, texIndex)
-									}
-								},
-								.stride = sizeof(hl::VertexUi2)
-							},
+							.vertexInputInfo = hl::RenderGraphHelpers::uiVertexInputInfo(),
 							.depthState =
 							{
 								.testEnable = false,
@@ -445,13 +416,13 @@ namespace ui
 		_radioHorizontal->setItems({ "S", "M", "L" });
 
 		_fieldLabel = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
-		_fieldLabel->setText("type here", 16);
+		_fieldLabel->setText("type here");
 		_fieldLabel->color = { 0.75f, 0.76f, 0.80f };
 
 		_textField = std::make_unique<hl::ui::TextField>(column.addChild(), *_typeface);
 
 		_actionButton = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
-		_actionButton->setText("click / enter", 16);
+		_actionButton->setText("click / enter");
 		_actionButton->color = { 0.95f, 0.95f, 0.97f };
 		_actionButton->onClick = [this]()
 		{

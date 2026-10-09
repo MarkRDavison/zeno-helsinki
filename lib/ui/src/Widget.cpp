@@ -49,6 +49,11 @@ namespace hl::ui
 		return gKeyboardFocus == this;
 	}
 
+	unsigned Widget::resolvedFontSize() const
+	{
+		return fontSize.value_or(theme().fontSize);
+	}
+
 	void Widget::setFocused(bool focused)
 	{
 		if (focused)

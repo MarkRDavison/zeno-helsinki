@@ -22,7 +22,8 @@ namespace hl
         glm::vec2 pos;
         glm::vec4 color;
         glm::vec2 texCoord;
-        float texIndex;
+        float texIndex = 0.0f;
+        float sdf = 0.0f;
     };
 
     struct Vertex2D
