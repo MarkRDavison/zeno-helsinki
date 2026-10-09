@@ -3,6 +3,7 @@
 #include <helsinki/Ui/Widget.hpp>
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -24,19 +25,27 @@ namespace hl::ui
 		void prepare() override;
 		void paint(IPaint& paint) const override;
 
-		glm::vec3 color{ 0.95f, 0.95f, 0.97f };
-		glm::vec3 background{ 0.12f, 0.13f, 0.16f };
-		glm::vec3 caretColor{ 1.0f, 0.7f, 0.2f };
+		std::optional<glm::vec3> color;
+		std::optional<glm::vec3> background;
+		std::optional<glm::vec3> caretColor;
+		std::optional<float> padding;
 		std::function<void(std::string_view)> onChanged;
+
+		glm::vec3 resolvedColor() const { return resolve(color, theme().foreground); }
+		glm::vec3 resolvedBackground() const { return resolve(background, theme().background); }
+		glm::vec3 resolvedCaretColor() const { return resolve(caretColor, theme().accent); }
+		float resolvedPadding() const { return resolve(padding, theme().padding); }
 
 	private:
 		void notifyChanged();
 		float caretX() const;
+		float textHeight() const;
+		float textOriginY(const Box& box) const;
 
 		const ITypeface* _typeface = nullptr;
 		std::string _text;
 		std::size_t _caret = 0;
-		float _padding = 8.0f;
+		glm::vec2 _textSize{ 0.0f, 0.0f };
 		std::vector<GlyphVertex> _glyphs;
 	};
 }

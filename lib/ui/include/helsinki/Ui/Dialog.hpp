@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -41,10 +42,14 @@ namespace hl::ui
 		bool closeOnScrim = true;
 		bool closeOnEscape = true;
 		bool closeButtonVisible = true;
-		glm::vec2 cardSize{ 360.0f, 240.0f }; // preferred minimum; grows with content
-		glm::vec4 scrimColor{ 0.0f, 0.0f, 0.0f, 0.55f };
-		glm::vec3 cardColor{ 0.18f, 0.19f, 0.24f };
+		std::optional<glm::vec2> cardSize;
+		std::optional<glm::vec4> scrimColor;
+		std::optional<glm::vec3> cardColor;
 		std::function<void()> onClosed;
+
+		glm::vec2 resolvedCardSize() const { return resolve(cardSize, theme().viewportSize); }
+		glm::vec4 resolvedScrimColor() const { return resolve(scrimColor, theme().scrim); }
+		glm::vec3 resolvedCardColor() const { return resolve(cardColor, theme().surface); }
 
 	private:
 		Node* treeRoot();

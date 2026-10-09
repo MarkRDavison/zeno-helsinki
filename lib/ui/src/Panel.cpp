@@ -16,25 +16,27 @@ namespace hl::ui
 			return;
 		}
 
-		if (borderWidth > 0.0f)
+		const float width = resolvedBorderWidth();
+		const glm::vec3 fill = resolvedColor();
+		if (width > 0.0f)
 		{
-			paint.fill(box, glm::vec4{ borderColor, opacity });
-			const float inset = borderWidth * 2.0f;
+			paint.fill(box, glm::vec4{ resolvedBorderColor(), opacity });
+			const float inset = width * 2.0f;
 			if (box.size.x > inset && box.size.y > inset)
 			{
 				paint.fill(
 					Box{
-						box.pos.x + borderWidth,
-						box.pos.y + borderWidth,
+						box.pos.x + width,
+						box.pos.y + width,
 						box.size.x - inset,
 						box.size.y - inset
 					},
-					glm::vec4{ color, opacity });
+					glm::vec4{ fill, opacity });
 			}
 
 			return;
 		}
 
-		paint.fill(box, glm::vec4{ color, opacity });
+		paint.fill(box, glm::vec4{ fill, opacity });
 	}
 }

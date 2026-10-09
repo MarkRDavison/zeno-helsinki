@@ -2,6 +2,8 @@
 
 #include <helsinki/Ui/Widget.hpp>
 
+#include <optional>
+
 namespace hl::ui
 {
 	class IconRow : public Widget
@@ -15,10 +17,19 @@ namespace hl::ui
 		void prepare() override;
 		void paint(IPaint& paint) const override;
 
-		glm::vec2 iconSize{ 32.0f, 32.0f };
-		float gap = 8.0f;
+		std::optional<glm::vec2> iconSize;
+		std::optional<float> gap;
 		glm::vec4 uvRect{ 0.0f, 0.0f, 1.0f, 1.0f };
-		glm::vec3 color{ 1.0f, 1.0f, 1.0f };
+		std::optional<glm::vec3> color;
+
+		glm::vec2 resolvedIconSize() const
+		{
+			const float h = theme().controlHeight;
+			return resolve(iconSize, glm::vec2{ h, h });
+		}
+
+		float resolvedGap() const { return resolve(gap, theme().gap); }
+		glm::vec3 resolvedColor() const { return resolve(color, theme().foreground); }
 
 	private:
 		glm::vec2 contentSize() const;

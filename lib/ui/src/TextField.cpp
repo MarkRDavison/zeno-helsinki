@@ -11,8 +11,6 @@ namespace hl::ui
 		hitTestEnabled = true;
 		focusable = true;
 		node.clip = true;
-		node.padding = Edges::all(_padding);
-		node.intrinsicSize = glm::vec2{ 280.0f, 36.0f };
 	}
 
 	void TextField::setText(std::string text)
@@ -103,18 +101,25 @@ namespace hl::ui
 
 	void TextField::prepare()
 	{
+		const float pad = resolvedPadding();
+		node().padding = Edges::all(pad);
 		if (!node().intrinsicSize.has_value())
 		{
-			node().intrinsicSize = glm::vec2{ 280.0f, 36.0f };
+			node().intrinsicSize = glm::vec2{
+				theme().controlWidth,
+				theme().controlHeight + pad * 2.0f
+			};
 		}
 
-		_typeface->layoutText(_text, resolvedFontSize(), _glyphs);
+		_textSize = _typeface->layoutText(_text, resolvedFontSize(), _glyphs);
 	}
 
 	void TextField::paint(IPaint& paint) const
 	{
 		const auto& box = node().world;
-		paint.fill(box, background);
+		const glm::vec3 bg = resolvedBackground();
+		const float pad = resolvedPadding();
+		paint.fill(box, bg);
 		if (hasKeyboardFocus())
 		{
 			const float inset = 1.0f;
@@ -127,26 +132,27 @@ namespace hl::ui
 						box.size.x - inset * 2.0f,
 						box.size.y - inset * 2.0f
 					},
-					glm::vec3{ background.x + 0.08f, background.y + 0.08f, background.z + 0.08f });
+					glm::vec3{ bg.x + 0.08f, bg.y + 0.08f, bg.z + 0.08f });
 			}
 		}
 
-		const float innerWidth = std::max(1.0f, box.size.x - _padding * 2.0f);
+		const float innerWidth = std::max(1.0f, box.size.x - pad * 2.0f);
 		const float caret = caretX();
 		const float scrollX = caret > innerWidth ? caret - innerWidth : 0.0f;
 
 		paint.pushClip(box);
+		const float textY = textOriginY(box);
 		const glm::vec2 origin{
-			box.pos.x + _padding - scrollX,
-			box.pos.y + _padding
+			box.pos.x + pad - scrollX,
+			textY
 		};
-		paint.glyphs(_glyphs, origin, color);
+		paint.glyphs(_glyphs, origin, resolvedColor());
 
 		if (hasKeyboardFocus())
 		{
 			const float x = origin.x + caret;
-			const float h = std::max(12.0f, box.size.y - _padding * 2.0f);
-			paint.fill(Box{ x, box.pos.y + _padding, 2.0f, h }, caretColor);
+			const float h = std::max(12.0f, textHeight());
+			paint.fill(Box{ x, textY, 2.0f, h }, resolvedCaretColor());
 		}
 
 		paint.popClip();
@@ -165,5 +171,18 @@ namespace hl::ui
 		std::vector<GlyphVertex> prefix;
 		const glm::vec2 size = _typeface->layoutText(_text.substr(0, _caret), resolvedFontSize(), prefix);
 		return size.x;
+	}
+
+	float TextField::textHeight() const
+	{
+		return std::max(_textSize.y, static_cast<float>(resolvedFontSize()));
+	}
+
+	float TextField::textOriginY(const Box& box) const
+	{
+		const float pad = resolvedPadding();
+		const float innerH = std::max(0.0f, box.size.y - pad * 2.0f);
+		const float h = std::min(innerH, textHeight());
+		return box.pos.y + pad + (innerH - h) * 0.5f;
 	}
 }

@@ -3,6 +3,7 @@
 #include <helsinki/Ui/Widget.hpp>
 
 #include <functional>
+#include <optional>
 
 namespace hl::ui
 {
@@ -19,9 +20,12 @@ namespace hl::ui
 		void setChecked(bool checked);
 		bool checked() const { return _checked; }
 
-		glm::vec3 boxColor{ 0.25f, 0.28f, 0.32f };
-		glm::vec3 checkColor{ 1.0f, 0.5f, 0.0f };
+		std::optional<glm::vec3> boxColor;
+		std::optional<glm::vec3> checkColor;
 		std::function<void(bool)> onChanged;
+
+		glm::vec3 resolvedBoxColor() const { return resolve(boxColor, theme().well); }
+		glm::vec3 resolvedCheckColor() const { return resolve(checkColor, theme().accent); }
 
 	private:
 		bool _checked = false;

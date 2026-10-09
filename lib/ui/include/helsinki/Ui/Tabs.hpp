@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -35,13 +36,20 @@ namespace hl::ui
 		int hoverIndex() const { return _hover; }
 		void scrollHeaders(int direction);
 
-		float maxHeaderWidth = 280.0f; // used when the Tabs node is not stretched
-		float headerHeight = 28.0f;
-		glm::vec3 color{ 0.95f, 0.95f, 0.97f };
-		glm::vec3 fillColor{ 0.18f, 0.19f, 0.24f };
-		glm::vec3 hoverColor{ 0.32f, 0.34f, 0.42f };
-		glm::vec3 selectedColor{ 1.0f, 0.5f, 0.0f };
+		std::optional<float> maxHeaderWidth;
+		std::optional<float> headerHeight;
+		std::optional<glm::vec3> color;
+		std::optional<glm::vec3> fillColor;
+		std::optional<glm::vec3> hoverColor;
+		std::optional<glm::vec3> selectedColor;
 		std::function<void(int)> onChanged;
+
+		float resolvedMaxHeaderWidth() const { return resolve(maxHeaderWidth, theme().controlWidth); }
+		float resolvedHeaderHeight() const { return resolve(headerHeight, theme().controlHeight); }
+		glm::vec3 resolvedColor() const { return resolve(color, theme().foreground); }
+		glm::vec3 resolvedFillColor() const { return resolve(fillColor, theme().surface); }
+		glm::vec3 resolvedHoverColor() const { return resolve(hoverColor, theme().hover); }
+		glm::vec3 resolvedSelectedColor() const { return resolve(selectedColor, theme().accent); }
 
 	private:
 		void applyPageVisibility();

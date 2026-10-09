@@ -3,6 +3,7 @@
 #include <helsinki/Ui/Widget.hpp>
 
 #include <memory>
+#include <optional>
 
 namespace hl::ui
 {
@@ -20,14 +21,17 @@ namespace hl::ui
 		void prepare() override;
 		void afterLayout() override;
 
-		glm::vec2 viewportSize{ 280.0f, 240.0f };
+		std::optional<glm::vec2> viewportSize;
 		bool scrollBars = true;
-		glm::vec3 trackColor{ 0.25f, 0.28f, 0.32f };
-		glm::vec3 thumbColor{ 0.95f, 0.95f, 0.97f };
+		std::optional<glm::vec3> trackColor;
+		std::optional<glm::vec3> thumbColor;
+
+		glm::vec2 resolvedViewportSize() const;
+		glm::vec3 resolvedTrackColor() const { return resolve(trackColor, theme().well); }
+		glm::vec3 resolvedThumbColor() const { return resolve(thumbColor, theme().foreground); }
 
 	private:
 		void layoutChrome();
-		glm::vec2 resolvedViewportSize() const;
 
 		Node* _viewport = nullptr;
 		std::unique_ptr<Widget> _vBar;

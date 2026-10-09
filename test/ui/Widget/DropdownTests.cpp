@@ -166,8 +166,8 @@ namespace hl::ui::test
 
 		RecordingPaint paint;
 		dropdown.paint(paint);
-		CHECK(paint.firstFill.x == dropdown.fillColor.x);
-		CHECK(paint.firstFill.y == dropdown.fillColor.y);
+		CHECK(paint.firstFill.x == dropdown.resolvedFillColor().x);
+		CHECK(paint.firstFill.y == dropdown.resolvedFillColor().y);
 	}
 
 	TEST_CASE("click outside closes the overlay", "[Ui][Dropdown]")

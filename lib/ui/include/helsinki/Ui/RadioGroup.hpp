@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -38,13 +39,20 @@ namespace hl::ui
 		int hoverIndex() const { return _hover; }
 
 		float markSize = 18.0f;
-		float labelGap = 8.0f;
-		glm::vec3 color{ 0.95f, 0.95f, 0.97f };
-		glm::vec3 wellColor{ 0.25f, 0.28f, 0.32f };
-		glm::vec3 hoverColor{ 0.32f, 0.34f, 0.42f };
-		glm::vec3 selectedColor{ 1.0f, 0.5f, 0.0f };
-		glm::vec3 highlightColor{ 1.0f, 0.5f, 0.0f };
+		std::optional<float> labelGap;
+		std::optional<glm::vec3> color;
+		std::optional<glm::vec3> wellColor;
+		std::optional<glm::vec3> hoverColor;
+		std::optional<glm::vec3> selectedColor;
+		std::optional<glm::vec3> highlightColor;
 		std::function<void(int)> onChanged;
+
+		float resolvedLabelGap() const { return resolve(labelGap, theme().gap); }
+		glm::vec3 resolvedColor() const { return resolve(color, theme().foreground); }
+		glm::vec3 resolvedWellColor() const { return resolve(wellColor, theme().well); }
+		glm::vec3 resolvedHoverColor() const { return resolve(hoverColor, theme().hover); }
+		glm::vec3 resolvedSelectedColor() const { return resolve(selectedColor, theme().accent); }
+		glm::vec3 resolvedHighlightColor() const { return resolve(highlightColor, theme().accent); }
 
 	private:
 		void rebuildOptions();

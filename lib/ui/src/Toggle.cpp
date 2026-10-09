@@ -8,14 +8,13 @@ namespace hl::ui
 		Widget(node)
 	{
 		focusable = true;
-		node.intrinsicSize = glm::vec2{ 64.0f, 32.0f };
 	}
 
 	void Toggle::prepare()
 	{
 		if (!node().intrinsicSize.has_value())
 		{
-			node().intrinsicSize = glm::vec2{ 64.0f, 32.0f };
+			node().intrinsicSize = glm::vec2{ theme().controlHeight * 2.0f, theme().controlHeight };
 		}
 	}
 
@@ -59,7 +58,7 @@ namespace hl::ui
 	void Toggle::paint(IPaint& paint) const
 	{
 		const auto& box = node().world;
-		const glm::vec3 track = _on ? onColor : offColor;
+		const glm::vec3 track = _on ? resolvedOnColor() : resolvedOffColor();
 		const glm::vec3 fill = hasKeyboardFocus()
 			? glm::vec3{
 				std::min(1.0f, track.x + 0.18f),
@@ -74,6 +73,6 @@ namespace hl::ui
 		const float knobX = _on
 			? box.pos.x + box.size.x - pad - knob
 			: box.pos.x + pad;
-		paint.fill(Box{ knobX, box.pos.y + pad, knob, knob }, knobColor);
+		paint.fill(Box{ knobX, box.pos.y + pad, knob, knob }, resolvedKnobColor());
 	}
 }

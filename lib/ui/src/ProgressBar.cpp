@@ -9,14 +9,13 @@ namespace hl::ui
 	{
 		hitTestEnabled = false;
 		focusable = false;
-		node.intrinsicSize = glm::vec2{ 280.0f, 16.0f };
 	}
 
 	void ProgressBar::prepare()
 	{
 		if (!node().intrinsicSize.has_value())
 		{
-			node().intrinsicSize = glm::vec2{ 280.0f, 16.0f };
+			node().intrinsicSize = glm::vec2{ theme().controlWidth, theme().controlHeight * 0.5f };
 		}
 	}
 
@@ -28,12 +27,12 @@ namespace hl::ui
 	void ProgressBar::paint(IPaint& paint) const
 	{
 		const auto& box = node().world;
-		paint.fill(box, trackColor);
+		paint.fill(box, resolvedTrackColor());
 
 		const float filled = box.size.x * _value;
 		if (filled > 0.0f)
 		{
-			paint.fill(Box{ box.pos.x, box.pos.y, filled, box.size.y }, fillColor);
+			paint.fill(Box{ box.pos.x, box.pos.y, filled, box.size.y }, resolvedFillColor());
 		}
 	}
 }

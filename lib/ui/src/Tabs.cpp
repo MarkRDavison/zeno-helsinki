@@ -6,8 +6,10 @@ namespace hl::ui
 {
 	namespace
 	{
-		constexpr float kChevronWidth = 24.0f;
-		constexpr float kHeaderPadX = 10.0f;
+		float chevronWidth()
+		{
+			return theme().controlHeight - theme().padding;
+		}
 
 		class TabHeader : public Widget
 		{
@@ -50,15 +52,15 @@ namespace hl::ui
 				const bool selected = _index == _owner->selectedIndex();
 				const bool hovered = _index == _owner->hoverIndex();
 				const glm::vec3 bg = selected
-					? _owner->selectedColor
+					? _owner->resolvedSelectedColor()
 					: hovered
-						? _owner->hoverColor
-						: _owner->fillColor;
+						? _owner->resolvedHoverColor()
+						: _owner->resolvedFillColor();
 				paint.fill(box, bg);
 				paint.glyphs(
 					_glyphs,
-					box.pos + glm::vec2{ kHeaderPadX, (box.size.y - 16.0f) * 0.5f },
-					_owner->color);
+					box.pos + glm::vec2{ theme().padding, (box.size.y - 16.0f) * 0.5f },
+					_owner->resolvedColor());
 			}
 
 			void setTitle(const std::string& title)
@@ -73,8 +75,8 @@ namespace hl::ui
 					_owner->resolvedFontSize(),
 					_glyphs);
 				node().intrinsicSize = glm::vec2{
-					textSize.x + kHeaderPadX * 2.0f,
-					std::max(_owner->headerHeight, textSize.y + 8.0f)
+					textSize.x + theme().padding * 2.0f,
+					std::max(_owner->resolvedHeaderHeight(), textSize.y + theme().padding)
 				};
 			}
 
@@ -168,7 +170,7 @@ namespace hl::ui
 					return;
 				}
 
-				node().intrinsicSize = glm::vec2{ kChevronWidth, _owner->headerHeight };
+				node().intrinsicSize = glm::vec2{ chevronWidth(), _owner->resolvedHeaderHeight() };
 			}
 
 			EventResult handle(const Pointer& pointer) override
@@ -194,14 +196,14 @@ namespace hl::ui
 				}
 
 				const auto& box = node().world;
-				paint.fill(box, _owner->fillColor);
+				paint.fill(box, _owner->resolvedFillColor());
 
 				const bool atEnd = _direction < 0
 					? _owner->headerClip().scrollOffset.x <= 0.0f
 					: _owner->headerClip().scrollOffset.x >= _owner->headerClip().maxScroll().x;
 				const glm::vec3 col = atEnd
-					? glm::vec3{ 0.45f, 0.46f, 0.50f }
-					: _owner->color;
+					? theme().muted
+					: _owner->resolvedColor();
 
 				const float cx = box.pos.x + box.size.x * 0.5f;
 				const float cy = box.pos.y + box.size.y * 0.5f;
@@ -234,7 +236,7 @@ namespace hl::ui
 		_bar->kind = Kind::Absolute;
 		_bar->anchorMin = { 0.0f, 0.0f };
 		_bar->anchorMax = { 1.0f, 0.0f };
-		_bar->offset.bottom = headerHeight;
+		_bar->offset.bottom = resolvedHeaderHeight();
 
 		_prev = std::make_unique<Chevron>(_bar->addChild(), *this, -1);
 		_clip = &_bar->addChild();
@@ -247,7 +249,7 @@ namespace hl::ui
 		_body->kind = Kind::Absolute;
 		_body->anchorMin = { 0.0f, 0.0f };
 		_body->anchorMax = { 1.0f, 1.0f };
-		_body->offset.top = headerHeight;
+		_body->offset.top = resolvedHeaderHeight();
 	}
 
 	Node& Tabs::addPage(std::string title)
@@ -320,7 +322,7 @@ namespace hl::ui
 	void Tabs::afterLayout()
 	{
 		syncBodyAnchors();
-		if (node().world.size.y > headerHeight)
+		if (node().world.size.y > resolvedHeaderHeight())
 		{
 			_body->arrange(node().world);
 		}
@@ -462,18 +464,18 @@ namespace hl::ui
 
 	void Tabs::syncBodyAnchors()
 	{
-		_bar->offset.bottom = headerHeight;
-		if (node().world.size.y > headerHeight)
+		_bar->offset.bottom = resolvedHeaderHeight();
+		if (node().world.size.y > resolvedHeaderHeight())
 		{
 			_body->anchorMax = { 1.0f, 1.0f };
-			_body->offset.top = headerHeight;
+			_body->offset.top = resolvedHeaderHeight();
 			_body->offset.bottom = 0.0f;
 		}
 		else
 		{
 			_body->anchorMax = { 1.0f, 0.0f };
-			_body->offset.top = headerHeight;
-			_body->offset.bottom = headerHeight;
+			_body->offset.top = resolvedHeaderHeight();
+			_body->offset.bottom = resolvedHeaderHeight();
 		}
 	}
 
@@ -489,7 +491,7 @@ namespace hl::ui
 			return node().world.size.x;
 		}
 
-		return maxHeaderWidth;
+		return resolvedMaxHeaderWidth();
 	}
 
 	void Tabs::layoutHeaderStrip()
@@ -504,9 +506,9 @@ namespace hl::ui
 			_clip->scrollOffset = { 0.0f, 0.0f };
 		}
 
-		const float btn = _overflow ? kChevronWidth : 0.0f;
+		const float btn = _overflow ? chevronWidth() : 0.0f;
 		const float clipW = std::max(16.0f, width - btn * 2.0f);
-		const float h = headerHeight;
+		const float h = resolvedHeaderHeight();
 
 		_prev->node().setTopLeft({ btn, h });
 		_prev->node().relative = { 0.0f, 0.0f };

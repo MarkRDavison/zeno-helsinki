@@ -5,7 +5,7 @@ namespace hl::ui
 	Label::Label(Node& node, const ITypeface& typeface) :
 		Widget(node),
 		_typeface(&typeface),
-		_drawColor(color)
+		_drawColor(resolvedColor())
 	{
 		hitTestEnabled = false;
 	}
@@ -23,13 +23,18 @@ namespace hl::ui
 
 	void Label::prepare()
 	{
-		_drawColor = color;
-		const glm::vec2 size = _typeface->layoutText(_text, resolvedFontSize(), _glyphs);
-		node().intrinsicSize = size;
+		_drawColor = resolvedColor();
+		_layoutSize = _typeface->layoutText(_text, resolvedFontSize(), _glyphs);
+		node().intrinsicSize = _layoutSize;
 	}
 
 	void Label::paint(IPaint& paint) const
 	{
-		paint.glyphs(_glyphs, node().world.pos, _drawColor);
+		paintGlyphs(paint, node().world.pos);
+	}
+
+	void Label::paintGlyphs(IPaint& paint, glm::vec2 origin) const
+	{
+		paint.glyphs(_glyphs, origin, _drawColor);
 	}
 }

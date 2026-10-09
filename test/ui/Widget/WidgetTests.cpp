@@ -38,11 +38,13 @@ namespace hl::ui::test
 			int glyphBatches = 0;
 			glm::vec4 lastFillColor{ 0.0f };
 			glm::vec3 lastGlyphColor{ 0.0f };
+			std::vector<glm::vec4> fillColors;
 
 			void fill(const Box&, glm::vec4 color) override
 			{
 				++fills;
 				lastFillColor = color;
+				fillColors.push_back(color);
 			}
 
 			void sprite(const Box&, glm::vec4, glm::vec3) override
@@ -87,6 +89,7 @@ namespace hl::ui::test
 		column.setCenter({ 0.0f, 0.0f });
 
 		Button button(column.addChild(), typeface);
+		button.variant = ButtonVariant::Text;
 		button.setText("Start", 24);
 		int clicks = 0;
 		button.onClick = [&] { ++clicks; };
@@ -99,11 +102,90 @@ namespace hl::ui::test
 
 		RecordingPaint paint;
 		button.paint(paint);
-		CHECK(paint.lastGlyphColor.y == 1.0f);
-		CHECK(paint.lastGlyphColor.z == 0.0f);
+		CHECK(paint.fills == 0);
+		CHECK(paint.lastGlyphColor == button.resolvedHoverColor());
 
 		button.handle(Pointer{ .position = { 0.0f, 0.0f }, .primaryReleased = true });
 		CHECK(clicks == 1);
+		paint = {};
+		button.paint(paint);
+		CHECK(paint.lastGlyphColor == button.resolvedColor());
+	}
+
+	TEST_CASE("Button hover color applies to every variant and clears after prepare", "[Ui][Widget]")
+	{
+		FakeTypeface typeface;
+		const ButtonVariant variants[] = {
+			ButtonVariant::Default,
+			ButtonVariant::Filled,
+			ButtonVariant::Text
+		};
+
+		for (const ButtonVariant variant : variants)
+		{
+			auto root = std::make_unique<Node>();
+			root->setFillParent();
+			Button button(root->addChild(), typeface);
+			button.variant = variant;
+			button.setText("Start", 24);
+			button.prepare();
+			layout(*root, Box{ 0.0f, 0.0f, 800.0f, 600.0f });
+
+			const auto center = button.node().world.pos + button.node().world.size * 0.5f;
+			button.handle(Pointer{ .position = center });
+			RecordingPaint hovered;
+			button.paint(hovered);
+			CHECK(hovered.lastGlyphColor == button.resolvedHoverColor());
+
+			button.prepare();
+			layout(*root, Box{ 0.0f, 0.0f, 800.0f, 600.0f });
+			RecordingPaint idle;
+			button.paint(idle);
+			CHECK(idle.lastGlyphColor == button.resolvedColor());
+		}
+	}
+
+	TEST_CASE("Button Default paints border fill and background", "[Ui][Widget]")
+	{
+		FakeTypeface typeface;
+		auto root = std::make_unique<Node>();
+		root->setFillParent();
+		Button button(root->addChild(), typeface);
+		button.setText("Start", 24);
+		button.prepare();
+		layout(*root, Box{ 0.0f, 0.0f, 800.0f, 600.0f });
+
+		CHECK(button.node().intrinsicSize->x > 80.0f);
+		CHECK(button.resolvedBorderWidth() >= 1.0f);
+		CHECK(button.resolvedFillColor() == theme().background);
+		CHECK(button.resolvedBorderColor() != button.resolvedFillColor());
+
+		RecordingPaint paint;
+		button.paint(paint);
+		REQUIRE(paint.fills == 2);
+		CHECK(glm::vec3{ paint.fillColors[0] } == button.resolvedBorderColor());
+		CHECK(glm::vec3{ paint.fillColors[1] } == button.resolvedFillColor());
+		CHECK(paint.lastGlyphColor == button.resolvedColor());
+	}
+
+	TEST_CASE("Button Filled uses the same color for border and fill", "[Ui][Widget]")
+	{
+		FakeTypeface typeface;
+		auto root = std::make_unique<Node>();
+		root->setFillParent();
+		Button button(root->addChild(), typeface);
+		button.variant = ButtonVariant::Filled;
+		button.borderWidth = 1.0f;
+		button.setText("Start", 24);
+		button.prepare();
+		layout(*root, Box{ 0.0f, 0.0f, 800.0f, 600.0f });
+
+		RecordingPaint paint;
+		button.paint(paint);
+		REQUIRE(paint.fills == 2);
+		CHECK(paint.fillColors[0] == paint.fillColors[1]);
+		CHECK(glm::vec3{ paint.fillColors[0] } == button.resolvedFillColor());
+		CHECK(paint.lastGlyphColor == button.resolvedColor());
 	}
 
 	TEST_CASE("Panel fills world box", "[Ui][Widget]")

@@ -26,7 +26,7 @@ namespace hl::ui
 				const glm::vec2 textSize = _typeface->layoutText(text, _owner->resolvedFontSize(), _glyphs);
 				const float height = std::max(_owner->markSize, textSize.y + 4.0f);
 				node().intrinsicSize = glm::vec2{
-					_owner->markSize + _owner->labelGap + textSize.x,
+					_owner->markSize + _owner->resolvedLabelGap() + textSize.x,
 					height
 				};
 			}
@@ -55,18 +55,18 @@ namespace hl::ui
 				const bool selected = _index == _owner->selectedIndex();
 				if (hovered)
 				{
-					paint.fill(box, _owner->hoverColor);
+					paint.fill(box, _owner->resolvedHoverColor());
 				}
 
 				const float mark = _owner->markSize;
 				const float markY = box.pos.y + (box.size.y - mark) * 0.5f;
 				const glm::vec3 well = selected || (_owner->hasKeyboardFocus() && selected)
 					? glm::vec3{
-						std::min(1.0f, _owner->wellColor.x + 0.18f),
-						std::min(1.0f, _owner->wellColor.y + 0.18f),
-						std::min(1.0f, _owner->wellColor.z + 0.18f)
+						std::min(1.0f, _owner->resolvedWellColor().x + 0.18f),
+						std::min(1.0f, _owner->resolvedWellColor().y + 0.18f),
+						std::min(1.0f, _owner->resolvedWellColor().z + 0.18f)
 					}
-					: _owner->wellColor;
+					: _owner->resolvedWellColor();
 				paint.fill(Box{ box.pos.x, markY, mark, mark }, well);
 
 				const float inner = mark * 0.22f;
@@ -77,7 +77,7 @@ namespace hl::ui
 						mark - inner * 2.0f,
 						mark - inner * 2.0f
 					},
-					hovered ? _owner->hoverColor : glm::vec3{ 0.16f, 0.17f, 0.22f });
+					hovered ? _owner->resolvedHoverColor() : theme().background);
 
 				if (selected)
 				{
@@ -90,14 +90,14 @@ namespace hl::ui
 							dot,
 							dot
 						},
-						hovered ? _owner->highlightColor : _owner->selectedColor);
+						hovered ? _owner->resolvedHighlightColor() : _owner->resolvedSelectedColor());
 				}
 
 				const glm::vec2 origin{
-					box.pos.x + mark + _owner->labelGap,
+					box.pos.x + mark + _owner->resolvedLabelGap(),
 					box.pos.y + (box.size.y - 16.0f) * 0.5f
 				};
-				paint.glyphs(_glyphs, origin, _owner->color);
+				paint.glyphs(_glyphs, origin, _owner->resolvedColor());
 			}
 
 		private:
@@ -115,7 +115,7 @@ namespace hl::ui
 	{
 		hitTestEnabled = false;
 		focusable = true;
-		node.gap = 8.0f;
+		node.gap = theme().gap;
 		node.crossAlign = Align::Start;
 		applyOrientation();
 	}

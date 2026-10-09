@@ -8,14 +8,14 @@ namespace hl::ui
 		Widget(node)
 	{
 		focusable = true;
-		node.intrinsicSize = glm::vec2{ 32.0f, 32.0f };
 	}
 
 	void Checkbox::prepare()
 	{
 		if (!node().intrinsicSize.has_value())
 		{
-			node().intrinsicSize = glm::vec2{ 32.0f, 32.0f };
+			const float h = theme().controlHeight;
+			node().intrinsicSize = glm::vec2{ h, h };
 		}
 	}
 
@@ -59,13 +59,14 @@ namespace hl::ui
 	void Checkbox::paint(IPaint& paint) const
 	{
 		const auto& box = node().world;
+		const glm::vec3 well = resolvedBoxColor();
 		const glm::vec3 fill = hasKeyboardFocus()
 			? glm::vec3{
-				std::min(1.0f, boxColor.x + 0.18f),
-				std::min(1.0f, boxColor.y + 0.18f),
-				std::min(1.0f, boxColor.z + 0.18f)
+				std::min(1.0f, well.x + 0.18f),
+				std::min(1.0f, well.y + 0.18f),
+				std::min(1.0f, well.z + 0.18f)
 			}
-			: boxColor;
+			: well;
 		paint.fill(box, fill);
 
 		if (_checked)
@@ -78,7 +79,7 @@ namespace hl::ui
 					box.size.x - inset * 2.0f,
 					box.size.y - inset * 2.0f
 				},
-				checkColor);
+				resolvedCheckColor());
 		}
 	}
 }

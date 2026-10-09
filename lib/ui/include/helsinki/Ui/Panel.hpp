@@ -14,10 +14,14 @@ namespace hl::ui
 
 		void paint(IPaint& paint) const override;
 
-		glm::vec3 color{ 1.0f, 1.0f, 1.0f };
+		std::optional<glm::vec3> color;
 		float opacity = 1.0f;
-		float borderWidth = 0.0f;
-		glm::vec3 borderColor{ 0.08f, 0.09f, 0.12f };
+		std::optional<float> borderWidth;
+		std::optional<glm::vec3> borderColor;
 		std::optional<NineSlice> nineSlice;
+
+		glm::vec3 resolvedColor() const { return resolve(color, theme().surface); }
+		float resolvedBorderWidth() const { return resolve(borderWidth, theme().borderWidth); }
+		glm::vec3 resolvedBorderColor() const { return resolve(borderColor, theme().border); }
 	};
 }

@@ -26,7 +26,7 @@ namespace hl::ui
 				const auto& items = _owner->items();
 				const std::string& text = items.empty() ? _empty : items[static_cast<std::size_t>(_index)];
 				_typeface->layoutText(text, _owner->resolvedFontSize(), _glyphs);
-				node().intrinsicSize = glm::vec2{ 200.0f, _owner->itemHeight };
+				node().intrinsicSize = glm::vec2{ 200.0f, _owner->resolvedItemHeight() };
 			}
 
 			EventResult handle(const Pointer& pointer) override
@@ -52,11 +52,11 @@ namespace hl::ui
 				const bool hot = _index == _owner->highlightIndex();
 				const bool selected = _index == _owner->selectedIndex();
 				const glm::vec3 bg = hot
-					? _owner->highlightColor
-					: (selected ? _owner->hoverColor : _owner->fillColor);
+					? _owner->resolvedHighlightColor()
+					: (selected ? _owner->resolvedHoverColor() : _owner->resolvedFillColor());
 				paint.fill(box, bg);
 				const glm::vec2 origin{ box.pos.x + 8.0f, box.pos.y + 4.0f };
-				paint.glyphs(_glyphs, origin, _owner->color);
+				paint.glyphs(_glyphs, origin, _owner->resolvedColor());
 			}
 
 		private:
@@ -110,16 +110,14 @@ namespace hl::ui
 	{
 		hitTestEnabled = true;
 		focusable = true;
-		header.intrinsicSize = glm::vec2{ 220.0f, 32.0f };
-
 		Node* root = treeRoot();
 		_overlay = &root->addChild();
 		_overlay->kind = Kind::Column;
 		_overlay->clip = true;
 		_overlay->gap = 0.0f;
-		_overlay->padding = Edges::all(4.0f);
+		_overlay->padding = Edges::all(theme().padding);
 		_overlayPanel = std::make_unique<Panel>(*_overlay);
-		_overlayPanel->color = fillColor;
+		_overlayPanel->color = resolvedFillColor();
 		_overlayPanel->hitTestEnabled = false;
 		syncOverlayHitTest();
 	}
@@ -213,10 +211,15 @@ namespace hl::ui
 		_hovered = false;
 		if (!node().intrinsicSize.has_value())
 		{
-			node().intrinsicSize = glm::vec2{ 220.0f, 32.0f };
+			node().intrinsicSize = glm::vec2{ theme().controlWidth, theme().controlHeight };
 		}
 
 		_typeface->layoutText(selectedText(), resolvedFontSize(), _glyphs);
+		_overlay->padding = Edges::all(theme().padding);
+		if (_overlayPanel)
+		{
+			_overlayPanel->color = resolvedFillColor();
+		}
 	}
 
 	void Dropdown::afterLayout()
@@ -224,7 +227,7 @@ namespace hl::ui
 		Node* root = treeRoot();
 		const auto& header = node().world;
 		const float listHeight = _open
-			? std::min(contentHeight(), maxListHeight)
+			? std::min(contentHeight(), resolvedMaxListHeight())
 			: 0.0f;
 		_overlay->setTopLeft({ header.size.x, listHeight });
 		_overlay->relative = header.pos - root->world.pos + glm::vec2{ 0.0f, header.size.y };
@@ -294,11 +297,11 @@ namespace hl::ui
 	{
 		const auto& box = node().world;
 		const glm::vec3 bg = _hovered || (hasKeyboardFocus() && !_open)
-			? hoverColor
-			: fillColor;
+			? resolvedHoverColor()
+			: resolvedFillColor();
 		paint.fill(box, bg);
 		const glm::vec2 origin{ box.pos.x + 8.0f, box.pos.y + 6.0f };
-		paint.glyphs(_glyphs, origin, color);
+		paint.glyphs(_glyphs, origin, resolvedColor());
 
 		const float caret = 8.0f;
 		const float cx = box.pos.x + box.size.x - 14.0f;
@@ -310,7 +313,7 @@ namespace hl::ui
 			const float y = _open
 				? cy + 3.0f - static_cast<float>(i) * 2.0f
 				: cy - 4.0f + static_cast<float>(i) * 2.0f;
-			paint.fill(Box{ x, y, w, 2.0f }, color);
+			paint.fill(Box{ x, y, w, 2.0f }, resolvedColor());
 		}
 	}
 
@@ -390,7 +393,7 @@ namespace hl::ui
 	{
 		const float n = static_cast<float>(_items.size());
 		const float gaps = n > 0.0f ? _overlay->gap * (n - 1.0f) : 0.0f;
-		return n * itemHeight + gaps + _overlay->padding.top + _overlay->padding.bottom;
+		return n * resolvedItemHeight() + gaps + _overlay->padding.top + _overlay->padding.bottom;
 	}
 
 	const std::string& Dropdown::selectedText() const

@@ -7,7 +7,10 @@ namespace hl::ui
 	namespace
 	{
 		Tooltip* gTooltip = nullptr;
-		constexpr float kPadding = 8.0f;
+		float tooltipPadding()
+		{
+			return theme().padding;
+		}
 
 		Widget* tooltipSource(Widget* hit)
 		{
@@ -190,8 +193,9 @@ namespace hl::ui
 			return;
 		}
 
-		paint.fill(node().world, fillColor);
-		paint.glyphs(_glyphs, node().world.pos + glm::vec2{ kPadding, kPadding }, color);
+		const float pad = tooltipPadding();
+		paint.fill(node().world, resolvedFillColor());
+		paint.glyphs(_glyphs, node().world.pos + glm::vec2{ pad, pad }, resolvedColor());
 	}
 
 	Node* Tooltip::treeRoot()
@@ -263,6 +267,7 @@ namespace hl::ui
 	void Tooltip::measureText()
 	{
 		const glm::vec2 textSize = _typeface->layoutText(_text, resolvedFontSize(), _glyphs);
-		node().intrinsicSize = textSize + glm::vec2{ kPadding * 2.0f, kPadding * 2.0f };
+		const float pad = tooltipPadding();
+		node().intrinsicSize = textSize + glm::vec2{ pad * 2.0f, pad * 2.0f };
 	}
 }

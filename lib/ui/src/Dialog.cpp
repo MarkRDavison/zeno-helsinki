@@ -19,8 +19,6 @@ namespace hl::ui
 			return *root;
 		}
 
-		constexpr float kPad = 16.0f;
-		constexpr float kGap = 8.0f;
 		constexpr glm::vec2 kCloseSize{ 28.0f, 24.0f };
 	}
 
@@ -43,29 +41,26 @@ namespace hl::ui
 
 		_card = &node().addChild();
 		_card->kind = Kind::Absolute;
-		_card->setCenter(cardSize);
+		_card->setCenter(resolvedCardSize());
 		_cardPanel = std::make_unique<Panel>(*_card);
-		_cardPanel->color = cardColor;
+		_cardPanel->color = resolvedCardColor();
 		_cardPanel->hitTestEnabled = true;
 
 		_title = std::make_unique<Label>(_card->addChild(), typeface);
-		_title->color = { 0.95f, 0.95f, 0.97f };
-
 		_content = &_card->addChild();
 		_content->kind = Kind::Column;
-		_content->gap = kGap;
+		_content->gap = theme().gap;
 
 		_actionHost = &_card->addChild();
 		_actionHost->kind = Kind::Row;
-		_actionHost->gap = kGap;
+		_actionHost->gap = theme().gap;
 		_actionHost->crossAlign = Align::End;
 		_actionPanel = std::make_unique<Panel>(*_actionHost);
-		_actionPanel->color = cardColor;
+		_actionPanel->color = resolvedCardColor();
 		_actionPanel->hitTestEnabled = false;
 
 		_close = std::make_unique<Button>(node().addChild(), typeface);
 		_close->setText("X");
-		_close->color = { 0.95f, 0.95f, 0.97f };
 		_close->onClick = [this]()
 		{
 			setOpen(false);
@@ -102,7 +97,6 @@ namespace hl::ui
 	{
 		auto button = std::make_unique<Button>(_actionHost->addChild(), *_typeface);
 		button->setText(std::move(label));
-		button->color = { 0.95f, 0.95f, 0.97f };
 		button->onClick = std::move(onClick);
 		Button& ref = *button;
 		_actions.push_back(std::move(button));
@@ -164,8 +158,8 @@ namespace hl::ui
 	void Dialog::prepare()
 	{
 		syncChrome();
-		_cardPanel->color = cardColor;
-		_actionPanel->color = cardColor;
+		_cardPanel->color = resolvedCardColor();
+		_actionPanel->color = resolvedCardColor();
 		node().setFillParent();
 	}
 
@@ -234,7 +228,10 @@ namespace hl::ui
 
 	void Dialog::layoutChrome()
 	{
-		const float topPad = closeButtonVisible ? 36.0f : kPad;
+		const float pad = theme().paddingLarge;
+		const float bandGap = theme().gap;
+		const glm::vec2 preferred = resolvedCardSize();
+		const float topPad = closeButtonVisible ? pad + kCloseSize.y : pad;
 		const bool showTitle = _title != nullptr && _title->visible;
 		const bool showActions = _actionPanel != nullptr && _actionPanel->visible;
 
@@ -268,25 +265,25 @@ namespace hl::ui
 		float gaps = 0.0f;
 		if (showTitle)
 		{
-			gaps += kGap;
+			gaps += bandGap;
 		}
 
 		if (showActions)
 		{
-			gaps += kGap;
+			gaps += bandGap;
 		}
 
-		const float chromeY = topPad + kPad + titleSize.y + actionSize.y + gaps;
-		const float minContentH = std::max(0.0f, cardSize.y - chromeY);
+		const float chromeY = topPad + pad + titleSize.y + actionSize.y + gaps;
+		const float minContentH = std::max(0.0f, preferred.y - chromeY);
 		const float contentH = std::max(minContentH, contentNatural.y);
 		const float innerW = std::max({
 			24.0f,
-			cardSize.x - kPad * 2.0f,
+			preferred.x - pad * 2.0f,
 			contentNatural.x,
 			titleSize.x,
 			actionSize.x
 		});
-		const float cardW = innerW + kPad * 2.0f;
+		const float cardW = innerW + pad * 2.0f;
 		const float cardH = chromeY + contentH;
 
 		_card->kind = Kind::Absolute;
@@ -296,25 +293,25 @@ namespace hl::ui
 		float y = topPad;
 		if (showTitle)
 		{
-			pinInCard(_title->node(), { kPad, y }, titleSize);
-			y += titleSize.y + kGap;
+			pinInCard(_title->node(), { pad, y }, titleSize);
+			y += titleSize.y + bandGap;
 		}
 		else if (_title)
 		{
-			pinInCard(_title->node(), { kPad, y }, { 0.0f, 0.0f });
+			pinInCard(_title->node(), { pad, y }, { 0.0f, 0.0f });
 		}
 
-		pinInCard(*_content, { kPad, y }, { innerW, contentH });
+		pinInCard(*_content, { pad, y }, { innerW, contentH });
 		y += contentH;
 
 		if (showActions)
 		{
-			y += kGap;
-			pinInCard(*_actionHost, { kPad, y }, { innerW, actionSize.y });
+			y += bandGap;
+			pinInCard(*_actionHost, { pad, y }, { innerW, actionSize.y });
 		}
 		else
 		{
-			pinInCard(*_actionHost, { kPad, y }, { 0.0f, 0.0f });
+			pinInCard(*_actionHost, { pad, y }, { 0.0f, 0.0f });
 		}
 
 		if (_close && _close->visible)
@@ -369,6 +366,6 @@ namespace hl::ui
 			return;
 		}
 
-		paint.fill(node().world, scrimColor);
+		paint.fill(node().world, resolvedScrimColor());
 	}
 }

@@ -35,6 +35,7 @@ namespace hl::ui::test
 		public:
 			int fills = 0;
 			int glyphBatches = 0;
+			glm::vec2 lastGlyphOrigin{ 0.0f };
 
 			void fill(const Box&, glm::vec4) override
 			{
@@ -43,9 +44,10 @@ namespace hl::ui::test
 
 			void sprite(const Box&, glm::vec4, glm::vec3) override {}
 
-			void glyphs(const std::vector<GlyphVertex>&, glm::vec2, glm::vec3) override
+			void glyphs(const std::vector<GlyphVertex>&, glm::vec2 origin, glm::vec3) override
 			{
 				++glyphBatches;
+				lastGlyphOrigin = origin;
 			}
 		};
 	}
@@ -137,5 +139,24 @@ namespace hl::ui::test
 		paintTree(*root, paint);
 		CHECK(paint.fills >= 1);
 		CHECK(paint.glyphBatches == 1);
+	}
+
+	TEST_CASE("glyphs are vertically centered in the field", "[Ui][Widget]")
+	{
+		FakeTypeface typeface;
+		auto root = std::make_unique<Node>();
+		root->setFillParent();
+		TextField field(root->addChild(), typeface);
+		field.node().setTopLeft({ 280.0f, 48.0f });
+		field.setText("Hi");
+		field.prepare();
+		layout(*root, Box{ 0.0f, 0.0f, 800.0f, 600.0f });
+
+		RecordingPaint paint;
+		field.paint(paint);
+		const auto& box = field.node().world;
+		const float pad = field.resolvedPadding();
+		const float innerH = box.size.y - pad * 2.0f;
+		CHECK(paint.lastGlyphOrigin.y == box.pos.y + pad + (innerH - 20.0f) * 0.5f);
 	}
 }

@@ -7,14 +7,13 @@ namespace hl::ui
 	Slider::Slider(Node& node) :
 		Widget(node)
 	{
-		node.intrinsicSize = glm::vec2{ 280.0f, 28.0f };
 	}
 
 	void Slider::prepare()
 	{
 		if (!node().intrinsicSize.has_value())
 		{
-			node().intrinsicSize = glm::vec2{ 280.0f, 28.0f };
+			node().intrinsicSize = glm::vec2{ theme().controlWidth, theme().controlHeight };
 		}
 	}
 
@@ -59,17 +58,17 @@ namespace hl::ui
 		const auto& box = node().world;
 		const float trackH = std::max(8.0f, box.size.y * 0.28f);
 		const float trackY = box.pos.y + (box.size.y - trackH) * 0.5f;
-		paint.fill(Box{ box.pos.x, trackY, box.size.x, trackH }, trackColor);
+		paint.fill(Box{ box.pos.x, trackY, box.size.x, trackH }, resolvedTrackColor());
 
 		const float filled = box.size.x * _value;
 		if (filled > 0.0f)
 		{
-			paint.fill(Box{ box.pos.x, trackY, filled, trackH }, fillColor);
+			paint.fill(Box{ box.pos.x, trackY, filled, trackH }, resolvedFillColor());
 		}
 
 		const float thumb = std::min(box.size.y, 22.0f);
 		const float thumbX = box.pos.x + filled - thumb * 0.5f;
 		const float thumbY = box.pos.y + (box.size.y - thumb) * 0.5f;
-		paint.fill(Box{ thumbX, thumbY, thumb, thumb }, thumbColor);
+		paint.fill(Box{ thumbX, thumbY, thumb, thumb }, resolvedThumbColor());
 	}
 }

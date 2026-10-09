@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -39,13 +40,24 @@ namespace hl::ui
 		void pick(int index);
 		void setHighlight(int index);
 
-		float maxListHeight = 140.0f;
-		float itemHeight = 28.0f;
-		glm::vec3 color{ 0.95f, 0.95f, 0.97f };
-		glm::vec3 fillColor{ 0.18f, 0.19f, 0.24f };
-		glm::vec3 hoverColor{ 0.32f, 0.34f, 0.42f };
-		glm::vec3 highlightColor{ 1.0f, 0.5f, 0.0f };
+		std::optional<float> maxListHeight;
+		std::optional<float> itemHeight;
+		std::optional<glm::vec3> color;
+		std::optional<glm::vec3> fillColor;
+		std::optional<glm::vec3> hoverColor;
+		std::optional<glm::vec3> highlightColor;
 		std::function<void(int)> onChanged;
+
+		float resolvedMaxListHeight() const
+		{
+			return resolve(maxListHeight, 5.0f * theme().controlHeight);
+		}
+
+		float resolvedItemHeight() const { return resolve(itemHeight, theme().controlHeight); }
+		glm::vec3 resolvedColor() const { return resolve(color, theme().foreground); }
+		glm::vec3 resolvedFillColor() const { return resolve(fillColor, theme().surface); }
+		glm::vec3 resolvedHoverColor() const { return resolve(hoverColor, theme().hover); }
+		glm::vec3 resolvedHighlightColor() const { return resolve(highlightColor, theme().accent); }
 
 		int highlightIndex() const { return _highlight; }
 

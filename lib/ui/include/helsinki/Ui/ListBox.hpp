@@ -4,6 +4,7 @@
 #include <helsinki/Ui/Widget.hpp>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace hl::ui
@@ -31,8 +32,13 @@ namespace hl::ui
 		void prepare() override;
 		void afterLayout() override;
 
-		glm::vec2 viewportSize{ 280.0f, 240.0f };
+		std::optional<glm::vec2> viewportSize;
 		bool scrollBars = true;
+
+		glm::vec2 resolvedViewportSize() const
+		{
+			return resolve(viewportSize, theme().viewportSize);
+		}
 
 	private:
 		void clearRows();

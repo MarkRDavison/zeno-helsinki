@@ -2,6 +2,8 @@
 
 #include <helsinki/Ui/Widget.hpp>
 
+#include <optional>
+
 namespace hl::ui
 {
 	class ProgressBar : public Widget
@@ -15,8 +17,11 @@ namespace hl::ui
 		void setValue(float value);
 		float value() const { return _value; }
 
-		glm::vec3 trackColor{ 0.25f, 0.28f, 0.32f };
-		glm::vec3 fillColor{ 1.0f, 0.5f, 0.0f };
+		std::optional<glm::vec3> trackColor;
+		std::optional<glm::vec3> fillColor;
+
+		glm::vec3 resolvedTrackColor() const { return resolve(trackColor, theme().well); }
+		glm::vec3 resolvedFillColor() const { return resolve(fillColor, theme().accent); }
 
 	private:
 		float _value = 0.0f;

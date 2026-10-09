@@ -658,7 +658,7 @@ namespace hur
         hl::ui::prepareTree(*_layoutRoot);
         pinHudCorner(_score->node(), true, { 16.0f, 16.0f });
         pinHudCorner(_lives->node(), false, { 16.0f, 16.0f });
-        pinHudCorner(_bombs->node(), false, { 16.0f, 16.0f + _lives->iconSize.y + 8.0f });
+        pinHudCorner(_bombs->node(), false, { 16.0f, 16.0f + _lives->resolvedIconSize().y + 8.0f });
 
         const glm::vec2 statusSize = _status->node().intrinsicSize.value_or(glm::vec2{ 0.0f, 0.0f });
         _status->node().setTopCenter(statusSize);

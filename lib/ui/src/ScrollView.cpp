@@ -6,7 +6,6 @@ namespace hl::ui
 {
 	namespace
 	{
-		constexpr float kBarWidth = 10.0f;
 		constexpr float kMinThumb = 16.0f;
 
 		class VerticalBar : public Widget
@@ -42,7 +41,7 @@ namespace hl::ui
 					return;
 				}
 
-				node().intrinsicSize = glm::vec2{ kBarWidth, _owner->viewport().world.size.y };
+				node().intrinsicSize = glm::vec2{ theme().padding, _owner->viewport().world.size.y };
 			}
 
 			EventResult handle(const Pointer& pointer) override
@@ -78,8 +77,8 @@ namespace hl::ui
 					return;
 				}
 
-				paint.fill(node().world, _owner->trackColor);
-				paint.fill(thumbBox(), _owner->thumbColor);
+				paint.fill(node().world, _owner->resolvedTrackColor());
+				paint.fill(thumbBox(), _owner->resolvedThumbColor());
 			}
 
 		private:
@@ -109,7 +108,7 @@ namespace hl::ui
 		_viewport = &node.addChild();
 		_viewport->kind = Kind::Column;
 		_viewport->clip = true;
-		_viewport->gap = 8.0f;
+		_viewport->gap = theme().gap;
 
 		_vBar = std::make_unique<VerticalBar>(node.addChild(), *this);
 		_vBar->visible = false;
@@ -124,7 +123,7 @@ namespace hl::ui
 	{
 		if (!node().intrinsicSize.has_value())
 		{
-			node().intrinsicSize = viewportSize;
+			node().intrinsicSize = resolve(viewportSize, theme().viewportSize);
 		}
 	}
 
@@ -135,7 +134,7 @@ namespace hl::ui
 
 	glm::vec2 ScrollView::resolvedViewportSize() const
 	{
-		glm::vec2 size = viewportSize;
+		glm::vec2 size = resolve(viewportSize, theme().viewportSize);
 		if (node().world.size.x > size.x)
 		{
 			size.x = node().world.size.x;
@@ -156,7 +155,7 @@ namespace hl::ui
 		const bool overflow = scrollBars && contentH > size.y + 0.5f;
 		_vBar->visible = overflow;
 
-		const float barW = overflow ? kBarWidth : 0.0f;
+		const float barW = overflow ? theme().padding : 0.0f;
 		_viewport->setTopLeft({ std::max(1.0f, size.x - barW), size.y });
 		_viewport->relative = { 0.0f, 0.0f };
 		_vBar->node().setTopLeft({ barW, size.y });

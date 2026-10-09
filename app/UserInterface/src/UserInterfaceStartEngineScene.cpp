@@ -370,8 +370,8 @@ namespace ui
 
 		auto padPage = [](hl::ui::Node& page)
 		{
-			page.padding = hl::ui::Edges::all(16.0f);
-			page.gap = 16.0f;
+			page.padding = hl::ui::Edges::all(hl::ui::theme().paddingLarge);
+			page.gap = hl::ui::theme().paddingLarge;
 			page.crossAlign = hl::ui::Align::Start;
 		};
 
@@ -422,23 +422,19 @@ namespace ui
 			padPage(page);
 			_fieldLabel = std::make_unique<hl::ui::Label>(page.addChild(), *_typeface);
 			_fieldLabel->setText("type here");
-			_fieldLabel->color = { 0.75f, 0.76f, 0.80f };
+			_fieldLabel->color = hl::ui::theme().muted;
 			_textField = std::make_unique<hl::ui::TextField>(page.addChild(), *_typeface);
 			_actionButton = std::make_unique<hl::ui::Button>(page.addChild(), *_typeface);
-			_actionButton->setText("click / enter");
-			_actionButton->tooltip = "click or press Enter";
-			_actionButton->color = { 0.95f, 0.95f, 0.97f };
-			_actionButton->onClick = [this]()
-			{
-				if (_actionButton->color.x > 0.7f)
-				{
-					_actionButton->color = { 1.0f, 0.5f, 0.0f };
-				}
-				else
-				{
-					_actionButton->color = { 0.95f, 0.95f, 0.97f };
-				}
-			};
+			_actionButton->setText("default");
+			_actionButton->tooltip = "Default: border, background, foreground";
+			_filledButton = std::make_unique<hl::ui::Button>(page.addChild(), *_typeface);
+			_filledButton->variant = hl::ui::ButtonVariant::Filled;
+			_filledButton->setText("filled");
+			_filledButton->tooltip = "Filled: background and border match";
+			_textButton = std::make_unique<hl::ui::Button>(page.addChild(), *_typeface);
+			_textButton->variant = hl::ui::ButtonVariant::Text;
+			_textButton->setText("text");
+			_textButton->tooltip = "Text: label only";
 		}
 
 		{
@@ -534,7 +530,7 @@ namespace ui
 			padPage(imagePage);
 			_imageLabel = std::make_unique<hl::ui::Label>(imagePage.addChild(), *_typeface);
 			_imageLabel->setText("sprite");
-			_imageLabel->color = { 0.75f, 0.76f, 0.80f };
+			_imageLabel->color = hl::ui::theme().muted;
 			_image = std::make_unique<hl::ui::Image>(imagePage.addChild());
 			_image->size = { 128.0f, 128.0f };
 			_image->uvRect = { 0.0f, 0.0f, 1.0f, 1.0f };
@@ -546,16 +542,14 @@ namespace ui
 			padPage(dialogPage);
 			_openConfirm = std::make_unique<hl::ui::Button>(dialogPage.addChild(), *_typeface);
 			_openConfirm->setText("Confirm");
-			_openConfirm->color = { 0.95f, 0.95f, 0.97f };
 			_openCustom = std::make_unique<hl::ui::Button>(dialogPage.addChild(), *_typeface);
 			_openCustom->setText("Custom");
-			_openCustom->color = { 0.95f, 0.95f, 0.97f };
 
 			auto flagLabel = [&](const char* text)
 			{
 				auto label = std::make_unique<hl::ui::Label>(dialogPage.addChild(), *_typeface);
 				label->setText(text);
-				label->color = { 0.75f, 0.76f, 0.80f };
+				label->color = hl::ui::theme().muted;
 				_widgets.push_back(std::move(label));
 			};
 
@@ -599,7 +593,7 @@ namespace ui
 			_confirmDialog->setTitle("Confirm");
 			_dialogBody = std::make_unique<hl::ui::Label>(_confirmDialog->content().addChild(), *_typeface);
 			_dialogBody->setText("Discard changes?");
-			_dialogBody->color = { 0.75f, 0.76f, 0.80f };
+			_dialogBody->color = hl::ui::theme().muted;
 			_confirmDialog->addAction("Cancel", [this]()
 			{
 				_confirmDialog->setOpen(false);
@@ -639,7 +633,7 @@ namespace ui
 			{
 				auto label = std::make_unique<hl::ui::Label>(row, *_typeface);
 				label->setText(name);
-				label->color = { 0.75f, 0.76f, 0.80f };
+				label->color = hl::ui::theme().muted;
 				return label;
 			});
 		}
@@ -648,7 +642,7 @@ namespace ui
 		{
 			auto label = std::make_unique<hl::ui::Label>(_tabs->addPage(title).addChild(), *_typeface);
 			label->setText(title);
-			label->color = { 0.75f, 0.76f, 0.80f };
+			label->color = hl::ui::theme().muted;
 			_widgets.push_back(std::move(label));
 		}
 

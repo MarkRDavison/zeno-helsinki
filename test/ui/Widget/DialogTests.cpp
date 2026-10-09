@@ -107,7 +107,7 @@ namespace hl::ui::test
 		const auto& title = dialog.card().children()[0]->world;
 		const auto& content = dialog.content().world;
 		const auto& actions = dialog.card().children()[2]->world;
-		CHECK(title.pos.y == card.pos.y + 36.0f);
+		CHECK(title.pos.y == card.pos.y + 40.0f);
 		CHECK(actions.pos.y + actions.size.y == card.pos.y + card.size.y - 16.0f);
 		CHECK(content.pos.y == title.pos.y + title.size.y + 8.0f);
 		CHECK(content.pos.y + content.size.y + 8.0f == actions.pos.y);

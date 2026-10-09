@@ -29,8 +29,11 @@ namespace hl::ui
 		std::optional<float> delay;
 		std::optional<float> offset;
 		std::optional<TooltipPlacement> placement;
-		glm::vec3 fillColor{ 0.12f, 0.13f, 0.16f };
-		glm::vec3 color{ 0.95f, 0.95f, 0.97f };
+		std::optional<glm::vec3> fillColor;
+		std::optional<glm::vec3> color;
+
+		glm::vec3 resolvedFillColor() const { return resolve(fillColor, theme().background); }
+		glm::vec3 resolvedColor() const { return resolve(color, theme().foreground); }
 
 	private:
 		Node* treeRoot();

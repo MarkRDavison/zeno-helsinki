@@ -15,7 +15,7 @@ namespace hl::ui
 	{
 		if (!node().intrinsicSize.has_value())
 		{
-			node().intrinsicSize = viewportSize;
+			node().intrinsicSize = resolvedViewportSize();
 		}
 
 		syncScroll();
@@ -40,10 +40,11 @@ namespace hl::ui
 
 	void ListBox::syncScroll()
 	{
-		_scroll->viewportSize = viewportSize;
+		const glm::vec2 preferred = resolvedViewportSize();
+		_scroll->viewportSize = preferred;
 		_scroll->scrollBars = scrollBars;
 
-		glm::vec2 size = viewportSize;
+		glm::vec2 size = preferred;
 		if (node().world.size.x > size.x)
 		{
 			size.x = node().world.size.x;
