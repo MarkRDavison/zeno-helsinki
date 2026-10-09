@@ -1,19 +1,26 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/WorkerData.hpp>
 #include <Scripting/CommandBindings.hpp>
+#include <Scripting/PrototypeBindings.hpp>
 #include <Scripting/ResourceBindings.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/WorkerCreationService.hpp>
+#include <Services/WorkerPrototypeService.hpp>
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
+#include <helsinki/System/glm.hpp>
 #include <string>
 
+using drl::applyPrototypesTable;
 using drl::applyResourcesTable;
 using drl::bindGameCommands;
+using drl::bindPrototypeUserTypes;
 using drl::EconomyResourceService;
 using drl::GameCommandService;
 using drl::JobCreationService;
@@ -23,6 +30,9 @@ using drl::ResourceMoney;
 using drl::ResourceOre;
 using drl::TerrainAlterationService;
 using drl::TerrainData;
+using drl::WorkerCreationService;
+using drl::WorkerData;
+using drl::WorkerPrototypeService;
 using hl::scripting::LuaError;
 using hl::scripting::LuaState;
 
@@ -37,17 +47,21 @@ namespace
 
 	struct Fixture
 	{
+		LuaState lua;
 		TerrainData data;
 		JobData jobData;
 		TerrainAlterationService terrain{ data };
 		EconomyResourceService economy;
 		JobPrototypeService prototypes;
 		JobCreationService jobCreation{ jobData, prototypes, terrain };
-		GameCommandService commands{ terrain, economy, jobCreation };
-		LuaState lua;
+		WorkerData workerData;
+		WorkerPrototypeService workerPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
 
 		Fixture()
 		{
+			bindPrototypeUserTypes(lua.raw());
 			bindGameCommands(lua.raw(), commands);
 		}
 	};
@@ -94,10 +108,14 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	Fixture f;
 	f.lua.runFile(shipped("Scripts/Base/resources.lua"));
 	applyResourcesTable(f.lua.raw()["resources"], f.economy);
+	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
+	applyPrototypesTable(f.lua.raw()["prototypes"], f.prototypes, f.workerPrototypes);
 	f.lua.runFile(shipped("Scripts/Base/initializeCommands.lua"));
 
 	REQUIRE(f.data.shaftLevel == 1);
 	REQUIRE(f.terrain.isTileDugOut(0, 1));
 	REQUIRE(f.terrain.isTileDugOut(1, 7));
 	REQUIRE(f.economy.get(ResourceMoney) == 500);
+	REQUIRE(f.workerData.workers.size() == 1);
+	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
 }

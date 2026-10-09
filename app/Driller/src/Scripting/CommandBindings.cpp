@@ -14,6 +14,7 @@ namespace drl
 				{ "DiggingTile", CommandContext::DiggingTile },
 				{ "AddResource", CommandContext::AddResource },
 				{ "CreatingJob", CommandContext::CreatingJob },
+				{ "CreatingWorker", CommandContext::CreatingWorker },
 				{ "Undefined", CommandContext::Undefined },
 			});
 
@@ -50,13 +51,20 @@ namespace drl
 			"level", &CreateJob::level,
 			"column", &CreateJob::column);
 
+		lua.new_usertype<CreateWorker>(
+			"CreateWorkerEvent",
+			sol::constructors<CreateWorker(std::string, glm::vec2)>(),
+			"prototypeName", &CreateWorker::prototypeName,
+			"coordinates", &CreateWorker::coordinates);
+
 		lua.new_usertype<GameCommand>(
 			"GameCommand",
 			sol::constructors<
 				GameCommand(const DigShaft&, CommandContext, CommandSource),
 				GameCommand(const DigTile&, CommandContext, CommandSource),
 				GameCommand(const AddResource&, CommandContext, CommandSource),
-				GameCommand(const CreateJob&, CommandContext, CommandSource)
+				GameCommand(const CreateJob&, CommandContext, CommandSource),
+				GameCommand(const CreateWorker&, CommandContext, CommandSource)
 			>());
 
 		lua.set_function(

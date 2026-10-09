@@ -2,11 +2,14 @@
 #include <Core/Game.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/WorkerData.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/WorkerCreationService.hpp>
+#include <Services/WorkerPrototypeService.hpp>
 
 using drl::EconomyResourceService;
 using drl::Game;
@@ -17,6 +20,9 @@ using drl::JobData;
 using drl::JobPrototypeService;
 using drl::TerrainAlterationService;
 using drl::TerrainData;
+using drl::WorkerCreationService;
+using drl::WorkerData;
+using drl::WorkerPrototypeService;
 
 namespace
 {
@@ -41,7 +47,10 @@ namespace
 		EconomyResourceService economy;
 		JobPrototypeService prototypes;
 		JobCreationService jobCreation{ jobData, prototypes, terrain };
-		GameCommandService commands{ terrain, economy, jobCreation };
+		WorkerData workerData;
+		WorkerPrototypeService workerPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
 	};
 }
 

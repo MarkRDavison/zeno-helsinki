@@ -3,10 +3,12 @@
 namespace drl
 {
 
-	JobInstance JobPrototypeService::createInstance(long long prototypeId)
+	JobInstance JobPrototypeService::createInstanceFromPrototype(const JobPrototype& prototype)
 	{
-		JobInstance job = PrototypeService::createInstance(prototypeId);
-		job.work = getPrototype(prototypeId).work;
+		JobInstance job{};
+		job.id = allocateInstanceId();
+		job.prototypeId = prototypeIdFromName(prototype.name);
+		job.work = prototype.work;
 		return job;
 	}
 

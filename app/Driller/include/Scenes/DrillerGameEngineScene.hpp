@@ -7,6 +7,7 @@
 #include <Core/Session.hpp>
 #include <Views/JobView.hpp>
 #include <Views/TerrainView.hpp>
+#include <Views/WorkerView.hpp>
 
 namespace drl
 {
@@ -33,6 +34,7 @@ namespace drl
 		Session& _session;
 		TerrainView _terrainView;
 		JobView _jobView;
+		WorkerView _workerView;
 		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;
 	};
 

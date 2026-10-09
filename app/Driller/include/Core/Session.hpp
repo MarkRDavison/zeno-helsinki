@@ -7,6 +7,8 @@
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/WorkerCreationService.hpp>
+#include <Services/WorkerPrototypeService.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <string>
 
@@ -35,6 +37,10 @@ namespace drl
 		const JobPrototypeService& jobPrototypeService() const { return _jobPrototypeService; }
 		JobCreationService& jobCreationService() { return _jobCreationService; }
 		const JobCreationService& jobCreationService() const { return _jobCreationService; }
+		WorkerPrototypeService& workerPrototypeService() { return _workerPrototypeService; }
+		const WorkerPrototypeService& workerPrototypeService() const { return _workerPrototypeService; }
+		WorkerCreationService& workerCreationService() { return _workerCreationService; }
+		const WorkerCreationService& workerCreationService() const { return _workerCreationService; }
 		GameCommandService& commandService() { return _commandService; }
 		const GameCommandService& commandService() const { return _commandService; }
 		Game& game() { return _game; }
@@ -48,14 +54,16 @@ namespace drl
 		bool _skipToGameplay{ false };
 		float _simSpeed{ 1.0f };
 		std::string _dataDirectory;
+		hl::scripting::LuaState _lua;
 		GameData _gameData;
 		TerrainAlterationService _terrainService;
 		EconomyResourceService _economyService;
 		JobPrototypeService _jobPrototypeService;
 		JobCreationService _jobCreationService;
+		WorkerPrototypeService _workerPrototypeService;
+		WorkerCreationService _workerCreationService;
 		GameCommandService _commandService;
 		Game _game;
-		hl::scripting::LuaState _lua;
 	};
 
 }

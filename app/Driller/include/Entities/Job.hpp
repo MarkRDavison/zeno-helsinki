@@ -3,6 +3,7 @@
 #include <helsinki/System/Utils/String.hpp>
 #include <helsinki/System/glm.hpp>
 #include <functional>
+#include <sol/sol.hpp>
 #include <string>
 #include <string_view>
 
@@ -34,7 +35,7 @@ namespace drl
 		std::string name;
 		bool repeats{ false };
 		float work{ 0.0f };
-		std::function<void(JobInstance)> onComplete;
+		sol::protected_function onComplete;
 		std::function<glm::vec2(const JobInstance&, const JobPrototype&)> calculateOffset;
 	};
 

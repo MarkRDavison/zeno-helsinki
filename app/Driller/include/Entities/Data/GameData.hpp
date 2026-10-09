@@ -2,6 +2,7 @@
 
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/WorkerData.hpp>
 
 namespace drl
 {
@@ -10,6 +11,7 @@ namespace drl
 	{
 		TerrainData terrain;
 		JobData job;
+		WorkerData worker;
 	};
 
 }

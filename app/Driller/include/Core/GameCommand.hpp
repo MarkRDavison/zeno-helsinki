@@ -1,5 +1,6 @@
 #pragma once
 
+#include <helsinki/System/glm.hpp>
 #include <string>
 #include <utility>
 #include <variant>
@@ -20,6 +21,7 @@ namespace drl
 		DiggingTile,
 		AddResource,
 		CreatingJob,
+		CreatingWorker,
 		Undefined
 	};
 
@@ -70,11 +72,24 @@ namespace drl
 		int column{ 0 };
 	};
 
+	struct CreateWorker
+	{
+		CreateWorker() = default;
+		CreateWorker(std::string prototypeName, glm::vec2 coordinates)
+			: prototypeName(std::move(prototypeName))
+			, coordinates(coordinates)
+		{
+		}
+
+		std::string prototypeName;
+		glm::vec2 coordinates{ 0.0f, 0.0f };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
 		CommandContext context{ CommandContext::Undefined };
-		std::variant<DigShaft, DigTile, AddResource, CreateJob> payload;
+		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker> payload;
 
 		GameCommand() = default;
 
@@ -106,6 +121,13 @@ namespace drl
 		{
 		}
 
+		GameCommand(const CreateWorker& event, CommandContext commandContext, CommandSource commandSource)
+			: source(commandSource)
+			, context(commandContext)
+			, payload(event)
+		{
+		}
+
 		static GameCommand digShaft(int level, CommandSource commandSource, CommandContext commandContext)
 		{
 			return GameCommand(DigShaft{ level }, commandContext, commandSource);
@@ -131,6 +153,18 @@ namespace drl
 		{
 			return GameCommand(
 				CreateJob{ std::move(prototypeName), std::move(additionalPrototypeName), level, column },
+				commandContext,
+				commandSource);
+		}
+
+		static GameCommand createWorker(
+			std::string prototypeName,
+			glm::vec2 coordinates,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(
+				CreateWorker{ std::move(prototypeName), coordinates },
 				commandContext,
 				commandSource);
 		}

@@ -46,6 +46,11 @@ namespace drl
 			session.gameData().job,
 			static_cast<float>(engineConfig.Width) * 0.5f,
 			kTileSize,
+			kTileSize),
+		_workerView(
+			session.gameData().worker,
+			static_cast<float>(engineConfig.Width) * 0.5f,
+			kTileSize,
 			kTileSize)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
@@ -176,6 +181,7 @@ namespace drl
 				cell(0, 1),
 				cell(0, 2),
 				cell(2, 0),
+				cell(1, 1),
 			};
 			for (uint32_t i = 0; i < static_cast<uint32_t>(frameData.size()); ++i)
 			{
@@ -251,6 +257,7 @@ namespace drl
 			{
 				_terrainView.draw(pdd);
 				_jobView.draw(pdd);
+				_workerView.draw(pdd);
 			});
 	}
 

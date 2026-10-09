@@ -2,11 +2,15 @@
 #include <Core/GameCommand.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/WorkerData.hpp>
+#include <Entities/Worker.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/WorkerCreationService.hpp>
+#include <Services/WorkerPrototypeService.hpp>
 
 using drl::CommandContext;
 using drl::CommandSource;
@@ -21,6 +25,11 @@ using drl::ResourceMoney;
 using drl::ResourceOre;
 using drl::TerrainAlterationService;
 using drl::TerrainData;
+using drl::WorkerCreationService;
+using drl::WorkerData;
+using drl::WorkerPrototype;
+using drl::WorkerPrototypeService;
+using drl::WorkerState;
 
 namespace
 {
@@ -32,7 +41,10 @@ namespace
 		EconomyResourceService economy;
 		JobPrototypeService prototypes;
 		JobCreationService jobCreation{ jobData, prototypes, terrain };
-		GameCommandService commands{ terrain, economy, jobCreation };
+		WorkerData workerData;
+		WorkerPrototypeService workerPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
 
 		Fixture()
 		{
@@ -172,4 +184,31 @@ TEST_CASE("CreateJob unknown prototype refuses", "[drl][GameCommandService]")
 		CommandContext::CreatingJob)));
 	REQUIRE(f.jobData.jobs.empty());
 	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
+}
+
+TEST_CASE("CreateWorker succeeds at coordinates", "[drl][GameCommandService]")
+{
+	Fixture f;
+	WorkerPrototype prototype{};
+	prototype.name = "Worker_Builder";
+	f.workerPrototypes.registerPrototype(std::move(prototype));
+	REQUIRE(f.commands.execute(GameCommand::createWorker(
+		"Worker_Builder",
+		glm::vec2(1.0f, 0.0f),
+		CommandSource::Setup,
+		CommandContext::CreatingWorker)));
+	REQUIRE(f.workerData.workers.size() == 1);
+	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
+	REQUIRE(f.workerData.workers[0].state == WorkerState::Idle);
+}
+
+TEST_CASE("CreateWorker unknown prototype refuses", "[drl][GameCommandService]")
+{
+	Fixture f;
+	REQUIRE_FALSE(f.commands.execute(GameCommand::createWorker(
+		"Worker_Builder",
+		glm::vec2(1.0f, 0.0f),
+		CommandSource::Setup,
+		CommandContext::CreatingWorker)));
+	REQUIRE(f.workerData.workers.empty());
 }

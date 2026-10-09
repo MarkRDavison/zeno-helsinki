@@ -1,6 +1,7 @@
 #include <Core/Session.hpp>
 #include <Core/LoadError.hpp>
 #include <Scripting/CommandBindings.hpp>
+#include <Scripting/PrototypeBindings.hpp>
 #include <Scripting/ResourceBindings.hpp>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
@@ -12,9 +13,11 @@ namespace drl
 	Session::Session()
 		: _terrainService(_gameData.terrain)
 		, _jobCreationService(_gameData.job, _jobPrototypeService, _terrainService)
-		, _commandService(_terrainService, _economyService, _jobCreationService)
+		, _workerCreationService(_gameData.worker, _workerPrototypeService)
+		, _commandService(_terrainService, _economyService, _jobCreationService, _workerCreationService)
 		, _game(_commandService, _simSpeed)
 	{
+		bindPrototypeUserTypes(_lua.raw());
 		bindGameCommands(_lua.raw(), _commandService);
 	}
 
@@ -70,6 +73,9 @@ namespace drl
 		_lua.runFile((scriptsDirectory / "resources.lua").string());
 
 		applyResourcesTable(_lua.raw()["resources"], _economyService);
+
+		_lua.runFile((scriptsDirectory / "prototypes.lua").string());
+		applyPrototypesTable(_lua.raw()["prototypes"], _jobPrototypeService, _workerPrototypeService);
 
 		_lua.runFile((scriptsDirectory / "initializeCommands.lua").string());
 

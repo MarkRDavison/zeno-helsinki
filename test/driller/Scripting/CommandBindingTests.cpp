@@ -1,17 +1,22 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/WorkerData.hpp>
 #include <Scripting/CommandBindings.hpp>
+#include <Scripting/PrototypeBindings.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/WorkerCreationService.hpp>
+#include <Services/WorkerPrototypeService.hpp>
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <helsinki/System/glm.hpp>
 
 using drl::bindGameCommands;
+using drl::bindPrototypeUserTypes;
 using drl::EconomyResourceService;
 using drl::GameCommandService;
 using drl::JobCreationService;
@@ -22,6 +27,10 @@ using drl::ResourceMoney;
 using drl::ResourceOre;
 using drl::TerrainAlterationService;
 using drl::TerrainData;
+using drl::WorkerCreationService;
+using drl::WorkerData;
+using drl::WorkerPrototype;
+using drl::WorkerPrototypeService;
 using hl::scripting::LuaError;
 using hl::scripting::LuaState;
 
@@ -29,14 +38,17 @@ namespace
 {
 	struct Fixture
 	{
+		LuaState lua;
 		TerrainData data;
 		JobData jobData;
 		TerrainAlterationService terrain{ data };
 		EconomyResourceService economy;
 		JobPrototypeService prototypes;
 		JobCreationService jobCreation{ jobData, prototypes, terrain };
-		GameCommandService commands{ terrain, economy, jobCreation };
-		LuaState lua;
+		WorkerData workerData;
+		WorkerPrototypeService workerPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
 
 		Fixture()
 		{
@@ -44,6 +56,7 @@ namespace
 			economy.set(ResourceOre, 0);
 			economy.setMax(ResourceMoney, -1);
 			economy.set(ResourceMoney, 500);
+			bindPrototypeUserTypes(lua.raw());
 			bindGameCommands(lua.raw(), commands);
 		}
 	};
@@ -114,6 +127,19 @@ TEST_CASE("cmd CreateJobEvent uses level then column", "[drl][Scripting]")
 	REQUIRE(f.jobData.jobs.size() == 1);
 	REQUIRE(f.jobData.jobs[0].tile == glm::ivec2(1, 0));
 	REQUIRE(f.terrain.getTile(0, 1).jobReserved);
+}
+
+TEST_CASE("cmd CreateWorkerEvent uses vec2f coordinates", "[drl][Scripting]")
+{
+	Fixture f;
+	WorkerPrototype prototype{};
+	prototype.name = "Worker_Builder";
+	f.workerPrototypes.registerPrototype(std::move(prototype));
+	f.lua.runString(R"(
+		cmd(GameCommand.new(CreateWorkerEvent.new("Worker_Builder", vec2f.new(1.0, 0.0)), GameCommandContext.CreatingWorker, GameCommandSource.Setup))
+	)");
+	REQUIRE(f.workerData.workers.size() == 1);
+	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
 }
 
 TEST_CASE("bad chunk throws LuaError", "[drl][Scripting]")

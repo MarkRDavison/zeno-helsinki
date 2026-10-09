@@ -62,11 +62,15 @@ namespace drl
 
 		TInstance createInstance(long long prototypeId) override
 		{
-			(void)getPrototype(prototypeId);
-			TInstance instance{};
-			instance.id = _nextInstanceId++;
-			instance.prototypeId = prototypeId;
-			return instance;
+			return createInstanceFromPrototype(getPrototype(prototypeId));
+		}
+
+	protected:
+		virtual TInstance createInstanceFromPrototype(const TPrototype& prototype) = 0;
+
+		long long allocateInstanceId()
+		{
+			return _nextInstanceId++;
 		}
 
 	private:

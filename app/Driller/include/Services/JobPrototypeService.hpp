@@ -10,8 +10,8 @@ namespace drl
 
 	class JobPrototypeService : public PrototypeService<JobInstance, JobPrototype>
 	{
-	public:
-		JobInstance createInstance(long long prototypeId) override;
+	protected:
+		JobInstance createInstanceFromPrototype(const JobPrototype& prototype) override;
 	};
 
 }
