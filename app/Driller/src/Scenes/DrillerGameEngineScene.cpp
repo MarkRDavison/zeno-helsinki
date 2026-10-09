@@ -20,10 +20,12 @@
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
+#include <Views/DirtFillPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
+#include <algorithm>
 #include <format>
 #include <stdexcept>
 
@@ -127,6 +129,54 @@ namespace drl
 					{
 						hl::PipelineInfo
 						{
+							.name = "dirt_fill_pipeline",
+							.shaderVert = _engineConfig.RootPath + "/data/shaders/dirt_fill.vert",
+							.shaderFrag = _engineConfig.RootPath + "/data/shaders/dirt_fill.frag",
+							.descriptorSets =
+							{
+								hl::DescriptorSetInfo
+								{
+									.bindings =
+									{
+										hl::DescriptorBinding
+										{
+											.binding = 0,
+											.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+											.stage = "VERTEX",
+											.resource = cameraMatrixResourceId,
+											.count = MAX_CAMERAS
+										},
+										hl::DescriptorBinding
+										{
+											.binding = 1,
+											.type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+											.stage = "VERTEX&FRAGMENT",
+											.resource = "spritesheet_frame_ssbo"
+										},
+										hl::DescriptorBinding
+										{
+											.binding = 2,
+											.type = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+											.stage = "FRAGMENT",
+											.resource = "tile_sprite_sheet"
+										}
+									}
+								}
+							},
+							.depthState =
+							{
+								.writeEnable = true,
+								.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
+							},
+							.rasterState =
+							{
+								.cullMode = VK_CULL_MODE_NONE
+							},
+							.enableBlending = true,
+							.pushConstantSize = sizeof(DirtFillPushConstantObject)
+						},
+						hl::PipelineInfo
+						{
 							.name = "sprite_pipeline",
 							.shaderVert = _engineConfig.RootPath + "/data/shaders/sprites.vert",
 							.shaderFrag = std::string(hl::RendererShaderRoot) + "/sprites.frag",
@@ -148,7 +198,7 @@ namespace drl
 										{
 											.binding = 1,
 											.type = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
-											.stage = "VERTEX",
+											.stage = "VERTEX&FRAGMENT",
 											.resource = "spritesheet_frame_ssbo"
 										},
 										hl::DescriptorBinding
@@ -362,6 +412,24 @@ namespace drl
 			resourceManager,
 			renderpasses);
 
+		registerPipelineDraw(
+			"dirt_fill_pipeline",
+			[this](hl::PipelineDrawData& pdd) -> void
+			{
+				const auto framebuffer = _engine.getInputManager().getFramebufferSize();
+				const glm::vec2 topLeft = _gameCamera->screenToWorld({ 0.0f, 0.0f });
+				const glm::vec2 bottomRight = _gameCamera->screenToWorld(framebuffer);
+				const float pad = _terrainView.tileSize();
+				const glm::vec2 aabbMin{
+					std::min(topLeft.x, bottomRight.x) - pad,
+					_terrainView.originY()
+				};
+				const glm::vec2 aabbMax{
+					std::max(topLeft.x, bottomRight.x) + pad,
+					std::max(topLeft.y, bottomRight.y) + pad
+				};
+				_terrainView.drawFill(pdd, aabbMin, aabbMax);
+			});
 		registerPipelineDraw(
 			"sprite_pipeline",
 			[this](hl::PipelineDrawData& pdd) -> void

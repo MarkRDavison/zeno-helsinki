@@ -1,4 +1,5 @@
 #include <Views/TerrainView.hpp>
+#include <Views/DirtFillPushConstantObject.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/System/glm.hpp>
 
@@ -7,7 +8,6 @@ namespace drl
 
 	namespace
 	{
-		constexpr int kFrameUndug = 0;
 		constexpr int kFrameDug = 1;
 		constexpr int kFrameLadder = 16;
 		constexpr int kFrameDrill = 32;
@@ -58,6 +58,44 @@ namespace drl
 		vkCmdDraw(pdd.commandBuffer, 6, 1, 0, 0);
 	}
 
+	void TerrainView::drawFill(hl::PipelineDrawData& pdd, glm::vec2 aabbMin, glm::vec2 aabbMax) const
+	{
+		if (aabbMax.x <= aabbMin.x || aabbMax.y <= aabbMin.y)
+		{
+			return;
+		}
+
+		const DirtFillPushConstantObject pc
+		{
+			.origin = glm::vec2(_originX, _originY),
+			.tileSize = _tileSize,
+			.cameraIndex = _cameraIndex,
+			.aabbMin = aabbMin,
+			.aabbMax = aabbMax
+		};
+
+		vkCmdPushConstants(
+			pdd.commandBuffer,
+			pdd.pipeline->getPipelineLayout(),
+			VK_SHADER_STAGE_VERTEX_BIT,
+			0,
+			sizeof(DirtFillPushConstantObject),
+			&pc);
+
+		auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
+		vkCmdBindDescriptorSets(
+			pdd.commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pdd.pipeline->getPipelineLayout(),
+			0,
+			1,
+			&descriptorSet,
+			0,
+			nullptr);
+
+		vkCmdDraw(pdd.commandBuffer, 6, 1, 0, 0);
+	}
+
 	void TerrainView::draw(hl::PipelineDrawData& pdd) const
 	{
 		for (int i = 0; i < static_cast<int>(_terrainData.rows.size()); ++i)
@@ -66,12 +104,20 @@ namespace drl
 
 			for (int j = 1; j <= static_cast<int>(row.leftTiles.size()); ++j)
 			{
-				drawCell(pdd, -j, i, row.leftTiles[static_cast<unsigned>(j - 1)].dugOut ? kFrameDug : kFrameUndug);
+				if (!row.leftTiles[static_cast<unsigned>(j - 1)].dugOut)
+				{
+					continue;
+				}
+				drawCell(pdd, -j, i, kFrameDug);
 			}
 
 			for (int k = 1; k <= static_cast<int>(row.rightTiles.size()); ++k)
 			{
-				drawCell(pdd, k, i, row.rightTiles[static_cast<unsigned>(k - 1)].dugOut ? kFrameDug : kFrameUndug);
+				if (!row.rightTiles[static_cast<unsigned>(k - 1)].dugOut)
+				{
+					continue;
+				}
+				drawCell(pdd, k, i, kFrameDug);
 			}
 		}
 

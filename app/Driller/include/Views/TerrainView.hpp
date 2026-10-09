@@ -2,6 +2,7 @@
 
 #include <Entities/Data/TerrainData.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
+#include <helsinki/System/glm.hpp>
 
 namespace drl
 {
@@ -11,6 +12,7 @@ namespace drl
 	public:
 		TerrainView(const TerrainData& terrainData, float originX, float originY, float tileSize);
 
+		void drawFill(hl::PipelineDrawData& pdd, glm::vec2 aabbMin, glm::vec2 aabbMax) const;
 		void draw(hl::PipelineDrawData& pdd) const;
 		void setCameraIndex(int cameraIndex) { _cameraIndex = cameraIndex; }
 
