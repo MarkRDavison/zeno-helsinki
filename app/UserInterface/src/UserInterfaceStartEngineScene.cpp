@@ -530,6 +530,18 @@ namespace ui
 		}
 
 		{
+			hl::ui::Node& imagePage = _tabs->addPage("Image");
+			padPage(imagePage);
+			_imageLabel = std::make_unique<hl::ui::Label>(imagePage.addChild(), *_typeface);
+			_imageLabel->setText("sprite");
+			_imageLabel->color = { 0.75f, 0.76f, 0.80f };
+			_image = std::make_unique<hl::ui::Image>(imagePage.addChild());
+			_image->size = { 128.0f, 128.0f };
+			_image->uvRect = { 0.0f, 0.0f, 1.0f, 1.0f };
+			_image->color = { 1.0f, 1.0f, 1.0f };
+		}
+
+		{
 			hl::ui::Node& listPage = _tabs->addPage("List");
 			_listBox = std::make_unique<hl::ui::ListBox>(listPage.addChild());
 			std::vector<std::string> names;

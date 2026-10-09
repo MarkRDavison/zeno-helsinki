@@ -7,6 +7,7 @@
 #include <helsinki/Ui/Button.hpp>
 #include <helsinki/Ui/Dropdown.hpp>
 #include <helsinki/Ui/Checkbox.hpp>
+#include <helsinki/Ui/Image.hpp>
 #include <helsinki/Ui/Label.hpp>
 #include <helsinki/Ui/Layout/Layout.hpp>
 #include <helsinki/Ui/ListBox.hpp>
@@ -70,6 +71,8 @@ namespace ui
 		std::unique_ptr<hl::ui::Tabs> _tabs;
 		std::unique_ptr<hl::ui::ScrollView> _scrollView;
 		std::unique_ptr<hl::ui::ListBox> _listBox;
+		std::unique_ptr<hl::ui::Image> _image;
+		std::unique_ptr<hl::ui::Label> _imageLabel;
 		std::unique_ptr<hl::ui::Label> _fieldLabel;
 		std::unique_ptr<hl::ui::TextField> _textField;
 		std::unique_ptr<hl::ui::Button> _actionButton;
