@@ -7,10 +7,12 @@ namespace drl
 
 	DrillerGameEngineScene::DrillerGameEngineScene(
 		hl::Engine& engine,
-		const hl::EngineConfiguration& engineConfig
+		const hl::EngineConfiguration& engineConfig,
+		Session& session
 	) :
 		EngineScene(engine),
-		_engineConfig(engineConfig)
+		_engineConfig(engineConfig),
+		_session(session)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
 	}
