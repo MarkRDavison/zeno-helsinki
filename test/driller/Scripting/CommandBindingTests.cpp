@@ -1,9 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
+#include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Scripting/CommandBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
+#include <Services/BuildingPlacementService.hpp>
+#include <Services/BuildingPrototypeService.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
@@ -11,6 +14,7 @@
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
+#include <Services/WorkerRecruitmentService.hpp>
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <helsinki/System/glm.hpp>
@@ -32,7 +36,11 @@ struct Fixture
 		WorkerData workerData;
 		WorkerPrototypeService workerPrototypes;
 		WorkerCreationService workerCreation{ workerData, workerPrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
+		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
+		BuildingData buildingData;
+		BuildingPrototypeService buildingPrototypes;
+		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings };
 
 		Fixture()
 		{
@@ -123,6 +131,24 @@ TEST_CASE("cmd CreateWorkerEvent uses vec2f coordinates", "[drl][Scripting]")
 	)");
 	REQUIRE(f.workerData.workers.size() == 1);
 	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
+}
+
+TEST_CASE("cmd PlaceBuildingEvent places bunk from name", "[drl][Scripting]")
+{
+	Fixture f;
+	BuildingPrototype bunk{};
+	bunk.name = "Building_Bunk";
+	bunk.size = glm::ivec2(2, 1);
+	f.buildingPrototypes.registerPrototype(std::move(bunk));
+	f.lua.runString(R"(
+		cmd(GameCommand.new(DigShaftEvent.new(0), GameCommandContext.DiggingShaft, GameCommandSource.Setup))
+		cmd(GameCommand.new(DigTileEvent.new(0, 1), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+		cmd(GameCommand.new(DigTileEvent.new(0, 2), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+		cmd(GameCommand.new(PlaceBuildingEvent.new("Building_Bunk", 0, 1), GameCommandContext.PlacingBuilding, GameCommandSource.Setup))
+	)");
+	REQUIRE(f.buildingData.buildings.size() == 1);
+	REQUIRE(f.buildingData.buildings[0].coordinates == glm::ivec2(1, 0));
+	REQUIRE(f.terrain.getTile(0, 1).hasBuilding);
 }
 
 TEST_CASE("bad chunk throws LuaError", "[drl][Scripting]")

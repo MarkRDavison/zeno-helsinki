@@ -7,7 +7,7 @@ namespace drl
 
 	namespace
 	{
-		constexpr int kFrameJobMarker = 4;
+		constexpr int kFrameJobMarker = 2;
 		constexpr float kMarkerSize = 16.0f;
 	}
 

@@ -4,6 +4,7 @@
 #include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <helsinki/System/glm.hpp>
+#include <string>
 
 namespace drl
 {
@@ -17,6 +18,11 @@ namespace drl
 			JobPrototypeId prototypeId,
 			JobPrototypeId additionalPrototypeId,
 			glm::ivec2 coordinates) = 0;
+		virtual bool createJob(
+			const std::string& prototypeName,
+			glm::vec2 offset,
+			glm::ivec2 coordinates) = 0;
+		virtual bool isNamedPrototypeRegistered(const std::string& prototypeName) const = 0;
 	};
 
 	inline IJobCreationService::~IJobCreationService() = default;
@@ -34,6 +40,11 @@ namespace drl
 			JobPrototypeId prototypeId,
 			JobPrototypeId additionalPrototypeId,
 			glm::ivec2 coordinates) override;
+		bool createJob(
+			const std::string& prototypeName,
+			glm::vec2 offset,
+			glm::ivec2 coordinates) override;
+		bool isNamedPrototypeRegistered(const std::string& prototypeName) const override;
 
 	private:
 		JobData& _jobData;

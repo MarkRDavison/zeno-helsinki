@@ -1,9 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Core/GameCommand.hpp>
+#include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Entities/Worker.hpp>
+#include <Services/BuildingPlacementService.hpp>
+#include <Services/BuildingPrototypeService.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
@@ -11,6 +14,7 @@
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
+#include <Services/WorkerRecruitmentService.hpp>
 
 namespace drl
 {
@@ -28,7 +32,11 @@ struct Fixture
 		WorkerData workerData;
 		WorkerPrototypeService workerPrototypes;
 		WorkerCreationService workerCreation{ workerData, workerPrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
+		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
+		BuildingData buildingData;
+		BuildingPrototypeService buildingPrototypes;
+		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings };
 
 		Fixture()
 		{
@@ -194,6 +202,36 @@ TEST_CASE("CreateWorker unknown prototype refuses", "[drl][GameCommandService]")
 		CommandSource::Setup,
 		CommandContext::CreatingWorker)));
 	REQUIRE(f.workerData.workers.empty());
+}
+
+TEST_CASE("setup PlaceBuilding bunk succeeds then unknown fails", "[drl][GameCommandService]")
+{
+	Fixture f;
+	BuildingPrototype bunk{};
+	bunk.name = "Building_Bunk";
+	bunk.size = glm::ivec2(2, 1);
+	f.buildingPrototypes.registerPrototype(std::move(bunk));
+	REQUIRE(f.terrain.digShaft(0));
+	REQUIRE(f.terrain.digTile(0, 1));
+	REQUIRE(f.terrain.digTile(0, 2));
+
+	REQUIRE(f.commands.execute(GameCommand::placeBuilding(
+		"Building_Bunk",
+		0,
+		1,
+		CommandSource::Setup,
+		CommandContext::PlacingBuilding)));
+	REQUIRE(f.buildingData.buildings.size() == 1);
+	REQUIRE(f.buildingData.buildings[0].coordinates == glm::ivec2(1, 0));
+	REQUIRE(f.terrain.getTile(0, 1).hasBuilding);
+	REQUIRE(f.terrain.getTile(0, 2).hasBuilding);
+
+	REQUIRE_FALSE(f.commands.execute(GameCommand::placeBuilding(
+		"Building_Missing",
+		0,
+		3,
+		CommandSource::Setup,
+		CommandContext::PlacingBuilding)));
 }
 
 }

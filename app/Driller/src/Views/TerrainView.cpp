@@ -9,8 +9,8 @@ namespace drl
 	{
 		constexpr int kFrameUndug = 0;
 		constexpr int kFrameDug = 1;
-		constexpr int kFrameLadder = 2;
-		constexpr int kFrameDrill = 3;
+		constexpr int kFrameLadder = 16;
+		constexpr int kFrameDrill = 32;
 	}
 
 	TerrainView::TerrainView(const TerrainData& terrainData, float originX, float originY, float tileSize)

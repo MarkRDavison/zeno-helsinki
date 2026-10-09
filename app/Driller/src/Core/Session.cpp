@@ -14,10 +14,22 @@ namespace drl
 		: _terrainService(_gameData.terrain)
 		, _jobCreationService(_gameData.job, _jobPrototypeService, _terrainService)
 		, _workerCreationService(_gameData.worker, _workerPrototypeService)
+		, _workerRecruitmentService(_gameData.worker, _workerPrototypeService)
 		, _workerMovementService(_gameData.worker, _gameData.job, _terrainService)
 		, _workerJobUpdateService(_gameData.worker, _gameData.job, _terrainService, _jobPrototypeService)
 		, _jobAllocationService(_gameData.job, _gameData.worker, _terrainService, _workerPrototypeService)
-		, _commandService(_terrainService, _economyService, _jobCreationService, _workerCreationService)
+		, _buildingPlacementService(
+			_gameData.building,
+			_terrainService,
+			_workerRecruitmentService,
+			_jobCreationService,
+			_buildingPrototypeService)
+		, _commandService(
+			_terrainService,
+			_economyService,
+			_jobCreationService,
+			_workerCreationService,
+			_buildingPlacementService)
 		, _game(_commandService, _simSpeed)
 	{
 		bindPrototypeUserTypes(_lua.raw());
@@ -81,7 +93,11 @@ namespace drl
 		applyResourcesTable(_lua.raw()["resources"], _economyService);
 
 		_lua.runFile((scriptsDirectory / "prototypes.lua").string());
-		applyPrototypesTable(_lua.raw()["prototypes"], _jobPrototypeService, _workerPrototypeService);
+		applyPrototypesTable(
+			_lua.raw()["prototypes"],
+			_jobPrototypeService,
+			_workerPrototypeService,
+			_buildingPrototypeService);
 
 		_lua.runFile((scriptsDirectory / "initializeCommands.lua").string());
 

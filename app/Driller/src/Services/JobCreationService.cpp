@@ -48,4 +48,27 @@ namespace drl
 		return true;
 	}
 
+	bool JobCreationService::createJob(
+		const std::string& prototypeName,
+		glm::vec2 offset,
+		glm::ivec2 coordinates)
+	{
+		const JobPrototypeId prototypeId = jobPrototypeIdFromName(prototypeName);
+		if (!_jobPrototypeService.isPrototypeRegistered(prototypeId))
+		{
+			return false;
+		}
+
+		JobInstance& job = _jobData.jobs.emplace_back(_jobPrototypeService.createInstance(prototypeId));
+		job.additionalPrototypeId = 0;
+		job.tile = coordinates;
+		job.offset = offset;
+		return true;
+	}
+
+	bool JobCreationService::isNamedPrototypeRegistered(const std::string& prototypeName) const
+	{
+		return _jobPrototypeService.isPrototypeRegistered(jobPrototypeIdFromName(prototypeName));
+	}
+
 }

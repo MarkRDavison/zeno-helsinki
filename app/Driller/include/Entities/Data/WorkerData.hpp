@@ -3,6 +3,7 @@
 #include <Entities/Worker.hpp>
 #include <algorithm>
 #include <stdexcept>
+#include <unordered_map>
 #include <vector>
 
 namespace drl
@@ -11,6 +12,7 @@ namespace drl
 	struct WorkerData
 	{
 		std::vector<WorkerInstance> workers;
+		std::unordered_map<WorkerPrototypeId, int> requiredWorkers;
 
 		WorkerInstance& getWorker(WorkerId workerId)
 		{

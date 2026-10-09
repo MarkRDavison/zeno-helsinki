@@ -100,11 +100,13 @@ namespace drl
 	void applyPrototypesTable(
 		const sol::object& prototypesObject,
 		IJobPrototypeService& jobs,
-		IWorkerPrototypeService& workers)
+		IWorkerPrototypeService& workers,
+		IBuildingPrototypeService& buildings)
 	{
 		const sol::table prototypes = requireTable(prototypesObject, "prototypes");
 		const sol::table jobRows = requireTable(prototypes["jobs"], "prototypes.jobs");
 		const sol::table workerRows = requireTable(prototypes["workers"], "prototypes.workers");
+		const sol::table buildingRows = requireTable(prototypes["buildings"], "prototypes.buildings");
 
 		for (const auto& kvp : jobRows)
 		{
@@ -166,6 +168,80 @@ namespace drl
 			}
 
 			workers.registerPrototype(std::move(prototype));
+		}
+
+		for (const auto& kvp : buildingRows)
+		{
+			if (!kvp.second.is<sol::table>())
+			{
+				continue;
+			}
+
+			const sol::table row = kvp.second.as<sol::table>();
+			sol::optional<std::string> name = row["name"];
+			const sol::table size = requireTable(row["size"], "building size");
+			const sol::table texture = requireTable(row["texture"], "building texture");
+			sol::optional<int> sizeX = size["x"];
+			sol::optional<int> sizeY = size["y"];
+			sol::optional<int> textureX = texture["x"];
+			sol::optional<int> textureY = texture["y"];
+			if (!name || name->empty() || !sizeX || !sizeY || !textureX || !textureY)
+			{
+				throw hl::scripting::LuaError("building prototype is missing name, size, or texture");
+			}
+
+			BuildingPrototype prototype{};
+			prototype.name = *name;
+			prototype.size = glm::ivec2(*sizeX, *sizeY);
+			prototype.texture = glm::ivec2(*textureX, *textureY);
+
+			const sol::object workersObject = row["workers"];
+			if (workersObject.is<sol::table>())
+			{
+				const sol::table workerRowsForBuilding = workersObject.as<sol::table>();
+				for (const auto& workerKvp : workerRowsForBuilding)
+				{
+					if (!workerKvp.second.is<sol::table>())
+					{
+						continue;
+					}
+
+					const sol::table workerRow = workerKvp.second.as<sol::table>();
+					sol::optional<std::string> workerName = workerRow["name"];
+					sol::optional<int> amount = workerRow["amount"];
+					if (!workerName || workerName->empty() || !amount)
+					{
+						throw hl::scripting::LuaError("building worker entry is missing name or amount");
+					}
+					prototype.requiredWorkers[*workerName] = *amount;
+				}
+			}
+
+			const sol::object jobsObjectForBuilding = row["jobs"];
+			if (jobsObjectForBuilding.is<sol::table>())
+			{
+				const sol::table jobRowsForBuilding = jobsObjectForBuilding.as<sol::table>();
+				for (const auto& jobKvp : jobRowsForBuilding)
+				{
+					if (!jobKvp.second.is<sol::table>())
+					{
+						continue;
+					}
+
+					const sol::table jobRow = jobKvp.second.as<sol::table>();
+					sol::optional<std::string> jobName = jobRow["name"];
+					const sol::table offset = requireTable(jobRow["offset"], "building job offset");
+					sol::optional<float> offsetX = offset["x"];
+					sol::optional<float> offsetY = offset["y"];
+					if (!jobName || jobName->empty() || !offsetX || !offsetY)
+					{
+						throw hl::scripting::LuaError("building job entry is missing name or offset");
+					}
+					prototype.providedJobs.emplace_back(*jobName, glm::vec2(*offsetX, *offsetY));
+				}
+			}
+
+			buildings.registerPrototype(std::move(prototype));
 		}
 	}
 

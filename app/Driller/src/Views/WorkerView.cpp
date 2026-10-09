@@ -7,7 +7,7 @@ namespace drl
 
 	namespace
 	{
-		constexpr int kFrameWorker = 5;
+		constexpr int kFrameWorker = 17;
 		constexpr float kWorkerWidthTiles = 0.4f;
 		constexpr float kWorkerHeightTiles = 0.8f;
 	}

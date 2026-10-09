@@ -1,10 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
+#include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Scripting/CommandBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Scripting/ResourceBindings.hpp>
+#include <Services/BuildingPlacementService.hpp>
+#include <Services/BuildingPrototypeService.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
@@ -12,6 +15,7 @@
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
+#include <Services/WorkerRecruitmentService.hpp>
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <helsinki/System/glm.hpp>
@@ -41,7 +45,11 @@ constexpr const char* kResourcesChunk = R"(
 		WorkerData workerData;
 		WorkerPrototypeService workerPrototypes;
 		WorkerCreationService workerCreation{ workerData, workerPrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
+		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
+		BuildingData buildingData;
+		BuildingPrototypeService buildingPrototypes;
+		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings };
 
 		Fixture()
 		{
@@ -92,7 +100,7 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	f.lua.runFile(shipped("Scripts/Base/resources.lua"));
 	applyResourcesTable(f.lua.raw()["resources"], f.economy);
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-	applyPrototypesTable(f.lua.raw()["prototypes"], f.prototypes, f.workerPrototypes);
+	applyPrototypesTable(f.lua.raw()["prototypes"], f.prototypes, f.workerPrototypes, f.buildingPrototypes);
 	f.lua.runFile(shipped("Scripts/Base/initializeCommands.lua"));
 
 	REQUIRE(f.data.shaftLevel == 1);
@@ -101,6 +109,10 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	REQUIRE(f.economy.get(ResourceMoney) == 500);
 	REQUIRE(f.workerData.workers.size() == 1);
 	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
+	REQUIRE(f.terrain.getTile(0, 1).hasBuilding);
+	REQUIRE(f.terrain.getTile(0, 2).hasBuilding);
+	REQUIRE(f.buildingData.buildings.size() == 1);
+	REQUIRE(f.buildingData.buildings[0].coordinates == glm::ivec2(1, 0));
 }
 
 }

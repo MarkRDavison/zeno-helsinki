@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Core/GameCommand.hpp>
+#include <Services/BuildingPlacementService.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/TerrainAlterationService.hpp>
@@ -30,7 +31,8 @@ namespace drl
 			ITerrainAlterationService& terrain,
 			IEconomyResourceService& economy,
 			IJobCreationService& jobs,
-			IWorkerCreationService& workers);
+			IWorkerCreationService& workers,
+			IBuildingPlacementService& buildings);
 		~GameCommandService() override = default;
 
 		bool execute(const GameCommand& command) override;
@@ -43,11 +45,13 @@ namespace drl
 		bool handleAddResource(const AddResource& event);
 		bool handleCreateJob(const CreateJob& event);
 		bool handleCreateWorker(const CreateWorker& event);
+		bool handlePlaceBuilding(const PlaceBuilding& event);
 
 		ITerrainAlterationService& _terrain;
 		IEconomyResourceService& _economy;
 		IJobCreationService& _jobs;
 		IWorkerCreationService& _workers;
+		IBuildingPlacementService& _buildings;
 		long long _tick{ 0 };
 	};
 

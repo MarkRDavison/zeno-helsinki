@@ -43,6 +43,12 @@ namespace drl
 			static_cast<float>(engineConfig.Width) * 0.5f,
 			kTileSize,
 			kTileSize),
+		_buildingView(
+			session.gameData().building,
+			session.buildingPrototypeService(),
+			static_cast<float>(engineConfig.Width) * 0.5f,
+			kTileSize,
+			kTileSize),
 		_jobView(
 			session.gameData().job,
 			static_cast<float>(engineConfig.Width) * 0.5f,
@@ -165,33 +171,26 @@ namespace drl
 			"spritesheet_frame_ssbo",
 			resourceContext,
 			sizeof(hl::FrameDataStorageBufferObject),
-			128);
+			256);
 
 		{
 			auto ssbo = _spriteSheetSSBOResourceHandle.Get();
-			const auto cell = [&](int col, int row)
+			constexpr int kAtlasColumns = 16;
+			constexpr int kAtlasRows = 16;
+			for (int row = 0; row < kAtlasRows; ++row)
 			{
-				return hl::FrameDataStorageBufferObject
+				for (int col = 0; col < kAtlasColumns; ++col)
 				{
-					.uvRect = glm::vec4(
-						kTileSize * static_cast<float>(col),
-						kTileSize * static_cast<float>(row),
-						kTileSize * static_cast<float>(col + 1),
-						kTileSize * static_cast<float>(row + 1)) / kTexSize
-				};
-			};
-			std::vector<hl::FrameDataStorageBufferObject> frameData
-			{
-				cell(0, 0),
-				cell(1, 0),
-				cell(0, 1),
-				cell(0, 2),
-				cell(2, 0),
-				cell(1, 1),
-			};
-			for (uint32_t i = 0; i < static_cast<uint32_t>(frameData.size()); ++i)
-			{
-				ssbo->writeToBuffer(&frameData[i], i);
+					hl::FrameDataStorageBufferObject frame
+					{
+						.uvRect = glm::vec4(
+							kTileSize * static_cast<float>(col),
+							kTileSize * static_cast<float>(row),
+							kTileSize * static_cast<float>(col + 1),
+							kTileSize * static_cast<float>(row + 1)) / kTexSize
+					};
+					ssbo->writeToBuffer(&frame, static_cast<uint32_t>(col + row * kAtlasColumns));
+				}
 			}
 		}
 
@@ -262,6 +261,7 @@ namespace drl
 			[this](hl::PipelineDrawData& pdd) -> void
 			{
 				_terrainView.draw(pdd);
+				_buildingView.draw(pdd);
 				_jobView.draw(pdd);
 				_workerView.draw(pdd);
 			});

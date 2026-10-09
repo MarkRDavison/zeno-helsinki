@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Services/PrototypeService.hpp>
 #include <helsinki/System/glm.hpp>
 #include <string>
 #include <utility>
@@ -22,6 +23,7 @@ namespace drl
 		AddResource,
 		CreatingJob,
 		CreatingWorker,
+		PlacingBuilding,
 		Undefined
 	};
 
@@ -85,11 +87,33 @@ namespace drl
 		glm::vec2 coordinates{ 0.0f, 0.0f };
 	};
 
+	struct PlaceBuilding
+	{
+		PlaceBuilding() = default;
+		PlaceBuilding(std::string prototypeName, int level, int column)
+			: prototypeId(prototypeIdFromName(prototypeName))
+			, level(level)
+			, column(column)
+		{
+		}
+
+		PlaceBuilding(long long prototypeId, int level, int column)
+			: prototypeId(prototypeId)
+			, level(level)
+			, column(column)
+		{
+		}
+
+		long long prototypeId{ 0 };
+		int level{ 0 };
+		int column{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
 		CommandContext context{ CommandContext::Undefined };
-		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker> payload;
+		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker, PlaceBuilding> payload;
 
 		GameCommand() = default;
 
@@ -122,6 +146,13 @@ namespace drl
 		}
 
 		GameCommand(const CreateWorker& event, CommandContext commandContext, CommandSource commandSource)
+			: source(commandSource)
+			, context(commandContext)
+			, payload(event)
+		{
+		}
+
+		GameCommand(const PlaceBuilding& event, CommandContext commandContext, CommandSource commandSource)
 			: source(commandSource)
 			, context(commandContext)
 			, payload(event)
@@ -165,6 +196,32 @@ namespace drl
 		{
 			return GameCommand(
 				CreateWorker{ std::move(prototypeName), coordinates },
+				commandContext,
+				commandSource);
+		}
+
+		static GameCommand placeBuilding(
+			std::string prototypeName,
+			int level,
+			int column,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(
+				PlaceBuilding{ std::move(prototypeName), level, column },
+				commandContext,
+				commandSource);
+		}
+
+		static GameCommand placeBuilding(
+			long long prototypeId,
+			int level,
+			int column,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(
+				PlaceBuilding{ prototypeId, level, column },
 				commandContext,
 				commandSource);
 		}

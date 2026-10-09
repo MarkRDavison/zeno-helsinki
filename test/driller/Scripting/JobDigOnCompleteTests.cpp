@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Core/GameCommand.hpp>
+#include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/WorkerData.hpp>
@@ -7,6 +8,8 @@
 #include <Entities/Worker.hpp>
 #include <Scripting/CommandBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
+#include <Services/BuildingPlacementService.hpp>
+#include <Services/BuildingPrototypeService.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
@@ -15,6 +18,7 @@
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerJobUpdateService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
+#include <Services/WorkerRecruitmentService.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <string>
 
@@ -39,7 +43,11 @@ namespace JobDigOnCompleteTests
 		WorkerData workerData;
 		WorkerPrototypeService workerPrototypes;
 		WorkerCreationService workerCreation{ workerData, workerPrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation };
+		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
+		BuildingData buildingData;
+		BuildingPrototypeService buildingPrototypes;
+		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings };
 		WorkerJobUpdateService jobUpdate{ workerData, jobData, terrain, jobPrototypes };
 
 		explicit Fixture(hl::scripting::LuaState& lua)
@@ -51,7 +59,7 @@ namespace JobDigOnCompleteTests
 			bindPrototypeUserTypes(lua.raw());
 			bindGameCommands(lua.raw(), commands);
 			lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes);
+			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes, buildingPrototypes);
 		}
 	};
 

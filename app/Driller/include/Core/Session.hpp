@@ -2,6 +2,8 @@
 
 #include <Core/Game.hpp>
 #include <Entities/Data/GameData.hpp>
+#include <Services/BuildingPlacementService.hpp>
+#include <Services/BuildingPrototypeService.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/JobAllocationService.hpp>
@@ -12,6 +14,7 @@
 #include <Services/WorkerJobUpdateService.hpp>
 #include <Services/WorkerMovementService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
+#include <Services/WorkerRecruitmentService.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <string>
 
@@ -50,6 +53,8 @@ namespace drl
 		const WorkerMovementService& workerMovementService() const { return _workerMovementService; }
 		WorkerJobUpdateService& workerJobUpdateService() { return _workerJobUpdateService; }
 		const WorkerJobUpdateService& workerJobUpdateService() const { return _workerJobUpdateService; }
+		BuildingPrototypeService& buildingPrototypeService() { return _buildingPrototypeService; }
+		const BuildingPrototypeService& buildingPrototypeService() const { return _buildingPrototypeService; }
 		GameCommandService& commandService() { return _commandService; }
 		const GameCommandService& commandService() const { return _commandService; }
 		Game& game() { return _game; }
@@ -71,9 +76,12 @@ namespace drl
 		JobCreationService _jobCreationService;
 		WorkerPrototypeService _workerPrototypeService;
 		WorkerCreationService _workerCreationService;
+		WorkerRecruitmentService _workerRecruitmentService;
 		WorkerMovementService _workerMovementService;
 		WorkerJobUpdateService _workerJobUpdateService;
 		JobAllocationService _jobAllocationService;
+		BuildingPrototypeService _buildingPrototypeService;
+		BuildingPlacementService _buildingPlacementService;
 		GameCommandService _commandService;
 		Game _game;
 	};
