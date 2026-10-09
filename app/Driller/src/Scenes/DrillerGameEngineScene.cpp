@@ -1,9 +1,12 @@
 #include <Scenes/DrillerGameEngineScene.hpp>
+#include <Core/BuildJobClick.hpp>
 #include <Core/DigJobClick.hpp>
 #include <Core/GameCommand.hpp>
 #include <Core/TileCoordinates.hpp>
+#include <Services/UiService.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <GLFW/glfw3.h>
+#include <helsinki/Engine/Input/InputManager.hpp>
 #include <helsinki/Engine/ECS/Components/TextComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
@@ -271,6 +274,24 @@ namespace drl
 	{
 		_session.game().update(delta);
 
+		struct SceneUiInput : IUiInput
+		{
+			explicit SceneUiInput(const hl::InputManager& inputManager)
+				: inputManager(inputManager)
+			{
+			}
+
+			bool isKeyDown(int key) const override
+			{
+				return inputManager.isKeyDown(key);
+			}
+
+			const hl::InputManager& inputManager;
+		};
+
+		SceneUiInput uiInput(_engine.getInputManager());
+		_session.uiService().update(uiInput);
+
 		auto& economy = _session.economyService();
 		_scene.getEntity("hud_ore")->GetComponent<hl::TextComponent>()->setString(
 			_engine.getTextSystem(),
@@ -293,6 +314,27 @@ namespace drl
 			_terrainView.originX(),
 			_terrainView.originY(),
 			_terrainView.tileSize());
+
+		if (_session.uiService().getCurrentState() == UiState::PlacingBuilding)
+		{
+			if (tile.y >= 0 && tile.x != 0)
+			{
+				enqueueBuildJob(
+					_session.commandService(),
+					_session.terrainService(),
+					tile.y,
+					tile.x,
+					_session.uiService().getActiveBuildingType());
+				const bool shiftRange =
+					_engine.getInputManager().isKeyDown(GLFW_KEY_LEFT_SHIFT)
+					|| _engine.getInputManager().isKeyDown(GLFW_KEY_RIGHT_SHIFT);
+				if (!shiftRange)
+				{
+					_session.uiService().clearActiveBuilding();
+				}
+			}
+			return;
+		}
 
 		if (tile.y < 0)
 		{

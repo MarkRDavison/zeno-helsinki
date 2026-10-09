@@ -24,6 +24,7 @@ namespace drl
 			_workerRecruitmentService,
 			_jobCreationService,
 			_buildingPrototypeService)
+		, _uiService(_buildingPrototypeService)
 		, _commandService(
 			_terrainService,
 			_economyService,
