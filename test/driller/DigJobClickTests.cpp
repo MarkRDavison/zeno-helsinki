@@ -4,6 +4,7 @@
 #include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Entities/Job.hpp>
 #include <Services/BuildingPlacementService.hpp>
@@ -12,6 +13,8 @@
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
+#include <Services/ShuttleCreationService.hpp>
+#include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
@@ -37,7 +40,10 @@ namespace DigJobClickTests
 		BuildingData buildingData;
 		BuildingPrototypeService buildingPrototypes;
 		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings };
+		ShuttleData shuttleData;
+		ShuttlePrototypeService shuttlePrototypes;
+		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation };
 
 		Fixture()
 		{

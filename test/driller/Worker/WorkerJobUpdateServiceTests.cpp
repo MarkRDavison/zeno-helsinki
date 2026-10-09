@@ -7,6 +7,7 @@
 #include <Scripting/PrototypeBindings.hpp>
 #include <Services/BuildingPrototypeService.hpp>
 #include <Services/JobPrototypeService.hpp>
+#include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerJobUpdateService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
@@ -187,6 +188,7 @@ namespace WorkerJobUpdateServiceTests
 		Fixture f;
 		WorkerPrototypeService workers;
 		BuildingPrototypeService buildings;
+		ShuttlePrototypeService shuttles;
 		bindPrototypeUserTypes(lua.raw());
 		lua.runString(R"(
 	prototypes = {
@@ -201,10 +203,11 @@ namespace WorkerJobUpdateServiceTests
 			}
 		},
 		workers = {},
-		buildings = {}
+		buildings = {},
+		shuttles = {}
 	}
 	)", "onComplete-error");
-		applyPrototypesTable(lua.raw()["prototypes"], f.jobPrototypes, workers, buildings);
+		applyPrototypesTable(lua.raw()["prototypes"], f.jobPrototypes, workers, buildings, shuttles);
 		f.reserveTile(0, 1);
 		JobInstance& job = f.addJob(1, "Job_Dig", 1.0f, glm::ivec2(1, 0));
 		WorkerInstance& worker = f.addWorker(22, job.id);

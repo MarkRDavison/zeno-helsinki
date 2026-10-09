@@ -12,12 +12,14 @@ namespace drl
 		IEconomyResourceService& economy,
 		IJobCreationService& jobs,
 		IWorkerCreationService& workers,
-		IBuildingPlacementService& buildings)
+		IBuildingPlacementService& buildings,
+		IShuttleCreationService& shuttles)
 		: _terrain(terrain)
 		, _economy(economy)
 		, _jobs(jobs)
 		, _workers(workers)
 		, _buildings(buildings)
+		, _shuttles(shuttles)
 	{
 	}
 
@@ -50,6 +52,10 @@ namespace drl
 				else if constexpr (std::is_same_v<T, PlaceBuilding>)
 				{
 					return handlePlaceBuilding(payload);
+				}
+				else if constexpr (std::is_same_v<T, CreateShuttle>)
+				{
+					return handleCreateShuttle(payload);
 				}
 				else
 				{
@@ -118,6 +124,11 @@ namespace drl
 	bool GameCommandService::handlePlaceBuilding(const PlaceBuilding& event)
 	{
 		return _buildings.placePrototype(event.prototypeId, event.level, event.column);
+	}
+
+	bool GameCommandService::handleCreateShuttle(const CreateShuttle& event)
+	{
+		return _shuttles.createShuttle(event.prototypeId);
 	}
 
 }

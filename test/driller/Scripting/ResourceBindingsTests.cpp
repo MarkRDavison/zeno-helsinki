@@ -2,6 +2,7 @@
 #include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Scripting/CommandBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
@@ -12,6 +13,8 @@
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
+#include <Services/ShuttleCreationService.hpp>
+#include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
@@ -49,7 +52,10 @@ constexpr const char* kResourcesChunk = R"(
 		BuildingData buildingData;
 		BuildingPrototypeService buildingPrototypes;
 		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings };
+		ShuttleData shuttleData;
+		ShuttlePrototypeService shuttlePrototypes;
+		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation };
 
 		Fixture()
 		{
@@ -100,7 +106,7 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	f.lua.runFile(shipped("Scripts/Base/resources.lua"));
 	applyResourcesTable(f.lua.raw()["resources"], f.economy);
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-	applyPrototypesTable(f.lua.raw()["prototypes"], f.prototypes, f.workerPrototypes, f.buildingPrototypes);
+	applyPrototypesTable(f.lua.raw()["prototypes"], f.prototypes, f.workerPrototypes, f.buildingPrototypes, f.shuttlePrototypes);
 	f.lua.runFile(shipped("Scripts/Base/initializeCommands.lua"));
 
 	REQUIRE(f.data.shaftLevel == 1);
@@ -108,6 +114,7 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	REQUIRE(f.terrain.isTileDugOut(1, 7));
 	REQUIRE(f.economy.get(ResourceMoney) == 500);
 	REQUIRE(f.workerData.workers.size() == 1);
+	REQUIRE(f.shuttleData.shuttles.size() == 1);
 	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
 	REQUIRE(f.terrain.getTile(0, 1).hasBuilding);
 	REQUIRE(f.terrain.getTile(0, 2).hasBuilding);

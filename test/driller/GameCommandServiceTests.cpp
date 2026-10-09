@@ -3,7 +3,9 @@
 #include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/WorkerData.hpp>
+#include <Entities/Shuttle.hpp>
 #include <Entities/Worker.hpp>
 #include <Services/BuildingPlacementService.hpp>
 #include <Services/BuildingPrototypeService.hpp>
@@ -11,6 +13,8 @@
 #include <Services/GameCommandService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
+#include <Services/ShuttleCreationService.hpp>
+#include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
@@ -36,7 +40,10 @@ struct Fixture
 		BuildingData buildingData;
 		BuildingPrototypeService buildingPrototypes;
 		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings };
+		ShuttleData shuttleData;
+		ShuttlePrototypeService shuttlePrototypes;
+		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation };
 
 		Fixture()
 		{
@@ -232,6 +239,31 @@ TEST_CASE("setup PlaceBuilding bunk succeeds then unknown fails", "[drl][GameCom
 		3,
 		CommandSource::Setup,
 		CommandContext::PlacingBuilding)));
+}
+
+TEST_CASE("CreateShuttle unknown prototype refuses", "[drl][GameCommandService]")
+{
+	Fixture f;
+	REQUIRE_FALSE(f.commands.execute(GameCommand::createShuttle(
+		"Shuttle_Basic",
+		CommandSource::Setup,
+		CommandContext::CreatingShuttle)));
+	REQUIRE(f.shuttleData.shuttles.empty());
+}
+
+TEST_CASE("CreateShuttle succeeds with registered prototype", "[drl][GameCommandService]")
+{
+	Fixture f;
+	ShuttlePrototype prototype{};
+	prototype.name = "Shuttle_Basic";
+	f.shuttlePrototypes.registerPrototype(std::move(prototype));
+	REQUIRE(f.commands.execute(GameCommand::createShuttle(
+		"Shuttle_Basic",
+		CommandSource::Setup,
+		CommandContext::CreatingShuttle)));
+	REQUIRE(f.shuttleData.shuttles.size() == 1);
+	REQUIRE(f.shuttleData.shuttles[0].state == ShuttleState::Idle);
+	REQUIRE(f.shuttleData.shuttles[0].position == kShuttleStartingPosition);
 }
 
 }

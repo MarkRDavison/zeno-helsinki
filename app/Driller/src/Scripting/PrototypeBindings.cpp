@@ -101,12 +101,14 @@ namespace drl
 		const sol::object& prototypesObject,
 		IJobPrototypeService& jobs,
 		IWorkerPrototypeService& workers,
-		IBuildingPrototypeService& buildings)
+		IBuildingPrototypeService& buildings,
+		IShuttlePrototypeService& shuttles)
 	{
 		const sol::table prototypes = requireTable(prototypesObject, "prototypes");
 		const sol::table jobRows = requireTable(prototypes["jobs"], "prototypes.jobs");
 		const sol::table workerRows = requireTable(prototypes["workers"], "prototypes.workers");
 		const sol::table buildingRows = requireTable(prototypes["buildings"], "prototypes.buildings");
+		const sol::table shuttleRows = requireTable(prototypes["shuttles"], "prototypes.shuttles");
 
 		for (const auto& kvp : jobRows)
 		{
@@ -242,6 +244,60 @@ namespace drl
 			}
 
 			buildings.registerPrototype(std::move(prototype));
+		}
+
+		for (const auto& kvp : shuttleRows)
+		{
+			if (!kvp.second.is<sol::table>())
+			{
+				continue;
+			}
+
+			const sol::table row = kvp.second.as<sol::table>();
+			sol::optional<std::string> name = row["name"];
+			const sol::table size = requireTable(row["size"], "shuttle size");
+			const sol::table texture = requireTable(row["texture"], "shuttle texture");
+			sol::optional<int> sizeX = size["x"];
+			sol::optional<int> sizeY = size["y"];
+			sol::optional<int> textureX = texture["x"];
+			sol::optional<int> textureY = texture["y"];
+			sol::optional<float> idleTime = row["idleTime"];
+			sol::optional<float> loadingTime = row["loadingTime"];
+			sol::optional<float> speed = row["speed"];
+			if (!name || name->empty() || !sizeX || !sizeY || !textureX || !textureY ||
+				!idleTime || !loadingTime || !speed)
+			{
+				throw hl::scripting::LuaError(
+					"shuttle prototype is missing name, size, texture, idleTime, loadingTime, or speed");
+			}
+
+			ShuttlePrototype prototype{};
+			prototype.name = *name;
+			prototype.size = glm::ivec2(*sizeX, *sizeY);
+			prototype.texture = glm::ivec2(*textureX, *textureY);
+			prototype.idleTime = *idleTime;
+			prototype.loadingTime = *loadingTime;
+			prototype.speed = *speed;
+
+			const sol::object cargoObject = row["allowedCargo"];
+			if (cargoObject.is<sol::table>())
+			{
+				const sol::table cargoRows = cargoObject.as<sol::table>();
+				for (const auto& cargoKvp : cargoRows)
+				{
+					if (!cargoKvp.second.is<std::string>())
+					{
+						continue;
+					}
+					std::string cargoName = cargoKvp.second.as<std::string>();
+					if (!cargoName.empty())
+					{
+						prototype.allowedCargo.insert(std::move(cargoName));
+					}
+				}
+			}
+
+			shuttles.registerPrototype(std::move(prototype));
 		}
 	}
 

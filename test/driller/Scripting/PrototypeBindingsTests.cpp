@@ -6,6 +6,7 @@
 #include <Services/BuildingPrototypeService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
+#include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <helsinki/Scripting/LuaError.hpp>
@@ -27,6 +28,7 @@ struct Fixture
 		JobPrototypeService jobs;
 		WorkerPrototypeService workers;
 		BuildingPrototypeService buildings;
+		ShuttlePrototypeService shuttles;
 		JobCreationService jobCreation{ jobData, jobs, terrain };
 
 		Fixture()
@@ -44,7 +46,7 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 {
 	Fixture f;
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings);
+	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles);
 
 	const auto digId = jobPrototypeIdFromName("Job_Dig");
 	REQUIRE(f.jobs.isPrototypeRegistered(digId));
@@ -96,13 +98,23 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(refine.providedJobs[0].second == glm::vec2(0.5f, 0.0f));
 	REQUIRE(refine.providedJobs[1].first == "Job_Refine");
 	REQUIRE(refine.providedJobs[1].second == glm::vec2(2.5f, 0.0f));
+
+	const auto shuttleId = prototypeIdFromName("Shuttle_Basic");
+	REQUIRE(f.shuttles.isPrototypeRegistered(shuttleId));
+	const auto& shuttle = f.shuttles.getPrototype(shuttleId);
+	REQUIRE(shuttle.size == glm::ivec2(3, 2));
+	REQUIRE(shuttle.texture == glm::ivec2(0, 5));
+	REQUIRE(shuttle.idleTime == 25.0f);
+	REQUIRE(shuttle.loadingTime == 5.0f);
+	REQUIRE(shuttle.speed == 25.0f);
+	REQUIRE(shuttle.allowedCargo.contains("Resource_Ore"));
 }
 
 TEST_CASE("Lua calculateOffset is applied on a right-side tile", "[drl][Scripting]")
 {
 	Fixture f;
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings);
+	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles);
 	REQUIRE(f.terrain.digShaft(0));
 	f.terrain.initialiseTile(0, 1);
 	REQUIRE(f.jobCreation.createJob(jobPrototypeIdFromName("Job_Dig"), 0, glm::ivec2(1, 0)));
@@ -114,7 +126,7 @@ TEST_CASE("missing prototypes table throws LuaError", "[drl][Scripting]")
 {
 	Fixture f;
 	f.lua.runString("x = 1");
-	REQUIRE_THROWS_AS(applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings), hl::scripting::LuaError);
+	REQUIRE_THROWS_AS(applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles), hl::scripting::LuaError);
 }
 
 }

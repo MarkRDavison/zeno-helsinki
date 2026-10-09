@@ -24,6 +24,7 @@ namespace drl
 		CreatingJob,
 		CreatingWorker,
 		PlacingBuilding,
+		CreatingShuttle,
 		Undefined
 	};
 
@@ -109,11 +110,27 @@ namespace drl
 		int column{ 0 };
 	};
 
+	struct CreateShuttle
+	{
+		CreateShuttle() = default;
+		explicit CreateShuttle(std::string prototypeName)
+			: prototypeId(prototypeIdFromName(prototypeName))
+		{
+		}
+
+		explicit CreateShuttle(long long prototypeId)
+			: prototypeId(prototypeId)
+		{
+		}
+
+		long long prototypeId{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
 		CommandContext context{ CommandContext::Undefined };
-		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker, PlaceBuilding> payload;
+		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker, PlaceBuilding, CreateShuttle> payload;
 
 		GameCommand() = default;
 
@@ -153,6 +170,13 @@ namespace drl
 		}
 
 		GameCommand(const PlaceBuilding& event, CommandContext commandContext, CommandSource commandSource)
+			: source(commandSource)
+			, context(commandContext)
+			, payload(event)
+		{
+		}
+
+		GameCommand(const CreateShuttle& event, CommandContext commandContext, CommandSource commandSource)
 			: source(commandSource)
 			, context(commandContext)
 			, payload(event)
@@ -222,6 +246,28 @@ namespace drl
 		{
 			return GameCommand(
 				PlaceBuilding{ prototypeId, level, column },
+				commandContext,
+				commandSource);
+		}
+
+		static GameCommand createShuttle(
+			std::string prototypeName,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(
+				CreateShuttle{ std::move(prototypeName) },
+				commandContext,
+				commandSource);
+		}
+
+		static GameCommand createShuttle(
+			long long prototypeId,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(
+				CreateShuttle{ prototypeId },
 				commandContext,
 				commandSource);
 		}

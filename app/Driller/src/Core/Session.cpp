@@ -24,17 +24,26 @@ namespace drl
 			_workerRecruitmentService,
 			_jobCreationService,
 			_buildingPrototypeService)
+		, _shuttleCreationService(_gameData.shuttle, _shuttlePrototypeService)
+		, _shuttleScheduleService(
+			_gameData.shuttle,
+			_workerRecruitmentService,
+			_workerCreationService,
+			_shuttlePrototypeService,
+			_economyService)
 		, _uiService(_buildingPrototypeService)
 		, _commandService(
 			_terrainService,
 			_economyService,
 			_jobCreationService,
 			_workerCreationService,
-			_buildingPlacementService)
+			_buildingPlacementService,
+			_shuttleCreationService)
 		, _game(_commandService, _simSpeed)
 	{
 		bindPrototypeUserTypes(_lua.raw());
 		bindGameCommands(_lua.raw(), _commandService);
+		_game.addTickService(_shuttleScheduleService);
 		_game.addTickService(_workerMovementService);
 		_game.addTickService(_workerJobUpdateService);
 		_game.addTickService(_jobAllocationService);
@@ -98,7 +107,8 @@ namespace drl
 			_lua.raw()["prototypes"],
 			_jobPrototypeService,
 			_workerPrototypeService,
-			_buildingPrototypeService);
+			_buildingPrototypeService,
+			_shuttlePrototypeService);
 
 		_lua.runFile((scriptsDirectory / "initializeCommands.lua").string());
 

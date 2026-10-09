@@ -3,6 +3,7 @@
 #include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Entities/Job.hpp>
 #include <Entities/Worker.hpp>
@@ -15,6 +16,8 @@
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
 #include <Services/PrototypeService.hpp>
+#include <Services/ShuttleCreationService.hpp>
+#include <Services/ShuttlePrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerJobUpdateService.hpp>
@@ -48,7 +51,10 @@ namespace JobBuildBuildingOnCompleteTests
 		BuildingData buildingData;
 		BuildingPrototypeService buildingPrototypes;
 		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings };
+		ShuttleData shuttleData;
+		ShuttlePrototypeService shuttlePrototypes;
+		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, shuttleCreation };
 		WorkerJobUpdateService jobUpdate{ workerData, jobData, terrain, jobPrototypes };
 
 		explicit Fixture(hl::scripting::LuaState& lua)
@@ -60,7 +66,7 @@ namespace JobBuildBuildingOnCompleteTests
 			bindPrototypeUserTypes(lua.raw());
 			bindGameCommands(lua.raw(), commands);
 			lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes, buildingPrototypes);
+			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes, buildingPrototypes, shuttlePrototypes);
 		}
 	};
 

@@ -61,6 +61,12 @@ namespace drl
 			session.gameData().worker,
 			static_cast<float>(engineConfig.Width) * 0.5f,
 			kTileSize,
+			kTileSize),
+		_shuttleView(
+			session.gameData().shuttle,
+			session.shuttlePrototypeService(),
+			static_cast<float>(engineConfig.Width) * 0.5f,
+			kTileSize,
 			kTileSize)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
@@ -267,6 +273,7 @@ namespace drl
 				_buildingView.draw(pdd);
 				_jobView.draw(pdd);
 				_workerView.draw(pdd);
+				_shuttleView.draw(pdd);
 			});
 	}
 

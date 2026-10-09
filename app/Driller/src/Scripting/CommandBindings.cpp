@@ -16,6 +16,7 @@ namespace drl
 				{ "CreatingJob", CommandContext::CreatingJob },
 				{ "CreatingWorker", CommandContext::CreatingWorker },
 				{ "PlacingBuilding", CommandContext::PlacingBuilding },
+				{ "CreatingShuttle", CommandContext::CreatingShuttle },
 				{ "Undefined", CommandContext::Undefined },
 			});
 
@@ -65,6 +66,11 @@ namespace drl
 			"level", &PlaceBuilding::level,
 			"column", &PlaceBuilding::column);
 
+		lua.new_usertype<CreateShuttle>(
+			"CreateShuttleEvent",
+			sol::constructors<CreateShuttle(std::string), CreateShuttle(long long)>(),
+			"prototypeId", &CreateShuttle::prototypeId);
+
 		lua.new_usertype<GameCommand>(
 			"GameCommand",
 			sol::constructors<
@@ -73,7 +79,8 @@ namespace drl
 				GameCommand(const AddResource&, CommandContext, CommandSource),
 				GameCommand(const CreateJob&, CommandContext, CommandSource),
 				GameCommand(const CreateWorker&, CommandContext, CommandSource),
-				GameCommand(const PlaceBuilding&, CommandContext, CommandSource)
+				GameCommand(const PlaceBuilding&, CommandContext, CommandSource),
+				GameCommand(const CreateShuttle&, CommandContext, CommandSource)
 			>());
 
 		lua.set_function(
