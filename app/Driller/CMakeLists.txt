@@ -7,12 +7,14 @@ target_include_directories(Driller PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+TARGET_LINK_LIBRARIES(Driller PUBLIC "helsinki-scripting${LIB_EXTENSION_SHARED}")
 TARGET_LINK_LIBRARIES(Driller PRIVATE "helsinki-system${LIB_EXTENSION_SHARED}")
 TARGET_LINK_LIBRARIES(Driller PRIVATE "helsinki-renderer${LIB_EXTENSION_SHARED}")
 TARGET_LINK_LIBRARIES(Driller PRIVATE "helsinki-engine${LIB_EXTENSION_SHARED}")
 
 SET(MODULE_LIBS
 	"helsinki-system${LIB_EXTENSION_SHARED}"
+	"helsinki-scripting${LIB_EXTENSION_SHARED}"
 	"helsinki-renderer${LIB_EXTENSION_SHARED}"
 	"helsinki-engine${LIB_EXTENSION_SHARED}"
 	Driller

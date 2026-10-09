@@ -1,6 +1,7 @@
 #include <Core/Session.hpp>
 #include <Core/LoadError.hpp>
 #include <Core/SeedStartingCavern.hpp>
+#include <Scripting/CommandBindings.hpp>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
 
@@ -11,6 +12,7 @@ namespace drl
 		: _terrainService(_gameData.terrain)
 		, _commandService(_terrainService, _economyService)
 	{
+		bindGameCommands(_lua.raw(), _commandService);
 	}
 
 	void Session::loadGameSettings(const std::string& gameJsonPath)

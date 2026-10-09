@@ -4,6 +4,7 @@
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <helsinki/Scripting/LuaState.hpp>
 #include <string>
 
 namespace drl
@@ -29,6 +30,8 @@ namespace drl
 		const EconomyResourceService& economyService() const { return _economyService; }
 		GameCommandService& commandService() { return _commandService; }
 		const GameCommandService& commandService() const { return _commandService; }
+		hl::scripting::LuaState& lua() { return _lua; }
+		const hl::scripting::LuaState& lua() const { return _lua; }
 
 	private:
 		bool _settingsLoaded{ false };
@@ -39,6 +42,7 @@ namespace drl
 		TerrainAlterationService _terrainService;
 		EconomyResourceService _economyService;
 		GameCommandService _commandService;
+		hl::scripting::LuaState _lua;
 	};
 
 }

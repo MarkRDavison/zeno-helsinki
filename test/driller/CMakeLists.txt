@@ -2,6 +2,7 @@ SET(MODULE_LIBS
 	"Catch2::Catch2WithMain"
 	Driller
 	"helsinki-system${LIB_EXTENSION_SHARED}"
+	"helsinki-scripting${LIB_EXTENSION_SHARED}"
 )
 
 testsubmodule("driller" "${MODULE_LIBS}")
