@@ -396,21 +396,38 @@ TEST_CASE("AddUpgrade unknown name succeeds without changing multiplier", "[drl]
 	REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.0f, 0.0001f));
 }
 
-TEST_CASE("AddResource ore yield is unchanged after AddUpgrade", "[drl][GameCommandService]")
+TEST_CASE("AddResource ore is scaled by oreMultiplier", "[drl][GameCommandService]")
 {
 	Fixture f;
 	REQUIRE(f.commands.execute(GameCommand::addUpgrade(
 		"Upgrade_Refine",
-		0.001f,
+		0.5f,
 		CommandSource::System,
 		CommandContext::AddingUpgrade)));
 	REQUIRE(f.commands.execute(GameCommand::addResource(
 		ResourceOre,
-		12,
+		10,
 		CommandSource::System,
 		CommandContext::AddResource)));
-	REQUIRE(f.economy.get(ResourceOre) == 12);
-	REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.001f, 0.0001f));
+	REQUIRE(f.economy.get(ResourceOre) == 15);
+	REQUIRE_THAT(f.upgrades.oreMultiplier(), Catch::Matchers::WithinAbs(1.5f, 0.0001f));
+}
+
+TEST_CASE("AddResource money is not scaled by oreMultiplier", "[drl][GameCommandService]")
+{
+	Fixture f;
+	REQUIRE(f.commands.execute(GameCommand::addUpgrade(
+		"Upgrade_Refine",
+		0.5f,
+		CommandSource::System,
+		CommandContext::AddingUpgrade)));
+	const long long moneyBefore = f.economy.get(ResourceMoney);
+	REQUIRE(f.commands.execute(GameCommand::addResource(
+		ResourceMoney,
+		10,
+		CommandSource::System,
+		CommandContext::AddResource)));
+	REQUIRE(f.economy.get(ResourceMoney) == moneyBefore + 10);
 }
 
 }

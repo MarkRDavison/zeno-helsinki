@@ -2,6 +2,7 @@
 #include <Entities/Job.hpp>
 #include <Services/PrototypeService.hpp>
 #include <helsinki/System/glm.hpp>
+#include <cmath>
 #include <type_traits>
 
 namespace drl
@@ -110,7 +111,13 @@ namespace drl
 
 	bool GameCommandService::handleAddResource(const AddResource& event)
 	{
-		_economy.add(event.name, event.amount);
+		long long amount = event.amount;
+		if (event.name == ResourceOre)
+		{
+			amount = std::llround(
+				static_cast<double>(event.amount) * static_cast<double>(_upgrades.oreMultiplier()));
+		}
+		_economy.add(event.name, amount);
 		return true;
 	}
 
