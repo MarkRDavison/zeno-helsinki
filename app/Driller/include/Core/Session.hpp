@@ -8,6 +8,7 @@
 #include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/WorkerCreationService.hpp>
+#include <Services/WorkerMovementService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <string>
@@ -41,6 +42,8 @@ namespace drl
 		const WorkerPrototypeService& workerPrototypeService() const { return _workerPrototypeService; }
 		WorkerCreationService& workerCreationService() { return _workerCreationService; }
 		const WorkerCreationService& workerCreationService() const { return _workerCreationService; }
+		WorkerMovementService& workerMovementService() { return _workerMovementService; }
+		const WorkerMovementService& workerMovementService() const { return _workerMovementService; }
 		GameCommandService& commandService() { return _commandService; }
 		const GameCommandService& commandService() const { return _commandService; }
 		Game& game() { return _game; }
@@ -62,6 +65,7 @@ namespace drl
 		JobCreationService _jobCreationService;
 		WorkerPrototypeService _workerPrototypeService;
 		WorkerCreationService _workerCreationService;
+		WorkerMovementService _workerMovementService;
 		GameCommandService _commandService;
 		Game _game;
 	};
