@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Entities/Data/GameData.hpp>
+#include <Services/EconomyResourceService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <string>
 
@@ -23,6 +24,8 @@ namespace drl
 		const GameData& gameData() const { return _gameData; }
 		TerrainAlterationService& terrainService() { return _terrainService; }
 		const TerrainAlterationService& terrainService() const { return _terrainService; }
+		EconomyResourceService& economyService() { return _economyService; }
+		const EconomyResourceService& economyService() const { return _economyService; }
 
 	private:
 		bool _settingsLoaded{ false };
@@ -31,6 +34,7 @@ namespace drl
 		float _simSpeed{ 1.0f };
 		GameData _gameData;
 		TerrainAlterationService _terrainService;
+		EconomyResourceService _economyService;
 	};
 
 }

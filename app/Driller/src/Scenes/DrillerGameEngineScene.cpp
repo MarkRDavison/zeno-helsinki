@@ -1,16 +1,24 @@
 #include <Scenes/DrillerGameEngineScene.hpp>
+#include <Core/PlayerDig.hpp>
 #include <Core/TileCoordinates.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <GLFW/glfw3.h>
+#include <helsinki/Engine/ECS/Components/TextComponent.hpp>
+#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
+#include <helsinki/Renderer/Resource/SignedDistanceFieldFontResource.hpp>
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
+#include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
+#include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
+#include <helsinki/System/Resource/ResourceDefinition.hpp>
+#include <format>
 
 namespace drl
 {
@@ -116,7 +124,9 @@ namespace drl
 						}
 					}
 				}
-			}
+			},
+			hl::RenderGraphHelpers::createTextRenderpassInfo(cameraMatrixResourceId),
+			hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "scene_color", "text_color" })
 		};
 
 		hl::ResourceContext resourceContext
@@ -167,6 +177,59 @@ namespace drl
 			}
 		}
 
+		resourceManager.LoadAs<hl::SignedDistanceFieldFontResource, hl::FontResource>(
+			"roboto",
+			resourceContext);
+		resourceManager.LoadAs<hl::TextureResource, hl::ImageSamplerResource>(
+			"roboto",
+			resourceContext);
+
+		resourceManager.LoadLogical(
+			hl::ResourceDefinition
+			{
+				.name = hl::TextSystem::RasterAtlasName,
+				.type = "logical",
+				.resources = { { .name = hl::MaterialSystem::FallbackTextureName, .type = "texture" } }
+			},
+			[&](const hl::ResourceDefinition::Child& child)
+			{
+				return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+			});
+		resourceManager.LoadLogical(
+			hl::ResourceDefinition
+			{
+				.name = hl::TextSystem::SdfAtlasName,
+				.type = "logical",
+				.resources = { { .name = "roboto", .type = "texture" } }
+			},
+			[&](const hl::ResourceDefinition::Child& child)
+			{
+				return resourceManager.HasResource<hl::ImageSamplerResource>(child.name);
+			});
+
+		{
+			auto entity = _scene.addEntity("hud_ore");
+			entity->AddTag("TEXT");
+			entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(4.0f, 0.0f, 0.0f));
+			entity->AddComponent<hl::TextComponent>()->setString(
+				_engine.getTextSystem(),
+				"Ore: 0",
+				"roboto",
+				32);
+			entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		}
+		{
+			auto entity = _scene.addEntity("hud_money");
+			entity->AddTag("TEXT");
+			entity->AddComponent<hl::TransformComponent>()->SetPosition(glm::vec3(4.0f, 32.0f, 0.0f));
+			entity->AddComponent<hl::TextComponent>()->setString(
+				_engine.getTextSystem(),
+				"Money: 500",
+				"roboto",
+				32);
+			entity->GetComponent<hl::TextComponent>()->setColour(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		}
+
 		EngineScene::initialise(
 			cameraMatrixResourceId,
 			device,
@@ -186,6 +249,18 @@ namespace drl
 
 	void DrillerGameEngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)
 	{
+		auto& economy = _session.economyService();
+		_scene.getEntity("hud_ore")->GetComponent<hl::TextComponent>()->setString(
+			_engine.getTextSystem(),
+			std::format("Ore: {}", economy.get(ResourceOre)),
+			"roboto",
+			32);
+		_scene.getEntity("hud_money")->GetComponent<hl::TextComponent>()->setString(
+			_engine.getTextSystem(),
+			std::format("Money: {}", economy.get(ResourceMoney)),
+			"roboto",
+			32);
+
 		if (!_engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1))
 		{
 			return;
@@ -204,7 +279,7 @@ namespace drl
 
 		if (tile.x == 0)
 		{
-			_session.terrainService().digShaft(tile.y);
+			tryPlayerDigShaft(_session.terrainService(), economy, tile.y);
 		}
 		else
 		{

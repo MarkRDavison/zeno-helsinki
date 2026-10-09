@@ -64,6 +64,14 @@ namespace drl
 			seedStartingCavern(_terrainService);
 		}
 
+		if (!_economyService.exists(ResourceMoney))
+		{
+			_economyService.setMax(ResourceOre, -1);
+			_economyService.set(ResourceOre, 0);
+			_economyService.setMax(ResourceMoney, -1);
+			_economyService.set(ResourceMoney, 500);
+		}
+
 		_loadSucceeded = true;
 	}
 
