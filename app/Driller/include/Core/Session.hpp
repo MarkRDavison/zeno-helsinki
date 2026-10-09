@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Core/Game.hpp>
 #include <Entities/Data/GameData.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
@@ -30,6 +31,8 @@ namespace drl
 		const EconomyResourceService& economyService() const { return _economyService; }
 		GameCommandService& commandService() { return _commandService; }
 		const GameCommandService& commandService() const { return _commandService; }
+		Game& game() { return _game; }
+		const Game& game() const { return _game; }
 		hl::scripting::LuaState& lua() { return _lua; }
 		const hl::scripting::LuaState& lua() const { return _lua; }
 
@@ -43,6 +46,7 @@ namespace drl
 		TerrainAlterationService _terrainService;
 		EconomyResourceService _economyService;
 		GameCommandService _commandService;
+		Game _game;
 		hl::scripting::LuaState _lua;
 	};
 

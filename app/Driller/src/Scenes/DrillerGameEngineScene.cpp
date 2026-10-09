@@ -247,8 +247,10 @@ namespace drl
 			});
 	}
 
-	void DrillerGameEngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)
+	void DrillerGameEngineScene::update(uint32_t /*currentFrame*/, float delta)
 	{
+		_session.game().update(delta);
+
 		auto& economy = _session.economyService();
 		_scene.getEntity("hud_ore")->GetComponent<hl::TextComponent>()->setString(
 			_engine.getTextSystem(),

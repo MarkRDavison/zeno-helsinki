@@ -12,6 +12,7 @@ namespace drl
 	Session::Session()
 		: _terrainService(_gameData.terrain)
 		, _commandService(_terrainService, _economyService)
+		, _game(_commandService, _simSpeed)
 	{
 		bindGameCommands(_lua.raw(), _commandService);
 	}
