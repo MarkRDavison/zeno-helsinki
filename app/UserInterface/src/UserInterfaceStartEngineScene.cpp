@@ -529,7 +529,25 @@ namespace ui
 			_widgets.push_back(std::move(stretched));
 		}
 
-		for (const char* title : { "More alpha", "More beta", "More gamma" })
+		{
+			hl::ui::Node& listPage = _tabs->addPage("List");
+			_listBox = std::make_unique<hl::ui::ListBox>(listPage.addChild());
+			std::vector<std::string> names;
+			for (int i = 1; i <= 16; ++i)
+			{
+				names.push_back("item " + std::to_string(i));
+			}
+
+			_listBox->setItems(names, [this](hl::ui::Node& row, const std::string& name)
+			{
+				auto label = std::make_unique<hl::ui::Label>(row, *_typeface);
+				label->setText(name);
+				label->color = { 0.75f, 0.76f, 0.80f };
+				return label;
+			});
+		}
+
+		for (const char* title : { "More beta", "More gamma" })
 		{
 			auto label = std::make_unique<hl::ui::Label>(_tabs->addPage(title).addChild(), *_typeface);
 			label->setText(title);

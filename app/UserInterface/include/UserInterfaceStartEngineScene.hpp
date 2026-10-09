@@ -9,6 +9,7 @@
 #include <helsinki/Ui/Checkbox.hpp>
 #include <helsinki/Ui/Label.hpp>
 #include <helsinki/Ui/Layout/Layout.hpp>
+#include <helsinki/Ui/ListBox.hpp>
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Panel.hpp>
 #include <helsinki/Ui/ProgressBar.hpp>
@@ -68,6 +69,7 @@ namespace ui
 		std::unique_ptr<hl::ui::RadioGroup> _radioHorizontal;
 		std::unique_ptr<hl::ui::Tabs> _tabs;
 		std::unique_ptr<hl::ui::ScrollView> _scrollView;
+		std::unique_ptr<hl::ui::ListBox> _listBox;
 		std::unique_ptr<hl::ui::Label> _fieldLabel;
 		std::unique_ptr<hl::ui::TextField> _textField;
 		std::unique_ptr<hl::ui::Button> _actionButton;
