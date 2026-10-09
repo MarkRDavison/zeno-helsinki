@@ -116,6 +116,55 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(ThirdParty_miniaudio PUBLIC m ${CMAKE_DL_LIBS})
 endif()
 
+# -------------------- Lua 5.4 (helsinki-scripting; not Lua 5.5 / LuaJIT) --------------------
+FetchContent_Declare(
+    lua
+    GIT_REPOSITORY https://github.com/lua/lua.git
+    GIT_TAG        v5.4.8
+)
+FetchContent_GetProperties(lua)
+if(NOT lua_POPULATED)
+    FetchContent_Populate(lua)
+endif()
+
+set(_lua_lib_sources
+    lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c
+    llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c
+    ltable.c ltm.c lundump.c lvm.c lzio.c
+    lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c
+    loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c
+)
+set(_lua_lib_paths)
+foreach(_lua_src IN LISTS _lua_lib_sources)
+    list(APPEND _lua_lib_paths "${lua_SOURCE_DIR}/${_lua_src}")
+endforeach()
+
+add_library(ThirdParty_lua STATIC ${_lua_lib_paths})
+set_target_properties(ThirdParty_lua PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    COMPILE_WARNING_AS_ERROR OFF
+)
+target_include_directories(ThirdParty_lua SYSTEM PUBLIC "${lua_SOURCE_DIR}")
+if(UNIX)
+    target_link_libraries(ThirdParty_lua PUBLIC m)
+endif()
+
+# -------------------- sol2 v3.5.0 (INTERFACE; do not MakeAvailable) --------------------
+FetchContent_Declare(
+    sol2
+    GIT_REPOSITORY https://github.com/ThePhD/sol2.git
+    GIT_TAG        v3.5.0
+)
+FetchContent_GetProperties(sol2)
+if(NOT sol2_POPULATED)
+    FetchContent_Populate(sol2)
+endif()
+
+add_library(ThirdParty_sol2 INTERFACE)
+target_include_directories(ThirdParty_sol2 SYSTEM INTERFACE "${sol2_SOURCE_DIR}/include")
+target_link_libraries(ThirdParty_sol2 INTERFACE ThirdParty_lua)
+
 FetchContent_Declare(
     tinyobjloader
     GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git
