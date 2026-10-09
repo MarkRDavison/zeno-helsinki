@@ -2,6 +2,7 @@
 
 #include <Core/GameCommand.hpp>
 #include <Services/EconomyResourceService.hpp>
+#include <Services/JobCreationService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 
 namespace drl
@@ -26,7 +27,8 @@ namespace drl
 	public:
 		GameCommandService(
 			ITerrainAlterationService& terrain,
-			IEconomyResourceService& economy);
+			IEconomyResourceService& economy,
+			IJobCreationService& jobs);
 		~GameCommandService() override = default;
 
 		bool execute(const GameCommand& command) override;
@@ -37,9 +39,11 @@ namespace drl
 		bool handleDigShaft(CommandSource source, const DigShaft& event);
 		bool handleDigTile(const DigTile& event);
 		bool handleAddResource(const AddResource& event);
+		bool handleCreateJob(const CreateJob& event);
 
 		ITerrainAlterationService& _terrain;
 		IEconomyResourceService& _economy;
+		IJobCreationService& _jobs;
 		long long _tick{ 0 };
 	};
 

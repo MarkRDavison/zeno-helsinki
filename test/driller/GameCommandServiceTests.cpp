@@ -1,8 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Core/GameCommand.hpp>
+#include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
+#include <Services/JobCreationService.hpp>
+#include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 
 using drl::CommandContext;
@@ -10,6 +13,10 @@ using drl::CommandSource;
 using drl::EconomyResourceService;
 using drl::GameCommand;
 using drl::GameCommandService;
+using drl::JobCreationService;
+using drl::JobData;
+using drl::JobPrototype;
+using drl::JobPrototypeService;
 using drl::ResourceMoney;
 using drl::ResourceOre;
 using drl::TerrainAlterationService;
@@ -20,9 +27,12 @@ namespace
 	struct Fixture
 	{
 		TerrainData data;
+		JobData jobData;
 		TerrainAlterationService terrain{ data };
 		EconomyResourceService economy;
-		GameCommandService commands{ terrain, economy };
+		JobPrototypeService prototypes;
+		JobCreationService jobCreation{ jobData, prototypes, terrain };
+		GameCommandService commands{ terrain, economy, jobCreation };
 
 		Fixture()
 		{
@@ -116,4 +126,50 @@ TEST_CASE("AddResource increases ore and money", "[drl][GameCommandService]")
 	REQUIRE(f.commands.execute(GameCommand::addResource(ResourceMoney, 25, CommandSource::System, CommandContext::AddResource)));
 	REQUIRE(f.economy.get(ResourceOre) == 12);
 	REQUIRE(f.economy.get(ResourceMoney) == 525);
+}
+
+TEST_CASE("CreateJob succeeds then reserved refuses", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype prototype{};
+	prototype.name = "Job_Dig";
+	prototype.work = 1.0f;
+	f.prototypes.registerPrototype(std::move(prototype));
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+
+	// CreateJobEvent.new("Job_Dig", "", level, column)
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		"Job_Dig",
+		"",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CreatingJob)));
+	REQUIRE(f.terrain.getTile(0, 1).jobReserved);
+	REQUIRE(f.jobData.jobs.size() == 1);
+	REQUIRE_FALSE(f.commands.execute(GameCommand::createJob(
+		"Job_Dig",
+		"",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CreatingJob)));
+	REQUIRE(f.jobData.jobs.size() == 1);
+}
+
+TEST_CASE("CreateJob unknown prototype refuses", "[drl][GameCommandService]")
+{
+	Fixture f;
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+	REQUIRE_FALSE(f.commands.execute(GameCommand::createJob(
+		"Job_Dig",
+		"",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CreatingJob)));
+	REQUIRE(f.jobData.jobs.empty());
+	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
 }

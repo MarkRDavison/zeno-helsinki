@@ -11,7 +11,8 @@ namespace drl
 
 	Session::Session()
 		: _terrainService(_gameData.terrain)
-		, _commandService(_terrainService, _economyService)
+		, _jobCreationService(_gameData.job, _jobPrototypeService, _terrainService)
+		, _commandService(_terrainService, _economyService, _jobCreationService)
 		, _game(_commandService, _simSpeed)
 	{
 		bindGameCommands(_lua.raw(), _commandService);

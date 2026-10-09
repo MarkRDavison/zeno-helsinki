@@ -4,6 +4,8 @@
 #include <Entities/Data/GameData.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
+#include <Services/JobCreationService.hpp>
+#include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
 #include <string>
@@ -29,6 +31,10 @@ namespace drl
 		const TerrainAlterationService& terrainService() const { return _terrainService; }
 		EconomyResourceService& economyService() { return _economyService; }
 		const EconomyResourceService& economyService() const { return _economyService; }
+		JobPrototypeService& jobPrototypeService() { return _jobPrototypeService; }
+		const JobPrototypeService& jobPrototypeService() const { return _jobPrototypeService; }
+		JobCreationService& jobCreationService() { return _jobCreationService; }
+		const JobCreationService& jobCreationService() const { return _jobCreationService; }
 		GameCommandService& commandService() { return _commandService; }
 		const GameCommandService& commandService() const { return _commandService; }
 		Game& game() { return _game; }
@@ -45,6 +51,8 @@ namespace drl
 		GameData _gameData;
 		TerrainAlterationService _terrainService;
 		EconomyResourceService _economyService;
+		JobPrototypeService _jobPrototypeService;
+		JobCreationService _jobCreationService;
 		GameCommandService _commandService;
 		Game _game;
 		hl::scripting::LuaState _lua;

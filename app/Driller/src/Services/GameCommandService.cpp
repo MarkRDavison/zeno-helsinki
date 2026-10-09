@@ -1,4 +1,6 @@
 #include <Services/GameCommandService.hpp>
+#include <Entities/Job.hpp>
+#include <helsinki/System/glm.hpp>
 #include <type_traits>
 
 namespace drl
@@ -6,9 +8,11 @@ namespace drl
 
 	GameCommandService::GameCommandService(
 		ITerrainAlterationService& terrain,
-		IEconomyResourceService& economy)
+		IEconomyResourceService& economy,
+		IJobCreationService& jobs)
 		: _terrain(terrain)
 		, _economy(economy)
+		, _jobs(jobs)
 	{
 	}
 
@@ -29,6 +33,14 @@ namespace drl
 				else if constexpr (std::is_same_v<T, AddResource>)
 				{
 					return handleAddResource(payload);
+				}
+				else if constexpr (std::is_same_v<T, CreateJob>)
+				{
+					return handleCreateJob(payload);
+				}
+				else
+				{
+					return false;
 				}
 			},
 			command.payload);
@@ -73,6 +85,14 @@ namespace drl
 	{
 		_economy.add(event.name, event.amount);
 		return true;
+	}
+
+	bool GameCommandService::handleCreateJob(const CreateJob& event)
+	{
+		return _jobs.createJob(
+			jobPrototypeIdFromName(event.prototypeName),
+			jobPrototypeIdFromName(event.additionalPrototypeName),
+			glm::ivec2(event.column, event.level));
 	}
 
 }

@@ -1,9 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
+#include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Scripting/CommandBindings.hpp>
 #include <Scripting/ResourceBindings.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
+#include <Services/JobCreationService.hpp>
+#include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
@@ -13,6 +16,9 @@ using drl::applyResourcesTable;
 using drl::bindGameCommands;
 using drl::EconomyResourceService;
 using drl::GameCommandService;
+using drl::JobCreationService;
+using drl::JobData;
+using drl::JobPrototypeService;
 using drl::ResourceMoney;
 using drl::ResourceOre;
 using drl::TerrainAlterationService;
@@ -32,9 +38,12 @@ namespace
 	struct Fixture
 	{
 		TerrainData data;
+		JobData jobData;
 		TerrainAlterationService terrain{ data };
 		EconomyResourceService economy;
-		GameCommandService commands{ terrain, economy };
+		JobPrototypeService prototypes;
+		JobCreationService jobCreation{ jobData, prototypes, terrain };
+		GameCommandService commands{ terrain, economy, jobCreation };
 		LuaState lua;
 
 		Fixture()

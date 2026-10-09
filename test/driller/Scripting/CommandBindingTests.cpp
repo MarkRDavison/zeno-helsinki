@@ -1,15 +1,23 @@
 #include <catch2/catch_test_macros.hpp>
+#include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Scripting/CommandBindings.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/GameCommandService.hpp>
+#include <Services/JobCreationService.hpp>
+#include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
+#include <helsinki/System/glm.hpp>
 
 using drl::bindGameCommands;
 using drl::EconomyResourceService;
 using drl::GameCommandService;
+using drl::JobCreationService;
+using drl::JobData;
+using drl::JobPrototype;
+using drl::JobPrototypeService;
 using drl::ResourceMoney;
 using drl::ResourceOre;
 using drl::TerrainAlterationService;
@@ -22,9 +30,12 @@ namespace
 	struct Fixture
 	{
 		TerrainData data;
+		JobData jobData;
 		TerrainAlterationService terrain{ data };
 		EconomyResourceService economy;
-		GameCommandService commands{ terrain, economy };
+		JobPrototypeService prototypes;
+		JobCreationService jobCreation{ jobData, prototypes, terrain };
+		GameCommandService commands{ terrain, economy, jobCreation };
 		LuaState lua;
 
 		Fixture()
@@ -84,6 +95,25 @@ TEST_CASE("cmd AddResourceEvent adds ore and money", "[drl][Scripting]")
 	)");
 	REQUIRE(f.economy.get(ResourceOre) == 12);
 	REQUIRE(f.economy.get(ResourceMoney) == 525);
+}
+
+TEST_CASE("cmd CreateJobEvent uses level then column", "[drl][Scripting]")
+{
+	Fixture f;
+	JobPrototype prototype{};
+	prototype.name = "Job_Dig";
+	prototype.work = 1.0f;
+	f.prototypes.registerPrototype(std::move(prototype));
+	f.lua.runString(R"(
+		cmd(GameCommand.new(DigShaftEvent.new(0), GameCommandContext.DiggingShaft, GameCommandSource.Setup))
+	)");
+	f.terrain.initialiseTile(0, 1);
+	f.lua.runString(R"(
+		cmd(GameCommand.new(CreateJobEvent.new("Job_Dig", "", 0, 1), GameCommandContext.CreatingJob, GameCommandSource.Player))
+	)");
+	REQUIRE(f.jobData.jobs.size() == 1);
+	REQUIRE(f.jobData.jobs[0].tile == glm::ivec2(1, 0));
+	REQUIRE(f.terrain.getTile(0, 1).jobReserved);
 }
 
 TEST_CASE("bad chunk throws LuaError", "[drl][Scripting]")

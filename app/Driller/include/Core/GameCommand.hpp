@@ -19,6 +19,7 @@ namespace drl
 		DiggingShaft,
 		DiggingTile,
 		AddResource,
+		CreatingJob,
 		Undefined
 	};
 
@@ -52,11 +53,28 @@ namespace drl
 		long long amount{ 0 };
 	};
 
+	struct CreateJob
+	{
+		CreateJob() = default;
+		CreateJob(std::string prototypeName, std::string additionalPrototypeName, int level, int column)
+			: prototypeName(std::move(prototypeName))
+			, additionalPrototypeName(std::move(additionalPrototypeName))
+			, level(level)
+			, column(column)
+		{
+		}
+
+		std::string prototypeName;
+		std::string additionalPrototypeName;
+		int level{ 0 };
+		int column{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
 		CommandContext context{ CommandContext::Undefined };
-		std::variant<DigShaft, DigTile, AddResource> payload;
+		std::variant<DigShaft, DigTile, AddResource, CreateJob> payload;
 
 		GameCommand() = default;
 
@@ -81,6 +99,13 @@ namespace drl
 		{
 		}
 
+		GameCommand(const CreateJob& event, CommandContext commandContext, CommandSource commandSource)
+			: source(commandSource)
+			, context(commandContext)
+			, payload(event)
+		{
+		}
+
 		static GameCommand digShaft(int level, CommandSource commandSource, CommandContext commandContext)
 		{
 			return GameCommand(DigShaft{ level }, commandContext, commandSource);
@@ -94,6 +119,20 @@ namespace drl
 		static GameCommand addResource(std::string name, long long amount, CommandSource commandSource, CommandContext commandContext)
 		{
 			return GameCommand(AddResource{ std::move(name), amount }, commandContext, commandSource);
+		}
+
+		static GameCommand createJob(
+			std::string prototypeName,
+			std::string additionalPrototypeName,
+			int level,
+			int column,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(
+				CreateJob{ std::move(prototypeName), std::move(additionalPrototypeName), level, column },
+				commandContext,
+				commandSource);
 		}
 	};
 
