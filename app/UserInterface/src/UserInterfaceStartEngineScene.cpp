@@ -398,6 +398,7 @@ namespace ui
 		_widgets.push_back(std::move(card));
 
 		_slider = std::make_unique<hl::ui::Slider>(column.addChild());
+		_slider->tooltip = "drag the slider";
 		_progressBar = std::make_unique<hl::ui::ProgressBar>(column.addChild());
 		_slider->onChanged = [this](float value)
 		{
@@ -405,6 +406,7 @@ namespace ui
 		};
 		_progressBar->setValue(_slider->value());
 		_checkbox = std::make_unique<hl::ui::Checkbox>(column.addChild());
+		_checkbox->tooltip = "toggle the checkbox";
 		_toggle = std::make_unique<hl::ui::Toggle>(column.addChild());
 
 		_dropdown = std::make_unique<hl::ui::Dropdown>(column.addChild(), *_typeface);
@@ -429,6 +431,7 @@ namespace ui
 
 		_actionButton = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
 		_actionButton->setText("click / enter");
+		_actionButton->tooltip = "click or press Enter";
 		_actionButton->color = { 0.95f, 0.95f, 0.97f };
 		_actionButton->onClick = [this]()
 		{
@@ -526,6 +529,8 @@ namespace ui
 			.color = { 1.0f, 1.0f, 1.0f }
 		};
 		_widgets.push_back(std::move(stretched));
+
+		_tooltip = std::make_unique<hl::ui::Tooltip>(_layoutRoot->addChild(), *_typeface);
 	}
 
 	void UserInterfaceStartEngineScene::rebuildAndDraw()
@@ -615,8 +620,9 @@ namespace ui
 		}
 	}
 
-	void UserInterfaceStartEngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)
+	void UserInterfaceStartEngineScene::update(uint32_t /*currentFrame*/, float delta)
 	{
+		_tooltip->tick(delta);
 		rebuildAndDraw();
 	}
 

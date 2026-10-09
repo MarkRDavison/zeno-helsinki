@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace hl::ui
@@ -55,6 +56,7 @@ namespace hl::ui
 		bool hitTestEnabled = true;
 		bool focusable = false;
 		std::optional<unsigned> fontSize;
+		std::string tooltip;
 
 		unsigned resolvedFontSize() const;
 
@@ -68,6 +70,7 @@ namespace hl::ui
 
 	Widget* hitTest(const Node& root, glm::vec2 position);
 	void dispatch(Node& root, const Pointer& pointer);
+	void syncTooltip(Widget* hit);
 	void dismissOpenOverlay(Widget* hit);
 	void dispatchChar(uint32_t codepoint);
 	void dispatchTextKey(Node& root, TextKey key);

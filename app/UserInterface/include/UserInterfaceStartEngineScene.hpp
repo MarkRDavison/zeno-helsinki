@@ -16,6 +16,7 @@
 #include <helsinki/Ui/Slider.hpp>
 #include <helsinki/Ui/TextField.hpp>
 #include <helsinki/Ui/Toggle.hpp>
+#include <helsinki/Ui/Tooltip.hpp>
 #include <memory>
 #include <vector>
 
@@ -66,6 +67,7 @@ namespace ui
 		std::unique_ptr<hl::ui::Label> _fieldLabel;
 		std::unique_ptr<hl::ui::TextField> _textField;
 		std::unique_ptr<hl::ui::Button> _actionButton;
+		std::unique_ptr<hl::ui::Tooltip> _tooltip;
 		hl::ui::Panel* _clipHitRow = nullptr;
 		bool _clipHitOn = false;
 	};

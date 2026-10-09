@@ -173,9 +173,11 @@ namespace hl::ui
 		{
 			if (widget->handle(pointer) == EventResult::Consume)
 			{
-				return;
+				break;
 			}
 		}
+
+		syncTooltip(start);
 	}
 
 	void dispatchChar(uint32_t codepoint)
