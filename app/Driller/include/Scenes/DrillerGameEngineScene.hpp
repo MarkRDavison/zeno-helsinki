@@ -5,6 +5,7 @@
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <Core/Session.hpp>
+#include <Views/TerrainView.hpp>
 
 namespace drl
 {
@@ -29,6 +30,7 @@ namespace drl
 	private:
 		const hl::EngineConfiguration& _engineConfig;
 		Session& _session;
+		TerrainView _terrainView;
 		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;
 	};
 

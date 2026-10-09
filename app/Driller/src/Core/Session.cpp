@@ -1,10 +1,16 @@
 #include <Core/Session.hpp>
 #include <Core/LoadError.hpp>
+#include <Core/SeedStartingCavern.hpp>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
 
 namespace drl
 {
+
+	Session::Session()
+		: _terrainService(_gameData.terrain)
+	{
+	}
 
 	void Session::loadGameSettings(const std::string& gameJsonPath)
 	{
@@ -51,6 +57,11 @@ namespace drl
 		if (!_settingsLoaded)
 		{
 			throw LoadError("game.json settings were not loaded");
+		}
+
+		if (_gameData.terrain.shaftLevel < 0)
+		{
+			seedStartingCavern(_terrainService);
 		}
 
 		_loadSucceeded = true;

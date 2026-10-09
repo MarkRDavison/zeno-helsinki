@@ -1,6 +1,4 @@
 #include <Scenes/DrillerGameEngineScene.hpp>
-#include <helsinki/Engine/ECS/Components/SpriteComponent.hpp>
-#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
@@ -28,7 +26,12 @@ namespace drl
 	) :
 		EngineScene(engine),
 		_engineConfig(engineConfig),
-		_session(session)
+		_session(session),
+		_terrainView(
+			session.gameData().terrain,
+			static_cast<float>(engineConfig.Width) * 0.5f,
+			kTileSize,
+			kTileSize)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
 	}
@@ -153,27 +156,14 @@ namespace drl
 			{
 				cell(0, 0),
 				cell(1, 0),
-				cell(2, 0),
 				cell(0, 1),
+				cell(0, 2),
 			};
 			for (uint32_t i = 0; i < static_cast<uint32_t>(frameData.size()); ++i)
 			{
 				ssbo->writeToBuffer(&frameData[i], i);
 			}
 		}
-
-		const auto addTileSprite = [&](const std::string& name, float tileX, float tileY, int frame)
-		{
-			auto entity = _scene.addEntity(name);
-			entity->AddTag("SPRITE");
-			entity->AddComponent<hl::TransformComponent>()->SetPosition(
-				glm::vec3(tileX * kTileSize, tileY * kTileSize, 0.0f));
-			entity->AddComponent<hl::SpriteComponent>()->setFrameDataIndex(frame);
-		};
-		addTileSprite("sample0", 1.0f, 0.0f, 0);
-		addTileSprite("sample1", 2.0f, 0.0f, 1);
-		addTileSprite("sample2", 1.0f, 1.0f, 2);
-		addTileSprite("sample3", 3.0f, 1.0f, 3);
 
 		EngineScene::initialise(
 			cameraMatrixResourceId,
@@ -186,46 +176,9 @@ namespace drl
 
 		registerPipelineDraw(
 			"sprite_pipeline",
-			[](hl::PipelineDrawData& pdd) -> void
+			[this](hl::PipelineDrawData& pdd) -> void
 			{
-				for (const auto& entity : pdd.scene->getEntities())
-				{
-					if (!entity->HasComponents<hl::TransformComponent, hl::SpriteComponent>())
-					{
-						continue;
-					}
-
-					const auto& transform = entity->GetComponent<hl::TransformComponent>();
-					const auto& sprite = entity->GetComponent<hl::SpriteComponent>();
-
-					auto pc = hl::SpritePushConstantObject
-					{
-						.model = transform->GetTransformMatrix(),
-						.size = glm::vec2(kTileSize, kTileSize),
-						.frameIndex = sprite->getFrameDataIndex()
-					};
-
-					vkCmdPushConstants(
-						pdd.commandBuffer,
-						pdd.pipeline->getPipelineLayout(),
-						VK_SHADER_STAGE_VERTEX_BIT,
-						0,
-						sizeof(hl::SpritePushConstantObject),
-						&pc);
-
-					auto descriptorSet = pdd.pipeline->getDescriptorSet(pdd.currentFrame);
-					vkCmdBindDescriptorSets(
-						pdd.commandBuffer,
-						VK_PIPELINE_BIND_POINT_GRAPHICS,
-						pdd.pipeline->getPipelineLayout(),
-						0,
-						1,
-						&descriptorSet,
-						0,
-						nullptr);
-
-					vkCmdDraw(pdd.commandBuffer, 6, 1, 0, 0);
-				}
+				_terrainView.draw(pdd);
 			});
 	}
 
