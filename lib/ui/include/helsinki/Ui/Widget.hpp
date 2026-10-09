@@ -73,6 +73,8 @@ namespace hl::ui
 	void dispatch(Node& root, const Pointer& pointer);
 	void syncTooltip(Widget* hit);
 	void dismissOpenOverlay(Widget* hit);
+	void dismissModalOnEscape();
+	void setModalFocusRoot(const Node* node);
 	void dispatchChar(uint32_t codepoint);
 	void dispatchTextKey(Node& root, TextKey key);
 	void collectFocusables(const Node& root, std::vector<Widget*>& out);

@@ -8,6 +8,12 @@ namespace hl::ui
 	{
 		Widget* gPointerCapture = nullptr;
 		Widget* gKeyboardFocus = nullptr;
+		const Node* gModalFocusRoot = nullptr;
+	}
+
+	void setModalFocusRoot(const Node* node)
+	{
+		gModalFocusRoot = node;
 	}
 
 	Widget::Widget(Node& node) :
@@ -222,7 +228,14 @@ namespace hl::ui
 	void cycleFocus(Node& root, bool reverse)
 	{
 		std::vector<Widget*> list;
-		collectFocusables(root, list);
+		if (gModalFocusRoot != nullptr)
+		{
+			collectFocusables(*gModalFocusRoot, list);
+		}
+		else
+		{
+			collectFocusables(root, list);
+		}
 		if (list.empty())
 		{
 			return;
@@ -269,7 +282,15 @@ namespace hl::ui
 
 		if (gKeyboardFocus != nullptr)
 		{
-			gKeyboardFocus->handleKey(key);
+			if (gKeyboardFocus->handleKey(key) == EventResult::Consume)
+			{
+				return;
+			}
+		}
+
+		if (key == TextKey::Escape)
+		{
+			dismissModalOnEscape();
 		}
 	}
 

@@ -5,6 +5,7 @@
 #include <helsinki/Engine/Ui/UiBatch.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 #include <helsinki/Ui/Button.hpp>
+#include <helsinki/Ui/Dialog.hpp>
 #include <helsinki/Ui/Dropdown.hpp>
 #include <helsinki/Ui/Checkbox.hpp>
 #include <helsinki/Ui/Image.hpp>
@@ -73,6 +74,15 @@ namespace ui
 		std::unique_ptr<hl::ui::ListBox> _listBox;
 		std::unique_ptr<hl::ui::Image> _image;
 		std::unique_ptr<hl::ui::Label> _imageLabel;
+		std::unique_ptr<hl::ui::Dialog> _confirmDialog;
+		std::unique_ptr<hl::ui::Dialog> _customDialog;
+		std::unique_ptr<hl::ui::Button> _openConfirm;
+		std::unique_ptr<hl::ui::Button> _openCustom;
+		std::unique_ptr<hl::ui::Checkbox> _closeOnScrim;
+		std::unique_ptr<hl::ui::Checkbox> _closeOnEscape;
+		std::unique_ptr<hl::ui::Checkbox> _closeButtonVisible;
+		std::unique_ptr<hl::ui::Label> _dialogBody;
+		std::unique_ptr<hl::ui::Slider> _dialogSlider;
 		std::unique_ptr<hl::ui::Label> _fieldLabel;
 		std::unique_ptr<hl::ui::TextField> _textField;
 		std::unique_ptr<hl::ui::Button> _actionButton;

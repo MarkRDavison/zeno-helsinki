@@ -542,6 +542,91 @@ namespace ui
 		}
 
 		{
+			hl::ui::Node& dialogPage = _tabs->addPage("Dialog");
+			padPage(dialogPage);
+			_openConfirm = std::make_unique<hl::ui::Button>(dialogPage.addChild(), *_typeface);
+			_openConfirm->setText("Confirm");
+			_openConfirm->color = { 0.95f, 0.95f, 0.97f };
+			_openCustom = std::make_unique<hl::ui::Button>(dialogPage.addChild(), *_typeface);
+			_openCustom->setText("Custom");
+			_openCustom->color = { 0.95f, 0.95f, 0.97f };
+
+			auto flagLabel = [&](const char* text)
+			{
+				auto label = std::make_unique<hl::ui::Label>(dialogPage.addChild(), *_typeface);
+				label->setText(text);
+				label->color = { 0.75f, 0.76f, 0.80f };
+				_widgets.push_back(std::move(label));
+			};
+
+			flagLabel("close on scrim");
+			_closeOnScrim = std::make_unique<hl::ui::Checkbox>(dialogPage.addChild());
+			_closeOnScrim->setChecked(true);
+			flagLabel("close on escape");
+			_closeOnEscape = std::make_unique<hl::ui::Checkbox>(dialogPage.addChild());
+			_closeOnEscape->setChecked(true);
+			flagLabel("close button");
+			_closeButtonVisible = std::make_unique<hl::ui::Checkbox>(dialogPage.addChild());
+			_closeButtonVisible->setChecked(true);
+
+			auto applyFlags = [this]()
+			{
+				const bool scrim = _closeOnScrim->checked();
+				const bool escape = _closeOnEscape->checked();
+				const bool closeX = _closeButtonVisible->checked();
+				_confirmDialog->closeOnScrim = scrim;
+				_confirmDialog->closeOnEscape = escape;
+				_confirmDialog->closeButtonVisible = closeX;
+				_customDialog->closeOnScrim = scrim;
+				_customDialog->closeOnEscape = escape;
+				_customDialog->closeButtonVisible = closeX;
+			};
+
+			_closeOnScrim->onChanged = [applyFlags](bool)
+			{
+				applyFlags();
+			};
+			_closeOnEscape->onChanged = [applyFlags](bool)
+			{
+				applyFlags();
+			};
+			_closeButtonVisible->onChanged = [applyFlags](bool)
+			{
+				applyFlags();
+			};
+
+			_confirmDialog = std::make_unique<hl::ui::Dialog>(*_layoutRoot, *_typeface);
+			_confirmDialog->setTitle("Confirm");
+			_dialogBody = std::make_unique<hl::ui::Label>(_confirmDialog->content().addChild(), *_typeface);
+			_dialogBody->setText("Discard changes?");
+			_dialogBody->color = { 0.75f, 0.76f, 0.80f };
+			_confirmDialog->addAction("Cancel", [this]()
+			{
+				_confirmDialog->setOpen(false);
+			});
+			_confirmDialog->addAction("OK", [this]()
+			{
+				_confirmDialog->setOpen(false);
+			});
+
+			_customDialog = std::make_unique<hl::ui::Dialog>(*_layoutRoot, *_typeface);
+			_dialogSlider = std::make_unique<hl::ui::Slider>(_customDialog->content().addChild());
+
+			applyFlags();
+
+			_openConfirm->onClick = [this, applyFlags]()
+			{
+				applyFlags();
+				_confirmDialog->setOpen(true);
+			};
+			_openCustom->onClick = [this, applyFlags]()
+			{
+				applyFlags();
+				_customDialog->setOpen(true);
+			};
+		}
+
+		{
 			hl::ui::Node& listPage = _tabs->addPage("List");
 			_listBox = std::make_unique<hl::ui::ListBox>(listPage.addChild());
 			std::vector<std::string> names;
