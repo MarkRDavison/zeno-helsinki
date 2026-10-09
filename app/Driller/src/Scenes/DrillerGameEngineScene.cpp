@@ -1,5 +1,7 @@
 #include <Scenes/DrillerGameEngineScene.hpp>
+#include <Core/TileCoordinates.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <GLFW/glfw3.h>
 #include <helsinki/Renderer/Resource/FrameDataStorageBufferObject.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
@@ -109,7 +111,7 @@ namespace drl
 							{
 								.cullMode = VK_CULL_MODE_NONE
 							},
-							.enableBlending = false,
+							.enableBlending = true,
 							.pushConstantSize = sizeof(hl::SpritePushConstantObject)
 						}
 					}
@@ -184,6 +186,30 @@ namespace drl
 
 	void DrillerGameEngineScene::update(uint32_t /*currentFrame*/, float /*delta*/)
 	{
+		if (!_engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1))
+		{
+			return;
+		}
+
+		const auto tile = pixelToTile(
+			_engine.getInputManager().getMousePosition(),
+			_terrainView.originX(),
+			_terrainView.originY(),
+			_terrainView.tileSize());
+
+		if (tile.y < 0)
+		{
+			return;
+		}
+
+		if (tile.x == 0)
+		{
+			_session.terrainService().digShaft(tile.y);
+		}
+		else
+		{
+			_session.terrainService().digTile(tile.y, tile.x);
+		}
 	}
 
 }
