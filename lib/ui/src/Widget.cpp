@@ -104,6 +104,11 @@ namespace hl::ui
 
 	Widget* hitTest(const Node& root, glm::vec2 position)
 	{
+		if (Widget* widget = root.widget(); widget != nullptr && !widget->visible)
+		{
+			return nullptr;
+		}
+
 		if (root.clip && !root.world.contains(position))
 		{
 			return nullptr;
@@ -129,6 +134,11 @@ namespace hl::ui
 
 	bool applyScroll(Node& root, glm::vec2 position, glm::vec2 delta)
 	{
+		if (Widget* widget = root.widget(); widget != nullptr && !widget->visible)
+		{
+			return false;
+		}
+
 		if (root.clip && !root.world.contains(position))
 		{
 			return false;
@@ -190,9 +200,17 @@ namespace hl::ui
 
 	void collectFocusables(const Node& root, std::vector<Widget*>& out)
 	{
-		if (Widget* widget = root.widget(); widget != nullptr && widget->focusable)
+		if (Widget* widget = root.widget())
 		{
-			out.push_back(widget);
+			if (!widget->visible)
+			{
+				return;
+			}
+
+			if (widget->focusable)
+			{
+				out.push_back(widget);
+			}
 		}
 
 		for (const auto& child : root.children())
@@ -270,6 +288,11 @@ namespace hl::ui
 
 	void paintTree(const Node& root, IPaint& paint)
 	{
+		if (const Widget* widget = root.widget(); widget != nullptr && !widget->visible)
+		{
+			return;
+		}
+
 		if (const Widget* widget = root.widget())
 		{
 			widget->paint(paint);

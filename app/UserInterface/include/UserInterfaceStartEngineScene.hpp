@@ -14,6 +14,7 @@
 #include <helsinki/Ui/ProgressBar.hpp>
 #include <helsinki/Ui/RadioGroup.hpp>
 #include <helsinki/Ui/Slider.hpp>
+#include <helsinki/Ui/Tabs.hpp>
 #include <helsinki/Ui/TextField.hpp>
 #include <helsinki/Ui/Toggle.hpp>
 #include <helsinki/Ui/Tooltip.hpp>
@@ -64,6 +65,7 @@ namespace ui
 		std::unique_ptr<hl::ui::Dropdown> _dropdown;
 		std::unique_ptr<hl::ui::RadioGroup> _radioVertical;
 		std::unique_ptr<hl::ui::RadioGroup> _radioHorizontal;
+		std::unique_ptr<hl::ui::Tabs> _tabs;
 		std::unique_ptr<hl::ui::Label> _fieldLabel;
 		std::unique_ptr<hl::ui::TextField> _textField;
 		std::unique_ptr<hl::ui::Button> _actionButton;

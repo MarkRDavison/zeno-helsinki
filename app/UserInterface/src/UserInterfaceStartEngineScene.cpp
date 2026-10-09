@@ -361,174 +361,181 @@ namespace ui
 		_layoutRoot->setFillParent();
 		_widgets.clear();
 
-		auto stretch = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
-		stretch->node().anchorMin = { 0.0f, 0.0f };
-		stretch->node().anchorMax = { 1.0f, 0.0f };
-		stretch->node().offset.left = 16.0f;
-		stretch->node().offset.right = -16.0f;
-		stretch->node().offset.top = 16.0f;
-		stretch->node().offset.bottom = 64.0f;
-		stretch->color = { 0.88f, 0.48f, 0.22f };
-		_widgets.push_back(std::move(stretch));
+		_tabs = std::make_unique<hl::ui::Tabs>(_layoutRoot->addChild(), *_typeface);
+		_tabs->node().setFillParent();
+		_tabs->node().offset.left = 16.0f;
+		_tabs->node().offset.top = 16.0f;
+		_tabs->node().offset.right = -16.0f;
+		_tabs->node().offset.bottom = -16.0f;
 
-		auto& topLeftNode = _layoutRoot->addChild();
-		auto topLeft = std::make_unique<hl::ui::Panel>(topLeftNode);
-		topLeft->node().setTopLeft({ 120.0f, 80.0f });
-		topLeft->node().relative = { 16.0f, 88.0f };
-		topLeft->color = { 0.32f, 0.55f, 0.86f };
-		_widgets.push_back(std::move(topLeft));
-
-		auto nested = std::make_unique<hl::ui::Panel>(topLeftNode.addChild());
-		nested->node().setTopLeft({ 48.0f, 28.0f });
-		nested->node().relative = { 10.0f, 10.0f };
-		nested->color = { 0.95f, 0.88f, 0.35f };
-		_widgets.push_back(std::move(nested));
-
-		auto& column = _layoutRoot->addChild();
-		column.kind = hl::ui::Kind::Column;
-		column.gap = 16.0f;
-		column.padding = hl::ui::Edges::all(16.0f);
-		column.crossAlign = hl::ui::Align::Start;
-		column.setCenter({ 0.0f, 0.0f });
-
-		auto card = std::make_unique<hl::ui::Panel>(column);
-		card->color = { 0.16f, 0.17f, 0.22f };
-		card->borderWidth = 3.0f;
-		card->borderColor = { 0.32f, 0.34f, 0.40f };
-		_widgets.push_back(std::move(card));
-
-		_slider = std::make_unique<hl::ui::Slider>(column.addChild());
-		_slider->tooltip = "drag the slider";
-		_progressBar = std::make_unique<hl::ui::ProgressBar>(column.addChild());
-		_slider->onChanged = [this](float value)
+		auto padPage = [](hl::ui::Node& page)
 		{
-			_progressBar->setValue(value);
-		};
-		_progressBar->setValue(_slider->value());
-		_checkbox = std::make_unique<hl::ui::Checkbox>(column.addChild());
-		_checkbox->tooltip = "toggle the checkbox";
-		_toggle = std::make_unique<hl::ui::Toggle>(column.addChild());
-
-		_dropdown = std::make_unique<hl::ui::Dropdown>(column.addChild(), *_typeface);
-		_dropdown->setItems({
-			"alpha", "beta", "gamma", "delta",
-			"epsilon", "zeta", "eta", "theta"
-		});
-
-		_radioVertical = std::make_unique<hl::ui::RadioGroup>(column.addChild(), *_typeface);
-		_radioVertical->setOrientation(hl::ui::RadioOrientation::Vertical);
-		_radioVertical->setItems({ "Red", "Green", "Blue" });
-
-		_radioHorizontal = std::make_unique<hl::ui::RadioGroup>(column.addChild(), *_typeface);
-		_radioHorizontal->setOrientation(hl::ui::RadioOrientation::Horizontal);
-		_radioHorizontal->setItems({ "S", "M", "L" });
-
-		_fieldLabel = std::make_unique<hl::ui::Label>(column.addChild(), *_typeface);
-		_fieldLabel->setText("type here");
-		_fieldLabel->color = { 0.75f, 0.76f, 0.80f };
-
-		_textField = std::make_unique<hl::ui::TextField>(column.addChild(), *_typeface);
-
-		_actionButton = std::make_unique<hl::ui::Button>(column.addChild(), *_typeface);
-		_actionButton->setText("click / enter");
-		_actionButton->tooltip = "click or press Enter";
-		_actionButton->color = { 0.95f, 0.95f, 0.97f };
-		_actionButton->onClick = [this]()
-		{
-			if (_actionButton->color.x > 0.7f)
-			{
-				_actionButton->color = { 1.0f, 0.5f, 0.0f };
-			}
-			else
-			{
-				_actionButton->color = { 0.95f, 0.95f, 0.97f };
-			}
+			page.padding = hl::ui::Edges::all(16.0f);
+			page.gap = 16.0f;
+			page.crossAlign = hl::ui::Align::Start;
 		};
 
-		auto& clipList = _layoutRoot->addChild();
-		clipList.kind = hl::ui::Kind::Column;
-		clipList.clip = true;
-		clipList.gap = 8.0f;
-		clipList.padding = hl::ui::Edges::all(8.0f);
-		clipList.setTopRight({ 220.0f, 280.0f });
-		clipList.relative = { -16.0f, 88.0f };
-
-		auto clipPanel = std::make_unique<hl::ui::Panel>(clipList);
-		clipPanel->color = { 0.12f, 0.14f, 0.18f };
-		_widgets.push_back(std::move(clipPanel));
-
-		const glm::vec3 rowColors[] = {
-			{ 0.70f, 0.32f, 0.32f },
-			{ 0.70f, 0.48f, 0.22f },
-			{ 0.85f, 0.78f, 0.28f },
-			{ 0.32f, 0.62f, 0.38f },
-			{ 0.28f, 0.52f, 0.72f },
-			{ 0.42f, 0.38f, 0.72f },
-			{ 0.62f, 0.32f, 0.58f },
-			{ 0.55f, 0.55f, 0.58f }
-		};
-		for (int i = 0; i < 8; ++i)
 		{
-			auto& row = addRow(_widgets, clipList, { 204.0f, 36.0f }, rowColors[i]);
-			if (i == 2)
+			hl::ui::Node& page = _tabs->addPage("Slider & bar");
+			padPage(page);
+			_slider = std::make_unique<hl::ui::Slider>(page.addChild());
+			_slider->tooltip = "drag the slider";
+			_progressBar = std::make_unique<hl::ui::ProgressBar>(page.addChild());
+			_slider->onChanged = [this](float value)
 			{
-				_clipHitRow = &row;
+				_progressBar->setValue(value);
+			};
+			_progressBar->setValue(_slider->value());
+		}
+
+		{
+			hl::ui::Node& page = _tabs->addPage("Checks & toggle");
+			padPage(page);
+			_checkbox = std::make_unique<hl::ui::Checkbox>(page.addChild());
+			_checkbox->tooltip = "toggle the checkbox";
+			_toggle = std::make_unique<hl::ui::Toggle>(page.addChild());
+		}
+
+		{
+			hl::ui::Node& page = _tabs->addPage("Dropdown list");
+			padPage(page);
+			_dropdown = std::make_unique<hl::ui::Dropdown>(page.addChild(), *_typeface);
+			_dropdown->setItems({
+				"alpha", "beta", "gamma", "delta",
+				"epsilon", "zeta", "eta", "theta"
+			});
+		}
+
+		{
+			hl::ui::Node& page = _tabs->addPage("Radio groups");
+			padPage(page);
+			_radioVertical = std::make_unique<hl::ui::RadioGroup>(page.addChild(), *_typeface);
+			_radioVertical->setOrientation(hl::ui::RadioOrientation::Vertical);
+			_radioVertical->setItems({ "Red", "Green", "Blue" });
+			_radioHorizontal = std::make_unique<hl::ui::RadioGroup>(page.addChild(), *_typeface);
+			_radioHorizontal->setOrientation(hl::ui::RadioOrientation::Horizontal);
+			_radioHorizontal->setItems({ "S", "M", "L" });
+		}
+
+		{
+			hl::ui::Node& page = _tabs->addPage("Text & button");
+			padPage(page);
+			_fieldLabel = std::make_unique<hl::ui::Label>(page.addChild(), *_typeface);
+			_fieldLabel->setText("type here");
+			_fieldLabel->color = { 0.75f, 0.76f, 0.80f };
+			_textField = std::make_unique<hl::ui::TextField>(page.addChild(), *_typeface);
+			_actionButton = std::make_unique<hl::ui::Button>(page.addChild(), *_typeface);
+			_actionButton->setText("click / enter");
+			_actionButton->tooltip = "click or press Enter";
+			_actionButton->color = { 0.95f, 0.95f, 0.97f };
+			_actionButton->onClick = [this]()
+			{
+				if (_actionButton->color.x > 0.7f)
+				{
+					_actionButton->color = { 1.0f, 0.5f, 0.0f };
+				}
+				else
+				{
+					_actionButton->color = { 0.95f, 0.95f, 0.97f };
+				}
+			};
+		}
+
+		{
+			hl::ui::Node& clipPage = _tabs->addPage("Clipped rows");
+			padPage(clipPage);
+			clipPage.gap = 8.0f;
+			const glm::vec3 rowColors[] = {
+				{ 0.70f, 0.32f, 0.32f },
+				{ 0.70f, 0.48f, 0.22f },
+				{ 0.85f, 0.78f, 0.28f },
+				{ 0.32f, 0.62f, 0.38f },
+				{ 0.28f, 0.52f, 0.72f },
+				{ 0.42f, 0.38f, 0.72f },
+				{ 0.62f, 0.32f, 0.58f },
+				{ 0.55f, 0.55f, 0.58f }
+			};
+			for (int i = 0; i < 8; ++i)
+			{
+				auto& row = addRow(_widgets, clipPage, { 204.0f, 36.0f }, rowColors[i]);
+				if (i == 2)
+				{
+					_clipHitRow = &row;
+				}
 			}
 		}
 
-		auto& nestedOuter = _layoutRoot->addChild();
-		nestedOuter.clip = true;
-		nestedOuter.setTopRight({ 180.0f, 120.0f });
-		nestedOuter.relative = { -16.0f, 384.0f };
-
-		auto nestedPanel = std::make_unique<hl::ui::Panel>(nestedOuter);
-		nestedPanel->color = { 0.10f, 0.12f, 0.16f };
-		_widgets.push_back(std::move(nestedPanel));
-
-		auto& nestedInner = nestedOuter.addChild();
-		nestedInner.kind = hl::ui::Kind::Column;
-		nestedInner.clip = true;
-		nestedInner.gap = 6.0f;
-		nestedInner.setTopLeft({ 168.0f, 80.0f });
-		nestedInner.relative = { 6.0f, 6.0f };
-
-		auto nestedInnerPanel = std::make_unique<hl::ui::Panel>(nestedInner);
-		nestedInnerPanel->color = { 0.16f, 0.20f, 0.24f };
-		_widgets.push_back(std::move(nestedInnerPanel));
-
-		for (int i = 0; i < 6; ++i)
 		{
-			const float t = static_cast<float>(i) / 5.0f;
-			addRow(_widgets, nestedInner, { 168.0f, 28.0f }, { 0.25f + t * 0.5f, 0.55f, 0.65f - t * 0.3f });
+			hl::ui::Node& nestedPage = _tabs->addPage("Nested clip");
+			padPage(nestedPage);
+			auto& nestedOuter = nestedPage.addChild();
+			nestedOuter.clip = true;
+			nestedOuter.intrinsicSize = glm::vec2{ 180.0f, 120.0f };
+			nestedOuter.setTopLeft({ 180.0f, 120.0f });
+			nestedOuter.padding = hl::ui::Edges::all(6.0f);
+
+			auto nestedPanel = std::make_unique<hl::ui::Panel>(nestedOuter);
+			nestedPanel->color = { 0.10f, 0.12f, 0.16f };
+			_widgets.push_back(std::move(nestedPanel));
+
+			auto& nestedInner = nestedOuter.addChild();
+			nestedInner.kind = hl::ui::Kind::Column;
+			nestedInner.clip = true;
+			nestedInner.gap = 6.0f;
+			nestedInner.intrinsicSize = glm::vec2{ 168.0f, 80.0f };
+
+			auto nestedInnerPanel = std::make_unique<hl::ui::Panel>(nestedInner);
+			nestedInnerPanel->color = { 0.16f, 0.20f, 0.24f };
+			_widgets.push_back(std::move(nestedInnerPanel));
+
+			for (int i = 0; i < 6; ++i)
+			{
+				const float t = static_cast<float>(i) / 5.0f;
+				addRow(_widgets, nestedInner, { 168.0f, 28.0f }, { 0.25f + t * 0.5f, 0.55f, 0.65f - t * 0.3f });
+			}
 		}
 
-		auto& unclippedFrame = _layoutRoot->addChild();
-		unclippedFrame.setBottomRight({ 100.0f, 48.0f });
-		unclippedFrame.relative = { -16.0f, -16.0f };
+		{
+			hl::ui::Node& unclippedPage = _tabs->addPage("Unclipped overflow");
+			padPage(unclippedPage);
+			auto& unclippedFrame = unclippedPage.addChild();
+			unclippedFrame.intrinsicSize = glm::vec2{ 100.0f, 48.0f };
 
-		auto unclippedPanel = std::make_unique<hl::ui::Panel>(unclippedFrame);
-		unclippedPanel->color = { 0.18f, 0.12f, 0.12f };
-		_widgets.push_back(std::move(unclippedPanel));
+			auto unclippedPanel = std::make_unique<hl::ui::Panel>(unclippedFrame);
+			unclippedPanel->color = { 0.18f, 0.12f, 0.12f };
+			_widgets.push_back(std::move(unclippedPanel));
 
-		auto& unclipped = unclippedFrame.addChild();
-		unclipped.kind = hl::ui::Kind::Column;
-		unclipped.gap = 4.0f;
-		unclipped.setTopLeft({ 100.0f, 0.0f });
+			auto& unclipped = unclippedFrame.addChild();
+			unclipped.kind = hl::ui::Kind::Column;
+			unclipped.gap = 4.0f;
+			unclipped.intrinsicSize = glm::vec2{ 100.0f, 0.0f };
 
-		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.40f, 0.40f });
-		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.55f, 0.35f });
-		addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.70f, 0.30f });
+			addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.40f, 0.40f });
+			addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.55f, 0.35f });
+			addRow(_widgets, unclipped, { 100.0f, 28.0f }, { 0.90f, 0.70f, 0.30f });
+		}
 
-		auto stretched = std::make_unique<hl::ui::Panel>(_layoutRoot->addChild());
-		stretched->node().setBottomLeft({ 280.0f, 120.0f });
-		stretched->node().relative = { 16.0f, -16.0f };
-		stretched->nineSlice = hl::ui::NineSlice{
-			.uvRect = { 0.0f, 0.0f, 1.0f, 1.0f },
-			.sourceSize = { 32.0f, 32.0f },
-			.slice = hl::ui::Edges::all(8.0f),
-			.color = { 1.0f, 1.0f, 1.0f }
-		};
-		_widgets.push_back(std::move(stretched));
+		{
+			hl::ui::Node& framePage = _tabs->addPage("Nine-slice frame");
+			padPage(framePage);
+			auto stretched = std::make_unique<hl::ui::Panel>(framePage.addChild());
+			stretched->node().intrinsicSize = glm::vec2{ 280.0f, 120.0f };
+			stretched->nineSlice = hl::ui::NineSlice{
+				.uvRect = { 0.0f, 0.0f, 1.0f, 1.0f },
+				.sourceSize = { 32.0f, 32.0f },
+				.slice = hl::ui::Edges::all(8.0f),
+				.color = { 1.0f, 1.0f, 1.0f }
+			};
+			_widgets.push_back(std::move(stretched));
+		}
+
+		for (const char* title : { "More alpha", "More beta", "More gamma" })
+		{
+			auto label = std::make_unique<hl::ui::Label>(_tabs->addPage(title).addChild(), *_typeface);
+			label->setText(title);
+			label->color = { 0.75f, 0.76f, 0.80f };
+			_widgets.push_back(std::move(label));
+		}
 
 		_tooltip = std::make_unique<hl::ui::Tooltip>(_layoutRoot->addChild(), *_typeface);
 	}

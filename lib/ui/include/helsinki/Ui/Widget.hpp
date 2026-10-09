@@ -55,6 +55,7 @@ namespace hl::ui
 
 		bool hitTestEnabled = true;
 		bool focusable = false;
+		bool visible = true;
 		std::optional<unsigned> fontSize;
 		std::string tooltip;
 
