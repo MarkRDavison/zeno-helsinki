@@ -73,13 +73,17 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glfw)
 
+# SOURCE_SUBDIR skips glm's CMake (cmake_minimum_required 3.6 deprecation warning).
 FetchContent_Declare(
   glm
   GIT_REPOSITORY https://github.com/g-truc/glm.git
   GIT_TAG        1.0.1
+  SOURCE_SUBDIR  skip-cmake
 )
-
 FetchContent_MakeAvailable(glm)
+add_library(glm INTERFACE)
+add_library(glm::glm ALIAS glm)
+target_include_directories(glm SYSTEM INTERFACE "${glm_SOURCE_DIR}")
 
 FetchContent_Declare(
     stb
@@ -91,15 +95,14 @@ add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 
 # -------------------- miniaudio (Ogg via existing stb_vorbis) --------------------
+# SOURCE_SUBDIR skips miniaudio's CMake; we compile ThirdParty_miniaudio ourselves.
 FetchContent_Declare(
     miniaudio
     GIT_REPOSITORY https://github.com/mackron/miniaudio.git
     GIT_TAG        0.11.22
+    SOURCE_SUBDIR  skip-cmake
 )
-FetchContent_GetProperties(miniaudio)
-if(NOT miniaudio_POPULATED)
-    FetchContent_Populate(miniaudio)
-endif()
+FetchContent_MakeAvailable(miniaudio)
 
 enable_language(C)
 find_package(Threads REQUIRED)
@@ -122,10 +125,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/lua/lua.git
     GIT_TAG        v5.4.8
 )
-FetchContent_GetProperties(lua)
-if(NOT lua_POPULATED)
-    FetchContent_Populate(lua)
-endif()
+FetchContent_MakeAvailable(lua)
 
 set(_lua_lib_sources
     lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c
@@ -150,16 +150,14 @@ if(UNIX)
     target_link_libraries(ThirdParty_lua PUBLIC m)
 endif()
 
-# -------------------- sol2 v3.5.0 (INTERFACE; do not MakeAvailable) --------------------
+# -------------------- sol2 v3.5.0 (INTERFACE; skip sol2's CMake — it FetchContents its own Lua) --------------------
 FetchContent_Declare(
     sol2
     GIT_REPOSITORY https://github.com/ThePhD/sol2.git
     GIT_TAG        v3.5.0
+    SOURCE_SUBDIR  skip-cmake
 )
-FetchContent_GetProperties(sol2)
-if(NOT sol2_POPULATED)
-    FetchContent_Populate(sol2)
-endif()
+FetchContent_MakeAvailable(sol2)
 
 add_library(ThirdParty_sol2 INTERFACE)
 target_include_directories(ThirdParty_sol2 SYSTEM INTERFACE "${sol2_SOURCE_DIR}/include")
