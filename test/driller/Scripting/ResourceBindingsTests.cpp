@@ -5,6 +5,7 @@
 #include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/UpgradeData.hpp>
 #include <Entities/Data/WorkerData.hpp>
+#include <Entities/Job.hpp>
 #include <Scripting/CommandBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Scripting/ResourceBindings.hpp>
@@ -117,13 +118,41 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	REQUIRE(f.terrain.isTileDugOut(0, 1));
 	REQUIRE(f.terrain.isTileDugOut(1, 7));
 	REQUIRE(f.economy.get(ResourceMoney) == 500);
+	REQUIRE(f.economy.get(ResourceOre) == 0);
 	REQUIRE(f.workerData.workers.size() == 1);
 	REQUIRE(f.shuttleData.shuttles.size() == 1);
 	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
 	REQUIRE(f.terrain.getTile(0, 1).hasBuilding);
 	REQUIRE(f.terrain.getTile(0, 2).hasBuilding);
-	REQUIRE(f.buildingData.buildings.size() == 1);
+	REQUIRE(f.terrain.getTile(0, 3).hasBuilding);
+	REQUIRE(f.terrain.getTile(0, 5).hasBuilding);
+	REQUIRE(f.terrain.getTile(1, 5).hasBuilding);
+	REQUIRE(f.terrain.getTile(1, 1).hasBuilding);
+	REQUIRE(f.buildingData.buildings.size() == 5);
 	REQUIRE(f.buildingData.buildings[0].coordinates == glm::ivec2(1, 0));
+	REQUIRE(f.buildingData.buildings[1].coordinates == glm::ivec2(3, 0));
+	REQUIRE(f.buildingData.buildings[2].coordinates == glm::ivec2(5, 0));
+	REQUIRE(f.buildingData.buildings[3].coordinates == glm::ivec2(5, 1));
+	REQUIRE(f.buildingData.buildings[4].coordinates == glm::ivec2(1, 1));
+	REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Builder") == 2);
+	REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Miner") == 2);
+	REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Refiner") == 2);
+	REQUIRE(f.jobData.jobs.size() == 4);
+	int mineJobs = 0;
+	int refineJobs = 0;
+	for (const JobInstance& job : f.jobData.jobs)
+	{
+		if (job.prototypeId == jobPrototypeIdFromName("Job_Mine"))
+		{
+			++mineJobs;
+		}
+		if (job.prototypeId == jobPrototypeIdFromName("Job_Refine"))
+		{
+			++refineJobs;
+		}
+	}
+	REQUIRE(mineJobs == 2);
+	REQUIRE(refineJobs == 2);
 }
 
 }
