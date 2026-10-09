@@ -38,6 +38,7 @@ namespace drl
 		bool _loadSucceeded{ false };
 		bool _skipToGameplay{ false };
 		float _simSpeed{ 1.0f };
+		std::string _dataDirectory;
 		GameData _gameData;
 		TerrainAlterationService _terrainService;
 		EconomyResourceService _economyService;

@@ -2,6 +2,7 @@
 #include <Scenes/DrillerTitleEngineScene.hpp>
 #include <Scenes/DrillerGameEngineScene.hpp>
 #include <Core/LoadError.hpp>
+#include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
@@ -145,6 +146,12 @@ namespace drl
 			_session.loadAndValidate();
 		}
 		catch (const LoadError& error)
+		{
+			_loadFailed = true;
+			setStatus(error.what());
+			return;
+		}
+		catch (const hl::scripting::LuaError& error)
 		{
 			_loadFailed = true;
 			setStatus(error.what());

@@ -1,9 +1,10 @@
 #include <Core/Session.hpp>
 #include <Core/LoadError.hpp>
-#include <Core/SeedStartingCavern.hpp>
 #include <Scripting/CommandBindings.hpp>
+#include <Scripting/ResourceBindings.hpp>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
+#include <filesystem>
 
 namespace drl
 {
@@ -19,6 +20,7 @@ namespace drl
 	{
 		_skipToGameplay = false;
 		_simSpeed = 1.0f;
+		_dataDirectory = std::filesystem::path(gameJsonPath).parent_path().string();
 
 		const auto doc = hl::Json::parseFromText(hl::String::readFile(gameJsonPath));
 		hl::JsonNode& root = *doc.m_Root;
@@ -62,18 +64,12 @@ namespace drl
 			throw LoadError("game.json settings were not loaded");
 		}
 
-		if (_gameData.terrain.shaftLevel < 0)
-		{
-			seedStartingCavern(_terrainService);
-		}
+		const auto scriptsDirectory = std::filesystem::path(_dataDirectory) / "Scripts" / "Base";
+		_lua.runFile((scriptsDirectory / "resources.lua").string());
 
-		if (!_economyService.exists(ResourceMoney))
-		{
-			_economyService.setMax(ResourceOre, -1);
-			_economyService.set(ResourceOre, 0);
-			_economyService.setMax(ResourceMoney, -1);
-			_economyService.set(ResourceMoney, 500);
-		}
+		applyResourcesTable(_lua.raw()["resources"], _economyService);
+
+		_lua.runFile((scriptsDirectory / "initializeCommands.lua").string());
 
 		_loadSucceeded = true;
 	}
