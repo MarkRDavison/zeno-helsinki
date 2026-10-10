@@ -28,6 +28,7 @@ struct Fixture
 		{
 			ShuttleInstance& shuttle = shuttleData.shuttles.emplace_back();
 			shuttle.position = position;
+			shuttle.surfacePosition = kShuttleSurfacePosition;
 			return shuttle;
 		}
 
@@ -141,6 +142,19 @@ TEST_CASE("idle worker does not wander onto unreachable tiles", "[drl][WorkerMov
 	REQUIRE(worker.state == WorkerState::Idle);
 	REQUIRE(worker.position == glm::vec2(0.0f, 1.0f));
 	REQUIRE(worker.wanderBackoff > 0.0f);
+}
+
+TEST_CASE("leaving worker does not follow idle shuttle into the sky", "[drl][WorkerMovementService]")
+{
+	Fixture f;
+	f.addShuttle(kShuttleStartingPosition);
+	WorkerInstance& worker = f.addWorker(22, glm::vec2(0.0f, 0.0f));
+	worker.leaving = true;
+
+	f.service.updateWorker(1.0f, worker);
+
+	REQUIRE(worker.position == glm::vec2(-1.0f, 0.0f));
+	REQUIRE(worker.position.y == 0.0f);
 }
 
 TEST_CASE("leaving worker walks toward the shuttle", "[drl][WorkerMovementService]")

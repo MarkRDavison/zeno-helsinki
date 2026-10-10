@@ -133,7 +133,7 @@ namespace drl
 			return;
 		}
 
-		const glm::vec2 destination = _shuttleData.shuttles.front().position;
+		const glm::vec2 destination = _shuttleData.shuttles.front().surfacePosition;
 		const glm::vec2 pos = waypointTowards(worker.position, destination);
 		moveTowardsTarget(1.0f, delta, worker, pos);
 	}
