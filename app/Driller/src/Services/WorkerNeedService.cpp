@@ -4,10 +4,40 @@
 namespace drl
 {
 
-	WorkerNeedService::WorkerNeedService(WorkerData& workerData, const INeedPrototypeService& needPrototypes)
+	WorkerNeedService::WorkerNeedService(
+		WorkerData& workerData,
+		const INeedPrototypeService& needPrototypes,
+		const JobData& jobData,
+		const IJobPrototypeService& jobPrototypes)
 		: _workerData(workerData)
 		, _needPrototypes(needPrototypes)
+		, _jobData(jobData)
+		, _jobPrototypes(jobPrototypes)
 	{
+	}
+
+	NeedDecayModifier WorkerNeedService::decayModifier(const WorkerInstance& worker, NeedId needId) const
+	{
+		NeedDecayModifier modifier{};
+		if (worker.state != WorkerState::WorkingJob || worker.allocatedJobId == 0)
+		{
+			return modifier;
+		}
+
+		const JobInstance& job = _jobData.getJob(worker.allocatedJobId);
+		if (!_jobPrototypes.isPrototypeRegistered(job.prototypeId))
+		{
+			return modifier;
+		}
+
+		const JobPrototype& jobPrototype = _jobPrototypes.getPrototype(job.prototypeId);
+		const auto it = jobPrototype.needDecay.find(needId);
+		if (it == jobPrototype.needDecay.end())
+		{
+			return modifier;
+		}
+
+		return it->second;
 	}
 
 	void WorkerNeedService::update(float delta)
@@ -23,7 +53,8 @@ namespace drl
 				}
 
 				const NeedPrototype& prototype = _needPrototypes.getPrototype(needId);
-				it->second -= prototype.decayPerSecond * delta;
+				const NeedDecayModifier modifier = decayModifier(worker, needId);
+				it->second -= (prototype.decayPerSecond * modifier.multiplier + modifier.additivePerSecond) * delta;
 				it->second = std::clamp(it->second, 0.0f, kNeedValueFull);
 			}
 		}

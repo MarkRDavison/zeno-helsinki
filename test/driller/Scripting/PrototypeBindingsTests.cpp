@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
+#include <Entities/Need.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Services/BuildingPrototypeService.hpp>
 #include <Services/JobCreationService.hpp>
@@ -30,6 +31,7 @@ struct Fixture
 		WorkerPrototypeService workers;
 		BuildingPrototypeService buildings;
 		ShuttlePrototypeService shuttles;
+		NeedPrototypeService needs;
 		JobCreationService jobCreation{ jobData, jobs, terrain };
 
 		Fixture()
@@ -47,7 +49,7 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 {
 	Fixture f;
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles);
+	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
 
 	const auto digId = jobPrototypeIdFromName("Job_Dig");
 	REQUIRE(f.jobs.isPrototypeRegistered(digId));
@@ -56,6 +58,10 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE_FALSE(dig.repeats);
 	REQUIRE(dig.work == 2.0f);
 	REQUIRE(static_cast<bool>(dig.calculateOffset));
+	REQUIRE(dig.needDecay.empty());
+
+	const auto mineJobId = jobPrototypeIdFromName("Job_Mine");
+	REQUIRE(f.jobs.getPrototype(mineJobId).needDecay.empty());
 
 	const auto builderId = prototypeIdFromName("Worker_Builder");
 	REQUIRE(f.workers.isPrototypeRegistered(builderId));
@@ -128,7 +134,7 @@ TEST_CASE("Lua calculateOffset is applied on a right-side tile", "[drl][Scriptin
 {
 	Fixture f;
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles);
+	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
 	REQUIRE(f.terrain.digShaft(0));
 	f.terrain.initialiseTile(0, 1);
 	REQUIRE(f.jobCreation.createJob(jobPrototypeIdFromName("Job_Dig"), 0, glm::ivec2(1, 0)));
@@ -140,7 +146,7 @@ TEST_CASE("missing prototypes table throws LuaError", "[drl][Scripting]")
 {
 	Fixture f;
 	f.lua.runString("x = 1");
-	REQUIRE_THROWS_AS(applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles), hl::scripting::LuaError);
+	REQUIRE_THROWS_AS(applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs), hl::scripting::LuaError);
 }
 
 namespace
@@ -152,7 +158,7 @@ namespace
 			"prototypes = { jobs = {}, workers = {}, shuttles = {}, buildings = { "
 			+ buildingRow
 			+ " } }");
-		applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles);
+		applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
 	}
 
 	constexpr const char* kValidBuildingFields = R"(
@@ -206,6 +212,87 @@ TEST_CASE("building prototype negative workerCapacity throws LuaError", "[drl][S
 				kValidBuildingFields)),
 		hl::scripting::LuaError);
 }
+
+	TEST_CASE("job needDecay parses multiplier and additive", "[drl][Scripting]")
+	{
+		Fixture f;
+		NeedPrototype sleep{};
+		sleep.name = "Need_Sleep";
+		f.needs.registerPrototype(std::move(sleep));
+		f.lua.runString(R"(
+			prototypes = {
+				jobs = {
+					{
+						name = "Job_Mine",
+						repeats = true,
+						work = 4.0,
+						needDecay = {
+							["Need_Sleep"] = { multiplier = 1.5, additivePerSecond = 2.0 }
+						}
+					}
+				},
+				workers = {},
+				buildings = {},
+				shuttles = {}
+			}
+		)");
+		applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
+		const NeedDecayModifier& modifier =
+			f.jobs.getPrototype(jobPrototypeIdFromName("Job_Mine")).needDecay.at(needIdFromName("Need_Sleep"));
+		REQUIRE_THAT(modifier.multiplier, Catch::Matchers::WithinAbs(1.5f, 0.0001f));
+		REQUIRE_THAT(modifier.additivePerSecond, Catch::Matchers::WithinAbs(2.0f, 0.0001f));
+	}
+
+	TEST_CASE("job needDecay omitted fields use multiplier 1 and additive 0", "[drl][Scripting]")
+	{
+		Fixture f;
+		NeedPrototype sleep{};
+		sleep.name = "Need_Sleep";
+		f.needs.registerPrototype(std::move(sleep));
+		f.lua.runString(R"(
+			prototypes = {
+				jobs = {
+					{
+						name = "Job_Mine",
+						repeats = true,
+						work = 4.0,
+						needDecay = { ["Need_Sleep"] = {} }
+					}
+				},
+				workers = {},
+				buildings = {},
+				shuttles = {}
+			}
+		)");
+		applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
+		const NeedDecayModifier& modifier =
+			f.jobs.getPrototype(jobPrototypeIdFromName("Job_Mine")).needDecay.at(needIdFromName("Need_Sleep"));
+		REQUIRE(modifier.multiplier == 1.0f);
+		REQUIRE(modifier.additivePerSecond == 0.0f);
+	}
+
+	TEST_CASE("job needDecay unknown need throws LuaError", "[drl][Scripting]")
+	{
+		Fixture f;
+		f.lua.runString(R"(
+			prototypes = {
+				jobs = {
+					{
+						name = "Job_Mine",
+						repeats = true,
+						work = 4.0,
+						needDecay = { ["Need_Sleep"] = { multiplier = 2.0 } }
+					}
+				},
+				workers = {},
+				buildings = {},
+				shuttles = {}
+			}
+		)");
+		REQUIRE_THROWS_AS(
+			applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs),
+			hl::scripting::LuaError);
+	}
 
 }
 }

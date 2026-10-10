@@ -1,10 +1,12 @@
 #pragma once
 
+#include <Entities/Need.hpp>
 #include <helsinki/System/Utils/String.hpp>
 #include <helsinki/System/glm.hpp>
 #include <functional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 namespace drl
 {
@@ -29,6 +31,12 @@ namespace drl
 		float work{ 0.0f };
 	};
 
+	struct NeedDecayModifier
+	{
+		float multiplier{ 1.0f };
+		float additivePerSecond{ 0.0f };
+	};
+
 	struct JobPrototype
 	{
 		std::string name;
@@ -36,6 +44,7 @@ namespace drl
 		float work{ 0.0f };
 		std::function<void(const JobInstance&)> onComplete;
 		std::function<glm::vec2(const JobInstance&, const JobPrototype&)> calculateOffset;
+		std::unordered_map<NeedId, NeedDecayModifier> needDecay;
 	};
 
 }

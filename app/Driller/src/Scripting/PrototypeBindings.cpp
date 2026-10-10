@@ -96,6 +96,64 @@ namespace drl
 				return result.get<glm::vec2>();
 			};
 		}
+
+		void parseNeedDecay(
+			const sol::table& row,
+			const std::string& jobName,
+			JobPrototype& prototype,
+			const INeedPrototypeService& needs)
+		{
+			const sol::object decayObject = row["needDecay"];
+			if (!decayObject.valid() || decayObject.get_type() == sol::type::lua_nil)
+			{
+				return;
+			}
+			if (!decayObject.is<sol::table>())
+			{
+				throw hl::scripting::LuaError("job '" + jobName + "' needDecay must be a table");
+			}
+
+			const sol::table decay = decayObject.as<sol::table>();
+			for (const auto& kvp : decay)
+			{
+				if (!kvp.first.is<std::string>())
+				{
+					throw hl::scripting::LuaError("job '" + jobName + "' needDecay keys must be need names");
+				}
+
+				const std::string needName = kvp.first.as<std::string>();
+				if (needName.empty())
+				{
+					throw hl::scripting::LuaError("job '" + jobName + "' needDecay entry is missing name");
+				}
+
+				const NeedId needId = needIdFromName(needName);
+				if (!needs.isPrototypeRegistered(needId))
+				{
+					throw hl::scripting::LuaError(
+						"job '" + jobName + "' needDecay unknown need '" + needName + "'");
+				}
+				if (!kvp.second.is<sol::table>())
+				{
+					throw hl::scripting::LuaError(
+						"job '" + jobName + "' needDecay['" + needName + "'] must be a table");
+				}
+
+				const sol::table mods = kvp.second.as<sol::table>();
+				NeedDecayModifier modifier{};
+				sol::optional<float> multiplier = mods["multiplier"];
+				sol::optional<float> additivePerSecond = mods["additivePerSecond"];
+				if (multiplier)
+				{
+					modifier.multiplier = *multiplier;
+				}
+				if (additivePerSecond)
+				{
+					modifier.additivePerSecond = *additivePerSecond;
+				}
+				prototype.needDecay[needId] = modifier;
+			}
+		}
 	}
 
 	void applyPrototypesTable(
@@ -103,7 +161,8 @@ namespace drl
 		IJobPrototypeService& jobs,
 		IWorkerPrototypeService& workers,
 		IBuildingPrototypeService& buildings,
-		IShuttlePrototypeService& shuttles)
+		IShuttlePrototypeService& shuttles,
+		const INeedPrototypeService& needs)
 	{
 		const sol::table prototypes = requireTable(prototypesObject, "prototypes");
 		const sol::table jobRows = requireTable(prototypes["jobs"], "prototypes.jobs");
@@ -133,6 +192,7 @@ namespace drl
 			prototype.work = *work;
 			prototype.onComplete = wrapOnComplete(row["onComplete"]);
 			prototype.calculateOffset = wrapCalculateOffset(row["calculateOffset"]);
+			parseNeedDecay(row, *name, prototype, needs);
 			jobs.registerPrototype(std::move(prototype));
 		}
 

@@ -2,6 +2,7 @@
 
 #include <Services/BuildingPrototypeService.hpp>
 #include <Services/JobPrototypeService.hpp>
+#include <Services/NeedPrototypeService.hpp>
 #include <Services/ShuttlePrototypeService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <sol/sol.hpp>
@@ -15,6 +16,7 @@ namespace drl
 		IJobPrototypeService& jobs,
 		IWorkerPrototypeService& workers,
 		IBuildingPrototypeService& buildings,
-		IShuttlePrototypeService& shuttles);
+		IShuttlePrototypeService& shuttles,
+		const INeedPrototypeService& needs);
 
 }

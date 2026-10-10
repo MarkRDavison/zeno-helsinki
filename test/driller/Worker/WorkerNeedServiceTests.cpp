@@ -7,6 +7,7 @@
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/UpgradeData.hpp>
 #include <Entities/Data/WorkerData.hpp>
+#include <Entities/Job.hpp>
 #include <Entities/Need.hpp>
 #include <Entities/Worker.hpp>
 #include <Services/BuildingPlacementService.hpp>
@@ -34,7 +35,9 @@ namespace WorkerNeedServiceTests
 	{
 		WorkerData workerData;
 		NeedPrototypeService needPrototypes;
-		WorkerNeedService service{ workerData, needPrototypes };
+		JobData jobData;
+		JobPrototypeService jobPrototypes;
+		WorkerNeedService service{ workerData, needPrototypes, jobData, jobPrototypes };
 
 		void registerNeed(const std::string& name, float decayPerSecond)
 		{
@@ -138,6 +141,80 @@ namespace WorkerNeedServiceTests
 		game.update(1.0f);
 
 		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 98.0f);
+	}
+
+	TEST_CASE("idle worker uses base decay not job modifiers", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 1.0f);
+		JobPrototype job{};
+		job.name = "Job_Mine";
+		job.needDecay[needIdFromName("Need_Sleep")] = NeedDecayModifier{ 2.0f, 2.0f };
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& mine = f.jobData.jobs.emplace_back();
+		mine.id = 1;
+		mine.prototypeId = jobPrototypeIdFromName("Job_Mine");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = mine.id;
+		worker.state = WorkerState::Idle;
+		f.service.update(1.0f);
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 99.0f);
+	}
+
+	TEST_CASE("moving worker uses base decay", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 1.0f);
+		JobPrototype job{};
+		job.name = "Job_Mine";
+		job.needDecay[needIdFromName("Need_Sleep")] = NeedDecayModifier{ 2.0f, 2.0f };
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& mine = f.jobData.jobs.emplace_back();
+		mine.id = 1;
+		mine.prototypeId = jobPrototypeIdFromName("Job_Mine");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = mine.id;
+		worker.state = WorkerState::MovingToJob;
+		f.service.update(1.0f);
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 99.0f);
+	}
+
+	TEST_CASE("working job applies multiplier and additive", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 1.0f);
+		JobPrototype job{};
+		job.name = "Job_Mine";
+		job.needDecay[needIdFromName("Need_Sleep")] = NeedDecayModifier{ 2.0f, 2.0f };
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& mine = f.jobData.jobs.emplace_back();
+		mine.id = 1;
+		mine.prototypeId = jobPrototypeIdFromName("Job_Mine");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = mine.id;
+		worker.state = WorkerState::WorkingJob;
+		f.service.update(1.0f);
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 96.0f);
+	}
+
+	TEST_CASE("working job missing needDecay key uses base rate", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 1.0f);
+		f.registerNeed("Need_Food", 1.0f);
+		JobPrototype job{};
+		job.name = "Job_Mine";
+		job.needDecay[needIdFromName("Need_Sleep")] = NeedDecayModifier{ 2.0f, 0.0f };
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& mine = f.jobData.jobs.emplace_back();
+		mine.id = 1;
+		mine.prototypeId = jobPrototypeIdFromName("Job_Mine");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = mine.id;
+		worker.state = WorkerState::WorkingJob;
+		f.service.update(1.0f);
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 98.0f);
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Food")) == 99.0f);
 	}
 
 }

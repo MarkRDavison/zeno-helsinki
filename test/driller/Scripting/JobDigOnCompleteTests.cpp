@@ -70,7 +70,7 @@ namespace JobDigOnCompleteTests
 			bindPrototypeUserTypes(lua.raw());
 			bindGameCommands(lua.raw(), commands);
 			lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes, buildingPrototypes, shuttlePrototypes);
+			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes, buildingPrototypes, shuttlePrototypes, needPrototypes);
 		}
 	};
 

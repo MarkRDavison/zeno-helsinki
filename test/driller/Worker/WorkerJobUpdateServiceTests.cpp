@@ -189,6 +189,7 @@ namespace WorkerJobUpdateServiceTests
 		WorkerPrototypeService workers;
 		BuildingPrototypeService buildings;
 		ShuttlePrototypeService shuttles;
+		NeedPrototypeService needs;
 		bindPrototypeUserTypes(lua.raw());
 		lua.runString(R"(
 	prototypes = {
@@ -207,7 +208,7 @@ namespace WorkerJobUpdateServiceTests
 		shuttles = {}
 	}
 	)", "onComplete-error");
-		applyPrototypesTable(lua.raw()["prototypes"], f.jobPrototypes, workers, buildings, shuttles);
+		applyPrototypesTable(lua.raw()["prototypes"], f.jobPrototypes, workers, buildings, shuttles, needs);
 		f.reserveTile(0, 1);
 		JobInstance& job = f.addJob(1, "Job_Dig", 1.0f, glm::ivec2(1, 0));
 		WorkerInstance& worker = f.addWorker(22, job.id);

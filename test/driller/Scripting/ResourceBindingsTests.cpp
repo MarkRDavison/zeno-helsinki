@@ -141,7 +141,7 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	f.lua.runFile(shipped("Scripts/Base/resources.lua"));
 	applyResourcesTable(f.lua.raw()["resources"], f.economy);
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
-	applyPrototypesTable(f.lua.raw()["prototypes"], f.prototypes, f.workerPrototypes, f.buildingPrototypes, f.shuttlePrototypes);
+	applyPrototypesTable(f.lua.raw()["prototypes"], f.prototypes, f.workerPrototypes, f.buildingPrototypes, f.shuttlePrototypes, f.needPrototypes);
 	f.lua.runFile(shipped("Scripts/Base/initializeCommands.lua"));
 
 	REQUIRE(f.data.shaftLevel == 1);

@@ -18,7 +18,11 @@ namespace drl
 		, _workerRecruitmentService(_gameData.worker, _workerPrototypeService)
 		, _workerMovementService(_gameData.worker, _gameData.job, _terrainService)
 		, _workerJobUpdateService(_gameData.worker, _gameData.job, _terrainService, _jobPrototypeService)
-		, _workerNeedService(_gameData.worker, _needPrototypeService)
+		, _workerNeedService(
+			_gameData.worker,
+			_needPrototypeService,
+			_gameData.job,
+			_jobPrototypeService)
 		, _jobAllocationService(_gameData.job, _gameData.worker, _terrainService, _workerPrototypeService)
 		, _workerCreationService(
 			_gameData.worker,
@@ -126,7 +130,8 @@ namespace drl
 			_jobPrototypeService,
 			_workerPrototypeService,
 			_buildingPrototypeService,
-			_shuttlePrototypeService);
+			_shuttlePrototypeService,
+			_needPrototypeService);
 
 		_lua.runFile((scriptsDirectory / "initializeCommands.lua").string());
 
