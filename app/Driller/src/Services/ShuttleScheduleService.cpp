@@ -1,5 +1,6 @@
 #include <Services/ShuttleScheduleService.hpp>
 #include <helsinki/System/glm.hpp>
+#include <algorithm>
 #include <stdexcept>
 
 namespace drl
@@ -7,11 +8,13 @@ namespace drl
 
 	ShuttleScheduleService::ShuttleScheduleService(
 		ShuttleData& shuttleData,
+		WorkerData& workerData,
 		IWorkerRecruitmentService& recruitment,
 		IWorkerCreationService& workerCreation,
 		const IShuttlePrototypeService& shuttlePrototypes,
 		IEconomyResourceService& economy)
 		: _shuttleData(shuttleData)
+		, _workerData(workerData)
 		, _recruitment(recruitment)
 		, _workerCreation(workerCreation)
 		, _shuttlePrototypes(shuttlePrototypes)
@@ -53,6 +56,7 @@ namespace drl
 		case ShuttleState::WaitingOnSurface:
 			if (shuttle.elapsed >= prototype.loadingTime)
 			{
+				removeLeavingWorkers();
 				shuttle.state = ShuttleState::LeavingSurface;
 				shuttle.elapsed = 0.0f;
 			}
@@ -133,6 +137,22 @@ namespace drl
 			shuttle.cargo[resourceName] = _economy.get(resourceName);
 			_economy.set(resourceName, 0);
 		}
+	}
+
+	void ShuttleScheduleService::removeLeavingWorkers()
+	{
+		std::erase_if(
+			_workerData.workers,
+			[this](const WorkerInstance& worker)
+			{
+				if (!worker.leaving)
+				{
+					return false;
+				}
+
+				_recruitment.registerWorkerPrototypeRequirement(worker.prototypeId, 1);
+				return true;
+			});
 	}
 
 	void ShuttleScheduleService::updateShuttleOnArrivalAtDepartureDestination(ShuttleInstance& shuttle)

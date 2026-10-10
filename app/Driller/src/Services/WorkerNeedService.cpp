@@ -185,14 +185,15 @@ namespace drl
 
 	void WorkerNeedService::preemptIfNeeded(WorkerInstance& worker)
 	{
-		if (worker.allocatedJobId == 0)
-		{
-			return;
-		}
-
 		if (hasCollapsedNeed(worker))
 		{
 			unassign(worker);
+			worker.leaving = true;
+			return;
+		}
+
+		if (worker.allocatedJobId == 0)
+		{
 			return;
 		}
 

@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <Entities/Data/JobData.hpp>
+#include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/WorkerData.hpp>
+#include <Entities/Shuttle.hpp>
 #include <Entities/Job.hpp>
 #include <Entities/Worker.hpp>
 #include <Services/TerrainAlterationService.hpp>
@@ -18,8 +20,16 @@ struct Fixture
 		TerrainData terrainData;
 		JobData jobData;
 		WorkerData workerData;
+		ShuttleData shuttleData;
 		TerrainAlterationService terrain{ terrainData };
-		WorkerMovementService service{ workerData, jobData, terrain };
+		WorkerMovementService service{ workerData, jobData, terrain, shuttleData };
+
+		ShuttleInstance& addShuttle(glm::vec2 position)
+		{
+			ShuttleInstance& shuttle = shuttleData.shuttles.emplace_back();
+			shuttle.position = position;
+			return shuttle;
+		}
 
 		JobInstance& addJob(long long jobId, long long workerId, glm::ivec2 tile)
 		{
@@ -131,6 +141,48 @@ TEST_CASE("idle worker does not wander onto unreachable tiles", "[drl][WorkerMov
 	REQUIRE(worker.state == WorkerState::Idle);
 	REQUIRE(worker.position == glm::vec2(0.0f, 1.0f));
 	REQUIRE(worker.wanderBackoff > 0.0f);
+}
+
+TEST_CASE("leaving worker walks toward the shuttle", "[drl][WorkerMovementService]")
+{
+	Fixture f;
+	f.addShuttle(kShuttleSurfacePosition);
+	WorkerInstance& worker = f.addWorker(22, glm::vec2(1.0f, 0.0f));
+	worker.leaving = true;
+
+	f.service.updateWorker(1.0f, worker);
+
+	REQUIRE(worker.position == glm::vec2(0.0f, 0.0f));
+
+	f.service.updateWorker(4.0f, worker);
+
+	REQUIRE(worker.position == kShuttleSurfacePosition);
+}
+
+TEST_CASE("leaving worker on a different level walks to the shaft first", "[drl][WorkerMovementService]")
+{
+	Fixture f;
+	f.addShuttle(kShuttleSurfacePosition);
+	WorkerInstance& worker = f.addWorker(22, glm::vec2(2.0f, 2.0f));
+	worker.leaving = true;
+
+	f.service.updateWorker(1.0f, worker);
+
+	REQUIRE(worker.position == glm::vec2(1.0f, 2.0f));
+}
+
+TEST_CASE("leaving worker does not wander", "[drl][WorkerMovementService]")
+{
+	Fixture f;
+	f.addShuttle(kShuttleSurfacePosition);
+	WorkerInstance& worker = f.addWorker(22, glm::vec2(-4.0f, 0.0f));
+	worker.leaving = true;
+	worker.idleTime = 10.0f;
+
+	f.service.updateWorker(1.0f, worker);
+
+	REQUIRE(worker.state == WorkerState::Idle);
+	REQUIRE(worker.position == kShuttleSurfacePosition);
 }
 
 }

@@ -2,6 +2,7 @@
 
 #include <Core/Game.hpp>
 #include <Entities/Data/ShuttleData.hpp>
+#include <Entities/Data/WorkerData.hpp>
 #include <Entities/Shuttle.hpp>
 #include <Services/EconomyResourceService.hpp>
 #include <Services/ShuttlePrototypeService.hpp>
@@ -81,6 +82,7 @@ namespace drl
 	public:
 		ShuttleScheduleService(
 			ShuttleData& shuttleData,
+			WorkerData& workerData,
 			IWorkerRecruitmentService& recruitment,
 			IWorkerCreationService& workerCreation,
 			const IShuttlePrototypeService& shuttlePrototypes,
@@ -98,11 +100,13 @@ namespace drl
 
 		void updateShuttleOnArrivalAtSurface(ShuttleInstance& shuttle, const ShuttlePrototype& prototype);
 		void updateShuttleOnArrivalAtDepartureDestination(ShuttleInstance& shuttle);
+		void removeLeavingWorkers();
 		bool consumeWorkerHousingShortage();
 		std::optional<ShuttleCargoSale> consumeCargoSale();
 
 	private:
 		ShuttleData& _shuttleData;
+		WorkerData& _workerData;
 		IWorkerRecruitmentService& _recruitment;
 		IWorkerCreationService& _workerCreation;
 		const IShuttlePrototypeService& _shuttlePrototypes;

@@ -24,15 +24,32 @@ namespace drl
 			worker.position += glm::normalize(target - worker.position) * maxMovement;
 			return false;
 		}
+
+		glm::vec2 waypointTowards(glm::vec2 position, glm::vec2 destination)
+		{
+			if (destination.y != position.y)
+			{
+				if (position.x != 0.0f)
+				{
+					return { 0.0f, position.y };
+				}
+
+				return { 0.0f, destination.y };
+			}
+
+			return destination;
+		}
 	}
 
 	WorkerMovementService::WorkerMovementService(
 		WorkerData& workerData,
 		const JobData& jobData,
-		const ITerrainAlterationService& terrain)
+		const ITerrainAlterationService& terrain,
+		const ShuttleData& shuttleData)
 		: _workerData(workerData)
 		, _jobData(jobData)
 		, _terrain(terrain)
+		, _shuttleData(shuttleData)
 	{
 	}
 
@@ -101,24 +118,24 @@ namespace drl
 
 		const JobInstance& job = *jobIter;
 		const glm::vec2 jobPos = glm::vec2(job.tile) + glm::vec2(0.0f, 1.0f) + job.offset;
-		glm::vec2 pos = jobPos;
-
-		if (pos.y != worker.position.y)
-		{
-			if (worker.position.x != 0.0f)
-			{
-				pos = { 0.0f, worker.position.y };
-			}
-			else
-			{
-				pos = { 0.0f, pos.y };
-			}
-		}
+		const glm::vec2 pos = waypointTowards(worker.position, jobPos);
 
 		if (moveTowardsTarget(1.0f, delta, worker, pos) && jobPos == worker.position)
 		{
 			worker.state = WorkerState::WorkingJob;
 		}
+	}
+
+	void WorkerMovementService::updateLeavingWorker(float delta, WorkerInstance& worker)
+	{
+		if (_shuttleData.shuttles.empty())
+		{
+			return;
+		}
+
+		const glm::vec2 destination = _shuttleData.shuttles.front().position;
+		const glm::vec2 pos = waypointTowards(worker.position, destination);
+		moveTowardsTarget(1.0f, delta, worker, pos);
 	}
 
 	void WorkerMovementService::updateWanderingWorker(float delta, WorkerInstance& worker)
@@ -138,6 +155,12 @@ namespace drl
 
 	void WorkerMovementService::updateWorker(float delta, WorkerInstance& worker)
 	{
+		if (worker.leaving)
+		{
+			updateLeavingWorker(delta, worker);
+			return;
+		}
+
 		switch (worker.state)
 		{
 		case WorkerState::Idle:

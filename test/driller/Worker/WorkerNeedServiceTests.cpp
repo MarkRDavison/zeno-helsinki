@@ -331,8 +331,35 @@ namespace WorkerNeedServiceTests
 
 		REQUIRE(worker.allocatedJobId == 0);
 		REQUIRE(mine.allocatedWorkerId == 0);
+		REQUIRE(worker.leaving);
 		REQUIRE(f.service.chosenSeekNeed(worker) == std::nullopt);
 		REQUIRE(f.service.hasCollapsedNeed(worker));
+	}
+
+	TEST_CASE("idle collapsed worker starts leaving", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Sleep")] = 0.0f;
+
+		f.service.update(0.0f);
+
+		REQUIRE(worker.leaving);
+		REQUIRE(worker.state == WorkerState::Idle);
+		REQUIRE(worker.allocatedJobId == 0);
+	}
+
+	TEST_CASE("seeking worker does not start leaving", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+
+		f.service.update(0.0f);
+
+		REQUIRE_FALSE(worker.leaving);
 	}
 
 	TEST_CASE("working restore job raises the need", "[drl][WorkerNeedService]")

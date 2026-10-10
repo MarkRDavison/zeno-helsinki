@@ -90,7 +90,7 @@ namespace drl
 			return false;
 		}
 
-		if (_needs.hasCollapsedNeed(worker))
+		if (worker.leaving || _needs.hasCollapsedNeed(worker))
 		{
 			return false;
 		}

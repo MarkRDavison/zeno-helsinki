@@ -29,6 +29,7 @@ namespace drl
 		glm::vec2 wanderTarget{ 0.0f, 0.0f };
 		float idleTime{ 0.0f };
 		float wanderBackoff{ 0.0f };
+		bool leaving{ false };
 		std::unordered_map<long long, float> needValues;
 	};
 

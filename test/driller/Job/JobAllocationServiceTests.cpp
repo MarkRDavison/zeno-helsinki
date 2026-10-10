@@ -277,6 +277,23 @@ namespace JobAllocationServiceTests
 		REQUIRE_FALSE(f.service.canWorkerPerformJob(worker, mine));
 	}
 
+	TEST_CASE("leaving worker is assigned nothing", "[drl][JobAllocationService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 25.0f, 0.0f, 0);
+		f.registerWorker("Worker_Miner", { "Job_Mine" });
+		JobPrototype mineJob{};
+		mineJob.name = "Job_Mine";
+		f.registerJob(std::move(mineJob));
+		f.makeTileReachable(0, 1);
+		JobInstance& mine = f.addJob(2, "Job_Mine", glm::ivec2(1, 0));
+		WorkerInstance& worker = f.addWorker(3, "Worker_Miner");
+		worker.needValues[needIdFromName("Need_Sleep")] = 100.0f;
+		worker.leaving = true;
+
+		REQUIRE_FALSE(f.service.canWorkerPerformJob(worker, mine));
+	}
+
 	TEST_CASE("chosen seek need prefers lower priority", "[drl][JobAllocationService]")
 	{
 		Fixture f;

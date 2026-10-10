@@ -16,7 +16,7 @@ namespace drl
 		: _terrainService(_gameData.terrain)
 		, _jobCreationService(_gameData.job, _jobPrototypeService, _terrainService)
 		, _workerRecruitmentService(_gameData.worker, _workerPrototypeService)
-		, _workerMovementService(_gameData.worker, _gameData.job, _terrainService)
+		, _workerMovementService(_gameData.worker, _gameData.job, _terrainService, _gameData.shuttle)
 		, _workerJobUpdateService(_gameData.worker, _gameData.job, _terrainService, _jobPrototypeService)
 		, _workerNeedService(
 			_gameData.worker,
@@ -45,6 +45,7 @@ namespace drl
 		, _shuttleCreationService(_gameData.shuttle, _shuttlePrototypeService)
 		, _shuttleScheduleService(
 			_gameData.shuttle,
+			_gameData.worker,
 			_workerRecruitmentService,
 			_workerCreationService,
 			_shuttlePrototypeService,
