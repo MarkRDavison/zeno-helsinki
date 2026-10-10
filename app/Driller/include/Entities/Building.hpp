@@ -12,6 +12,7 @@ namespace drl
 {
 
 	inline constexpr const char* kBuildingMetadataWorkerCapacity = "workerCapacity";
+	inline constexpr const char* kBuildingMetadataRestoreSlots = "restoreSlots";
 
 	using BuildingId = long long;
 	using BuildingPrototypeId = long long;

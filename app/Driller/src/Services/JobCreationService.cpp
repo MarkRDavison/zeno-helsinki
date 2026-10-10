@@ -72,6 +72,17 @@ namespace drl
 		return _jobPrototypeService.isPrototypeRegistered(jobPrototypeIdFromName(prototypeName));
 	}
 
+	bool JobCreationService::isRestoreJob(const std::string& prototypeName) const
+	{
+		const JobPrototypeId prototypeId = jobPrototypeIdFromName(prototypeName);
+		if (!_jobPrototypeService.isPrototypeRegistered(prototypeId))
+		{
+			return false;
+		}
+
+		return !_jobPrototypeService.getPrototype(prototypeId).needRestore.empty();
+	}
+
 	bool JobCreationService::cancelNonRepeatingJobs(
 		glm::ivec2 coordinates,
 		std::vector<JobInstance>& cancelled)

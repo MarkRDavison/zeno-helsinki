@@ -7,6 +7,7 @@
 #include <Entities/Data/WorkerData.hpp>
 #include <Entities/Job.hpp>
 #include <Scripting/CommandBindings.hpp>
+#include <Scripting/NeedBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Scripting/ResourceBindings.hpp>
 #include <Services/BuildingPlacementService.hpp>
@@ -140,6 +141,8 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	Fixture f;
 	f.lua.runFile(shipped("Scripts/Base/resources.lua"));
 	applyResourcesTable(f.lua.raw()["resources"], f.economy);
+	f.lua.runFile(shipped("Scripts/Base/needs.lua"));
+	applyNeedsTable(f.lua.raw()["needs"], f.needPrototypes);
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
 	applyPrototypesTable(f.lua.raw()["prototypes"], f.prototypes, f.workerPrototypes, f.buildingPrototypes, f.shuttlePrototypes, f.needPrototypes);
 	f.lua.runFile(shipped("Scripts/Base/initializeCommands.lua"));
@@ -167,9 +170,10 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 	REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Builder") == 2);
 	REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Miner") == 2);
 	REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Refiner") == 2);
-	REQUIRE(f.jobData.jobs.size() == 4);
+	REQUIRE(f.jobData.jobs.size() == 8);
 	int mineJobs = 0;
 	int refineJobs = 0;
+	int sleepJobs = 0;
 	for (const JobInstance& job : f.jobData.jobs)
 	{
 		if (job.prototypeId == jobPrototypeIdFromName("Job_Mine"))
@@ -180,9 +184,14 @@ TEST_CASE("shipped resources and initializeCommands set up the cavern", "[drl][S
 		{
 			++refineJobs;
 		}
+		if (job.prototypeId == jobPrototypeIdFromName("Job_Sleep"))
+		{
+			++sleepJobs;
+		}
 	}
 	REQUIRE(mineJobs == 2);
 	REQUIRE(refineJobs == 2);
+	REQUIRE(sleepJobs == 4);
 }
 
 }

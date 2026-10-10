@@ -9,6 +9,7 @@
 #include <Entities/Job.hpp>
 #include <Entities/Worker.hpp>
 #include <Scripting/CommandBindings.hpp>
+#include <Scripting/NeedBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Services/BuildingPlacementService.hpp>
 #include <Services/BuildingPrototypeService.hpp>
@@ -70,6 +71,8 @@ namespace JobBuildBuildingOnCompleteTests
 			economy.set(ResourceMoney, 500);
 			bindPrototypeUserTypes(lua.raw());
 			bindGameCommands(lua.raw(), commands);
+			lua.runFile(shipped("Scripts/Base/needs.lua"));
+			applyNeedsTable(lua.raw()["needs"], needPrototypes);
 			lua.runFile(shipped("Scripts/Base/prototypes.lua"));
 			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes, buildingPrototypes, shuttlePrototypes, needPrototypes);
 		}
@@ -104,7 +107,11 @@ namespace JobBuildBuildingOnCompleteTests
 
 		f.jobUpdate.update(5.0f);
 
-		REQUIRE(f.jobData.jobs.empty());
+		REQUIRE(f.jobData.jobs.size() == 4);
+		for (const JobInstance& sleepJob : f.jobData.jobs)
+		{
+			REQUIRE(sleepJob.prototypeId == jobPrototypeIdFromName("Job_Sleep"));
+		}
 		REQUIRE(f.buildingData.buildings.size() == 1);
 		REQUIRE(f.buildingData.buildings[0].coordinates == glm::ivec2(1, 0));
 		REQUIRE(f.buildingData.buildings[0].prototypeId == prototypeIdFromName("Building_Bunk"));

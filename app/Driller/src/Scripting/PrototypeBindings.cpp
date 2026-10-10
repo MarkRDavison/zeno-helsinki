@@ -364,6 +364,10 @@ namespace drl
 					{
 						throw hl::scripting::LuaError("building workerCapacity cannot be negative");
 					}
+					if (key == kBuildingMetadataRestoreSlots && value < 0)
+					{
+						throw hl::scripting::LuaError("building restoreSlots cannot be negative");
+					}
 
 					prototype.metadata[key] = value;
 				}

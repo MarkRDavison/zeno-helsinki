@@ -84,9 +84,23 @@ namespace drl
 
 		for (const auto& providedJob : prototype.providedJobs)
 		{
-			if (!_jobs.createJob(providedJob.first, providedJob.second, glm::ivec2(column, level)))
+			long long copies = 1;
+			if (_jobs.isRestoreJob(providedJob.first))
 			{
-				throw std::runtime_error("Failed to create job");
+				const std::optional<long long> restoreSlots =
+					buildingMetadataInt(prototype, kBuildingMetadataRestoreSlots);
+				if (restoreSlots.has_value() && *restoreSlots >= 1)
+				{
+					copies = *restoreSlots;
+				}
+			}
+
+			for (long long copy = 0; copy < copies; ++copy)
+			{
+				if (!_jobs.createJob(providedJob.first, providedJob.second, glm::ivec2(column, level)))
+				{
+					throw std::runtime_error("Failed to create job");
+				}
 			}
 		}
 

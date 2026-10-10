@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <Entities/Data/JobData.hpp>
+#include <Entities/Need.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
@@ -110,6 +111,17 @@ TEST_CASE("cancelNonRepeatingJobs removes dig and clears reserved", "[drl][JobCr
 	REQUIRE(cancelled.size() == 1);
 	REQUIRE(f.jobData.jobs.empty());
 	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
+}
+
+TEST_CASE("isRestoreJob is true when needRestore is set", "[drl][JobCreationService]")
+{
+	Fixture f;
+	JobPrototype sleep{};
+	sleep.name = "Job_Sleep";
+	sleep.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+	f.prototypes.registerPrototype(std::move(sleep));
+	REQUIRE(f.jobs.isRestoreJob("Job_Sleep"));
+	REQUIRE_FALSE(f.jobs.isRestoreJob("Job_Mine"));
 }
 
 TEST_CASE("cancelNonRepeatingJobs repeating refuses", "[drl][JobCreationService]")

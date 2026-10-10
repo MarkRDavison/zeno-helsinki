@@ -24,6 +24,7 @@ namespace drl
 			glm::vec2 offset,
 			glm::ivec2 coordinates) = 0;
 		virtual bool isNamedPrototypeRegistered(const std::string& prototypeName) const = 0;
+		virtual bool isRestoreJob(const std::string& prototypeName) const = 0;
 		virtual bool cancelNonRepeatingJobs(
 			glm::ivec2 coordinates,
 			std::vector<JobInstance>& cancelled) = 0;
@@ -49,6 +50,7 @@ namespace drl
 			glm::vec2 offset,
 			glm::ivec2 coordinates) override;
 		bool isNamedPrototypeRegistered(const std::string& prototypeName) const override;
+		bool isRestoreJob(const std::string& prototypeName) const override;
 		bool cancelNonRepeatingJobs(
 			glm::ivec2 coordinates,
 			std::vector<JobInstance>& cancelled) override;

@@ -10,6 +10,7 @@
 #include <Entities/Job.hpp>
 #include <Entities/Worker.hpp>
 #include <Scripting/CommandBindings.hpp>
+#include <Scripting/NeedBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Services/BuildingPlacementService.hpp>
 #include <Services/BuildingPrototypeService.hpp>
@@ -71,6 +72,8 @@ namespace JobRefineOnCompleteTests
 			economy.set(ResourceMoney, 500);
 			bindPrototypeUserTypes(lua.raw());
 			bindGameCommands(lua.raw(), commands);
+			lua.runFile(shipped("Scripts/Base/needs.lua"));
+			applyNeedsTable(lua.raw()["needs"], needPrototypes);
 			lua.runFile(shipped("Scripts/Base/prototypes.lua"));
 			applyPrototypesTable(lua.raw()["prototypes"], jobPrototypes, workerPrototypes, buildingPrototypes, shuttlePrototypes, needPrototypes);
 			BuildingInstance housing{};

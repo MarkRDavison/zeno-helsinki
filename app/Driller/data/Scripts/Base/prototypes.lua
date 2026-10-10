@@ -95,6 +95,15 @@ prototypes = {
                 function (jobInstance)
                     cmd(GameCommand.new(AddUpgradeEvent.new("Upgrade_Refine", 0.001), GameCommandContext.AddingUpgrade, GameCommandSource.System))
                 end
+        },
+        {
+            name = "Job_Sleep",
+            repeats = true,
+            work = 1.0,
+            everyoneCanPerform = true,
+            needRestore = {
+                ["Need_Sleep"] = { restorePerSecond = 15.0 }
+            }
         }
     },
     buildings = {
@@ -111,9 +120,19 @@ prototypes = {
                 y = 0
             },
             metadata = {
-                workerCapacity = 4
+                workerCapacity = 4,
+                restoreSlots = 4
             },
             workers = {
+            },
+            jobs = {
+                {
+                    name = "Job_Sleep",
+                    offset = {
+                        x = 0.5,
+                        y = 0.0
+                    }
+                }
             }
         },
         {

@@ -3,6 +3,7 @@
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Need.hpp>
+#include <Scripting/NeedBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Services/BuildingPrototypeService.hpp>
 #include <Services/JobCreationService.hpp>
@@ -48,6 +49,8 @@ std::string shipped(const char* relative)
 TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][Scripting]")
 {
 	Fixture f;
+	f.lua.runFile(shipped("Scripts/Base/needs.lua"));
+	applyNeedsTable(f.lua.raw()["needs"], f.needs);
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
 	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
 
@@ -62,6 +65,15 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(dig.needRestore.empty());
 	REQUIRE_FALSE(dig.everyoneCanPerform);
 	REQUIRE(dig.restoreUntil == kNeedValueFull);
+
+	const auto sleepJobId = jobPrototypeIdFromName("Job_Sleep");
+	REQUIRE(f.jobs.isPrototypeRegistered(sleepJobId));
+	const auto& sleep = f.jobs.getPrototype(sleepJobId);
+	REQUIRE(sleep.repeats);
+	REQUIRE(sleep.work == 1.0f);
+	REQUIRE(sleep.everyoneCanPerform);
+	REQUIRE_THAT(sleep.needRestore.at(needIdFromName("Need_Sleep")), Catch::Matchers::WithinAbs(15.0f, 0.0001f));
+	REQUIRE(sleep.restoreUntil == kNeedValueFull);
 
 	const auto mineJobId = jobPrototypeIdFromName("Job_Mine");
 	REQUIRE(f.jobs.getPrototype(mineJobId).needDecay.empty());
@@ -80,9 +92,12 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(bunk.size == glm::ivec2(2, 1));
 	REQUIRE(bunk.texture == glm::ivec2(3, 0));
 	REQUIRE(bunk.requiredWorkers.empty());
-	REQUIRE(bunk.providedJobs.empty());
+	REQUIRE(bunk.providedJobs.size() == 1);
+	REQUIRE(bunk.providedJobs[0].first == "Job_Sleep");
+	REQUIRE(bunk.providedJobs[0].second == glm::vec2(0.5f, 0.0f));
 	REQUIRE(buildingMetadataInt(bunk, kBuildingMetadataWorkerCapacity).value() == 4);
-	REQUIRE(bunk.metadata.size() == 1);
+	REQUIRE(buildingMetadataInt(bunk, kBuildingMetadataRestoreSlots).value() == 4);
+	REQUIRE(bunk.metadata.size() == 2);
 
 	const auto hutId = prototypeIdFromName("Building_Builders_Hut");
 	REQUIRE(f.buildings.isPrototypeRegistered(hutId));
@@ -136,6 +151,8 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 TEST_CASE("Lua calculateOffset is applied on a right-side tile", "[drl][Scripting]")
 {
 	Fixture f;
+	f.lua.runFile(shipped("Scripts/Base/needs.lua"));
+	applyNeedsTable(f.lua.raw()["needs"], f.needs);
 	f.lua.runFile(shipped("Scripts/Base/prototypes.lua"));
 	applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
 	REQUIRE(f.terrain.digShaft(0));
@@ -212,6 +229,18 @@ TEST_CASE("building prototype negative workerCapacity throws LuaError", "[drl][S
 			f,
 			std::format(
 				"{{ {} label = \"Bunk\", cost = 50, metadata = {{ workerCapacity = -1 }} }}",
+				kValidBuildingFields)),
+		hl::scripting::LuaError);
+}
+
+TEST_CASE("building prototype negative restoreSlots throws LuaError", "[drl][Scripting]")
+{
+	Fixture f;
+	REQUIRE_THROWS_AS(
+		applyBuildingStub(
+			f,
+			std::format(
+				"{{ {} label = \"Bunk\", cost = 50, metadata = {{ restoreSlots = -1 }} }}",
 				kValidBuildingFields)),
 		hl::scripting::LuaError);
 }
