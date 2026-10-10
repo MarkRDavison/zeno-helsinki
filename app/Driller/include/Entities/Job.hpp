@@ -47,6 +47,7 @@ namespace drl
 		std::unordered_map<NeedId, NeedDecayModifier> needDecay;
 		std::unordered_map<NeedId, float> needRestore;
 		bool everyoneCanPerform{ false };
+		float restoreUntil{ kNeedValueFull };
 	};
 
 }

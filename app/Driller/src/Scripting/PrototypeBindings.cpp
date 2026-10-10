@@ -250,6 +250,11 @@ namespace drl
 			{
 				prototype.everyoneCanPerform = *everyoneCanPerform;
 			}
+			sol::optional<float> restoreUntil = row["restoreUntil"];
+			if (restoreUntil)
+			{
+				prototype.restoreUntil = *restoreUntil;
+			}
 			parseNeedDecay(row, *name, prototype, needs);
 			parseNeedRestore(row, *name, prototype, needs);
 			jobs.registerPrototype(std::move(prototype));

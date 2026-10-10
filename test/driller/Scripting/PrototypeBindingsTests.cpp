@@ -61,6 +61,7 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(dig.needDecay.empty());
 	REQUIRE(dig.needRestore.empty());
 	REQUIRE_FALSE(dig.everyoneCanPerform);
+	REQUIRE(dig.restoreUntil == kNeedValueFull);
 
 	const auto mineJobId = jobPrototypeIdFromName("Job_Mine");
 	REQUIRE(f.jobs.getPrototype(mineJobId).needDecay.empty());
@@ -301,6 +302,33 @@ TEST_CASE("building prototype negative workerCapacity throws LuaError", "[drl][S
 		const auto& job = f.jobs.getPrototype(jobPrototypeIdFromName("Job_Sleep"));
 		REQUIRE(job.everyoneCanPerform);
 		REQUIRE_THAT(job.needRestore.at(needIdFromName("Need_Sleep")), Catch::Matchers::WithinAbs(15.0f, 0.0001f));
+		REQUIRE(job.restoreUntil == kNeedValueFull);
+	}
+
+	TEST_CASE("job restoreUntil parses", "[drl][Scripting]")
+	{
+		Fixture f;
+		NeedPrototype sleep{};
+		sleep.name = "Need_Sleep";
+		f.needs.registerPrototype(std::move(sleep));
+		f.lua.runString(R"(
+			prototypes = {
+				jobs = {
+					{
+						name = "Job_Sleep",
+						repeats = true,
+						work = 1.0,
+						restoreUntil = 50,
+						needRestore = { ["Need_Sleep"] = { restorePerSecond = 15.0 } }
+					}
+				},
+				workers = {},
+				buildings = {},
+				shuttles = {}
+			}
+		)");
+		applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
+		REQUIRE(f.jobs.getPrototype(jobPrototypeIdFromName("Job_Sleep")).restoreUntil == 50.0f);
 	}
 
 	TEST_CASE("job needRestore unknown need throws LuaError", "[drl][Scripting]")

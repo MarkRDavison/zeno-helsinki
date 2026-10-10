@@ -96,6 +96,63 @@ namespace drl
 		return chosen;
 	}
 
+	const JobPrototype* WorkerNeedService::workingJobPrototype(const WorkerInstance& worker) const
+	{
+		if (worker.state != WorkerState::WorkingJob || worker.allocatedJobId == 0)
+		{
+			return nullptr;
+		}
+
+		const JobInstance& job = _jobData.getJob(worker.allocatedJobId);
+		if (!_jobPrototypes.isPrototypeRegistered(job.prototypeId))
+		{
+			return nullptr;
+		}
+
+		return &_jobPrototypes.getPrototype(job.prototypeId);
+	}
+
+	void WorkerNeedService::applyRestore(WorkerInstance& worker, float delta)
+	{
+		const JobPrototype* jobPrototype = workingJobPrototype(worker);
+		if (jobPrototype == nullptr)
+		{
+			return;
+		}
+
+		for (const auto& [needId, restorePerSecond] : jobPrototype->needRestore)
+		{
+			const auto it = worker.needValues.find(needId);
+			if (it == worker.needValues.end())
+			{
+				continue;
+			}
+
+			it->second += restorePerSecond * delta;
+			it->second = std::clamp(it->second, 0.0f, kNeedValueFull);
+		}
+	}
+
+	void WorkerNeedService::leaveIfRestored(WorkerInstance& worker)
+	{
+		const JobPrototype* jobPrototype = workingJobPrototype(worker);
+		if (jobPrototype == nullptr || jobPrototype->needRestore.empty())
+		{
+			return;
+		}
+
+		for (const auto& [needId, restorePerSecond] : jobPrototype->needRestore)
+		{
+			const auto it = worker.needValues.find(needId);
+			if (it == worker.needValues.end() || it->second < jobPrototype->restoreUntil)
+			{
+				return;
+			}
+		}
+
+		unassign(worker);
+	}
+
 	bool WorkerNeedService::currentJobRestores(const WorkerInstance& worker, NeedId needId) const
 	{
 		if (worker.allocatedJobId == 0)
@@ -169,6 +226,8 @@ namespace drl
 				it->second = std::clamp(it->second, 0.0f, kNeedValueFull);
 			}
 
+			applyRestore(worker, delta);
+			leaveIfRestored(worker);
 			preemptIfNeeded(worker);
 		}
 	}

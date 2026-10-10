@@ -40,6 +40,9 @@ namespace drl
 
 	private:
 		NeedDecayModifier decayModifier(const WorkerInstance& worker, NeedId needId) const;
+		const JobPrototype* workingJobPrototype(const WorkerInstance& worker) const;
+		void applyRestore(WorkerInstance& worker, float delta);
+		void leaveIfRestored(WorkerInstance& worker);
 		void preemptIfNeeded(WorkerInstance& worker);
 		void unassign(WorkerInstance& worker);
 		bool currentJobRestores(const WorkerInstance& worker, NeedId needId) const;

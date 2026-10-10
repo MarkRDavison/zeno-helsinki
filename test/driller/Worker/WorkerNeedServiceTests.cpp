@@ -335,5 +335,104 @@ namespace WorkerNeedServiceTests
 		REQUIRE(f.service.hasCollapsedNeed(worker));
 	}
 
+	TEST_CASE("working restore job raises the need", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = sleep.id;
+		sleep.allocatedWorkerId = worker.id;
+		worker.state = WorkerState::WorkingJob;
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+
+		f.service.update(1.0f);
+
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 39.0f);
+		REQUIRE(worker.allocatedJobId == sleep.id);
+		REQUIRE(worker.state == WorkerState::WorkingJob);
+	}
+
+	TEST_CASE("full restore unassigns worker and leaves repeating job", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = sleep.id;
+		sleep.allocatedWorkerId = worker.id;
+		worker.state = WorkerState::WorkingJob;
+		worker.needValues[needIdFromName("Need_Sleep")] = 90.0f;
+
+		f.service.update(1.0f);
+
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == kNeedValueFull);
+		REQUIRE(worker.allocatedJobId == 0);
+		REQUIRE(worker.state == WorkerState::Idle);
+		REQUIRE(sleep.allocatedWorkerId == 0);
+		REQUIRE(f.jobData.jobs.size() == 1);
+		REQUIRE_FALSE(sleep.requiresRemoval);
+	}
+
+	TEST_CASE("restoreUntil below 100 unassigns when reached", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		job.restoreUntil = 50.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = sleep.id;
+		sleep.allocatedWorkerId = worker.id;
+		worker.state = WorkerState::WorkingJob;
+		worker.needValues[needIdFromName("Need_Sleep")] = 40.0f;
+
+		f.service.update(1.0f);
+
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 55.0f);
+		REQUIRE(worker.state == WorkerState::Idle);
+		REQUIRE(sleep.allocatedWorkerId == 0);
+	}
+
+	TEST_CASE("moving to restore job does not restore", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = sleep.id;
+		sleep.allocatedWorkerId = worker.id;
+		worker.state = WorkerState::MovingToJob;
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+
+		f.service.update(1.0f);
+
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 24.0f);
+		REQUIRE(worker.allocatedJobId == sleep.id);
+	}
+
 }
 }
