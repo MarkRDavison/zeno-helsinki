@@ -1,9 +1,11 @@
 #include <Services/GameCommandService.hpp>
 #include <Entities/Job.hpp>
+#include <Entities/Worker.hpp>
 #include <Services/PrototypeService.hpp>
 #include <helsinki/System/glm.hpp>
 #include <cmath>
 #include <type_traits>
+#include <vector>
 
 namespace drl
 {
@@ -16,7 +18,8 @@ namespace drl
 		IBuildingPlacementService& buildings,
 		IBuildingPrototypeService& buildingPrototypes,
 		IShuttleCreationService& shuttles,
-		IUpgradeService& upgrades)
+		IUpgradeService& upgrades,
+		WorkerData& workerData)
 		: _terrain(terrain)
 		, _economy(economy)
 		, _jobs(jobs)
@@ -25,6 +28,7 @@ namespace drl
 		, _buildingPrototypes(buildingPrototypes)
 		, _shuttles(shuttles)
 		, _upgrades(upgrades)
+		, _workerData(workerData)
 	{
 	}
 
@@ -65,6 +69,10 @@ namespace drl
 				else if constexpr (std::is_same_v<T, AddUpgrade>)
 				{
 					return handleAddUpgrade(payload);
+				}
+				else if constexpr (std::is_same_v<T, CancelJob>)
+				{
+					return handleCancelJob(command.source, payload);
 				}
 				else
 				{
@@ -184,6 +192,43 @@ namespace drl
 	bool GameCommandService::handleAddUpgrade(const AddUpgrade& event)
 	{
 		_upgrades.addUpgrade(event.upgradeId, event.value);
+		return true;
+	}
+
+	bool GameCommandService::handleCancelJob(CommandSource source, const CancelJob& event)
+	{
+		std::vector<JobInstance> cancelled;
+		if (!_jobs.cancelNonRepeatingJobs(glm::ivec2(event.column, event.level), cancelled))
+		{
+			return false;
+		}
+
+		for (const JobInstance& job : cancelled)
+		{
+			if (job.allocatedWorkerId != 0)
+			{
+				for (WorkerInstance& worker : _workerData.workers)
+				{
+					if (worker.id == job.allocatedWorkerId)
+					{
+						worker.allocatedJobId = 0;
+						worker.state = WorkerState::Idle;
+						worker.idleTime = 0.0f;
+						break;
+					}
+				}
+			}
+
+			if (source == CommandSource::Player
+				&& job.prototypeId == jobPrototypeIdFromName(kJobBuildBuilding)
+				&& _buildingPrototypes.isPrototypeRegistered(job.additionalPrototypeId))
+			{
+				_economy.add(
+					ResourceMoney,
+					_buildingPrototypes.getPrototype(job.additionalPrototypeId).cost);
+			}
+		}
+
 		return true;
 	}
 

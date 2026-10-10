@@ -2,6 +2,7 @@
 #include <Core/GameCommand.hpp>
 #include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/JobData.hpp>
+#include <Entities/Job.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/UpgradeData.hpp>
@@ -19,9 +20,11 @@
 #include <Services/TerrainAlterationService.hpp>
 #include <Services/UpgradeService.hpp>
 #include <Services/WorkerCreationService.hpp>
+#include <Services/WorkerJobUpdateService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <Services/WorkerRecruitmentService.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <helsinki/System/glm.hpp>
 
 namespace drl
 {
@@ -38,17 +41,17 @@ struct Fixture
 		JobCreationService jobCreation{ jobData, prototypes, terrain };
 		WorkerData workerData;
 		WorkerPrototypeService workerPrototypes;
-		WorkerCreationService workerCreation{ workerData, workerPrototypes };
 		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
 		BuildingData buildingData;
 		BuildingPrototypeService buildingPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes };
 		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
 		ShuttleData shuttleData;
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
 		UpgradeData upgradeData;
 		UpgradeService upgrades{ upgradeData };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades, workerData };
 
 		Fixture()
 		{
@@ -58,6 +61,17 @@ struct Fixture
 			economy.set(ResourceMoney, 500);
 		}
 };
+
+	void placeHousing(Fixture& f, long long beds)
+	{
+		BuildingPrototype proto{};
+		proto.name = "Building_TestHousing";
+		proto.metadata[kBuildingMetadataWorkerCapacity] = beds;
+		f.buildingPrototypes.registerPrototype(std::move(proto));
+		BuildingInstance instance{};
+		instance.prototypeId = prototypeIdFromName("Building_TestHousing");
+		f.buildingData.buildings.push_back(instance);
+	}
 
 TEST_CASE("tick is monotonic from 0", "[drl][GameCommandService]")
 {
@@ -292,6 +306,7 @@ TEST_CASE("CreateWorker succeeds at coordinates", "[drl][GameCommandService]")
 	WorkerPrototype prototype{};
 	prototype.name = "Worker_Builder";
 	f.workerPrototypes.registerPrototype(std::move(prototype));
+	placeHousing(f, 4);
 	REQUIRE(f.commands.execute(GameCommand::createWorker(
 		"Worker_Builder",
 		glm::vec2(1.0f, 0.0f),
@@ -300,6 +315,26 @@ TEST_CASE("CreateWorker succeeds at coordinates", "[drl][GameCommandService]")
 	REQUIRE(f.workerData.workers.size() == 1);
 	REQUIRE(f.workerData.workers[0].position == glm::vec2(1.0f, 0.0f));
 	REQUIRE(f.workerData.workers[0].state == WorkerState::Idle);
+}
+
+TEST_CASE("CreateWorker at housing cap refuses", "[drl][GameCommandService]")
+{
+	Fixture f;
+	WorkerPrototype prototype{};
+	prototype.name = "Worker_Builder";
+	f.workerPrototypes.registerPrototype(std::move(prototype));
+	placeHousing(f, 1);
+	REQUIRE(f.commands.execute(GameCommand::createWorker(
+		"Worker_Builder",
+		glm::vec2(1.0f, 0.0f),
+		CommandSource::Setup,
+		CommandContext::CreatingWorker)));
+	REQUIRE_FALSE(f.commands.execute(GameCommand::createWorker(
+		"Worker_Builder",
+		glm::vec2(2.0f, 0.0f),
+		CommandSource::Setup,
+		CommandContext::CreatingWorker)));
+	REQUIRE(f.workerData.workers.size() == 1);
 }
 
 TEST_CASE("CreateWorker unknown prototype refuses", "[drl][GameCommandService]")
@@ -428,6 +463,251 @@ TEST_CASE("AddResource money is not scaled by oreMultiplier", "[drl][GameCommand
 		CommandSource::System,
 		CommandContext::AddResource)));
 	REQUIRE(f.economy.get(ResourceMoney) == moneyBefore + 10);
+}
+
+TEST_CASE("CancelJob with no job refuses", "[drl][GameCommandService]")
+{
+	Fixture f;
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+	REQUIRE_FALSE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+}
+
+TEST_CASE("CancelJob repeating mine refuses and leaves jobs", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype mine{};
+	mine.name = "Job_Mine";
+	mine.repeats = true;
+	mine.work = 4.0f;
+	f.prototypes.registerPrototype(std::move(mine));
+	REQUIRE(f.jobCreation.createJob("Job_Mine", glm::vec2(1.0f, 0.0f), glm::ivec2(1, 0)));
+	REQUIRE_FALSE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+	REQUIRE(f.jobData.jobs.size() == 1);
+	REQUIRE(f.economy.get(ResourceMoney) == 500);
+}
+
+TEST_CASE("CancelJob two repeating jobs on same origin refuses both remain", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype mine{};
+	mine.name = "Job_Mine";
+	mine.repeats = true;
+	mine.work = 4.0f;
+	f.prototypes.registerPrototype(std::move(mine));
+	REQUIRE(f.jobCreation.createJob("Job_Mine", glm::vec2(1.0f, 0.0f), glm::ivec2(1, 0)));
+	REQUIRE(f.jobCreation.createJob("Job_Mine", glm::vec2(2.0f, 0.0f), glm::ivec2(1, 0)));
+	REQUIRE_FALSE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+	REQUIRE(f.jobData.jobs.size() == 2);
+}
+
+TEST_CASE("CancelJob unallocated Job_Dig left and right", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype dig{};
+	dig.name = "Job_Dig";
+	dig.work = 2.0f;
+	f.prototypes.registerPrototype(std::move(dig));
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+	f.terrain.initialiseTile(0, -1);
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		"Job_Dig",
+		"",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CreatingJob)));
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		"Job_Dig",
+		"",
+		0,
+		-1,
+		CommandSource::Player,
+		CommandContext::CreatingJob)));
+	const long long money = f.economy.get(ResourceMoney);
+	REQUIRE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+	REQUIRE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		-1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+	REQUIRE(f.jobData.jobs.empty());
+	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
+	REQUIRE_FALSE(f.terrain.getTile(0, -1).jobReserved);
+	REQUIRE(f.economy.get(ResourceMoney) == money);
+}
+
+TEST_CASE("CancelJob idles worker on WorkingJob", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype dig{};
+	dig.name = "Job_Dig";
+	dig.work = 2.0f;
+	f.prototypes.registerPrototype(std::move(dig));
+	WorkerPrototype workerProto{};
+	workerProto.name = "Worker_Builder";
+	f.workerPrototypes.registerPrototype(std::move(workerProto));
+	placeHousing(f, 4);
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		"Job_Dig",
+		"",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CreatingJob)));
+	REQUIRE(f.commands.execute(GameCommand::createWorker(
+		"Worker_Builder",
+		glm::vec2(1.0f, 0.0f),
+		CommandSource::Setup,
+		CommandContext::CreatingWorker)));
+	JobInstance& job = f.jobData.jobs[0];
+	WorkerInstance& worker = f.workerData.workers[0];
+	job.allocatedWorkerId = worker.id;
+	worker.allocatedJobId = job.id;
+	worker.state = WorkerState::WorkingJob;
+	REQUIRE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+	REQUIRE(f.jobData.jobs.empty());
+	REQUIRE(f.workerData.workers[0].state == WorkerState::Idle);
+	REQUIRE(f.workerData.workers[0].allocatedJobId == 0);
+}
+
+TEST_CASE("CancelJob idles worker on MovingToJob", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype dig{};
+	dig.name = "Job_Dig";
+	dig.work = 2.0f;
+	f.prototypes.registerPrototype(std::move(dig));
+	WorkerPrototype workerProto{};
+	workerProto.name = "Worker_Builder";
+	f.workerPrototypes.registerPrototype(std::move(workerProto));
+	placeHousing(f, 4);
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		"Job_Dig",
+		"",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CreatingJob)));
+	REQUIRE(f.commands.execute(GameCommand::createWorker(
+		"Worker_Builder",
+		glm::vec2(1.0f, 0.0f),
+		CommandSource::Setup,
+		CommandContext::CreatingWorker)));
+	JobInstance& job = f.jobData.jobs[0];
+	WorkerInstance& worker = f.workerData.workers[0];
+	job.allocatedWorkerId = worker.id;
+	worker.allocatedJobId = job.id;
+	worker.state = WorkerState::MovingToJob;
+	REQUIRE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+	REQUIRE(f.workerData.workers[0].state == WorkerState::Idle);
+	REQUIRE(f.workerData.workers[0].allocatedJobId == 0);
+}
+
+TEST_CASE("CancelJob player-paid build refunds cost", "[drl][GameCommandService]")
+{
+	Fixture f;
+	JobPrototype job{};
+	job.name = kJobBuildBuilding;
+	job.work = 5.0f;
+	f.prototypes.registerPrototype(std::move(job));
+	BuildingPrototype bunk{};
+	bunk.name = "Building_Bunk";
+	bunk.cost = 50;
+	f.buildingPrototypes.registerPrototype(std::move(bunk));
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		kJobBuildBuilding,
+		"Building_Bunk",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::PlacingBuilding)));
+	REQUIRE(f.economy.get(ResourceMoney) == 450);
+	REQUIRE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+	REQUIRE(f.jobData.jobs.empty());
+	REQUIRE(f.economy.get(ResourceMoney) == 500);
+	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
+}
+
+TEST_CASE("CancelJob does not run DigTile onComplete", "[drl][GameCommandService]")
+{
+	Fixture f;
+	bool completed = false;
+	JobPrototype dig{};
+	dig.name = "Job_Dig";
+	dig.work = 0.1f;
+	dig.onComplete = [&](const JobInstance&)
+	{
+		completed = true;
+	};
+	f.prototypes.registerPrototype(std::move(dig));
+	WorkerPrototype workerProto{};
+	workerProto.name = "Worker_Builder";
+	f.workerPrototypes.registerPrototype(std::move(workerProto));
+	placeHousing(f, 4);
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+	REQUIRE(f.commands.execute(GameCommand::createJob(
+		"Job_Dig",
+		"",
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CreatingJob)));
+	REQUIRE(f.commands.execute(GameCommand::createWorker(
+		"Worker_Builder",
+		glm::vec2(1.0f, 0.0f),
+		CommandSource::Setup,
+		CommandContext::CreatingWorker)));
+	JobInstance& job = f.jobData.jobs[0];
+	WorkerInstance& worker = f.workerData.workers[0];
+	job.allocatedWorkerId = worker.id;
+	worker.allocatedJobId = job.id;
+	worker.state = WorkerState::WorkingJob;
+	REQUIRE(f.commands.execute(GameCommand::cancelJob(
+		0,
+		1,
+		CommandSource::Player,
+		CommandContext::CancellingJob)));
+	WorkerJobUpdateService work{ f.workerData, f.jobData, f.terrain, f.prototypes };
+	work.update(10.0f);
+	REQUIRE_FALSE(completed);
+	REQUIRE_FALSE(f.terrain.isTileDugOut(0, 1));
 }
 
 }

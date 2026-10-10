@@ -26,6 +26,7 @@ namespace drl
 		PlacingBuilding,
 		CreatingShuttle,
 		AddingUpgrade,
+		CancellingJob,
 		Undefined
 	};
 
@@ -146,11 +147,20 @@ namespace drl
 		float value{ 0.0f };
 	};
 
+	struct CancelJob
+	{
+		CancelJob() = default;
+		CancelJob(int level, int column) : level(level), column(column) {}
+
+		int level{ 0 };
+		int column{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
 		CommandContext context{ CommandContext::Undefined };
-		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker, PlaceBuilding, CreateShuttle, AddUpgrade> payload;
+		std::variant<DigShaft, DigTile, AddResource, CreateJob, CreateWorker, PlaceBuilding, CreateShuttle, AddUpgrade, CancelJob> payload;
 
 		GameCommand() = default;
 
@@ -204,6 +214,13 @@ namespace drl
 		}
 
 		GameCommand(const AddUpgrade& event, CommandContext commandContext, CommandSource commandSource)
+			: source(commandSource)
+			, context(commandContext)
+			, payload(event)
+		{
+		}
+
+		GameCommand(const CancelJob& event, CommandContext commandContext, CommandSource commandSource)
 			: source(commandSource)
 			, context(commandContext)
 			, payload(event)
@@ -321,6 +338,15 @@ namespace drl
 				AddUpgrade{ upgradeId, value },
 				commandContext,
 				commandSource);
+		}
+
+		static GameCommand cancelJob(
+			int level,
+			int column,
+			CommandSource commandSource,
+			CommandContext commandContext)
+		{
+			return GameCommand(CancelJob{ level, column }, commandContext, commandSource);
 		}
 	};
 

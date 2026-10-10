@@ -1,19 +1,11 @@
 #include <Views/StatusBar.hpp>
-#include <helsinki/Renderer/Resource/FontResource.hpp>
-#include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
-#include <helsinki/Ui/Layout/Layout.hpp>
-#include <helsinki/Ui/Theme.hpp>
-#include <helsinki/Ui/Widget.hpp>
 #include <algorithm>
-#include <limits>
 
 namespace drl
 {
 
 	namespace
 	{
-		constexpr float kTexWhite = 0.0f;
-		constexpr float kTexRoboto = 1.0f;
 		constexpr unsigned kBarFontSize = 18;
 		constexpr glm::vec2 kIconSize{ 24.0f, 24.0f };
 		constexpr float kChipGap = 8.0f;
@@ -31,108 +23,17 @@ namespace drl
 			};
 			return tints[index % (sizeof(tints) / sizeof(tints[0]))];
 		}
-
-		class SceneFontTypeface : public hl::ui::ITypeface
-		{
-		public:
-			explicit SceneFontTypeface(hl::FontResource* font) : _font(font) {}
-
-			glm::vec2 layoutText(
-				std::string_view text,
-				unsigned fontSize,
-				std::vector<hl::ui::GlyphVertex>& out) const override
-			{
-				out.clear();
-				if (_font == nullptr)
-				{
-					return { 0.0f, 0.0f };
-				}
-
-				const auto generated = _font->generateTextVertexes(std::string(text), fontSize);
-				if (generated.empty())
-				{
-					return { 0.0f, 0.0f };
-				}
-
-				glm::vec2 minPos{ std::numeric_limits<float>::max() };
-				glm::vec2 maxPos{ std::numeric_limits<float>::lowest() };
-				for (const auto& v : generated)
-				{
-					minPos = glm::min(minPos, v.pos);
-					maxPos = glm::max(maxPos, v.pos);
-				}
-
-				out.reserve(generated.size());
-				for (const auto& v : generated)
-				{
-					out.push_back(hl::ui::GlyphVertex{ .pos = v.pos - minPos, .uv = v.texCoord });
-				}
-
-				return maxPos - minPos;
-			}
-
-		private:
-			hl::FontResource* _font = nullptr;
-		};
-
-		class BatchPaint : public hl::ui::IPaint
-		{
-		public:
-			explicit BatchPaint(hl::UiBatch& batch) : _batch(&batch) {}
-
-			void fill(const hl::ui::Box& box, glm::vec4 color) override
-			{
-				_batch->addQuad(box, color, glm::vec4{ 0.0f, 0.0f, 1.0f, 1.0f }, kTexWhite);
-			}
-
-			void sprite(const hl::ui::Box& box, glm::vec4 uvRect, glm::vec3 color) override
-			{
-				const auto texCoords = glm::vec4(
-					uvRect.x,
-					uvRect.y,
-					uvRect.z - uvRect.x,
-					uvRect.w - uvRect.y);
-				_batch->addQuad(box, glm::vec4{ color, 1.0f }, texCoords, kTexWhite);
-			}
-
-			void glyphs(
-				const std::vector<hl::ui::GlyphVertex>& verts,
-				glm::vec2 origin,
-				glm::vec3 color) override
-			{
-				glyphs(verts, origin, glm::vec4{ color, 1.0f });
-			}
-
-			void glyphs(
-				const std::vector<hl::ui::GlyphVertex>& verts,
-				glm::vec2 origin,
-				glm::vec4 color) override
-			{
-				std::vector<hl::Vertex22D> converted;
-				converted.reserve(verts.size());
-				for (const auto& v : verts)
-				{
-					converted.push_back(hl::Vertex22D{ .pos = v.pos, .texCoord = v.uv });
-				}
-
-				_batch->addGlyphs(converted, origin, color, kTexRoboto);
-			}
-
-		private:
-			hl::UiBatch* _batch = nullptr;
-		};
 	}
 
 	void StatusBar::initialise(
-		hl::FontResource* font,
+		hl::ui::ITypeface& typeface,
+		hl::ui::Node& host,
 		const IEconomyResourceService& economy,
 		const IUpgradeService& upgrades)
 	{
-		_typeface = std::make_unique<SceneFontTypeface>(font);
-		_root = std::make_unique<hl::ui::Node>();
-		_root->setFillParent();
+		_typeface = &typeface;
 
-		_panel = std::make_unique<hl::ui::Panel>(_root->addChild());
+		_panel = std::make_unique<hl::ui::Panel>(host.addChild());
 		_panel->color = { 0.08f, 0.09f, 0.12f };
 		_panel->opacity = 0.92f;
 		_panel->hitTestEnabled = true;
@@ -150,13 +51,13 @@ namespace drl
 			chip.icon->size = kIconSize;
 			chip.icon->color = placeholderTint(i);
 
-			chip.value = std::make_unique<hl::ui::Label>(chip.panel->node().addChild(), *_typeface);
+			chip.value = std::make_unique<hl::ui::Label>(chip.panel->node().addChild(), typeface);
 			chip.value->setText("0", kBarFontSize);
 
 			_chips.push_back(std::move(chip));
 		}
 
-		_tooltip = std::make_unique<hl::ui::Tooltip>(_root->addChild(), *_typeface);
+		_tooltip = std::make_unique<hl::ui::Tooltip>(host.addChild(), typeface);
 		_tooltip->delay = 0.0f;
 		syncValues(economy, upgrades);
 	}
@@ -173,21 +74,12 @@ namespace drl
 		}
 	}
 
-	void StatusBar::tick(
-		hl::UiBatch& batch,
-		glm::vec2 framebufferSize,
-		const hl::ui::Pointer& pointer,
-		float dt,
-		const IEconomyResourceService& economy,
-		const IUpgradeService& upgrades)
+	void StatusBar::layout(glm::vec2 framebufferSize)
 	{
-		if (_root == nullptr)
+		if (_panel == nullptr)
 		{
 			return;
 		}
-
-		syncValues(economy, upgrades);
-		hl::ui::prepareTree(*_root);
 
 		float chipsHeight = kIconSize.y;
 		std::vector<glm::vec2> chipSizes(_chips.size());
@@ -224,31 +116,14 @@ namespace drl
 
 			chipX += chipSizes[i].x + kChipGap;
 		}
+	}
 
-		hl::ui::layout(*_root, hl::ui::Box{ 0.0f, 0.0f, framebufferSize.x, framebufferSize.y });
-		hl::ui::dispatch(*_root, pointer);
+	void StatusBar::tickOverlays(float dt)
+	{
 		if (_tooltip != nullptr)
 		{
 			_tooltip->tick(dt);
 		}
-
-		batch.setFullScissor(VkRect2D{
-			{ 0, 0 },
-			{ static_cast<uint32_t>(std::max(0.0f, framebufferSize.x)),
-			  static_cast<uint32_t>(std::max(0.0f, framebufferSize.y)) }
-		});
-		BatchPaint paint(batch);
-		hl::ui::paintTree(*_root, paint);
-	}
-
-	bool StatusBar::hits(glm::vec2 position) const
-	{
-		if (_root == nullptr)
-		{
-			return false;
-		}
-
-		return hl::ui::hitTest(*_root, position) != nullptr;
 	}
 
 }

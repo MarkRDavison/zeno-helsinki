@@ -5,6 +5,7 @@
 #include <Services/TerrainAlterationService.hpp>
 #include <helsinki/System/glm.hpp>
 #include <string>
+#include <vector>
 
 namespace drl
 {
@@ -23,6 +24,9 @@ namespace drl
 			glm::vec2 offset,
 			glm::ivec2 coordinates) = 0;
 		virtual bool isNamedPrototypeRegistered(const std::string& prototypeName) const = 0;
+		virtual bool cancelNonRepeatingJobs(
+			glm::ivec2 coordinates,
+			std::vector<JobInstance>& cancelled) = 0;
 	};
 
 	inline IJobCreationService::~IJobCreationService() = default;
@@ -45,6 +49,9 @@ namespace drl
 			glm::vec2 offset,
 			glm::ivec2 coordinates) override;
 		bool isNamedPrototypeRegistered(const std::string& prototypeName) const override;
+		bool cancelNonRepeatingJobs(
+			glm::ivec2 coordinates,
+			std::vector<JobInstance>& cancelled) override;
 
 	private:
 		JobData& _jobData;

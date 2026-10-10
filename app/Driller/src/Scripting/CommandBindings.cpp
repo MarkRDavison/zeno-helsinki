@@ -18,6 +18,7 @@ namespace drl
 				{ "PlacingBuilding", CommandContext::PlacingBuilding },
 				{ "CreatingShuttle", CommandContext::CreatingShuttle },
 				{ "AddingUpgrade", CommandContext::AddingUpgrade },
+				{ "CancellingJob", CommandContext::CancellingJob },
 				{ "Undefined", CommandContext::Undefined },
 			});
 
@@ -78,6 +79,12 @@ namespace drl
 			"upgradeId", &AddUpgrade::upgradeId,
 			"value", &AddUpgrade::value);
 
+		lua.new_usertype<CancelJob>(
+			"CancelJobEvent",
+			sol::constructors<CancelJob(int, int)>(),
+			"level", &CancelJob::level,
+			"column", &CancelJob::column);
+
 		lua.new_usertype<GameCommand>(
 			"GameCommand",
 			sol::constructors<
@@ -88,7 +95,8 @@ namespace drl
 				GameCommand(const CreateWorker&, CommandContext, CommandSource),
 				GameCommand(const PlaceBuilding&, CommandContext, CommandSource),
 				GameCommand(const CreateShuttle&, CommandContext, CommandSource),
-				GameCommand(const AddUpgrade&, CommandContext, CommandSource)
+				GameCommand(const AddUpgrade&, CommandContext, CommandSource),
+				GameCommand(const CancelJob&, CommandContext, CommandSource)
 			>());
 
 		lua.set_function(

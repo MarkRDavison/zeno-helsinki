@@ -47,17 +47,17 @@ namespace JobDigOnCompleteTests
 		JobCreationService jobCreation{ jobData, jobPrototypes, terrain };
 		WorkerData workerData;
 		WorkerPrototypeService workerPrototypes;
-		WorkerCreationService workerCreation{ workerData, workerPrototypes };
 		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
 		BuildingData buildingData;
 		BuildingPrototypeService buildingPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes };
 		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
 		ShuttleData shuttleData;
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
 		UpgradeData upgradeData;
 		UpgradeService upgrades{ upgradeData };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades, workerData };
 		WorkerJobUpdateService jobUpdate{ workerData, jobData, terrain, jobPrototypes };
 
 		explicit Fixture(hl::scripting::LuaState& lua)

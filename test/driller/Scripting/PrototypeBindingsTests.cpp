@@ -72,6 +72,8 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(bunk.texture == glm::ivec2(3, 0));
 	REQUIRE(bunk.requiredWorkers.empty());
 	REQUIRE(bunk.providedJobs.empty());
+	REQUIRE(buildingMetadataInt(bunk, kBuildingMetadataWorkerCapacity).value() == 4);
+	REQUIRE(bunk.metadata.size() == 1);
 
 	const auto hutId = prototypeIdFromName("Building_Builders_Hut");
 	REQUIRE(f.buildings.isPrototypeRegistered(hutId));
@@ -81,6 +83,7 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(hut.size == glm::ivec2(2, 1));
 	REQUIRE(hut.texture == glm::ivec2(5, 0));
 	REQUIRE(hut.requiredWorkers.at("Worker_Builder") == 2);
+	REQUIRE(hut.metadata.empty());
 
 	const auto mineId = prototypeIdFromName("Building_Mine");
 	REQUIRE(f.buildings.isPrototypeRegistered(mineId));
@@ -93,6 +96,7 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(mine.providedJobs.size() == 1);
 	REQUIRE(mine.providedJobs[0].first == "Job_Mine");
 	REQUIRE(mine.providedJobs[0].second == glm::vec2(1.0f, 0.0f));
+	REQUIRE(mine.metadata.empty());
 
 	const auto refineId = prototypeIdFromName("Building_Refining");
 	REQUIRE(f.buildings.isPrototypeRegistered(refineId));
@@ -107,6 +111,7 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(refine.providedJobs[0].second == glm::vec2(0.5f, 0.0f));
 	REQUIRE(refine.providedJobs[1].first == "Job_Refine");
 	REQUIRE(refine.providedJobs[1].second == glm::vec2(2.5f, 0.0f));
+	REQUIRE(refine.metadata.empty());
 
 	const auto shuttleId = prototypeIdFromName("Shuttle_Basic");
 	REQUIRE(f.shuttles.isPrototypeRegistered(shuttleId));
@@ -187,6 +192,18 @@ TEST_CASE("building prototype negative cost throws LuaError", "[drl][Scripting]"
 	Fixture f;
 	REQUIRE_THROWS_AS(
 		applyBuildingStub(f, std::format("{{ {} label = \"Bunk\", cost = -1 }}", kValidBuildingFields)),
+		hl::scripting::LuaError);
+}
+
+TEST_CASE("building prototype negative workerCapacity throws LuaError", "[drl][Scripting]")
+{
+	Fixture f;
+	REQUIRE_THROWS_AS(
+		applyBuildingStub(
+			f,
+			std::format(
+				"{{ {} label = \"Bunk\", cost = 50, metadata = {{ workerCapacity = -1 }} }}",
+				kValidBuildingFields)),
 		hl::scripting::LuaError);
 }
 

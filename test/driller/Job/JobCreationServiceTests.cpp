@@ -6,6 +6,7 @@
 #include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
 #include <helsinki/System/glm.hpp>
+#include <vector>
 
 namespace drl
 {
@@ -95,6 +96,35 @@ TEST_CASE("calculateOffset is applied", "[drl][JobCreationService]")
 	REQUIRE(f.jobs.createJob(jobPrototypeIdFromName("Job_Dig"), 0, glm::ivec2(2, 0)));
 	REQUIRE_THAT(f.jobData.jobs[0].offset.x, Catch::Matchers::WithinAbs(0.25f, 0.0001f));
 	REQUIRE_THAT(f.jobData.jobs[0].offset.y, Catch::Matchers::WithinAbs(0.5f, 0.0001f));
+}
+
+TEST_CASE("cancelNonRepeatingJobs removes dig and clears reserved", "[drl][JobCreationService]")
+{
+	Fixture f;
+	f.registerDigJob();
+	REQUIRE(f.terrain.digShaft(0));
+	f.terrain.initialiseTile(0, 1);
+	REQUIRE(f.jobs.createJob(jobPrototypeIdFromName("Job_Dig"), 0, glm::ivec2(1, 0)));
+	std::vector<JobInstance> cancelled;
+	REQUIRE(f.jobs.cancelNonRepeatingJobs(glm::ivec2(1, 0), cancelled));
+	REQUIRE(cancelled.size() == 1);
+	REQUIRE(f.jobData.jobs.empty());
+	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
+}
+
+TEST_CASE("cancelNonRepeatingJobs repeating refuses", "[drl][JobCreationService]")
+{
+	Fixture f;
+	JobPrototype mine{};
+	mine.name = "Job_Mine";
+	mine.repeats = true;
+	mine.work = 4.0f;
+	f.prototypes.registerPrototype(std::move(mine));
+	REQUIRE(f.jobs.createJob("Job_Mine", glm::vec2(0.0f, 0.0f), glm::ivec2(1, 0)));
+	std::vector<JobInstance> cancelled;
+	REQUIRE_FALSE(f.jobs.cancelNonRepeatingJobs(glm::ivec2(1, 0), cancelled));
+	REQUIRE(cancelled.empty());
+	REQUIRE(f.jobData.jobs.size() == 1);
 }
 
 }

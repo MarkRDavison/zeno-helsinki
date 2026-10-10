@@ -1,22 +1,15 @@
 #pragma once
 
 #include <Views/StatusBarChips.hpp>
-#include <helsinki/Engine/Ui/UiBatch.hpp>
 #include <helsinki/System/glm.hpp>
 #include <helsinki/Ui/Image.hpp>
 #include <helsinki/Ui/Label.hpp>
 #include <helsinki/Ui/Layout/Node.hpp>
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Panel.hpp>
-#include <helsinki/Ui/Pointer.hpp>
 #include <helsinki/Ui/Tooltip.hpp>
 #include <memory>
 #include <vector>
-
-namespace hl
-{
-	class FontResource;
-}
 
 namespace drl
 {
@@ -25,17 +18,15 @@ namespace drl
 	{
 	public:
 		void initialise(
-			hl::FontResource* font,
+			hl::ui::ITypeface& typeface,
+			hl::ui::Node& host,
 			const IEconomyResourceService& economy,
 			const IUpgradeService& upgrades);
-		void tick(
-			hl::UiBatch& batch,
-			glm::vec2 framebufferSize,
-			const hl::ui::Pointer& pointer,
-			float dt,
+		void syncValues(
 			const IEconomyResourceService& economy,
 			const IUpgradeService& upgrades);
-		bool hits(glm::vec2 position) const;
+		void layout(glm::vec2 framebufferSize);
+		void tickOverlays(float dt);
 
 	private:
 		struct ChipWidgets
@@ -46,12 +37,7 @@ namespace drl
 			std::unique_ptr<hl::ui::Label> value;
 		};
 
-		void syncValues(
-			const IEconomyResourceService& economy,
-			const IUpgradeService& upgrades);
-
-		std::unique_ptr<hl::ui::ITypeface> _typeface;
-		std::unique_ptr<hl::ui::Node> _root;
+		hl::ui::ITypeface* _typeface{ nullptr };
 		std::unique_ptr<hl::ui::Panel> _panel;
 		std::vector<ChipWidgets> _chips;
 		std::unique_ptr<hl::ui::Tooltip> _tooltip;

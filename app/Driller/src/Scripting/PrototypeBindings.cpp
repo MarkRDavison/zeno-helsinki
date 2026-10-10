@@ -1,6 +1,7 @@
 #include <Scripting/PrototypeBindings.hpp>
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/System/glm.hpp>
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <unordered_set>
@@ -205,6 +206,44 @@ namespace drl
 			prototype.cost = *cost;
 			prototype.size = glm::ivec2(*sizeX, *sizeY);
 			prototype.texture = glm::ivec2(*textureX, *textureY);
+
+			const sol::object metadataObject = row["metadata"];
+			if (metadataObject.valid() && metadataObject.get_type() != sol::type::nil)
+			{
+				if (!metadataObject.is<sol::table>())
+				{
+					throw hl::scripting::LuaError("building metadata must be a table of integer values");
+				}
+
+				const sol::table metadataRows = metadataObject.as<sol::table>();
+				for (const auto& metadataKvp : metadataRows)
+				{
+					if (metadataKvp.first.get_type() != sol::type::string)
+					{
+						throw hl::scripting::LuaError("building metadata keys must be strings");
+					}
+
+					if (metadataKvp.second.get_type() != sol::type::number)
+					{
+						throw hl::scripting::LuaError("building metadata values must be integers");
+					}
+
+					const double raw = metadataKvp.second.as<double>();
+					if (raw != std::floor(raw))
+					{
+						throw hl::scripting::LuaError("building metadata values must be integers");
+					}
+
+					const std::string key = metadataKvp.first.as<std::string>();
+					const long long value = static_cast<long long>(raw);
+					if (key == kBuildingMetadataWorkerCapacity && value < 0)
+					{
+						throw hl::scripting::LuaError("building workerCapacity cannot be negative");
+					}
+
+					prototype.metadata[key] = value;
+				}
+			}
 
 			const sol::object workersObject = row["workers"];
 			if (workersObject.is<sol::table>())

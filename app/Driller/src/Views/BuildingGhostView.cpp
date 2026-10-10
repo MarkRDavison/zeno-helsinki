@@ -61,6 +61,28 @@ namespace drl
 		vkCmdDraw(pdd.commandBuffer, 6, 1, 0, 0);
 	}
 
+	void BuildingGhostView::drawPrototypeFootprint(
+		hl::PipelineDrawData& pdd,
+		const BuildingPrototype& prototype,
+		glm::ivec2 origin,
+		const glm::vec4& color) const
+	{
+		for (int y = 0; y < prototype.size.y; ++y)
+		{
+			for (int x = 0; x < prototype.size.x; ++x)
+			{
+				const int frameIndex =
+					(prototype.texture.x + x) + (prototype.texture.y + y) * kAtlasColumns;
+				drawCell(
+					pdd,
+					origin.x + x,
+					origin.y + y,
+					frameIndex,
+					color);
+			}
+		}
+	}
+
 	void BuildingGhostView::draw(
 		hl::PipelineDrawData& pdd,
 		UiState state,
@@ -85,20 +107,23 @@ namespace drl
 		const bool canPlace = placement.canPlacePrototype(prototypeId, hoveredTile.y, hoveredTile.x);
 		const bool canAfford = economy.canAfford(ResourceMoney, prototype.cost);
 		const glm::vec4 color = placementGhostColor(canPlace, canAfford);
+		drawPrototypeFootprint(pdd, prototype, hoveredTile, color);
+	}
 
-		for (int y = 0; y < prototype.size.y; ++y)
+	void BuildingGhostView::drawQueued(
+		hl::PipelineDrawData& pdd,
+		const JobData& jobData,
+		const IBuildingPrototypeService& prototypes) const
+	{
+		const glm::vec4 color = queuedBuildGhostColor();
+		for (const JobId jobId : queuedBuildGhostJobIds(jobData, prototypes))
 		{
-			for (int x = 0; x < prototype.size.x; ++x)
-			{
-				const int frameIndex =
-					(prototype.texture.x + x) + (prototype.texture.y + y) * kAtlasColumns;
-				drawCell(
-					pdd,
-					hoveredTile.x + x,
-					hoveredTile.y + y,
-					frameIndex,
-					color);
-			}
+			const JobInstance& job = jobData.getJob(jobId);
+			drawPrototypeFootprint(
+				pdd,
+				prototypes.getPrototype(job.additionalPrototypeId),
+				job.tile,
+				color);
 		}
 	}
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Entities/Data/JobData.hpp>
 #include <Services/BuildingPlacementService.hpp>
 #include <Services/BuildingPrototypeService.hpp>
 #include <Services/EconomyResourceService.hpp>
@@ -27,12 +28,23 @@ namespace drl
 			const IBuildingPlacementService& placement,
 			const IEconomyResourceService& economy) const;
 
+		void drawQueued(
+			hl::PipelineDrawData& pdd,
+			const JobData& jobData,
+			const IBuildingPrototypeService& prototypes) const;
+
 	private:
 		void drawCell(
 			hl::PipelineDrawData& pdd,
 			int column,
 			int level,
 			int frameIndex,
+			const glm::vec4& color) const;
+
+		void drawPrototypeFootprint(
+			hl::PipelineDrawData& pdd,
+			const BuildingPrototype& prototype,
+			glm::ivec2 origin,
 			const glm::vec4& color) const;
 
 		float _originX;

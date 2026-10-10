@@ -1,10 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <Entities/Building.hpp>
+#include <Entities/Data/BuildingData.hpp>
 #include <Entities/Data/ShuttleData.hpp>
 #include <Entities/Data/WorkerData.hpp>
 #include <Entities/Shuttle.hpp>
 #include <Entities/Worker.hpp>
+#include <Services/BuildingPrototypeService.hpp>
 #include <Services/EconomyResourceService.hpp>
+#include <Services/PrototypeService.hpp>
 #include <Services/ShuttleCreationService.hpp>
 #include <Services/ShuttlePrototypeService.hpp>
 #include <Services/ShuttleScheduleService.hpp>
@@ -22,8 +26,10 @@ namespace ShuttleScheduleServiceTests
 	{
 		ShuttleData shuttleData;
 		WorkerData workerData;
+		BuildingData buildingData;
 		WorkerPrototypeService workerPrototypes;
-		WorkerCreationService workerCreation{ workerData, workerPrototypes };
+		BuildingPrototypeService buildingPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes };
 		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
@@ -56,6 +62,17 @@ namespace ShuttleScheduleServiceTests
 			}
 			shuttlePrototypes.registerPrototype(std::move(prototype));
 			REQUIRE(shuttleCreation.createShuttle(prototypeIdFromName("Shuttle_Basic")));
+		}
+
+		void addHousing(long long beds)
+		{
+			BuildingPrototype proto{};
+			proto.name = "Building_TestHousing";
+			proto.metadata[kBuildingMetadataWorkerCapacity] = beds;
+			buildingPrototypes.registerPrototype(std::move(proto));
+			BuildingInstance instance{};
+			instance.prototypeId = prototypeIdFromName("Building_TestHousing");
+			buildingData.buildings.push_back(instance);
 		}
 
 		ShuttleInstance& shuttle()
@@ -179,6 +196,7 @@ namespace ShuttleScheduleServiceTests
 		WorkerPrototype builder{};
 		builder.name = "Worker_Builder";
 		f.workerPrototypes.registerPrototype(std::move(builder));
+		f.addHousing(4);
 		f.recruitment.registerWorkerPrototypeRequirement("Worker_Builder", 2);
 		f.registerShuttle(0.0f, 1.0f, 10000.0f, false);
 		f.snapToSurface();
@@ -187,6 +205,24 @@ namespace ShuttleScheduleServiceTests
 		REQUIRE(f.workerData.workers[0].position == kShuttleSurfacePosition);
 		REQUIRE(f.workerData.workers[1].position == kShuttleSurfacePosition);
 		REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Builder") == 0);
+		REQUIRE_FALSE(f.schedule.consumeWorkerHousingShortage());
+	}
+
+	TEST_CASE("landing delivers only remaining housing and leaves demand", "[drl][ShuttleScheduleService]")
+	{
+		Fixture f;
+		WorkerPrototype miner{};
+		miner.name = "Worker_Miner";
+		f.workerPrototypes.registerPrototype(std::move(miner));
+		f.addHousing(2);
+		f.recruitment.registerWorkerPrototypeRequirement("Worker_Miner", 5);
+		f.registerShuttle(0.0f, 1.0f, 10000.0f, false);
+		f.snapToSurface();
+
+		REQUIRE(f.workerData.workers.size() == 2);
+		REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Miner") == 3);
+		REQUIRE(f.schedule.consumeWorkerHousingShortage());
+		REQUIRE_FALSE(f.schedule.consumeWorkerHousingShortage());
 	}
 
 	TEST_CASE("landing restores demand when create fails", "[drl][ShuttleScheduleService]")
@@ -198,6 +234,7 @@ namespace ShuttleScheduleServiceTests
 
 		REQUIRE(f.workerData.workers.empty());
 		REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Miner") == 2);
+		REQUIRE_FALSE(f.schedule.consumeWorkerHousingShortage());
 	}
 
 	TEST_CASE("landing with no demand does not create workers", "[drl][ShuttleScheduleService]")
@@ -209,6 +246,7 @@ namespace ShuttleScheduleServiceTests
 		f.registerShuttle(0.0f, 1.0f, 10000.0f, false);
 		f.snapToSurface();
 		REQUIRE(f.workerData.workers.empty());
+		REQUIRE_FALSE(f.schedule.consumeWorkerHousingShortage());
 	}
 
 	TEST_CASE("landing vacuums allowed ore without paying yet", "[drl][ShuttleScheduleService]")
@@ -221,6 +259,7 @@ namespace ShuttleScheduleServiceTests
 		REQUIRE(f.economy.get(ResourceOre) == 0);
 		REQUIRE(f.shuttle().cargo.at(ResourceOre) == 7);
 		REQUIRE(f.economy.get(ResourceMoney) == 500);
+		REQUIRE_FALSE(f.schedule.consumeCargoSale().has_value());
 	}
 
 	TEST_CASE("return sells cargo as money one to one", "[drl][ShuttleScheduleService]")
@@ -240,6 +279,16 @@ namespace ShuttleScheduleServiceTests
 		REQUIRE(f.shuttle().cargo.empty());
 		REQUIRE(f.economy.get(ResourceMoney) == 507);
 		REQUIRE(f.economy.get(ResourceOre) == 0);
+		const auto sale = f.schedule.consumeCargoSale();
+		REQUIRE(sale.has_value());
+		REQUIRE(sale->sold.size() == 1);
+		REQUIRE(sale->sold[0].first == ResourceOre);
+		REQUIRE(sale->sold[0].second == 7);
+		REQUIRE(sale->money == 7);
+		f.economy.setHud(ResourceOre, 1, "Ore", "rock");
+		f.economy.setHud(ResourceMoney, 2, "Money", "cash");
+		REQUIRE(formatShuttleSaleMessage(*sale, f.economy) == "Sold 7 Ore for 7 Money");
+		REQUIRE_FALSE(f.schedule.consumeCargoSale().has_value());
 	}
 
 	TEST_CASE("missing allowed cargo name is skipped", "[drl][ShuttleScheduleService]")
@@ -258,6 +307,7 @@ namespace ShuttleScheduleServiceTests
 
 		REQUIRE(f.economy.get(ResourceOre) == 7);
 		REQUIRE(f.shuttle().cargo.empty());
+		REQUIRE_FALSE(f.schedule.consumeCargoSale().has_value());
 	}
 
 }

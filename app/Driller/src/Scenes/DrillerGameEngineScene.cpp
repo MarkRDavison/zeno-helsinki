@@ -410,6 +410,10 @@ namespace drl
 			{
 				_terrainView.draw(pdd);
 				_buildingView.draw(pdd);
+				_buildingGhostView.drawQueued(
+					pdd,
+					_session.gameData().job,
+					_session.buildingPrototypeService());
 				_buildingGhostView.draw(
 					pdd,
 					_session.uiService().getCurrentState(),
@@ -425,12 +429,10 @@ namespace drl
 
 		_uiBatch.initialise(device);
 		auto* roboto = resourceManager.GetResource<hl::FontResource>("roboto");
-		_statusBar.initialise(
+		_hud.initialise(
 			roboto,
 			_session.economyService(),
-			_session.upgradeService());
-		_buildBar.initialise(
-			roboto,
+			_session.upgradeService(),
 			_session.buildingPrototypeService(),
 			_session.uiService());
 		registerPipelineDraw(
@@ -454,6 +456,23 @@ namespace drl
 	void DrillerGameEngineScene::update(uint32_t /*currentFrame*/, float delta)
 	{
 		_session.game().update(delta);
+		if (_session.shuttleScheduleService().consumeWorkerHousingShortage())
+		{
+			_hud.show(hl::ui::SnackbarItem{
+				.type = hl::ui::SnackbarType::Warning,
+				.title = "Not enough bunks",
+				.description = "The shuttle could not deliver all workers. Build more bunks.",
+				.persistent = true
+			});
+		}
+
+		if (const auto sale = _session.shuttleScheduleService().consumeCargoSale())
+		{
+			_hud.show(hl::ui::SnackbarItem{
+				.type = hl::ui::SnackbarType::Success,
+				.title = formatShuttleSaleMessage(*sale, _session.economyService())
+			});
+		}
 
 		struct SceneUiInput : IUiInput
 		{
@@ -498,7 +517,6 @@ namespace drl
 			_terrainView.tileSize());
 
 		auto& economy = _session.economyService();
-		_buildBar.syncEnabled(economy);
 		const hl::ui::Pointer pointer
 		{
 			.position = mouse,
@@ -506,26 +524,35 @@ namespace drl
 			.primaryReleased = input.isButtonReleased(GLFW_MOUSE_BUTTON_1)
 		};
 		_uiBatch.begin();
-		_buildBar.tick(_uiBatch, framebuffer, pointer);
-		_statusBar.tick(
+		_hud.tick(
 			_uiBatch,
 			framebuffer,
 			pointer,
 			delta,
 			economy,
 			_session.upgradeService());
+		const bool uiHit = _hud.hits(mouse);
+		const auto tile = _hoveredTile;
+
+		if (input.isButtonReleased(GLFW_MOUSE_BUTTON_2) && !uiHit
+			&& tile.y >= 0 && tile.x != 0)
+		{
+			_session.commandService().execute(GameCommand::cancelJob(
+				tile.y,
+				tile.x,
+				CommandSource::Player,
+				CommandContext::CancellingJob));
+		}
 
 		if (!input.isButtonReleased(GLFW_MOUSE_BUTTON_1))
 		{
 			return;
 		}
 
-		if (_statusBar.hits(mouse) || _buildBar.hits(mouse))
+		if (uiHit)
 		{
 			return;
 		}
-
-		const auto tile = _hoveredTile;
 
 		if (_session.uiService().getCurrentState() == UiState::PlacingBuilding)
 		{

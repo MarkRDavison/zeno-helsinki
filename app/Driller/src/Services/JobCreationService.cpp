@@ -1,4 +1,5 @@
 #include <Services/JobCreationService.hpp>
+#include <algorithm>
 
 namespace drl
 {
@@ -69,6 +70,53 @@ namespace drl
 	bool JobCreationService::isNamedPrototypeRegistered(const std::string& prototypeName) const
 	{
 		return _jobPrototypeService.isPrototypeRegistered(jobPrototypeIdFromName(prototypeName));
+	}
+
+	bool JobCreationService::cancelNonRepeatingJobs(
+		glm::ivec2 coordinates,
+		std::vector<JobInstance>& cancelled)
+	{
+		cancelled.clear();
+		std::vector<JobId> ids;
+		for (const JobInstance& job : _jobData.jobs)
+		{
+			if (job.tile == coordinates)
+			{
+				ids.push_back(job.id);
+			}
+		}
+
+		if (ids.empty())
+		{
+			return false;
+		}
+
+		for (const JobId id : ids)
+		{
+			const JobInstance& job = _jobData.getJob(id);
+			if (_jobPrototypeService.getPrototype(job.prototypeId).repeats)
+			{
+				return false;
+			}
+		}
+
+		for (const JobId id : ids)
+		{
+			const JobInstance job = _jobData.getJob(id);
+			cancelled.push_back(job);
+			if (_terrain.doesTileExist(job.tile.y, job.tile.x))
+			{
+				_terrain.getTile(job.tile.y, job.tile.x).jobReserved = false;
+			}
+		}
+
+		std::erase_if(
+			_jobData.jobs,
+			[&](const JobInstance& job)
+			{
+				return std::find(ids.begin(), ids.end(), job.id) != ids.end();
+			});
+		return true;
 	}
 
 }

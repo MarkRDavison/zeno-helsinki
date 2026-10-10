@@ -14,11 +14,15 @@ namespace drl
 	Session::Session()
 		: _terrainService(_gameData.terrain)
 		, _jobCreationService(_gameData.job, _jobPrototypeService, _terrainService)
-		, _workerCreationService(_gameData.worker, _workerPrototypeService)
 		, _workerRecruitmentService(_gameData.worker, _workerPrototypeService)
 		, _workerMovementService(_gameData.worker, _gameData.job, _terrainService)
 		, _workerJobUpdateService(_gameData.worker, _gameData.job, _terrainService, _jobPrototypeService)
 		, _jobAllocationService(_gameData.job, _gameData.worker, _terrainService, _workerPrototypeService)
+		, _workerCreationService(
+			_gameData.worker,
+			_workerPrototypeService,
+			_gameData.building,
+			_buildingPrototypeService)
 		, _buildingPlacementService(
 			_gameData.building,
 			_terrainService,
@@ -42,7 +46,8 @@ namespace drl
 			_buildingPlacementService,
 			_buildingPrototypeService,
 			_shuttleCreationService,
-			_upgradeService)
+			_upgradeService,
+			_gameData.worker)
 		, _game(_commandService, _simSpeed)
 	{
 		bindPrototypeUserTypes(_lua.raw());

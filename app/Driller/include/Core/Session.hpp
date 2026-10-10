@@ -64,6 +64,8 @@ namespace drl
 		const BuildingPlacementService& buildingPlacementService() const { return _buildingPlacementService; }
 		ShuttlePrototypeService& shuttlePrototypeService() { return _shuttlePrototypeService; }
 		const ShuttlePrototypeService& shuttlePrototypeService() const { return _shuttlePrototypeService; }
+		ShuttleScheduleService& shuttleScheduleService() { return _shuttleScheduleService; }
+		const ShuttleScheduleService& shuttleScheduleService() const { return _shuttleScheduleService; }
 		UpgradeService& upgradeService() { return _upgradeService; }
 		const UpgradeService& upgradeService() const { return _upgradeService; }
 		UiService& uiService() { return _uiService; }
@@ -88,12 +90,12 @@ namespace drl
 		JobPrototypeService _jobPrototypeService;
 		JobCreationService _jobCreationService;
 		WorkerPrototypeService _workerPrototypeService;
-		WorkerCreationService _workerCreationService;
 		WorkerRecruitmentService _workerRecruitmentService;
 		WorkerMovementService _workerMovementService;
 		WorkerJobUpdateService _workerJobUpdateService;
 		JobAllocationService _jobAllocationService;
 		BuildingPrototypeService _buildingPrototypeService;
+		WorkerCreationService _workerCreationService;
 		BuildingPlacementService _buildingPlacementService;
 		ShuttlePrototypeService _shuttlePrototypeService;
 		ShuttleCreationService _shuttleCreationService;

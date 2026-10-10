@@ -99,6 +99,7 @@ namespace drl
 		const ShuttlePrototype& prototype)
 	{
 		const auto requiredTypes = _recruitment.getRequiredWorkerTypes();
+		bool housingShortage = false;
 		for (const WorkerPrototypeId prototypeId : requiredTypes)
 		{
 			const int amountRequired = _recruitment.getRequiredWorkerCount(prototypeId);
@@ -108,8 +109,18 @@ namespace drl
 				if (!_workerCreation.createWorker(prototypeId, shuttle.position))
 				{
 					_recruitment.registerWorkerPrototypeRequirement(prototypeId, 1);
+					if (_workerCreation.isWorkerPrototypeRegistered(prototypeId)
+						&& !_workerCreation.hasSpareHousing())
+					{
+						housingShortage = true;
+					}
 				}
 			}
+		}
+
+		if (housingShortage)
+		{
+			_workerHousingShortage = true;
 		}
 
 		for (const std::string& resourceName : prototype.allowedCargo)
@@ -130,12 +141,38 @@ namespace drl
 		shuttle.position = shuttle.startingPosition;
 		shuttle.elapsed = 0.0f;
 
+		ShuttleCargoSale sale{};
 		for (const auto& cargoEntry : shuttle.cargo)
 		{
+			if (cargoEntry.second <= 0)
+			{
+				continue;
+			}
+
 			_economy.add(ResourceMoney, cargoEntry.second);
+			sale.money += cargoEntry.second;
+			sale.sold.emplace_back(cargoEntry.first, cargoEntry.second);
 		}
 
 		shuttle.cargo.clear();
+		if (!sale.sold.empty())
+		{
+			_cargoSale = std::move(sale);
+		}
+	}
+
+	bool ShuttleScheduleService::consumeWorkerHousingShortage()
+	{
+		const bool pending = _workerHousingShortage;
+		_workerHousingShortage = false;
+		return pending;
+	}
+
+	std::optional<ShuttleCargoSale> ShuttleScheduleService::consumeCargoSale()
+	{
+		std::optional<ShuttleCargoSale> pending = _cargoSale;
+		_cargoSale.reset();
+		return pending;
 	}
 
 }

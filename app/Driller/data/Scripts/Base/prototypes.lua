@@ -110,6 +110,9 @@ prototypes = {
                 x = 3,
                 y = 0
             },
+            metadata = {
+                workerCapacity = 4
+            },
             workers = {
             }
         },

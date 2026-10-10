@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include <Entities/Building.hpp>
 #include <Entities/Data/BuildingData.hpp>
+#include <Services/PrototypeService.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/TerrainData.hpp>
 #include <Entities/Data/ShuttleData.hpp>
@@ -40,17 +42,17 @@ struct Fixture
 		JobCreationService jobCreation{ jobData, prototypes, terrain };
 		WorkerData workerData;
 		WorkerPrototypeService workerPrototypes;
-		WorkerCreationService workerCreation{ workerData, workerPrototypes };
 		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
 		BuildingData buildingData;
 		BuildingPrototypeService buildingPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes };
 		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
 		ShuttleData shuttleData;
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };
 		UpgradeData upgradeData;
 		UpgradeService upgrades{ upgradeData };
-		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades };
+		GameCommandService commands{ terrain, economy, jobCreation, workerCreation, buildings, buildingPrototypes, shuttleCreation, upgrades, workerData };
 
 		Fixture()
 		{
@@ -130,12 +132,38 @@ TEST_CASE("cmd CreateJobEvent uses level then column", "[drl][Scripting]")
 	REQUIRE(f.terrain.getTile(0, 1).jobReserved);
 }
 
+TEST_CASE("cmd CancelJobEvent removes a dig job", "[drl][Scripting]")
+{
+	Fixture f;
+	JobPrototype prototype{};
+	prototype.name = "Job_Dig";
+	prototype.work = 1.0f;
+	f.prototypes.registerPrototype(std::move(prototype));
+	f.lua.runString(R"(
+		cmd(GameCommand.new(DigShaftEvent.new(0), GameCommandContext.DiggingShaft, GameCommandSource.Setup))
+	)");
+	f.terrain.initialiseTile(0, 1);
+	f.lua.runString(R"(
+		cmd(GameCommand.new(CreateJobEvent.new("Job_Dig", "", 0, 1), GameCommandContext.CreatingJob, GameCommandSource.Player))
+		cmd(GameCommand.new(CancelJobEvent.new(0, 1), GameCommandContext.CancellingJob, GameCommandSource.Player))
+	)");
+	REQUIRE(f.jobData.jobs.empty());
+	REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);
+}
+
 TEST_CASE("cmd CreateWorkerEvent uses vec2f coordinates", "[drl][Scripting]")
 {
 	Fixture f;
 	WorkerPrototype prototype{};
 	prototype.name = "Worker_Builder";
 	f.workerPrototypes.registerPrototype(std::move(prototype));
+	BuildingPrototype housing{};
+	housing.name = "Building_TestHousing";
+	housing.metadata[kBuildingMetadataWorkerCapacity] = 4;
+	f.buildingPrototypes.registerPrototype(std::move(housing));
+	BuildingInstance instance{};
+	instance.prototypeId = prototypeIdFromName("Building_TestHousing");
+	f.buildingData.buildings.push_back(instance);
 	f.lua.runString(R"(
 		cmd(GameCommand.new(CreateWorkerEvent.new("Worker_Builder", vec2f.new(1.0, 0.0)), GameCommandContext.CreatingWorker, GameCommandSource.Setup))
 	)");
