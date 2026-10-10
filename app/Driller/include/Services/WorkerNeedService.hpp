@@ -14,6 +14,8 @@ namespace drl
 	{
 	public:
 		~IWorkerNeedService() override = 0;
+
+		virtual NeedBand classify(const WorkerInstance& worker, NeedId needId) const = 0;
 	};
 
 	inline IWorkerNeedService::~IWorkerNeedService() = default;
@@ -29,6 +31,7 @@ namespace drl
 		~WorkerNeedService() override = default;
 
 		void update(float delta) override;
+		NeedBand classify(const WorkerInstance& worker, NeedId needId) const override;
 
 	private:
 		NeedDecayModifier decayModifier(const WorkerInstance& worker, NeedId needId) const;

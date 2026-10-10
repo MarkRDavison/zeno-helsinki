@@ -39,11 +39,17 @@ namespace WorkerNeedServiceTests
 		JobPrototypeService jobPrototypes;
 		WorkerNeedService service{ workerData, needPrototypes, jobData, jobPrototypes };
 
-		void registerNeed(const std::string& name, float decayPerSecond)
+		void registerNeed(
+			const std::string& name,
+			float decayPerSecond,
+			float seekBelow = 0.0f,
+			float collapseBelow = -1.0f)
 		{
 			NeedPrototype prototype{};
 			prototype.name = name;
 			prototype.decayPerSecond = decayPerSecond;
+			prototype.seekBelow = seekBelow;
+			prototype.collapseBelow = collapseBelow;
 			needPrototypes.registerPrototype(std::move(prototype));
 		}
 
@@ -215,6 +221,44 @@ namespace WorkerNeedServiceTests
 		f.service.update(1.0f);
 		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 98.0f);
 		REQUIRE(worker.needValues.at(needIdFromName("Need_Food")) == 99.0f);
+	}
+
+	TEST_CASE("sleep at 24 is seek", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 1.0f, 25.0f, 0.0f);
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+		REQUIRE(f.service.classify(worker, needIdFromName("Need_Sleep")) == NeedBand::Seek);
+	}
+
+	TEST_CASE("sleep at seekBelow is ok", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 1.0f, 25.0f, 0.0f);
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Sleep")] = 25.0f;
+		REQUIRE(f.service.classify(worker, needIdFromName("Need_Sleep")) == NeedBand::Ok);
+	}
+
+	TEST_CASE("sleep at 0 with collapseBelow 0 is collapse", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 1.0f, 25.0f, 0.0f);
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Sleep")] = 0.0f;
+		REQUIRE(f.service.classify(worker, needIdFromName("Need_Sleep")) == NeedBand::Collapse);
+	}
+
+	TEST_CASE("recreation without collapse never collapses", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Recreation", 0.4f, 10.0f, -1.0f);
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Recreation")] = 0.0f;
+		REQUIRE(f.service.classify(worker, needIdFromName("Need_Recreation")) == NeedBand::Seek);
+		worker.needValues[needIdFromName("Need_Recreation")] = 10.0f;
+		REQUIRE(f.service.classify(worker, needIdFromName("Need_Recreation")) == NeedBand::Ok);
 	}
 
 }

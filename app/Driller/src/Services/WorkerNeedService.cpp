@@ -40,6 +40,18 @@ namespace drl
 		return it->second;
 	}
 
+	NeedBand WorkerNeedService::classify(const WorkerInstance& worker, NeedId needId) const
+	{
+		const NeedPrototype& prototype = _needPrototypes.getPrototype(needId);
+		const auto it = worker.needValues.find(needId);
+		if (it == worker.needValues.end())
+		{
+			return NeedBand::Ok;
+		}
+
+		return classifyNeedValue(it->second, prototype);
+	}
+
 	void WorkerNeedService::update(float delta)
 	{
 		for (WorkerInstance& worker : _workerData.workers)

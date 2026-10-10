@@ -27,4 +27,24 @@ namespace drl
 		std::string label;
 	};
 
+	enum class NeedBand
+	{
+		Ok,
+		Seek,
+		Collapse
+	};
+
+	inline NeedBand classifyNeedValue(float value, const NeedPrototype& prototype)
+	{
+		if (prototype.collapseBelow >= 0.0f && value <= prototype.collapseBelow)
+		{
+			return NeedBand::Collapse;
+		}
+		if (value < prototype.seekBelow)
+		{
+			return NeedBand::Seek;
+		}
+		return NeedBand::Ok;
+	}
+
 }
