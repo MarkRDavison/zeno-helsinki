@@ -19,6 +19,7 @@
 #include <Services/WorkerCreationService.hpp>
 #include <Services/WorkerJobUpdateService.hpp>
 #include <Services/WorkerMovementService.hpp>
+#include <Services/WorkerNeedService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <Services/WorkerRecruitmentService.hpp>
 #include <helsinki/Scripting/LuaState.hpp>
@@ -61,6 +62,8 @@ namespace drl
 		const WorkerMovementService& workerMovementService() const { return _workerMovementService; }
 		WorkerJobUpdateService& workerJobUpdateService() { return _workerJobUpdateService; }
 		const WorkerJobUpdateService& workerJobUpdateService() const { return _workerJobUpdateService; }
+		WorkerNeedService& workerNeedService() { return _workerNeedService; }
+		const WorkerNeedService& workerNeedService() const { return _workerNeedService; }
 		BuildingPrototypeService& buildingPrototypeService() { return _buildingPrototypeService; }
 		const BuildingPrototypeService& buildingPrototypeService() const { return _buildingPrototypeService; }
 		BuildingPlacementService& buildingPlacementService() { return _buildingPlacementService; }
@@ -97,6 +100,7 @@ namespace drl
 		WorkerRecruitmentService _workerRecruitmentService;
 		WorkerMovementService _workerMovementService;
 		WorkerJobUpdateService _workerJobUpdateService;
+		WorkerNeedService _workerNeedService;
 		JobAllocationService _jobAllocationService;
 		BuildingPrototypeService _buildingPrototypeService;
 		WorkerCreationService _workerCreationService;
