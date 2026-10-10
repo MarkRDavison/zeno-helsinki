@@ -23,7 +23,13 @@ namespace drl
 			_needPrototypeService,
 			_gameData.job,
 			_jobPrototypeService)
-		, _jobAllocationService(_gameData.job, _gameData.worker, _terrainService, _workerPrototypeService)
+		, _jobAllocationService(
+			_gameData.job,
+			_gameData.worker,
+			_terrainService,
+			_workerPrototypeService,
+			_jobPrototypeService,
+			_workerNeedService)
 		, _workerCreationService(
 			_gameData.worker,
 			_workerPrototypeService,

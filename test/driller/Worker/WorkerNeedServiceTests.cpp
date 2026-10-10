@@ -25,6 +25,7 @@
 #include <Services/WorkerNeedService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 #include <Services/WorkerRecruitmentService.hpp>
+#include <optional>
 
 namespace drl
 {
@@ -259,6 +260,79 @@ namespace WorkerNeedServiceTests
 		REQUIRE(f.service.classify(worker, needIdFromName("Need_Recreation")) == NeedBand::Seek);
 		worker.needValues[needIdFromName("Need_Recreation")] = 10.0f;
 		REQUIRE(f.service.classify(worker, needIdFromName("Need_Recreation")) == NeedBand::Ok);
+	}
+
+	TEST_CASE("seeking worker unassigns repeating work job", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Mine";
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& mine = f.jobData.jobs.emplace_back();
+		mine.id = 1;
+		mine.prototypeId = jobPrototypeIdFromName("Job_Mine");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = mine.id;
+		mine.allocatedWorkerId = worker.id;
+		worker.state = WorkerState::WorkingJob;
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+
+		f.service.update(0.0f);
+
+		REQUIRE(worker.allocatedJobId == 0);
+		REQUIRE(worker.state == WorkerState::Idle);
+		REQUIRE(mine.allocatedWorkerId == 0);
+		REQUIRE(f.jobData.jobs.size() == 1);
+		REQUIRE_FALSE(mine.requiresRemoval);
+	}
+
+	TEST_CASE("seeking worker keeps restore job for chosen need", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = sleep.id;
+		sleep.allocatedWorkerId = worker.id;
+		worker.state = WorkerState::WorkingJob;
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+
+		f.service.update(0.0f);
+
+		REQUIRE(worker.allocatedJobId == sleep.id);
+		REQUIRE(sleep.allocatedWorkerId == worker.id);
+		REQUIRE(worker.state == WorkerState::WorkingJob);
+	}
+
+	TEST_CASE("collapsed worker unassigns current job", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Mine";
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& mine = f.jobData.jobs.emplace_back();
+		mine.id = 1;
+		mine.prototypeId = jobPrototypeIdFromName("Job_Mine");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = mine.id;
+		mine.allocatedWorkerId = worker.id;
+		worker.state = WorkerState::WorkingJob;
+		worker.needValues[needIdFromName("Need_Sleep")] = 0.0f;
+
+		f.service.update(0.0f);
+
+		REQUIRE(worker.allocatedJobId == 0);
+		REQUIRE(mine.allocatedWorkerId == 0);
+		REQUIRE(f.service.chosenSeekNeed(worker) == std::nullopt);
+		REQUIRE(f.service.hasCollapsedNeed(worker));
 	}
 
 }

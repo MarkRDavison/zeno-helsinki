@@ -7,17 +7,46 @@ namespace drl
 		JobData& jobData,
 		WorkerData& workerData,
 		const ITerrainAlterationService& terrain,
-		const IWorkerPrototypeService& workerPrototypes)
+		const IWorkerPrototypeService& workerPrototypes,
+		const IJobPrototypeService& jobPrototypes,
+		const IWorkerNeedService& needs)
 		: _jobData(jobData)
 		, _workerData(workerData)
 		, _terrain(terrain)
 		, _workerPrototypes(workerPrototypes)
+		, _jobPrototypes(jobPrototypes)
+		, _needs(needs)
 	{
 	}
 
 	void JobAllocationService::update(float /*delta*/)
 	{
 		allocateJobs(10);
+	}
+
+	bool JobAllocationService::workerListsJob(
+		const WorkerPrototype& workerPrototype,
+		JobPrototypeId jobPrototypeId) const
+	{
+		for (const std::string& jobName : workerPrototype.validJobPrototypes)
+		{
+			if (_workerPrototypes.getPrototypeId(jobName) == jobPrototypeId)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool JobAllocationService::isRestoreJob(const JobInstance& job) const
+	{
+		if (!_jobPrototypes.isPrototypeRegistered(job.prototypeId))
+		{
+			return false;
+		}
+
+		return !_jobPrototypes.getPrototype(job.prototypeId).needRestore.empty();
 	}
 
 	void JobAllocationService::allocateJobs(int number)
@@ -61,18 +90,37 @@ namespace drl
 			return false;
 		}
 
-		const WorkerPrototype& workerPrototype = _workerPrototypes.getPrototype(worker.prototypeId);
-		bool valid = false;
-		for (const std::string& jobName : workerPrototype.validJobPrototypes)
+		if (_needs.hasCollapsedNeed(worker))
 		{
-			if (_workerPrototypes.getPrototypeId(jobName) == job.prototypeId)
-			{
-				valid = true;
-				break;
-			}
+			return false;
 		}
 
-		if (!valid)
+		const std::optional<NeedId> chosen = _needs.chosenSeekNeed(worker);
+		if (isRestoreJob(job))
+		{
+			if (!chosen)
+			{
+				return false;
+			}
+
+			if (!_jobPrototypes.getPrototype(job.prototypeId).needRestore.contains(*chosen))
+			{
+				return false;
+			}
+		}
+		else if (chosen)
+		{
+			return false;
+		}
+
+		const WorkerPrototype& workerPrototype = _workerPrototypes.getPrototype(worker.prototypeId);
+		bool everyone = false;
+		if (_jobPrototypes.isPrototypeRegistered(job.prototypeId))
+		{
+			everyone = _jobPrototypes.getPrototype(job.prototypeId).everyoneCanPerform;
+		}
+
+		if (!workerListsJob(workerPrototype, job.prototypeId) && !everyone)
 		{
 			return false;
 		}

@@ -45,6 +45,8 @@ namespace drl
 		std::function<void(const JobInstance&)> onComplete;
 		std::function<glm::vec2(const JobInstance&, const JobPrototype&)> calculateOffset;
 		std::unordered_map<NeedId, NeedDecayModifier> needDecay;
+		std::unordered_map<NeedId, float> needRestore;
+		bool everyoneCanPerform{ false };
 	};
 
 }

@@ -3,7 +3,9 @@
 #include <Core/Game.hpp>
 #include <Entities/Data/JobData.hpp>
 #include <Entities/Data/WorkerData.hpp>
+#include <Services/JobPrototypeService.hpp>
 #include <Services/TerrainAlterationService.hpp>
+#include <Services/WorkerNeedService.hpp>
 #include <Services/WorkerPrototypeService.hpp>
 
 namespace drl
@@ -26,7 +28,9 @@ namespace drl
 			JobData& jobData,
 			WorkerData& workerData,
 			const ITerrainAlterationService& terrain,
-			const IWorkerPrototypeService& workerPrototypes);
+			const IWorkerPrototypeService& workerPrototypes,
+			const IJobPrototypeService& jobPrototypes,
+			const IWorkerNeedService& needs);
 		~JobAllocationService() override = default;
 
 		void update(float delta) override;
@@ -35,10 +39,15 @@ namespace drl
 		bool canWorkerPerformJob(const WorkerInstance& worker, const JobInstance& job) const;
 
 	private:
+		bool workerListsJob(const WorkerPrototype& workerPrototype, JobPrototypeId jobPrototypeId) const;
+		bool isRestoreJob(const JobInstance& job) const;
+
 		JobData& _jobData;
 		WorkerData& _workerData;
 		const ITerrainAlterationService& _terrain;
 		const IWorkerPrototypeService& _workerPrototypes;
+		const IJobPrototypeService& _jobPrototypes;
+		const IWorkerNeedService& _needs;
 	};
 
 }

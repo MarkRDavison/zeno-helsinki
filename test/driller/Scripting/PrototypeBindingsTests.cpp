@@ -59,6 +59,8 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(dig.work == 2.0f);
 	REQUIRE(static_cast<bool>(dig.calculateOffset));
 	REQUIRE(dig.needDecay.empty());
+	REQUIRE(dig.needRestore.empty());
+	REQUIRE_FALSE(dig.everyoneCanPerform);
 
 	const auto mineJobId = jobPrototypeIdFromName("Job_Mine");
 	REQUIRE(f.jobs.getPrototype(mineJobId).needDecay.empty());
@@ -269,6 +271,59 @@ TEST_CASE("building prototype negative workerCapacity throws LuaError", "[drl][S
 			f.jobs.getPrototype(jobPrototypeIdFromName("Job_Mine")).needDecay.at(needIdFromName("Need_Sleep"));
 		REQUIRE(modifier.multiplier == 1.0f);
 		REQUIRE(modifier.additivePerSecond == 0.0f);
+	}
+
+	TEST_CASE("job everyoneCanPerform and needRestore parse", "[drl][Scripting]")
+	{
+		Fixture f;
+		NeedPrototype sleep{};
+		sleep.name = "Need_Sleep";
+		f.needs.registerPrototype(std::move(sleep));
+		f.lua.runString(R"(
+			prototypes = {
+				jobs = {
+					{
+						name = "Job_Sleep",
+						repeats = true,
+						work = 1.0,
+						everyoneCanPerform = true,
+						needRestore = {
+							["Need_Sleep"] = { restorePerSecond = 15.0 }
+						}
+					}
+				},
+				workers = {},
+				buildings = {},
+				shuttles = {}
+			}
+		)");
+		applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs);
+		const auto& job = f.jobs.getPrototype(jobPrototypeIdFromName("Job_Sleep"));
+		REQUIRE(job.everyoneCanPerform);
+		REQUIRE_THAT(job.needRestore.at(needIdFromName("Need_Sleep")), Catch::Matchers::WithinAbs(15.0f, 0.0001f));
+	}
+
+	TEST_CASE("job needRestore unknown need throws LuaError", "[drl][Scripting]")
+	{
+		Fixture f;
+		f.lua.runString(R"(
+			prototypes = {
+				jobs = {
+					{
+						name = "Job_Sleep",
+						repeats = true,
+						work = 1.0,
+						needRestore = { ["Need_Sleep"] = { restorePerSecond = 15.0 } }
+					}
+				},
+				workers = {},
+				buildings = {},
+				shuttles = {}
+			}
+		)");
+		REQUIRE_THROWS_AS(
+			applyPrototypesTable(f.lua.raw()["prototypes"], f.jobs, f.workers, f.buildings, f.shuttles, f.needs),
+			hl::scripting::LuaError);
 	}
 
 	TEST_CASE("job needDecay unknown need throws LuaError", "[drl][Scripting]")

@@ -154,6 +154,59 @@ namespace drl
 				prototype.needDecay[needId] = modifier;
 			}
 		}
+
+		void parseNeedRestore(
+			const sol::table& row,
+			const std::string& jobName,
+			JobPrototype& prototype,
+			const INeedPrototypeService& needs)
+		{
+			const sol::object restoreObject = row["needRestore"];
+			if (!restoreObject.valid() || restoreObject.get_type() == sol::type::lua_nil)
+			{
+				return;
+			}
+			if (!restoreObject.is<sol::table>())
+			{
+				throw hl::scripting::LuaError("job '" + jobName + "' needRestore must be a table");
+			}
+
+			const sol::table restore = restoreObject.as<sol::table>();
+			for (const auto& kvp : restore)
+			{
+				if (!kvp.first.is<std::string>())
+				{
+					throw hl::scripting::LuaError("job '" + jobName + "' needRestore keys must be need names");
+				}
+
+				const std::string needName = kvp.first.as<std::string>();
+				if (needName.empty())
+				{
+					throw hl::scripting::LuaError("job '" + jobName + "' needRestore entry is missing name");
+				}
+
+				const NeedId needId = needIdFromName(needName);
+				if (!needs.isPrototypeRegistered(needId))
+				{
+					throw hl::scripting::LuaError(
+						"job '" + jobName + "' needRestore unknown need '" + needName + "'");
+				}
+				if (!kvp.second.is<sol::table>())
+				{
+					throw hl::scripting::LuaError(
+						"job '" + jobName + "' needRestore['" + needName + "'] must be a table");
+				}
+
+				sol::optional<float> restorePerSecond = kvp.second.as<sol::table>()["restorePerSecond"];
+				if (!restorePerSecond)
+				{
+					throw hl::scripting::LuaError(
+						"job '" + jobName + "' needRestore['" + needName + "'] is missing restorePerSecond");
+				}
+
+				prototype.needRestore[needId] = *restorePerSecond;
+			}
+		}
 	}
 
 	void applyPrototypesTable(
@@ -192,7 +245,13 @@ namespace drl
 			prototype.work = *work;
 			prototype.onComplete = wrapOnComplete(row["onComplete"]);
 			prototype.calculateOffset = wrapCalculateOffset(row["calculateOffset"]);
+			sol::optional<bool> everyoneCanPerform = row["everyoneCanPerform"];
+			if (everyoneCanPerform)
+			{
+				prototype.everyoneCanPerform = *everyoneCanPerform;
+			}
 			parseNeedDecay(row, *name, prototype, needs);
+			parseNeedRestore(row, *name, prototype, needs);
 			jobs.registerPrototype(std::move(prototype));
 		}
 
