@@ -57,6 +57,7 @@ namespace drl
 		glm::ivec2 _hoveredTile{ 0, -1 };
 		glm::vec2 _lastPanMouse{ 0.0f, 0.0f };
 		bool _panning{ false };
+		bool _blockedSeekShown{ false };
 		Hud _hud;
 		hl::UiBatch _uiBatch;
 		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;

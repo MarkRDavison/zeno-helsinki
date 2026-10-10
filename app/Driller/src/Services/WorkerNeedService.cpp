@@ -96,6 +96,53 @@ namespace drl
 		return chosen;
 	}
 
+	bool WorkerNeedService::hasFreeRestoreJob(NeedId needId) const
+	{
+		for (const JobInstance& job : _jobData.jobs)
+		{
+			if (job.allocatedWorkerId != 0)
+			{
+				continue;
+			}
+
+			if (!_jobPrototypes.isPrototypeRegistered(job.prototypeId))
+			{
+				continue;
+			}
+
+			if (_jobPrototypes.getPrototype(job.prototypeId).needRestore.contains(needId))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool WorkerNeedService::hasBlockedSeek() const
+	{
+		for (const WorkerInstance& worker : _workerData.workers)
+		{
+			const std::optional<NeedId> chosen = chosenSeekNeed(worker);
+			if (!chosen)
+			{
+				continue;
+			}
+
+			if (currentJobRestores(worker, *chosen))
+			{
+				continue;
+			}
+
+			if (!hasFreeRestoreJob(*chosen))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	const JobPrototype* WorkerNeedService::workingJobPrototype(const WorkerInstance& worker) const
 	{
 		if (worker.state != WorkerState::WorkingJob || worker.allocatedJobId == 0)

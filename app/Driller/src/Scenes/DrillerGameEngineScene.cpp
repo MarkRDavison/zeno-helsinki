@@ -474,6 +474,25 @@ namespace drl
 			});
 		}
 
+		if (const int departed = _session.shuttleScheduleService().consumeDesertedWorkerCount(); departed > 0)
+		{
+			_hud.show(hl::ui::SnackbarItem{
+				.type = hl::ui::SnackbarType::Warning,
+				.title = formatDesertedWorkersMessage(departed)
+			});
+		}
+
+		if (!_blockedSeekShown && _session.workerNeedService().hasBlockedSeek())
+		{
+			_blockedSeekShown = true;
+			_hud.show(hl::ui::SnackbarItem{
+				.type = hl::ui::SnackbarType::Warning,
+				.title = "Needs not being met",
+				.description = "Workers are seeking a restore job but no free slots are available.",
+				.persistent = true
+			});
+		}
+
 		struct SceneUiInput : IUiInput
 		{
 			explicit SceneUiInput(const hl::InputManager& inputManager)

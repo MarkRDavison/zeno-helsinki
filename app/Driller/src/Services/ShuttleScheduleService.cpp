@@ -141,9 +141,10 @@ namespace drl
 
 	void ShuttleScheduleService::removeLeavingWorkers()
 	{
+		int departed = 0;
 		std::erase_if(
 			_workerData.workers,
-			[this](const WorkerInstance& worker)
+			[this, &departed](const WorkerInstance& worker)
 			{
 				if (!worker.leaving)
 				{
@@ -151,8 +152,10 @@ namespace drl
 				}
 
 				_recruitment.registerWorkerPrototypeRequirement(worker.prototypeId, 1);
+				++departed;
 				return true;
 			});
+		_desertedWorkerCount += departed;
 	}
 
 	void ShuttleScheduleService::updateShuttleOnArrivalAtDepartureDestination(ShuttleInstance& shuttle)
@@ -192,6 +195,13 @@ namespace drl
 	{
 		std::optional<ShuttleCargoSale> pending = _cargoSale;
 		_cargoSale.reset();
+		return pending;
+	}
+
+	int ShuttleScheduleService::consumeDesertedWorkerCount()
+	{
+		const int pending = _desertedWorkerCount;
+		_desertedWorkerCount = 0;
 		return pending;
 	}
 

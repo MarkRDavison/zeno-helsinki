@@ -332,6 +332,30 @@ namespace ShuttleScheduleServiceTests
 		REQUIRE_FALSE(f.workerData.workers[0].leaving);
 		REQUIRE(f.recruitment.getRequiredWorkerCount("Worker_Miner") == 1);
 		REQUIRE(f.workerCreation.hasSpareHousing());
+		REQUIRE(f.schedule.consumeDesertedWorkerCount() == 1);
+		REQUIRE(f.schedule.consumeDesertedWorkerCount() == 0);
+	}
+
+	TEST_CASE("leaving shuttle batches deserted worker count", "[drl][ShuttleScheduleService]")
+	{
+		Fixture f;
+		WorkerPrototype miner{};
+		miner.name = "Worker_Miner";
+		f.workerPrototypes.registerPrototype(std::move(miner));
+		f.addHousing(2);
+		REQUIRE(f.workerCreation.createWorker(prototypeIdFromName("Worker_Miner"), glm::vec2(1.0f, 0.0f)));
+		REQUIRE(f.workerCreation.createWorker(prototypeIdFromName("Worker_Miner"), glm::vec2(2.0f, 0.0f)));
+		f.workerData.workers[0].leaving = true;
+		f.workerData.workers[1].leaving = true;
+		f.registerShuttle(0.0f, 0.0f, 10000.0f, false);
+		f.snapToSurface();
+		REQUIRE(f.schedule.consumeDesertedWorkerCount() == 0);
+
+		f.schedule.update(0.0f);
+		REQUIRE(f.workerData.workers.empty());
+		REQUIRE(f.schedule.consumeDesertedWorkerCount() == 2);
+		REQUIRE(f.schedule.consumeDesertedWorkerCount() == 0);
+		REQUIRE(formatDesertedWorkersMessage(2) == "2 workers have left because their needs were not met.");
 	}
 
 	TEST_CASE("next landing spawns replacements for departed workers", "[drl][ShuttleScheduleService]")

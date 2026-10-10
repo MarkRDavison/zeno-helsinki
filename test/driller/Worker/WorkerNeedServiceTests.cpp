@@ -461,5 +461,74 @@ namespace WorkerNeedServiceTests
 		REQUIRE(worker.allocatedJobId == sleep.id);
 	}
 
+	TEST_CASE("seeker with no restore job is blocked", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+		REQUIRE(f.service.hasBlockedSeek());
+	}
+
+	TEST_CASE("seeker with a free restore job is not blocked", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+		REQUIRE_FALSE(f.service.hasBlockedSeek());
+	}
+
+	TEST_CASE("seeker is blocked when every restore job is taken", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		sleep.allocatedWorkerId = 99;
+		WorkerInstance& worker = f.addWorker();
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+		REQUIRE(f.service.hasBlockedSeek());
+	}
+
+	TEST_CASE("worker already on a restore job is not blocked seek", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = sleep.id;
+		sleep.allocatedWorkerId = worker.id;
+		worker.needValues[needIdFromName("Need_Sleep")] = 24.0f;
+		REQUIRE_FALSE(f.service.hasBlockedSeek());
+	}
+
+	TEST_CASE("ok worker is not blocked seek", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 0.0f, 25.0f, 0.0f);
+		WorkerInstance& worker = f.addWorker();
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == kNeedValueFull);
+		REQUIRE_FALSE(f.service.hasBlockedSeek());
+	}
+
 }
 }

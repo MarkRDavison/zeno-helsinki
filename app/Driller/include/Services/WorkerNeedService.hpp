@@ -19,6 +19,7 @@ namespace drl
 		virtual NeedBand classify(const WorkerInstance& worker, NeedId needId) const = 0;
 		virtual bool hasCollapsedNeed(const WorkerInstance& worker) const = 0;
 		virtual std::optional<NeedId> chosenSeekNeed(const WorkerInstance& worker) const = 0;
+		virtual bool hasBlockedSeek() const = 0;
 	};
 
 	inline IWorkerNeedService::~IWorkerNeedService() = default;
@@ -37,6 +38,7 @@ namespace drl
 		NeedBand classify(const WorkerInstance& worker, NeedId needId) const override;
 		bool hasCollapsedNeed(const WorkerInstance& worker) const override;
 		std::optional<NeedId> chosenSeekNeed(const WorkerInstance& worker) const override;
+		bool hasBlockedSeek() const override;
 
 	private:
 		NeedDecayModifier decayModifier(const WorkerInstance& worker, NeedId needId) const;
@@ -46,6 +48,7 @@ namespace drl
 		void preemptIfNeeded(WorkerInstance& worker);
 		void unassign(WorkerInstance& worker);
 		bool currentJobRestores(const WorkerInstance& worker, NeedId needId) const;
+		bool hasFreeRestoreJob(NeedId needId) const;
 
 		WorkerData& _workerData;
 		const INeedPrototypeService& _needPrototypes;

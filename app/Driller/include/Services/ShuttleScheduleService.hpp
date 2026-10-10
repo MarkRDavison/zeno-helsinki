@@ -77,6 +77,11 @@ namespace drl
 			resourceHudLabel(economy, ResourceMoney));
 	}
 
+	inline std::string formatDesertedWorkersMessage(int count)
+	{
+		return std::format("{} workers have left because their needs were not met.", count);
+	}
+
 	class ShuttleScheduleService : public IShuttleScheduleService
 	{
 	public:
@@ -103,6 +108,7 @@ namespace drl
 		void removeLeavingWorkers();
 		bool consumeWorkerHousingShortage();
 		std::optional<ShuttleCargoSale> consumeCargoSale();
+		int consumeDesertedWorkerCount();
 
 	private:
 		ShuttleData& _shuttleData;
@@ -113,6 +119,7 @@ namespace drl
 		IEconomyResourceService& _economy;
 		bool _workerHousingShortage{ false };
 		std::optional<ShuttleCargoSale> _cargoSale;
+		int _desertedWorkerCount{ 0 };
 	};
 
 }
