@@ -2,6 +2,7 @@
 
 #include <helsinki/System/glm.hpp>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace drl
@@ -28,6 +29,7 @@ namespace drl
 		glm::vec2 wanderTarget{ 0.0f, 0.0f };
 		float idleTime{ 0.0f };
 		float wanderBackoff{ 0.0f };
+		std::unordered_map<long long, float> needValues;
 	};
 
 	struct WorkerPrototype

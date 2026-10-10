@@ -136,7 +136,8 @@ namespace BuildingGhostViewTests
 		WorkerPrototypeService workerPrototypes;
 		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
 		BuildingPrototypeService buildingPrototypes;
-		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes };
+		NeedPrototypeService needPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes, needPrototypes };
 		BuildingPlacementService placement{ buildingData, terrain, recruitment, jobs, buildingPrototypes };
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttles{ shuttleData, shuttlePrototypes };

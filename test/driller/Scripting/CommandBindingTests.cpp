@@ -45,7 +45,8 @@ struct Fixture
 		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
 		BuildingData buildingData;
 		BuildingPrototypeService buildingPrototypes;
-		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes };
+		NeedPrototypeService needPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes, needPrototypes };
 		BuildingPlacementService buildings{ buildingData, terrain, recruitment, jobCreation, buildingPrototypes };
 		ShuttleData shuttleData;
 		ShuttlePrototypeService shuttlePrototypes;

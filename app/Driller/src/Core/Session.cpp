@@ -1,6 +1,7 @@
 #include <Core/Session.hpp>
 #include <Core/LoadError.hpp>
 #include <Scripting/CommandBindings.hpp>
+#include <Scripting/NeedBindings.hpp>
 #include <Scripting/PrototypeBindings.hpp>
 #include <Scripting/ResourceBindings.hpp>
 #include <Scripting/UpgradeBindings.hpp>
@@ -22,7 +23,8 @@ namespace drl
 			_gameData.worker,
 			_workerPrototypeService,
 			_gameData.building,
-			_buildingPrototypeService)
+			_buildingPrototypeService,
+			_needPrototypeService)
 		, _buildingPlacementService(
 			_gameData.building,
 			_terrainService,
@@ -109,6 +111,9 @@ namespace drl
 		const auto scriptsDirectory = std::filesystem::path(_dataDirectory) / "Scripts" / "Base";
 		_lua.runFile((scriptsDirectory / "resources.lua").string());
 		applyResourcesTable(_lua.raw()["resources"], _economyService);
+
+		_lua.runFile((scriptsDirectory / "needs.lua").string());
+		applyNeedsTable(_lua.raw()["needs"], _needPrototypeService);
 
 		_lua.runFile((scriptsDirectory / "upgrades.lua").string());
 		applyUpgradesTable(_lua.raw()["upgrades"], _upgradeService);

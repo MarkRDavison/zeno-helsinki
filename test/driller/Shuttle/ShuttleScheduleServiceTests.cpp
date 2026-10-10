@@ -29,7 +29,8 @@ namespace ShuttleScheduleServiceTests
 		BuildingData buildingData;
 		WorkerPrototypeService workerPrototypes;
 		BuildingPrototypeService buildingPrototypes;
-		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes };
+		NeedPrototypeService needPrototypes;
+		WorkerCreationService workerCreation{ workerData, workerPrototypes, buildingData, buildingPrototypes, needPrototypes };
 		WorkerRecruitmentService recruitment{ workerData, workerPrototypes };
 		ShuttlePrototypeService shuttlePrototypes;
 		ShuttleCreationService shuttleCreation{ shuttleData, shuttlePrototypes };

@@ -7,11 +7,13 @@ namespace drl
 		WorkerData& workerData,
 		IWorkerPrototypeService& workerPrototypeService,
 		const BuildingData& buildingData,
-		const IBuildingPrototypeService& buildingPrototypes)
+		const IBuildingPrototypeService& buildingPrototypes,
+		const INeedPrototypeService& needPrototypes)
 		: _workerData(workerData)
 		, _workerPrototypeService(workerPrototypeService)
 		, _buildingData(buildingData)
 		, _buildingPrototypes(buildingPrototypes)
+		, _needPrototypes(needPrototypes)
 	{
 	}
 
@@ -32,6 +34,10 @@ namespace drl
 			_workerPrototypeService.createInstance(prototypeId));
 		worker.position = position;
 		worker.state = WorkerState::Idle;
+		for (const NeedId needId : _needPrototypes.registeredIds())
+		{
+			worker.needValues[needId] = kNeedValueFull;
+		}
 		return true;
 	}
 

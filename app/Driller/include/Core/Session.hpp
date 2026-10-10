@@ -9,6 +9,7 @@
 #include <Services/JobAllocationService.hpp>
 #include <Services/JobCreationService.hpp>
 #include <Services/JobPrototypeService.hpp>
+#include <Services/NeedPrototypeService.hpp>
 #include <Services/ShuttleCreationService.hpp>
 #include <Services/ShuttlePrototypeService.hpp>
 #include <Services/ShuttleScheduleService.hpp>
@@ -46,6 +47,8 @@ namespace drl
 		const EconomyResourceService& economyService() const { return _economyService; }
 		JobPrototypeService& jobPrototypeService() { return _jobPrototypeService; }
 		const JobPrototypeService& jobPrototypeService() const { return _jobPrototypeService; }
+		NeedPrototypeService& needPrototypeService() { return _needPrototypeService; }
+		const NeedPrototypeService& needPrototypeService() const { return _needPrototypeService; }
 		JobCreationService& jobCreationService() { return _jobCreationService; }
 		const JobCreationService& jobCreationService() const { return _jobCreationService; }
 		JobAllocationService& jobAllocationService() { return _jobAllocationService; }
@@ -88,6 +91,7 @@ namespace drl
 		TerrainAlterationService _terrainService;
 		EconomyResourceService _economyService;
 		JobPrototypeService _jobPrototypeService;
+		NeedPrototypeService _needPrototypeService;
 		JobCreationService _jobCreationService;
 		WorkerPrototypeService _workerPrototypeService;
 		WorkerRecruitmentService _workerRecruitmentService;
