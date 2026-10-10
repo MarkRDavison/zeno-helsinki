@@ -104,6 +104,24 @@ prototypes = {
             needRestore = {
                 ["Need_Sleep"] = { restorePerSecond = 15.0 }
             }
+        },
+        {
+            name = "Job_Eat",
+            repeats = true,
+            work = 1.0,
+            everyoneCanPerform = true,
+            needRestore = {
+                ["Need_Food"] = { restorePerSecond = 15.0 }
+            }
+        },
+        {
+            name = "Job_Play",
+            repeats = true,
+            work = 1.0,
+            everyoneCanPerform = true,
+            needRestore = {
+                ["Need_Recreation"] = { restorePerSecond = 15.0 }
+            }
         }
     },
     buildings = {
@@ -212,6 +230,56 @@ prototypes = {
                     name = "Job_Refine",
                     offset = {
                         x = 2.5,
+                        y = 0.0
+                    }
+                }
+            }
+        },
+        {
+            name = "Building_Cafeteria",
+            label = "Cafeteria",
+            cost = 200,
+            size = {
+                x = 3,
+                y = 1
+            },
+            texture = {
+                x = 5,
+                y = 2
+            },
+            metadata = {
+                restoreSlots = 4
+            },
+            jobs = {
+                {
+                    name = "Job_Eat",
+                    offset = {
+                        x = 1.0,
+                        y = 0.0
+                    }
+                }
+            }
+        },
+        {
+            name = "Building_Recreation",
+            label = "Recreation",
+            cost = 150,
+            size = {
+                x = 3,
+                y = 1
+            },
+            texture = {
+                x = 4,
+                y = 1
+            },
+            metadata = {
+                restoreSlots = 4
+            },
+            jobs = {
+                {
+                    name = "Job_Play",
+                    offset = {
+                        x = 1.0,
                         y = 0.0
                     }
                 }

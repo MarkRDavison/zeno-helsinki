@@ -1,5 +1,6 @@
 cmd(GameCommand.new(DigShaftEvent.new(0), GameCommandContext.DiggingShaft, GameCommandSource.Setup))
 cmd(GameCommand.new(DigShaftEvent.new(1), GameCommandContext.DiggingShaft, GameCommandSource.Setup))
+cmd(GameCommand.new(DigShaftEvent.new(2), GameCommandContext.DiggingShaft, GameCommandSource.Setup))
 
 cmd(GameCommand.new(DigTileEvent.new(0, 1), GameCommandContext.DiggingTile, GameCommandSource.Setup))
 cmd(GameCommand.new(DigTileEvent.new(0, 2), GameCommandContext.DiggingTile, GameCommandSource.Setup))
@@ -15,12 +16,21 @@ cmd(GameCommand.new(DigTileEvent.new(1, 4), GameCommandContext.DiggingTile, Game
 cmd(GameCommand.new(DigTileEvent.new(1, 5), GameCommandContext.DiggingTile, GameCommandSource.Setup))
 cmd(GameCommand.new(DigTileEvent.new(1, 6), GameCommandContext.DiggingTile, GameCommandSource.Setup))
 cmd(GameCommand.new(DigTileEvent.new(1, 7), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+cmd(GameCommand.new(DigTileEvent.new(2, 1), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+cmd(GameCommand.new(DigTileEvent.new(2, 2), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+cmd(GameCommand.new(DigTileEvent.new(2, 3), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+cmd(GameCommand.new(DigTileEvent.new(2, 4), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+cmd(GameCommand.new(DigTileEvent.new(2, 5), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+cmd(GameCommand.new(DigTileEvent.new(2, 6), GameCommandContext.DiggingTile, GameCommandSource.Setup))
+cmd(GameCommand.new(DigTileEvent.new(2, 7), GameCommandContext.DiggingTile, GameCommandSource.Setup))
 
 cmd(GameCommand.new(PlaceBuildingEvent.new("Building_Bunk", 0, 1), GameCommandContext.PlacingBuilding, GameCommandSource.Setup))
 cmd(GameCommand.new(PlaceBuildingEvent.new("Building_Builders_Hut", 0, 3), GameCommandContext.PlacingBuilding, GameCommandSource.Setup))
 cmd(GameCommand.new(PlaceBuildingEvent.new("Building_Mine", 0, 5), GameCommandContext.PlacingBuilding, GameCommandSource.Setup))
 cmd(GameCommand.new(PlaceBuildingEvent.new("Building_Mine", 1, 5), GameCommandContext.PlacingBuilding, GameCommandSource.Setup))
 cmd(GameCommand.new(PlaceBuildingEvent.new("Building_Refining", 1, 1), GameCommandContext.PlacingBuilding, GameCommandSource.Setup))
+cmd(GameCommand.new(PlaceBuildingEvent.new("Building_Cafeteria", 2, 1), GameCommandContext.PlacingBuilding, GameCommandSource.Setup))
+cmd(GameCommand.new(PlaceBuildingEvent.new("Building_Recreation", 2, 4), GameCommandContext.PlacingBuilding, GameCommandSource.Setup))
 
 cmd(GameCommand.new(CreateWorkerEvent.new("Worker_Builder", vec2f.new(1.0, 0.0)), GameCommandContext.CreatingWorker, GameCommandSource.Setup))
 

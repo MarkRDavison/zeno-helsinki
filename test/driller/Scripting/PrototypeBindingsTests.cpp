@@ -16,6 +16,7 @@
 #include <helsinki/System/glm.hpp>
 #include <format>
 #include <string>
+#include <vector>
 
 namespace drl
 {
@@ -74,6 +75,20 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(sleep.everyoneCanPerform);
 	REQUIRE_THAT(sleep.needRestore.at(needIdFromName("Need_Sleep")), Catch::Matchers::WithinAbs(15.0f, 0.0001f));
 	REQUIRE(sleep.restoreUntil == kNeedValueFull);
+
+	const auto eatJobId = jobPrototypeIdFromName("Job_Eat");
+	REQUIRE(f.jobs.isPrototypeRegistered(eatJobId));
+	const auto& eat = f.jobs.getPrototype(eatJobId);
+	REQUIRE(eat.repeats);
+	REQUIRE(eat.everyoneCanPerform);
+	REQUIRE_THAT(eat.needRestore.at(needIdFromName("Need_Food")), Catch::Matchers::WithinAbs(15.0f, 0.0001f));
+
+	const auto playJobId = jobPrototypeIdFromName("Job_Play");
+	REQUIRE(f.jobs.isPrototypeRegistered(playJobId));
+	const auto& play = f.jobs.getPrototype(playJobId);
+	REQUIRE(play.repeats);
+	REQUIRE(play.everyoneCanPerform);
+	REQUIRE_THAT(play.needRestore.at(needIdFromName("Need_Recreation")), Catch::Matchers::WithinAbs(15.0f, 0.0001f));
 
 	const auto mineJobId = jobPrototypeIdFromName("Job_Mine");
 	REQUIRE(f.jobs.getPrototype(mineJobId).needDecay.empty());
@@ -136,6 +151,43 @@ TEST_CASE("shipped prototypes.lua registers Job_Dig and Worker_Builder", "[drl][
 	REQUIRE(refine.providedJobs[1].first == "Job_Refine");
 	REQUIRE(refine.providedJobs[1].second == glm::vec2(2.5f, 0.0f));
 	REQUIRE(refine.metadata.empty());
+
+	const auto cafeteriaId = prototypeIdFromName("Building_Cafeteria");
+	REQUIRE(f.buildings.isPrototypeRegistered(cafeteriaId));
+	const auto& cafeteria = f.buildings.getPrototype(cafeteriaId);
+	REQUIRE(cafeteria.label == "Cafeteria");
+	REQUIRE(cafeteria.cost == 200);
+	REQUIRE(cafeteria.size == glm::ivec2(3, 1));
+	REQUIRE(cafeteria.texture == glm::ivec2(5, 2));
+	REQUIRE(cafeteria.requiredWorkers.empty());
+	REQUIRE(cafeteria.providedJobs.size() == 1);
+	REQUIRE(cafeteria.providedJobs[0].first == "Job_Eat");
+	REQUIRE(cafeteria.providedJobs[0].second == glm::vec2(1.0f, 0.0f));
+	REQUIRE(buildingMetadataInt(cafeteria, kBuildingMetadataRestoreSlots).value() == 4);
+	REQUIRE_FALSE(buildingMetadataInt(cafeteria, kBuildingMetadataWorkerCapacity).has_value());
+
+	const auto recId = prototypeIdFromName("Building_Recreation");
+	REQUIRE(f.buildings.isPrototypeRegistered(recId));
+	const auto& rec = f.buildings.getPrototype(recId);
+	REQUIRE(rec.label == "Recreation");
+	REQUIRE(rec.cost == 150);
+	REQUIRE(rec.size == glm::ivec2(3, 1));
+	REQUIRE(rec.texture == glm::ivec2(4, 1));
+	REQUIRE(rec.requiredWorkers.empty());
+	REQUIRE(rec.providedJobs.size() == 1);
+	REQUIRE(rec.providedJobs[0].first == "Job_Play");
+	REQUIRE(rec.providedJobs[0].second == glm::vec2(1.0f, 0.0f));
+	REQUIRE(buildingMetadataInt(rec, kBuildingMetadataRestoreSlots).value() == 4);
+	REQUIRE_FALSE(buildingMetadataInt(rec, kBuildingMetadataWorkerCapacity).has_value());
+
+	REQUIRE(f.buildings.registeredNames() == std::vector<std::string>{
+		"Building_Bunk",
+		"Building_Builders_Hut",
+		"Building_Mine",
+		"Building_Refining",
+		"Building_Cafeteria",
+		"Building_Recreation",
+	});
 
 	const auto shuttleId = prototypeIdFromName("Shuttle_Basic");
 	REQUIRE(f.shuttles.isPrototypeRegistered(shuttleId));
