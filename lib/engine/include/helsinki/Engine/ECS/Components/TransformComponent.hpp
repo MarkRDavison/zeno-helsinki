@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/Engine/ECS/Component.hpp>
 #include <helsinki/System/glm.hpp>
 
 namespace hl
 {
-	class TransformComponent : public Component
+	class HELSINKI_ENGINE_EXPORT TransformComponent : public Component
     {
     public:
         void SetPosition(const glm::vec3& pos);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Widget.hpp>
 
 #include <optional>
@@ -8,7 +10,7 @@
 
 namespace hl::ui
 {
-	class Label : public Widget
+	class HELSINKI_UI_EXPORT Label : public Widget
 	{
 	public:
 		Label(Node& node, const ITypeface& typeface);

@@ -7,22 +7,22 @@ target_include_directories(TowerDefense PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-system${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-audio${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-ui${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-renderer${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-engine${LIB_EXTENSION_SHARED}")
+TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-system")
+TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-audio")
+TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-ui")
+TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-renderer")
+TARGET_LINK_LIBRARIES(TowerDefense PRIVATE "helsinki-engine")
 
 SET(MODULE_LIBS
-	"helsinki-system${LIB_EXTENSION_SHARED}"
-	"helsinki-audio${LIB_EXTENSION_SHARED}"
-	"helsinki-ui${LIB_EXTENSION_SHARED}"
-	"helsinki-renderer${LIB_EXTENSION_SHARED}"
-	"helsinki-engine${LIB_EXTENSION_SHARED}"
+	"helsinki-system"
+	"helsinki-audio"
+	"helsinki-ui"
+	"helsinki-renderer"
+	"helsinki-engine"
 	TowerDefense
 )
 
-if(ENABLE_TRACY)
+if(HELSINKI_ENABLE_TRACY)
 	list(APPEND MODULE_LIBS ThirdParty_Tracy)
 endif()
 

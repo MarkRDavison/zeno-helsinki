@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Widget.hpp>
 
@@ -7,7 +9,7 @@
 
 namespace hl::ui
 {
-	class Panel : public Widget
+	class HELSINKI_UI_EXPORT Panel : public Widget
 	{
 	public:
 		explicit Panel(Node& node);

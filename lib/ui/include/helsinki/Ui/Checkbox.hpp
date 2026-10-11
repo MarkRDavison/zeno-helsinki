@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Widget.hpp>
 
 #include <functional>
@@ -7,7 +9,7 @@
 
 namespace hl::ui
 {
-	class Checkbox : public Widget
+	class HELSINKI_UI_EXPORT Checkbox : public Widget
 	{
 	public:
 		explicit Checkbox(Node& node);

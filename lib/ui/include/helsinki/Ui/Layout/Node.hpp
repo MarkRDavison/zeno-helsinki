@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <helsinki/Ui/Layout/Box.hpp>
 
@@ -11,7 +13,7 @@ namespace hl::ui
 {
 	class Widget;
 
-	class Node : public NonCopyable
+	class HELSINKI_UI_EXPORT Node : public NonCopyable
 	{
 	public:
 		Kind kind = Kind::Absolute;
@@ -61,7 +63,7 @@ namespace hl::ui
 
 	private:
 		friend class Widget;
-		friend void layout(Node& root, Box viewport);
+		friend HELSINKI_UI_EXPORT void layout(Node& root, Box viewport);
 
 		void bakePinnedFromMeasure();
 		void arrangeFromContainer();
@@ -76,5 +78,5 @@ namespace hl::ui
 		glm::vec2 _cachedMeasure{ 0.0f };
 	};
 
-	void layout(Node& root, Box viewport);
+	HELSINKI_UI_EXPORT void layout(Node& root, Box viewport);
 }

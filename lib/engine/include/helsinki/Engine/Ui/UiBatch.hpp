@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanMappedBuffer.hpp>
@@ -11,7 +13,7 @@ namespace hl
 	struct PipelineDrawData;
 	class VulkanDevice;
 
-	class UiBatch : public NonCopyable
+	class HELSINKI_ENGINE_EXPORT UiBatch : public NonCopyable
 	{
 	public:
 		UiBatch() = default;

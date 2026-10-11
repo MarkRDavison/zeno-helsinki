@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanInstance.hpp>
 
 struct GLFWwindow;
 
 namespace hl
 {
-	class VulkanSurface
+	class HELSINKI_RENDERER_EXPORT VulkanSurface
 	{
 	public:
 		VulkanSurface(VulkanInstance& instance);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
@@ -8,7 +10,7 @@
 
 namespace hl
 {
-	class VulkanDescriptorSet 
+	class HELSINKI_RENDERER_EXPORT VulkanDescriptorSet 
 	{
 	public:
 		VulkanDescriptorSet(VulkanDevice& device);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -29,7 +31,7 @@ namespace hl
 		throw std::runtime_error("Font '" + fontId + "' is not in the atlas sheet");
 	}
 
-	class TextSystem : NonCopyable
+	class HELSINKI_RENDERER_EXPORT TextSystem : NonCopyable
 	{
 	public:
 		static constexpr const char RasterAtlasName[] = "text_raster_atlas";

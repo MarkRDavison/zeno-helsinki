@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Audio/Export.hpp>
+
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <memory>
 #include <string_view>
@@ -11,7 +13,7 @@ namespace hl::audio
 		bool openDevice = true;
 	};
 
-	class Audio : public hl::NonCopyable
+	class HELSINKI_AUDIO_EXPORT Audio : public hl::NonCopyable
 	{
 	public:
 		Audio();

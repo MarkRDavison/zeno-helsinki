@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Widget.hpp>
 
 #include <memory>
@@ -7,7 +9,7 @@
 
 namespace hl::ui
 {
-	class ScrollView : public Widget
+	class HELSINKI_UI_EXPORT ScrollView : public Widget
 	{
 	public:
 		explicit ScrollView(Node& node);

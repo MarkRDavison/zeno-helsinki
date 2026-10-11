@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/System/glm.hpp>
 #include <helsinki/Ui/Layout/Box.hpp>
 
@@ -22,7 +24,7 @@ namespace hl::ui
 		glm::vec3 color{ 1.0f, 1.0f, 1.0f };
 	};
 
-	class IPaint
+	class HELSINKI_UI_EXPORT IPaint
 	{
 	public:
 		virtual ~IPaint() = default;
@@ -49,7 +51,7 @@ namespace hl::ui
 		virtual void popClip() {}
 	};
 
-	class ITypeface
+	class HELSINKI_UI_EXPORT ITypeface
 	{
 	public:
 		virtual ~ITypeface() = default;

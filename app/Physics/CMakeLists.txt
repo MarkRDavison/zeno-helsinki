@@ -7,22 +7,22 @@ target_include_directories(PhysicsApp PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-system${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-renderer${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-engine${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-physics${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-imgui${LIB_EXTENSION_SHARED}")
+TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-system")
+TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-renderer")
+TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-engine")
+TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-physics")
+TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-imgui")
 
 SET(MODULE_LIBS
-	"helsinki-system${LIB_EXTENSION_SHARED}"
-	"helsinki-renderer${LIB_EXTENSION_SHARED}"
-	"helsinki-engine${LIB_EXTENSION_SHARED}"
-	"helsinki-physics${LIB_EXTENSION_SHARED}"
-	"helsinki-imgui${LIB_EXTENSION_SHARED}"
+	"helsinki-system"
+	"helsinki-renderer"
+	"helsinki-engine"
+	"helsinki-physics"
+	"helsinki-imgui"
 	PhysicsApp
 )
 
-if(ENABLE_TRACY)
+if(HELSINKI_ENABLE_TRACY)
 	list(APPEND MODULE_LIBS ThirdParty_Tracy)
 endif()
 

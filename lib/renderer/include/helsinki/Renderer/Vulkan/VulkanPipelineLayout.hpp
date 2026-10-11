@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSetLayout.hpp>
 #include <string>
@@ -7,7 +9,7 @@
 namespace hl
 {
 
-	class VulkanPipelineLayout
+	class HELSINKI_RENDERER_EXPORT VulkanPipelineLayout
 	{
 	public:
 		VulkanPipelineLayout(VulkanDevice& device);

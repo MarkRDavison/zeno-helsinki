@@ -1,8 +1,10 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 namespace hl
 {
-    class ComponentTypeIDSystem
+    class HELSINKI_ENGINE_EXPORT ComponentTypeIDSystem
     {
     private:
         static size_t nextTypeID;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/System/glm.hpp>
 #include <helsinki/System/Resource/Resource.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
@@ -9,7 +11,7 @@
 
 namespace hl
 {
-	class VertexArrayResource : public Resource
+	class HELSINKI_RENDERER_EXPORT VertexArrayResource : public Resource
 	{
 	public:
 		VertexArrayResource(

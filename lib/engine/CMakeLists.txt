@@ -1,7 +1,7 @@
 SET(MODULE_LIBS
-	"helsinki-system${LIB_EXTENSION_SHARED}"
-	"helsinki-ui${LIB_EXTENSION_SHARED}"
-	"helsinki-renderer${LIB_EXTENSION_SHARED}"
+	"helsinki-system"
+	"helsinki-ui"
+	"helsinki-renderer"
 )
 
 SET(INCLUDE_DIRS

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 namespace hl
 {
     class EventListener

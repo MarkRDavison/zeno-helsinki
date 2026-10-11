@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <vulkan/vulkan.h>
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
@@ -8,7 +10,7 @@
 
 namespace hl
 {
-	class CubemapTextureResource : public TextureResource
+	class HELSINKI_RENDERER_EXPORT CubemapTextureResource : public TextureResource
 	{
 	public:
 		explicit CubemapTextureResource(const std::string& id, ResourceContext& context);

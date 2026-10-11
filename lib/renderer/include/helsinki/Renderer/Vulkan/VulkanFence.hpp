@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 
 namespace hl
 {
 
-	class VulkanFence
+	class HELSINKI_RENDERER_EXPORT VulkanFence
 	{
 	public:
 		VulkanFence(VulkanDevice& device);

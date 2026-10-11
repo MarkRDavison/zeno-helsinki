@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/Engine/ECS/Component.hpp>
 #include <unordered_map>
 #include <unordered_set>
@@ -9,10 +11,12 @@
 
 namespace hl
 {
-    class Entity
+    class HELSINKI_ENGINE_EXPORT Entity
     {
     public:
         Entity(int id) : Id(id) {}
+        Entity(const Entity&) = delete;
+        Entity& operator=(const Entity&) = delete;
 
         const int Id;
 

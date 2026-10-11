@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/Resource/ResourceHandle.hpp>
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
@@ -35,7 +37,7 @@ namespace hl
 		glm::uvec4 limits{ 0 };
 	};
 
-	class ParticleSystem
+	class HELSINKI_RENDERER_EXPORT ParticleSystem
 	{
 	public:
 		static constexpr const char StorageBufferName[] = "particle_ssbo";

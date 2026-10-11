@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Widget.hpp>
 
@@ -9,7 +11,7 @@
 
 namespace hl::ui
 {
-	class Tooltip : public Widget
+	class HELSINKI_UI_EXPORT Tooltip : public Widget
 	{
 	public:
 		Tooltip(Node& overlayNode, const ITypeface& typeface);

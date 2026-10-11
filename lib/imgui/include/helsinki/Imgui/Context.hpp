@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Imgui/Export.hpp>
+
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <functional>
 #include <vulkan/vulkan.h>
@@ -12,7 +14,7 @@ namespace hl
 namespace hl::imgui
 {
 
-	class Context : public hl::NonCopyable
+	class HELSINKI_IMGUI_EXPORT Context : public hl::NonCopyable
 	{
 	public:
 		Context();

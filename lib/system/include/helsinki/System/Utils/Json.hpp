@@ -1,5 +1,7 @@
 #pragma once 
 
+#include <helsinki/System/Export.hpp>
+
 #include <vector>
 #include <string>
 #include <functional>
@@ -28,7 +30,7 @@ namespace hl
 		std::string content;
 	};
 
-	class JsonNode
+	class HELSINKI_SYSTEM_EXPORT JsonNode
 	{
 	public:
 		~JsonNode();
@@ -54,7 +56,7 @@ namespace hl
 		JsonNode& operator[](std::size_t _index) const;
 	};
 
-	class JsonDocument
+	class HELSINKI_SYSTEM_EXPORT JsonDocument
 	{
 	public:
 		JsonDocument();
@@ -73,7 +75,7 @@ namespace hl
 		std::string m_Text;
 	};
 
-	class Json
+	class HELSINKI_SYSTEM_EXPORT Json
 	{
 		Json() = delete;
 		~Json() = delete;

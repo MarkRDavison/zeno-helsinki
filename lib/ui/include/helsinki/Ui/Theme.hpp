@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/System/glm.hpp>
 
 #include <optional>
@@ -53,7 +55,7 @@ namespace hl::ui
 		int snackbarMaxVisible = 3;
 	};
 
-	Theme& theme();
+	HELSINKI_UI_EXPORT Theme& theme();
 
 	template<typename T>
 	T resolve(const std::optional<T>& value, T fallback)

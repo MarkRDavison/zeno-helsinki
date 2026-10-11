@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 
 namespace hl
 {
 
-	class RasterisedFontResource : public FontResource
+	class HELSINKI_RENDERER_EXPORT RasterisedFontResource : public FontResource
 	{
 	public:
 		explicit RasterisedFontResource(

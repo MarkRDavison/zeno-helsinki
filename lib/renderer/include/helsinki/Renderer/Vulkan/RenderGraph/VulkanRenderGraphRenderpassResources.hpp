@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <string>
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
@@ -8,7 +10,7 @@
 namespace hl
 {
 
-	class VulkanRenderGraphRenderpassResources
+	class HELSINKI_RENDERER_EXPORT VulkanRenderGraphRenderpassResources
 	{
 	public:
 		VulkanRenderGraphRenderpassResources(const std::string& name, VulkanDevice& device, uint32_t imageCount);

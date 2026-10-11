@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <helsinki/System/Events/Event.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 #include <algorithm>

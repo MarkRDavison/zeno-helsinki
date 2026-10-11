@@ -1,10 +1,12 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <helsinki/System/Infrastructure/BaseCamera.hpp>
 
 namespace hl
 {
-	class Camera2D : public BaseCamera
+	class HELSINKI_SYSTEM_EXPORT Camera2D : public BaseCamera
 	{
 	public:
 		~Camera2D() override = default;

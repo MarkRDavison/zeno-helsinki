@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/Engine/ECS/EventListener.hpp>
 #include <helsinki/Engine/ECS/Event.hpp>
 #include <vector>

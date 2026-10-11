@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <helsinki/System/Infrastructure/Camera.hpp>
 
 namespace hl
 {
 
-    class ThirdPersonCamera : public Camera
+    class HELSINKI_SYSTEM_EXPORT ThirdPersonCamera : public Camera
     {
     public:
         // Constructor with gameplay-tuned defaults

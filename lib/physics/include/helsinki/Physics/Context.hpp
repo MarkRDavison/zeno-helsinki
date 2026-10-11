@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/Physics/Export.hpp>
+
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <memory>
 
 namespace hl::physics
 {
-	class Context : public hl::NonCopyable
+	class HELSINKI_PHYSICS_EXPORT Context : public hl::NonCopyable
 	{
 	public:
 		Context();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/System/glm.hpp>
 #include <cstdint>
 #include <unordered_map>
@@ -10,7 +12,7 @@ struct GLFWwindow;
 namespace hl
 {
 
-	class InputManager
+	class HELSINKI_ENGINE_EXPORT InputManager
 	{
 	public:
 

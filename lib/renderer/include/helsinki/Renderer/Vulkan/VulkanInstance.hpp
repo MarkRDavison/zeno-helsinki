@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <vulkan/vulkan.h>
 #include <vector>
 
 namespace hl
 {
 
-	class VulkanInstance
+	class HELSINKI_RENDERER_EXPORT VulkanInstance
 	{
 	public:
 		void create(const char *title);

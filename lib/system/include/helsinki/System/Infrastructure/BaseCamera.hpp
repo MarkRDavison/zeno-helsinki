@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <helsinki/System/glm.hpp>
 
 namespace hl

@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <helsinki/System/Infrastructure/BaseCamera.hpp>
 
 namespace hl
 {
 
-	class Camera : public BaseCamera
+	class HELSINKI_SYSTEM_EXPORT Camera : public BaseCamera
 	{
 	public:
 		// Constructor with sensible defaults for common use cases

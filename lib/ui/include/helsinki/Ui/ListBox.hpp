@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/ScrollView.hpp>
 #include <helsinki/Ui/Widget.hpp>
 
@@ -9,7 +11,7 @@
 
 namespace hl::ui
 {
-	class ListBox : public Widget
+	class HELSINKI_UI_EXPORT ListBox : public Widget
 	{
 	public:
 		explicit ListBox(Node& node);

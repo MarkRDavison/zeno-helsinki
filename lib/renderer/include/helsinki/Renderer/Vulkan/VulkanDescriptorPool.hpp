@@ -1,10 +1,12 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 
 namespace hl
 {
-	class VulkanDescriptorPool
+	class HELSINKI_RENDERER_EXPORT VulkanDescriptorPool
 	{
 
 	public:

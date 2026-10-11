@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 
 namespace hl
 {
 
-	class SignedDistanceFieldFontResource : public FontResource
+	class HELSINKI_RENDERER_EXPORT SignedDistanceFieldFontResource : public FontResource
 	{
 	public:
 		explicit SignedDistanceFieldFontResource(

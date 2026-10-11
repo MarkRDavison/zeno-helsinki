@@ -3,6 +3,24 @@
 namespace hl
 {
 
+	ThirdPersonCamera::ThirdPersonCamera(
+		float followDistance,
+		float followHeight,
+		float followSmoothness,
+		float minDistance)
+		: Camera(glm::vec3{ 0.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f }, -90.0f, 0.0f)
+		, targetPosition{ 0.0f }
+		, targetForward{ 0.0f, 0.0f, -1.0f }
+		, followDistance(followDistance)
+		, followHeight(followHeight)
+		, followSmoothness(followSmoothness)
+		, minDistance(minDistance)
+		, raycastDistance(followDistance)
+		, desiredPosition{ 0.0f }
+		, smoothDampVelocity{ 0.0f }
+	{
+	}
+
     void ThirdPersonCamera::updatePosition(
         const glm::vec3& targetPos,
         const glm::vec3& targetFwd,

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Widget.hpp>
 
 #include <functional>
@@ -7,7 +9,7 @@
 
 namespace hl::ui
 {
-	class Slider : public Widget
+	class HELSINKI_UI_EXPORT Slider : public Widget
 	{
 	public:
 		explicit Slider(Node& node);

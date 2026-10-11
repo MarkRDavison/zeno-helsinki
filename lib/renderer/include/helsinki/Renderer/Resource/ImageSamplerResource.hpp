@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <vulkan/vulkan.h>
 #include <helsinki/System/Resource/Resource.hpp>
 
 namespace hl
 {
 
-	class ImageSamplerResource : public Resource
+	class HELSINKI_RENDERER_EXPORT ImageSamplerResource : public Resource
 	{
 	public:
 		explicit ImageSamplerResource(const std::string& id) : Resource(id) {}

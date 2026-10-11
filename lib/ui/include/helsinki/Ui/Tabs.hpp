@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Widget.hpp>
 
@@ -11,7 +13,7 @@
 
 namespace hl::ui
 {
-	class Tabs : public Widget
+	class HELSINKI_UI_EXPORT Tabs : public Widget
 	{
 	public:
 		Tabs(Node& node, const ITypeface& typeface);

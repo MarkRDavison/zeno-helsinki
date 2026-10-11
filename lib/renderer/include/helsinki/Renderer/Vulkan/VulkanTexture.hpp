@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
@@ -16,7 +18,7 @@ namespace hl
 		PixelArtSrgb
 	};
 
-	class VulkanTexture
+	class HELSINKI_RENDERER_EXPORT VulkanTexture
 	{
 	public:
 		VulkanTexture(VulkanDevice& device);

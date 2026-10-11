@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/VulkanRenderGraphRenderpassResources.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
@@ -10,7 +12,7 @@
 namespace hl
 {
 
-	class GeneratedRenderGraph
+	class HELSINKI_RENDERER_EXPORT GeneratedRenderGraph
 	{
 	public:
 		GeneratedRenderGraph(

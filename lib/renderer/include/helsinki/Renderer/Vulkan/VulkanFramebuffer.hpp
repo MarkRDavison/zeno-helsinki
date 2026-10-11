@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanRenderpass.hpp>
 
 namespace hl
 {
 
-	class VulkanFramebuffer
+	class HELSINKI_RENDERER_EXPORT VulkanFramebuffer
 	{
 	public:
 		VulkanFramebuffer(VulkanDevice& device);

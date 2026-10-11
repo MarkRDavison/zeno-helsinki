@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <vulkan/vulkan.h>
 #include <helsinki/Renderer/Vulkan/VulkanQueueFamilyIndices.hpp>
 
 namespace hl
 {
-	class VulkanQueue
+	class HELSINKI_RENDERER_EXPORT VulkanQueue
 	{
 	public:
 		static VulkanQueueFamilyIndices findQueueFamilies(VkPhysicalDevice d, VkSurfaceKHR s);

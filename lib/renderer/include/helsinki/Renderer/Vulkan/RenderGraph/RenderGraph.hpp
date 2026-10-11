@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
 #include <unordered_map>
@@ -326,7 +328,7 @@ namespace hl
         std::string resourceName;
     };
 
-    class RenderGraph
+    class HELSINKI_RENDERER_EXPORT RenderGraph
     {
         RenderGraph() = delete;
     public:

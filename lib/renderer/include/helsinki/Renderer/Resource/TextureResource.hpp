@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <vulkan/vulkan.h>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
@@ -8,7 +10,7 @@
 
 namespace hl
 {
-	class TextureResource : public ImageSamplerResource
+	class HELSINKI_RENDERER_EXPORT TextureResource : public ImageSamplerResource
 	{
 	public:
 		explicit TextureResource(

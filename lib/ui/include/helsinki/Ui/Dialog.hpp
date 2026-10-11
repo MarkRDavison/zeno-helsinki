@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Button.hpp>
 #include <helsinki/Ui/Label.hpp>
 #include <helsinki/Ui/Panel.hpp>
@@ -13,7 +15,7 @@
 
 namespace hl::ui
 {
-	class Dialog : public Widget
+	class HELSINKI_UI_EXPORT Dialog : public Widget
 	{
 	public:
 		Dialog(Node& host, const ITypeface& typeface);

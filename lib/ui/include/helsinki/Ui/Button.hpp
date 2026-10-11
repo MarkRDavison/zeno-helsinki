@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Label.hpp>
 
 #include <functional>
@@ -14,7 +16,7 @@ namespace hl::ui
 		Text
 	};
 
-	class Button : public Label
+	class HELSINKI_UI_EXPORT Button : public Label
 	{
 	public:
 		Button(Node& node, const ITypeface& typeface);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <string>
 #include <vector>
 #include <optional>
@@ -14,7 +16,7 @@ namespace hl
 	template <typename T>
 	struct is_optional<std::optional<T>> : std::true_type {};
 
-	class String
+	class HELSINKI_SYSTEM_EXPORT String
 	{
 	public:
 		String() = delete;

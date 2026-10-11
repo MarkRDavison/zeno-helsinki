@@ -1,5 +1,5 @@
 SET(MODULE_LIBS
-	"helsinki-system${LIB_EXTENSION_SHARED}"
+	"helsinki-system"
 )
 
 SET(INCLUDE_DIRS

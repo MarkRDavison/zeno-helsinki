@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <vulkan/vulkan.h>
 #include <helsinki/System/Resource/Resource.hpp>
 #include <helsinki/Renderer/Resource/ResourceContext.hpp>
@@ -17,7 +19,7 @@ namespace hl
 		SignedDistanceField		
 	};
 
-	class FontResource : public Resource
+	class HELSINKI_RENDERER_EXPORT FontResource : public Resource
 	{
 	public:
 		struct FontCharacter

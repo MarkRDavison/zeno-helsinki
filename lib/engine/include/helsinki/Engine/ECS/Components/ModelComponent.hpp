@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <string>
 #include <helsinki/Engine/ECS/Component.hpp>
 

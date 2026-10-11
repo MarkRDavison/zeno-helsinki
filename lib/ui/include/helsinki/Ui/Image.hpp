@@ -1,10 +1,12 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Widget.hpp>
 
 namespace hl::ui
 {
-	class Image : public Widget
+	class HELSINKI_UI_EXPORT Image : public Widget
 	{
 	public:
 		explicit Image(Node& node);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanImage.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
@@ -11,7 +13,7 @@
 
 namespace hl
 {
-	class VulkanSwapChain
+	class HELSINKI_RENDERER_EXPORT VulkanSwapChain
 	{
 	public:
 		VulkanSwapChain(

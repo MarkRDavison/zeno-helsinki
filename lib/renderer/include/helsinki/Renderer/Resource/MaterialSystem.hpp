@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <string>
 #include <unordered_map>
 #include <helsinki/System/Resource/ResourceManager.hpp>
@@ -19,7 +21,7 @@ namespace hl
 		uint32_t pad[3];
 	};
 
-	class MaterialSystem
+	class HELSINKI_RENDERER_EXPORT MaterialSystem
 	{
 	public:
 		static constexpr const char StorageBufferName[] = "material_ssbo";

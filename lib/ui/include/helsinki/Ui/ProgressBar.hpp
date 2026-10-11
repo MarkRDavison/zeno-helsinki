@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Widget.hpp>
 
 #include <optional>
 
 namespace hl::ui
 {
-	class ProgressBar : public Widget
+	class HELSINKI_UI_EXPORT ProgressBar : public Widget
 	{
 	public:
 		explicit ProgressBar(Node& node);

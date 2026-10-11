@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/Scripting/Export.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 namespace hl::scripting
 {
-	class LuaError : public std::runtime_error
+	class HELSINKI_SCRIPTING_EXPORT LuaError : public std::runtime_error
 	{
 	public:
 		explicit LuaError(std::string message, std::string traceback = {})

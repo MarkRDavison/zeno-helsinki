@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanGraphicsPipeline.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanDescriptorSet.hpp>
 
 namespace hl
 {
 
-	class VulkanGraphicsPipelineResources
+	class HELSINKI_RENDERER_EXPORT VulkanGraphicsPipelineResources
 	{
 	public:
 		VulkanGraphicsPipelineResources(VulkanDevice& device);

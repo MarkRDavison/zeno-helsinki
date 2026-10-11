@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <cstdint>
 
 namespace hl
 {
 
-	class VulkanSemaphore
+	class HELSINKI_RENDERER_EXPORT VulkanSemaphore
 	{
 	public:
 		VulkanSemaphore(VulkanDevice& device);

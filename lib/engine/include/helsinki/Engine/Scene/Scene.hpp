@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/Engine/ECS/Entity.hpp>
 #include <helsinki/Engine/ECS/System.hpp>
 #include <algorithm>
@@ -9,8 +11,15 @@
 namespace hl
 {
 
-	class Scene
+	class HELSINKI_ENGINE_EXPORT Scene
 	{
+	public:
+		Scene() = default;
+		Scene(const Scene&) = delete;
+		Scene& operator=(const Scene&) = delete;
+		Scene(Scene&&) noexcept = default;
+		Scene& operator=(Scene&&) noexcept = default;
+
 	private:
 
 		template <class InputIt, class OutputIt, class Pred, class Fct>

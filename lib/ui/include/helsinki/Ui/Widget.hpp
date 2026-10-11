@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <helsinki/Ui/Layout/Node.hpp>
 #include <helsinki/Ui/Paint.hpp>
@@ -30,7 +32,7 @@ namespace hl::ui
 		Escape
 	};
 
-	class Widget : public NonCopyable
+	class HELSINKI_UI_EXPORT Widget : public NonCopyable
 	{
 	public:
 		explicit Widget(Node& node);
@@ -69,17 +71,17 @@ namespace hl::ui
 		Node* _node = nullptr;
 	};
 
-	Widget* hitTest(const Node& root, glm::vec2 position);
-	void dispatch(Node& root, const Pointer& pointer);
-	void syncTooltip(Widget* hit);
-	void dismissOpenOverlay(Widget* hit);
-	void dismissModalOnEscape();
-	void setModalFocusRoot(const Node* node);
-	void dispatchChar(uint32_t codepoint);
-	void dispatchTextKey(Node& root, TextKey key);
-	void collectFocusables(const Node& root, std::vector<Widget*>& out);
-	void cycleFocus(Node& root, bool reverse);
-	bool applyScroll(Node& root, glm::vec2 position, glm::vec2 delta);
-	void prepareTree(Node& root);
-	void paintTree(const Node& root, IPaint& paint);
+	HELSINKI_UI_EXPORT Widget* hitTest(const Node& root, glm::vec2 position);
+	HELSINKI_UI_EXPORT void dispatch(Node& root, const Pointer& pointer);
+	HELSINKI_UI_EXPORT void syncTooltip(Widget* hit);
+	HELSINKI_UI_EXPORT void dismissOpenOverlay(Widget* hit);
+	HELSINKI_UI_EXPORT void dismissModalOnEscape();
+	HELSINKI_UI_EXPORT void setModalFocusRoot(const Node* node);
+	HELSINKI_UI_EXPORT void dispatchChar(uint32_t codepoint);
+	HELSINKI_UI_EXPORT void dispatchTextKey(Node& root, TextKey key);
+	HELSINKI_UI_EXPORT void collectFocusables(const Node& root, std::vector<Widget*>& out);
+	HELSINKI_UI_EXPORT void cycleFocus(Node& root, bool reverse);
+	HELSINKI_UI_EXPORT bool applyScroll(Node& root, glm::vec2 position, glm::vec2 delta);
+	HELSINKI_UI_EXPORT void prepareTree(Node& root);
+	HELSINKI_UI_EXPORT void paintTree(const Node& root, IPaint& paint);
 }

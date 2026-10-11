@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
 
 namespace hl
 {
-	class VulkanBuffer
+	class HELSINKI_RENDERER_EXPORT VulkanBuffer
 	{
 	public:
 		VulkanBuffer(VulkanDevice& device);

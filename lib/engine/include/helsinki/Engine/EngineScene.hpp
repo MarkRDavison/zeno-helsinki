@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/RenderGraph/GeneratedRenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/FrameResources.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
@@ -18,7 +20,7 @@
 namespace hl
 {
 	class Engine;
-	class EngineScene : NonCopyable
+	class HELSINKI_ENGINE_EXPORT EngineScene : NonCopyable
 	{
 	public:
 		EngineScene(hl::Engine& engine);

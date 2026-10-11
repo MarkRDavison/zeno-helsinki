@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <string>
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanGraphicsPipeline.hpp>
@@ -8,7 +10,7 @@
 namespace hl
 {
 
-	class VulkanRenderGraphPipelineResources
+	class HELSINKI_RENDERER_EXPORT VulkanRenderGraphPipelineResources
 	{
 	public:
 		VulkanRenderGraphPipelineResources(

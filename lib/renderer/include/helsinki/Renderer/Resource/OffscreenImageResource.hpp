@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <helsinki/Renderer/Vulkan/VulkanTexture.hpp>
@@ -9,7 +11,7 @@
 
 namespace hl
 {
-	class OffscreenImageResource : public ImageSamplerResource
+	class HELSINKI_RENDERER_EXPORT OffscreenImageResource : public ImageSamplerResource
 	{
 	public:
 		explicit OffscreenImageResource(const std::string& id);

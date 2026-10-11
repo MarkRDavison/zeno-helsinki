@@ -1,10 +1,12 @@
 #pragma once
+
+#include <helsinki/Renderer/Export.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 
 namespace hl
 {
 
-	class RenderGraphHelpers
+	class HELSINKI_RENDERER_EXPORT RenderGraphHelpers
 	{
 		RenderGraphHelpers() = delete;
 	public:

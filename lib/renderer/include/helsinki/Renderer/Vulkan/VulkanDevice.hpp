@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanInstance.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSurface.hpp>
@@ -10,7 +12,7 @@
 
 namespace hl
 {
-	class VulkanDevice
+	class HELSINKI_RENDERER_EXPORT VulkanDevice
 	{
 	public:
 		VulkanDevice(

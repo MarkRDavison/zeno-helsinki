@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <functional>
 #include <unordered_map>
 #include <string>
@@ -25,7 +27,7 @@ namespace hl
 		AttributeMap attributes;
 	};
 
-	class XmlNode
+	class HELSINKI_SYSTEM_EXPORT XmlNode
 	{
 	public:
 		~XmlNode();
@@ -37,7 +39,7 @@ namespace hl
 		XmlNode* parent{ nullptr };
 	};
 
-	class XmlDocument
+	class HELSINKI_SYSTEM_EXPORT XmlDocument
 	{
 	public:
 		XmlDocument(); // TODO: Limit what is exposed on this class
@@ -77,12 +79,12 @@ namespace hl
 
 	namespace Xml
 	{
-		XmlDocument parseFromFile(const std::string& _file);
-		XmlDocument parseFromText(const std::string& _text);
-		bool validate(const std::string& _text);
-		bool createTreeFromStreamingDocument(XmlDocument& _document);
+		HELSINKI_SYSTEM_EXPORT XmlDocument parseFromFile(const std::string& _file);
+		HELSINKI_SYSTEM_EXPORT XmlDocument parseFromText(const std::string& _text);
+		HELSINKI_SYSTEM_EXPORT bool validate(const std::string& _text);
+		HELSINKI_SYSTEM_EXPORT bool createTreeFromStreamingDocument(XmlDocument& _document);
 
-		bool hasAttribute(const XmlNode* _node, const std::string& _name);
+		HELSINKI_SYSTEM_EXPORT bool hasAttribute(const XmlNode* _node, const std::string& _name);
 
 		template <typename T>
 		static T getAttribute(const XmlNode*, const std::string&)

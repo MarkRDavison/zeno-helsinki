@@ -7,18 +7,18 @@ target_include_directories(TwoDimensional PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-TARGET_LINK_LIBRARIES(TwoDimensional PRIVATE "helsinki-system${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(TwoDimensional PRIVATE "helsinki-renderer${LIB_EXTENSION_SHARED}")
-TARGET_LINK_LIBRARIES(TwoDimensional PRIVATE "helsinki-engine${LIB_EXTENSION_SHARED}")
+TARGET_LINK_LIBRARIES(TwoDimensional PRIVATE "helsinki-system")
+TARGET_LINK_LIBRARIES(TwoDimensional PRIVATE "helsinki-renderer")
+TARGET_LINK_LIBRARIES(TwoDimensional PRIVATE "helsinki-engine")
 
 SET(MODULE_LIBS
-	"helsinki-system${LIB_EXTENSION_SHARED}"
-	"helsinki-renderer${LIB_EXTENSION_SHARED}"
-	"helsinki-engine${LIB_EXTENSION_SHARED}"
+	"helsinki-system"
+	"helsinki-renderer"
+	"helsinki-engine"
 	TwoDimensional
 )
 
-if(ENABLE_TRACY)
+if(HELSINKI_ENABLE_TRACY)
 	list(APPEND MODULE_LIBS ThirdParty_Tracy)
 endif()
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <vulkan/vulkan.h>
 #include <helsinki/System/Resource/Resource.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanBuffer.hpp>
@@ -8,7 +10,7 @@
 namespace hl
 {
 
-	class StorageBufferResource : public Resource
+	class HELSINKI_RENDERER_EXPORT StorageBufferResource : public Resource
 	{
 	public:
 		explicit StorageBufferResource(

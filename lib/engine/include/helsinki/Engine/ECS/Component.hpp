@@ -1,11 +1,13 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/Engine/ECS/ComponentTypeIDSystem.hpp>
 
 namespace hl
 {
     class Entity;
-    class Component
+    class HELSINKI_ENGINE_EXPORT Component
     {
     public:
         enum class State

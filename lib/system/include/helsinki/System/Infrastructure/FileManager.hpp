@@ -1,12 +1,14 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <string>
 
 namespace hl
 {
 
-	class FileManager : NonCopyable
+	class HELSINKI_SYSTEM_EXPORT FileManager : NonCopyable
 	{
 	public:
 		void registerDirectory(const std::string& _directory);

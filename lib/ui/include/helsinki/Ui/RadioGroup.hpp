@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Widget.hpp>
 
@@ -17,7 +19,7 @@ namespace hl::ui
 		Horizontal
 	};
 
-	class RadioGroup : public Widget
+	class HELSINKI_UI_EXPORT RadioGroup : public Widget
 	{
 	public:
 		RadioGroup(Node& node, const ITypeface& typeface);

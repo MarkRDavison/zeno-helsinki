@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Button.hpp>
 #include <helsinki/Ui/Label.hpp>
 #include <helsinki/Ui/Panel.hpp>
@@ -40,7 +42,7 @@ namespace hl::ui
 		std::optional<float> fade;
 	};
 
-	class SnackbarHost : public Widget
+	class HELSINKI_UI_EXPORT SnackbarHost : public Widget
 	{
 	public:
 		SnackbarHost(Node& host, const ITypeface& typeface);

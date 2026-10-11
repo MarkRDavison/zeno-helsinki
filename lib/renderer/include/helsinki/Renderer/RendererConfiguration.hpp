@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 // TODO: TO CONST ARRAY NOT VECTOR
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -120,7 +122,7 @@ inline const char* VkResultName(VkResult result)
 
 namespace hl
 {
-	class RendererConfiguration
+	class HELSINKI_RENDERER_EXPORT RendererConfiguration
 	{
 	public:
 		RendererConfiguration();

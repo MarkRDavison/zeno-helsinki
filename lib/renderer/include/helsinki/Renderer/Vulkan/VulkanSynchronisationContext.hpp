@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSemaphore.hpp>
 #include <array>
@@ -8,7 +10,7 @@
 
 namespace hl
 {
-	class VulkanSynchronisationContext
+	class HELSINKI_RENDERER_EXPORT VulkanSynchronisationContext
 	{
 	public:
 		VulkanSynchronisationContext(VulkanDevice& device);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Engine/Export.hpp>
+
 #include <helsinki/Engine/EngineConfiguration.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/System/Events/EventBus.hpp>
@@ -29,7 +31,7 @@ namespace hl
 		std::function<void()> shutdown;
 	};
 
-	class Engine : NonCopyable
+	class HELSINKI_ENGINE_EXPORT Engine : NonCopyable
 	{
 	public:
 		Engine(EventBus& eventBus, InputManager& inputManager);

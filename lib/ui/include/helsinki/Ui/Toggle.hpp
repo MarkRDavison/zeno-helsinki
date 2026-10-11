@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Widget.hpp>
 
 #include <functional>
@@ -7,7 +9,7 @@
 
 namespace hl::ui
 {
-	class Toggle : public Widget
+	class HELSINKI_UI_EXPORT Toggle : public Widget
 	{
 	public:
 		explicit Toggle(Node& node);

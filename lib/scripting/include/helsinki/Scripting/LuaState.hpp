@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Scripting/Export.hpp>
+
 #include <helsinki/Scripting/LuaError.hpp>
 #include <helsinki/System/Utils/NonCopyable.hpp>
 #include <sol/sol.hpp>
@@ -11,7 +13,7 @@
 
 namespace hl::scripting
 {
-	class LuaState : public hl::NonCopyable
+	class HELSINKI_SCRIPTING_EXPORT LuaState : public hl::NonCopyable
 	{
 	public:
 		LuaState();

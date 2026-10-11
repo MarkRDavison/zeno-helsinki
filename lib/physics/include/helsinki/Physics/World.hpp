@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Physics/Export.hpp>
+
 #include <helsinki/Physics/Context.hpp>
 #include <helsinki/Physics/Types.hpp>
 #include <helsinki/System/Utils/NonCopyable.hpp>
@@ -9,7 +11,7 @@
 
 namespace hl::physics
 {
-	class World : public hl::NonCopyable
+	class HELSINKI_PHYSICS_EXPORT World : public hl::NonCopyable
 	{
 	public:
 		World(Context& context, const WorldSettings& settings);

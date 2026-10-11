@@ -1,10 +1,12 @@
 #pragma once
 
+#include <helsinki/Renderer/Export.hpp>
+
 #include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
 
 namespace hl
 {
-	class VulkanDescriptorSetLayout
+	class HELSINKI_RENDERER_EXPORT VulkanDescriptorSetLayout
 	{
 	public:
 		VulkanDescriptorSetLayout(VulkanDevice& device);

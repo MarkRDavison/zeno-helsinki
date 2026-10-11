@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Paint.hpp>
 #include <helsinki/Ui/Panel.hpp>
 #include <helsinki/Ui/Widget.hpp>
@@ -12,7 +14,7 @@
 
 namespace hl::ui
 {
-	class Dropdown : public Widget
+	class HELSINKI_UI_EXPORT Dropdown : public Widget
 	{
 	public:
 		Dropdown(Node& header, const ITypeface& typeface);

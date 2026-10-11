@@ -1,5 +1,5 @@
 SET(MODULE_LIBS
-	"helsinki-engine${LIB_EXTENSION_SHARED}"
+	"helsinki-engine"
 	ThirdParty_imgui
 )
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <helsinki/System/Resource/Resource.hpp>
 #include <helsinki/System/Resource/LogicalResource.hpp>
 #include <unordered_map>

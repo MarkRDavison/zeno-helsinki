@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/System/Export.hpp>
+
 #include <helsinki/System/Resource/Resource.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 
@@ -11,7 +13,7 @@ namespace hl
 {
 	class ResourceManager;
 
-	class LogicalResource : public Resource
+	class HELSINKI_SYSTEM_EXPORT LogicalResource : public Resource
 	{
 	public:
 		using ResourceLoader = std::function<bool(const ResourceDefinition::Child&)>;

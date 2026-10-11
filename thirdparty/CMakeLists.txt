@@ -1,5 +1,12 @@
 INCLUDE(FetchContent)
 
+set(_helsinki_saved_build_shared_libs ${BUILD_SHARED_LIBS})
+set(BUILD_SHARED_LIBS OFF)
+
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+
 # -------------------- SPIRV-Headers --------------------
 FetchContent_Declare(
     SPIRV-Headers
@@ -20,6 +27,7 @@ FetchContent_Declare(
     GIT_TAG vulkan-sdk-1.4.309.0
 )
 set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
+set(SPIRV_WERROR OFF CACHE BOOL "" FORCE)
 set(SPIRV-Headers_DIR "${spirv-headers_SOURCE_DIR}" CACHE PATH "" FORCE)
 FetchContent_MakeAvailable(SPIRVTools)
 
@@ -36,7 +44,7 @@ FetchContent_Declare(
     GIT_TAG vulkan-sdk-1.4.309.0
 )
 set(ENABLE_OPT ON CACHE BOOL "" FORCE)
-set(SPIRV_SKIP_TESTS OFF CACHE BOOL "" FORCE)
+set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(ALLOW_EXTERNAL_SPIRV_TOOLS OFF CACHE BOOL "" FORCE)
 set(SPIRV_TOOLS_SOURCE_DIR "${spirvtools_SOURCE_DIR}" CACHE PATH "" FORCE)
@@ -47,23 +55,25 @@ FetchContent_MakeAvailable(glslang)
 # -------------------- Vulkan --------------------
 find_package(Vulkan REQUIRED)
 
-FetchContent_Declare(
-  Catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.10.0)
+if(HELSINKI_BUILD_TESTS)
+	FetchContent_Declare(
+	  Catch2
+	  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+	  GIT_TAG        v3.10.0)
 
-FetchContent_MakeAvailable(Catch2)
+	FetchContent_MakeAvailable(Catch2)
 
-list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
-include(CTest)
-include(Catch)
+	list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+	include(CTest)
+	include(Catch)
 
-FetchContent_Declare(
-  FakeIt
-  GIT_REPOSITORY https://github.com/eranpeer/FakeIt.git
-  GIT_TAG        2.4.1)
+	FetchContent_Declare(
+	  FakeIt
+	  GIT_REPOSITORY https://github.com/eranpeer/FakeIt.git
+	  GIT_TAG        2.4.1)
 
-FetchContent_MakeAvailable(FakeIt)
+	FetchContent_MakeAvailable(FakeIt)
+endif()
 
 FetchContent_Declare(
   glfw
@@ -207,6 +217,9 @@ add_library(ThirdParty_Tracy STATIC
 target_include_directories(ThirdParty_Tracy PUBLIC
     "${tracy_SOURCE_DIR}/public"
 )
+if(HELSINKI_ENABLE_TRACY)
+	target_compile_definitions(ThirdParty_Tracy PUBLIC TRACY_ENABLE)
+endif()
 
 set(FT_DISABLE_BROTLI TRUE CACHE BOOL "" FORCE)
 set(FT_DISABLE_ZLIB   TRUE CACHE BOOL "" FORCE)
@@ -268,3 +281,5 @@ FetchContent_MakeAvailable(JoltPhysics)
 if(TARGET Jolt)
 	set_target_properties(Jolt PROPERTIES COMPILE_WARNING_AS_ERROR OFF)
 endif()
+
+set(BUILD_SHARED_LIBS ${_helsinki_saved_build_shared_libs})

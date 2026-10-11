@@ -1,5 +1,7 @@
 #pragma once
 
+#include <helsinki/Ui/Export.hpp>
+
 #include <helsinki/Ui/Widget.hpp>
 
 #include <functional>
@@ -10,7 +12,7 @@
 
 namespace hl::ui
 {
-	class TextField : public Widget
+	class HELSINKI_UI_EXPORT TextField : public Widget
 	{
 	public:
 		TextField(Node& node, const ITypeface& typeface);
