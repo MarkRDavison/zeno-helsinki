@@ -1,4 +1,5 @@
 #include <Views/StatusBar.hpp>
+#include <helsinki/Ui/Theme.hpp>
 #include <algorithm>
 
 namespace drl
@@ -120,9 +121,31 @@ namespace drl
 
 	void StatusBar::tickOverlays(float dt)
 	{
+		if (_errorFlashRemaining > 0.0f)
+		{
+			_errorFlashRemaining -= dt;
+			if (_errorFlashRemaining <= 0.0f)
+			{
+				_errorFlashRemaining = 0.0f;
+				if (_tooltip != nullptr)
+				{
+					_tooltip->fillColor.reset();
+				}
+			}
+		}
+
 		if (_tooltip != nullptr)
 		{
 			_tooltip->tick(dt);
+		}
+	}
+
+	void StatusBar::flashError(float seconds)
+	{
+		_errorFlashRemaining = seconds;
+		if (_tooltip != nullptr)
+		{
+			_tooltip->fillColor = hl::ui::theme().error;
 		}
 	}
 

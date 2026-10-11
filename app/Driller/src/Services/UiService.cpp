@@ -24,6 +24,11 @@ namespace drl
 		{
 			clearSelectedWorker();
 		}
+
+		if (_selectedBuildingId != 0)
+		{
+			clearSelectedBuilding();
+		}
 	}
 
 	void UiService::selectBuilding(const std::string& prototypeName)
@@ -35,6 +40,7 @@ namespace drl
 				_activeBuilding = prototypeName;
 				_currentState = UiState::PlacingBuilding;
 				clearSelectedWorker();
+				clearSelectedBuilding();
 				return;
 			}
 		}
@@ -59,6 +65,7 @@ namespace drl
 	void UiService::selectWorker(WorkerId workerId)
 	{
 		_selectedWorkerId = workerId;
+		clearSelectedBuilding();
 	}
 
 	void UiService::clearSelectedWorker()
@@ -69,6 +76,22 @@ namespace drl
 	WorkerId UiService::selectedWorkerId() const
 	{
 		return _selectedWorkerId;
+	}
+
+	void UiService::selectPlacedBuilding(BuildingId buildingId)
+	{
+		_selectedBuildingId = buildingId;
+		clearSelectedWorker();
+	}
+
+	void UiService::clearSelectedBuilding()
+	{
+		_selectedBuildingId = 0;
+	}
+
+	BuildingId UiService::selectedBuildingId() const
+	{
+		return _selectedBuildingId;
 	}
 
 }

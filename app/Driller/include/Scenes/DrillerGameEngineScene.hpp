@@ -15,6 +15,8 @@
 #include <Views/ShuttleView.hpp>
 #include <Views/TerrainView.hpp>
 #include <Views/WorkerView.hpp>
+#include <Views/WorldPopup.hpp>
+#include <vector>
 
 namespace drl
 {
@@ -44,6 +46,8 @@ namespace drl
 	private:
 		glm::vec2 framebufferMouse() const;
 		void bindGameCameraToViews();
+		void spawnWorldPopup(glm::ivec2 tile, const std::string& text);
+		void tickWorldPopups(float dt);
 
 		const hl::EngineConfiguration& _engineConfig;
 		Session& _session;
@@ -60,6 +64,7 @@ namespace drl
 		bool _blockedSeekShown{ false };
 		Hud _hud;
 		hl::UiBatch _uiBatch;
+		std::vector<WorldPopup> _worldPopups;
 		hl::ResourceHandle<hl::StorageBufferResource> _spriteSheetSSBOResourceHandle;
 	};
 

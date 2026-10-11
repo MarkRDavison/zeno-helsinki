@@ -19,8 +19,12 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <Views/DirtFillPushConstantObject.hpp>
+#include <Views/BuildingInspect.hpp>
+#include <Views/ClickRefuse.hpp>
 #include <Views/ShaftInspect.hpp>
 #include <Views/WorkerInspect.hpp>
+#include <helsinki/Engine/ECS/Components/TextComponent.hpp>
+#include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
@@ -28,6 +32,8 @@
 #include <algorithm>
 #include <optional>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace drl
 {
@@ -89,6 +95,45 @@ namespace drl
 					workerView.originX(),
 					workerView.originY(),
 					workerView.tileSize());
+				const glm::vec2 screen = camera.worldToScreen({ world.left, world.top });
+				const float zoom = camera.zoom();
+				appendRectOutline(
+					batch,
+					hl::ui::Box{ screen.x, screen.y, world.width * zoom, world.height * zoom },
+					color,
+					kWorkerOutlineThickness);
+				return;
+			}
+		}
+
+		void appendBuildingOutline(
+			hl::UiBatch& batch,
+			const GameCamera& camera,
+			const BuildingView& buildingView,
+			const BuildingData& buildings,
+			const IBuildingPrototypeService& buildingPrototypes,
+			BuildingId buildingId,
+			glm::vec4 color)
+		{
+			if (buildingId == 0)
+			{
+				return;
+			}
+
+			for (const BuildingInstance& building : buildings.buildings)
+			{
+				if (building.id != buildingId)
+				{
+					continue;
+				}
+
+				const BuildingPrototype& prototype = buildingPrototypes.getPrototype(building.prototypeId);
+				const BuildingSpriteBox world = buildingSpriteBox(
+					building,
+					prototype,
+					buildingView.originX(),
+					buildingView.originY(),
+					buildingView.tileSize());
 				const glm::vec2 screen = camera.worldToScreen({ world.left, world.top });
 				const float zoom = camera.zoom();
 				appendRectOutline(
@@ -596,6 +641,24 @@ namespace drl
 			}
 		}
 
+		const BuildingId selectedBuildingId = _session.uiService().selectedBuildingId();
+		if (selectedBuildingId != 0)
+		{
+			bool selectedAlive = false;
+			for (const BuildingInstance& building : _session.gameData().building.buildings)
+			{
+				if (building.id == selectedBuildingId)
+				{
+					selectedAlive = true;
+					break;
+				}
+			}
+			if (!selectedAlive)
+			{
+				_session.uiService().clearSelectedBuilding();
+			}
+		}
+
 		const auto& input = _engine.getInputManager();
 		const auto framebuffer = input.getFramebufferSize();
 		const auto mouse = framebufferMouse();
@@ -619,6 +682,7 @@ namespace drl
 			_terrainView.originX(),
 			_terrainView.originY(),
 			_terrainView.tileSize());
+		tickWorldPopups(delta);
 
 		auto& economy = _session.economyService();
 		const hl::ui::Pointer pointer
@@ -639,6 +703,21 @@ namespace drl
 				_session.gameData().job,
 				_session.jobPrototypeService(),
 				_session.needPrototypeService());
+		}
+
+		std::optional<BuildingInspectSnapshot> buildingInspect;
+		if (!inspect.has_value())
+		{
+			const BuildingId inspectBuildingId = _session.uiService().selectedBuildingId();
+			if (inspectBuildingId != 0)
+			{
+				buildingInspect = makeBuildingInspectSnapshot(
+					inspectBuildingId,
+					_session.gameData().building,
+					_session.buildingPrototypeService(),
+					_session.gameData().job,
+					_session.jobPrototypeService());
+			}
 		}
 
 		std::optional<DrillHoverTooltip> drillHover;
@@ -675,6 +754,7 @@ namespace drl
 			economy,
 			_session.upgradeService(),
 			inspect,
+			buildingInspect,
 			drillHover);
 		const bool uiHit = _hud.hits(mouse);
 		const auto tile = _hoveredTile;
@@ -712,6 +792,15 @@ namespace drl
 				kHoverOutlineColor);
 		}
 
+		appendBuildingOutline(
+			_uiBatch,
+			*_gameCamera,
+			_buildingView,
+			_session.gameData().building,
+			_session.buildingPrototypeService(),
+			_session.uiService().selectedBuildingId(),
+			kSelectedOutlineColor);
+
 		if (input.isButtonReleased(GLFW_MOUSE_BUTTON_2) && !uiHit
 			&& tile.y >= 0 && tile.x != 0)
 		{
@@ -736,18 +825,45 @@ namespace drl
 		{
 			if (tile.y >= 0 && tile.x != 0)
 			{
-				enqueueBuildJob(
+				const std::string prototypeName = _session.uiService().getActiveBuildingType();
+				long long cost = 0;
+				bool canAfford = true;
+				const long long prototypeId = prototypeIdFromName(prototypeName);
+				if (_session.buildingPrototypeService().isPrototypeRegistered(prototypeId))
+				{
+					cost = _session.buildingPrototypeService().getPrototype(prototypeId).cost;
+					canAfford = economy.canAfford(ResourceMoney, cost);
+				}
+
+				const bool placed = enqueueBuildJob(
 					_session.commandService(),
 					_session.terrainService(),
 					tile.y,
 					tile.x,
-					_session.uiService().getActiveBuildingType());
-				const bool shiftRange =
-					_engine.getInputManager().isKeyDown(GLFW_KEY_LEFT_SHIFT)
-					|| _engine.getInputManager().isKeyDown(GLFW_KEY_RIGHT_SHIFT);
-				if (!shiftRange)
+					prototypeName);
+				if (!placed)
 				{
-					_session.uiService().clearActiveBuilding();
+					const ClickRefuse refuse = classifyPlaceRefuse(tile, canAfford, false);
+					if (refuse.kind == ClickRefuseKind::PlaceBroke)
+					{
+						spawnWorldPopup(
+							tile,
+							formatCantAffordPlace(cost, resourceHudLabel(economy, ResourceMoney)));
+					}
+					else
+					{
+						spawnWorldPopup(tile, kClickRefusePlaceInvalid);
+					}
+				}
+				else
+				{
+					const bool shiftRange =
+						_engine.getInputManager().isKeyDown(GLFW_KEY_LEFT_SHIFT)
+						|| _engine.getInputManager().isKeyDown(GLFW_KEY_RIGHT_SHIFT);
+					if (!shiftRange)
+					{
+						_session.uiService().clearActiveBuilding();
+					}
 				}
 			}
 			return;
@@ -768,6 +884,19 @@ namespace drl
 			_session.uiService().clearSelectedWorker();
 		}
 
+		{
+			const auto pickedBuilding = pickPlacedBuildingAt(
+				_session.gameData().building,
+				_session.buildingPrototypeService(),
+				tile);
+			if (pickedBuilding.has_value())
+			{
+				_session.uiService().selectPlacedBuilding(*pickedBuilding);
+				return;
+			}
+			_session.uiService().clearSelectedBuilding();
+		}
+
 		if (tile.y < 0)
 		{
 			return;
@@ -775,6 +904,20 @@ namespace drl
 
 		if (tile.x == 0)
 		{
+			const int nextLevel = nextShaftLevel(_session.gameData().terrain.shaftLevel);
+			const long long cost = playerShaftDigCost(nextLevel);
+			const bool canAfford = economy.canAfford(ResourceMoney, cost);
+			const ClickRefuse refuse = classifyShaftClick(tile, _session.gameData().terrain.shaftLevel, canAfford);
+			if (refuse.kind == ClickRefuseKind::ShaftBroke)
+			{
+				_hud.flashDrillTooltipError();
+				return;
+			}
+			if (tile.y != nextLevel)
+			{
+				return;
+			}
+
 			_session.commandService().execute(GameCommand::digShaft(
 				tile.y,
 				CommandSource::Player,
@@ -831,6 +974,74 @@ namespace drl
 		_jobView.setCameraIndex(gameCameraIndex);
 		_workerView.setCameraIndex(gameCameraIndex);
 		_shuttleView.setCameraIndex(gameCameraIndex);
+	}
+
+	void DrillerGameEngineScene::spawnWorldPopup(glm::ivec2 tile, const std::string& text)
+	{
+		auto* entity = _scene.addEntity();
+		entity->AddTag("TEXT");
+		entity->AddComponent<hl::TransformComponent>();
+		auto* textComponent = entity->AddComponent<hl::TextComponent>();
+		textComponent->setString(
+			_engine.getTextSystem(),
+			text,
+			"roboto",
+			kWorldPopupFontSize);
+		textComponent->setColour(worldPopupColour(0.0f));
+
+		WorldPopup popup{};
+		popup.tile = tile;
+		popup.text = text;
+		popup.age = 0.0f;
+		popup.entityId = entity->Id;
+		_worldPopups.push_back(std::move(popup));
+		tickWorldPopups(0.0f);
+	}
+
+	void DrillerGameEngineScene::tickWorldPopups(float dt)
+	{
+		const float zoom = _gameCamera != nullptr ? _gameCamera->zoom() : 1.0f;
+		const glm::vec3 scale = worldPopupScale(zoom);
+		std::vector<WorldPopup> kept;
+		kept.reserve(_worldPopups.size());
+		for (WorldPopup& popup : _worldPopups)
+		{
+			popup.age += dt;
+			auto* entity = _scene.getEntity(popup.entityId);
+			if (entity == nullptr || popup.age >= kWorldPopupDuration)
+			{
+				if (entity != nullptr)
+				{
+					_scene.removeEntity(popup.entityId);
+				}
+				continue;
+			}
+
+			auto* transform = entity->GetComponent<hl::TransformComponent>();
+			auto* text = entity->GetComponent<hl::TextComponent>();
+			if (transform == nullptr || text == nullptr)
+			{
+				_scene.removeEntity(popup.entityId);
+				continue;
+			}
+
+			glm::vec3 position = worldPopupPosition(
+				popup.tile,
+				_terrainView.originX(),
+				_terrainView.originY(),
+				_terrainView.tileSize(),
+				popup.age,
+				zoom);
+			const glm::vec4 size = _engine.getTextSystem().getTextSize(text->getTextSystemId());
+			const float width = size.z - size.x;
+			position.x -= (width * 0.5f) * scale.x;
+			transform->SetPosition(position);
+			transform->SetScale(scale);
+			text->setColour(worldPopupColour(popup.age));
+			kept.push_back(std::move(popup));
+		}
+
+		_worldPopups = std::move(kept);
 	}
 
 }

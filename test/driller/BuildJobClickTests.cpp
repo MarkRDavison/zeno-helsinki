@@ -65,9 +65,9 @@ namespace BuildJobClickTests
 			REQUIRE(terrain.digShaft(0));
 		}
 
-		void enqueueBunk(int level, int column)
+		bool enqueueBunk(int level, int column)
 		{
-			enqueueBuildJob(commands, terrain, level, column, "Building_Bunk");
+			return enqueueBuildJob(commands, terrain, level, column, "Building_Bunk");
 		}
 	};
 
@@ -77,7 +77,7 @@ namespace BuildJobClickTests
 		{
 			Fixture f;
 			REQUIRE(f.terrain.digTile(0, column));
-			f.enqueueBunk(0, column);
+			REQUIRE(f.enqueueBunk(0, column));
 			REQUIRE(f.jobData.jobs.size() == 1);
 			REQUIRE(f.jobData.jobs[0].prototypeId == jobPrototypeIdFromName("Job_Build_Building"));
 			REQUIRE(f.jobData.jobs[0].additionalPrototypeId == prototypeIdFromName("Building_Bunk"));
@@ -93,7 +93,7 @@ namespace BuildJobClickTests
 		{
 			Fixture f;
 			REQUIRE_FALSE(f.terrain.doesTileExist(0, column));
-			f.enqueueBunk(0, column);
+			REQUIRE(f.enqueueBunk(0, column));
 			REQUIRE(f.terrain.doesTileExist(0, column));
 			REQUIRE(f.jobData.jobs.size() == 1);
 			REQUIRE(f.terrain.getTile(0, column).jobReserved);
@@ -109,7 +109,7 @@ namespace BuildJobClickTests
 			Fixture f;
 			REQUIRE(f.terrain.digTile(0, column));
 			f.economy.set(ResourceMoney, 49);
-			f.enqueueBunk(0, column);
+			REQUIRE_FALSE(f.enqueueBunk(0, column));
 			REQUIRE(f.jobData.jobs.empty());
 			REQUIRE(f.economy.get(ResourceMoney) == 49);
 			REQUIRE_FALSE(f.terrain.getTile(0, column).jobReserved);
@@ -124,7 +124,7 @@ namespace BuildJobClickTests
 		freeHut.cost = 0;
 		f.buildingPrototypes.registerPrototype(std::move(freeHut));
 		REQUIRE(f.terrain.digTile(0, 1));
-		enqueueBuildJob(f.commands, f.terrain, 0, 1, "Building_Free");
+		REQUIRE(enqueueBuildJob(f.commands, f.terrain, 0, 1, "Building_Free"));
 		REQUIRE(f.jobData.jobs.size() == 1);
 		REQUIRE(f.economy.get(ResourceMoney) == 500);
 	}
@@ -133,7 +133,7 @@ namespace BuildJobClickTests
 	{
 		Fixture f;
 		REQUIRE(f.terrain.digTile(0, 1));
-		enqueueBuildJob(f.commands, f.terrain, 0, 1, "Building_Missing");
+		REQUIRE_FALSE(enqueueBuildJob(f.commands, f.terrain, 0, 1, "Building_Missing"));
 		REQUIRE(f.jobData.jobs.empty());
 		REQUIRE(f.economy.get(ResourceMoney) == 500);
 		REQUIRE_FALSE(f.terrain.getTile(0, 1).jobReserved);

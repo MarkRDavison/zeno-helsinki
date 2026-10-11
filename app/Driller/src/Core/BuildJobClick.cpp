@@ -4,7 +4,7 @@
 namespace drl
 {
 
-	void enqueueBuildJob(
+	bool enqueueBuildJob(
 		IGameCommandService& commands,
 		ITerrainAlterationService& terrain,
 		int level,
@@ -13,11 +13,11 @@ namespace drl
 	{
 		if (column == 0 || buildingPrototypeName.empty())
 		{
-			return;
+			return false;
 		}
 
 		terrain.initialiseTile(level, column);
-		commands.execute(GameCommand::createJob(
+		return commands.execute(GameCommand::createJob(
 			kJobBuildBuilding,
 			buildingPrototypeName,
 			level,

@@ -101,6 +101,52 @@ namespace UiServiceTests
 		REQUIRE(f.ui.getCurrentState() == UiState::PlacingBuilding);
 	}
 
+	TEST_CASE("selectPlacedBuilding does not enter placing", "[drl][UiService]")
+	{
+		Fixture f;
+		f.ui.selectPlacedBuilding(9);
+		REQUIRE(f.ui.getCurrentState() == UiState::Default);
+		REQUIRE(f.ui.selectedBuildingId() == 9);
+		REQUIRE(f.ui.getActiveBuildingType().empty());
+	}
+
+	TEST_CASE("selectWorker clears selected building", "[drl][UiService]")
+	{
+		Fixture f;
+		f.ui.selectPlacedBuilding(2);
+		f.ui.selectWorker(5);
+		REQUIRE(f.ui.selectedWorkerId() == 5);
+		REQUIRE(f.ui.selectedBuildingId() == 0);
+	}
+
+	TEST_CASE("selectPlacedBuilding clears selected worker", "[drl][UiService]")
+	{
+		Fixture f;
+		f.ui.selectWorker(5);
+		f.ui.selectPlacedBuilding(2);
+		REQUIRE(f.ui.selectedBuildingId() == 2);
+		REQUIRE(f.ui.selectedWorkerId() == 0);
+	}
+
+	TEST_CASE("selectBuilding clears selected placed building", "[drl][UiService]")
+	{
+		Fixture f;
+		f.ui.selectPlacedBuilding(3);
+		f.ui.selectBuilding("Building_Bunk");
+		REQUIRE(f.ui.selectedBuildingId() == 0);
+		REQUIRE(f.ui.getCurrentState() == UiState::PlacingBuilding);
+	}
+
+	TEST_CASE("escape clears selected building", "[drl][UiService]")
+	{
+		Fixture f;
+		f.ui.selectPlacedBuilding(4);
+		FakeUiInput escape;
+		escape.down.insert(kUiKeyEscape);
+		f.ui.update(escape);
+		REQUIRE(f.ui.selectedBuildingId() == 0);
+	}
+
 	TEST_CASE("digit keys do not select a building", "[drl][UiService]")
 	{
 		Fixture f;

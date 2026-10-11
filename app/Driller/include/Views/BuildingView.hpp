@@ -19,6 +19,9 @@ namespace drl
 
 		void draw(hl::PipelineDrawData& pdd) const;
 		void setCameraIndex(int cameraIndex) { _cameraIndex = cameraIndex; }
+		float originX() const { return _originX; }
+		float originY() const { return _originY; }
+		float tileSize() const { return _tileSize; }
 
 	private:
 		void drawCell(hl::PipelineDrawData& pdd, int column, int level, int frameIndex) const;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Views/BuildBar.hpp>
+#include <Views/BuildingInspectPanel.hpp>
 #include <Views/ShaftInspect.hpp>
 #include <Views/StatusBar.hpp>
 #include <Views/WorkerInspectPanel.hpp>
@@ -40,9 +41,11 @@ namespace drl
 			const IEconomyResourceService& economy,
 			const IUpgradeService& upgrades,
 			const std::optional<WorkerInspectSnapshot>& inspect,
+			const std::optional<BuildingInspectSnapshot>& buildingInspect,
 			const std::optional<DrillHoverTooltip>& drillHover);
 		bool hits(glm::vec2 position) const;
 		void show(hl::ui::SnackbarItem item);
+		void flashDrillTooltipError();
 
 	private:
 		std::unique_ptr<hl::ui::ITypeface> _typeface;
@@ -50,6 +53,7 @@ namespace drl
 		StatusBar _statusBar;
 		BuildBar _buildBar;
 		WorkerInspectPanel _inspectPanel;
+		BuildingInspectPanel _buildingInspectPanel;
 		std::unique_ptr<hl::ui::Panel> _drillAnchor;
 		std::unique_ptr<hl::ui::SnackbarHost> _snackbar;
 	};

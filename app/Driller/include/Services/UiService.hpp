@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Entities/Building.hpp>
 #include <Entities/Worker.hpp>
 #include <Services/BuildingPrototypeService.hpp>
 #include <string>
@@ -54,11 +55,16 @@ namespace drl
 		void clearSelectedWorker();
 		WorkerId selectedWorkerId() const;
 
+		void selectPlacedBuilding(BuildingId buildingId);
+		void clearSelectedBuilding();
+		BuildingId selectedBuildingId() const;
+
 	private:
 		const BuildingPrototypeService& _buildingPrototypes;
 		std::string _activeBuilding;
 		UiState _currentState{ UiState::Default };
 		WorkerId _selectedWorkerId{ 0 };
+		BuildingId _selectedBuildingId{ 0 };
 	};
 
 }

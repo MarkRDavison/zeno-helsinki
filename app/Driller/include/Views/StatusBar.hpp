@@ -28,6 +28,7 @@ namespace drl
 		void layout(glm::vec2 framebufferSize);
 		void tickOverlays(float dt);
 		void syncTooltipFrom(hl::ui::Widget* source);
+		void flashError(float seconds);
 
 	private:
 		struct ChipWidgets
@@ -42,6 +43,7 @@ namespace drl
 		std::unique_ptr<hl::ui::Panel> _panel;
 		std::vector<ChipWidgets> _chips;
 		std::unique_ptr<hl::ui::Tooltip> _tooltip;
+		float _errorFlashRemaining{ 0.0f };
 	};
 
 }

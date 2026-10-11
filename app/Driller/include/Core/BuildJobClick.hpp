@@ -7,7 +7,7 @@
 namespace drl
 {
 
-	void enqueueBuildJob(
+	bool enqueueBuildJob(
 		IGameCommandService& commands,
 		ITerrainAlterationService& terrain,
 		int level,
