@@ -5,6 +5,7 @@
 #include <Views/GalaxyDrawConstants.hpp>
 #include <World/PickStarSystem.hpp>
 #include <World/StarterMap.hpp>
+#include <World/StepGalaxy.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/RendererShaderRoot.hpp>
@@ -201,9 +202,7 @@ namespace slr
 		const int ticks = _clock.takeTicks(delta);
 		for (int i = 0; i < ticks; ++i)
 		{
-			// TODO: Should this instead call a world update service?
-			// Then that updates all the appropriate services, and then (or before) updates the tick number?
-			++_world.tick;
+			stepGalaxy(_world);
 		}
 
 		if (hl::imgui::Context::wantCaptureMouse())

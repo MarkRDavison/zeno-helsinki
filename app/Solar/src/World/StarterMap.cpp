@@ -1,4 +1,5 @@
 #include <World/StarterMap.hpp>
+#include <World/Goods.hpp>
 #include <utility>
 
 namespace slr
@@ -42,6 +43,10 @@ namespace
 		addLane(world, 6, 7);
 		addLane(world, 4, 8);
 		addLane(world, 6, 8);
+
+		StarSystem* rimward = world.systemById(5);
+		rimward->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
+		world.mines.push_back(Mine{ .systemId = 5, .goodId = SteelGoodId, .outputPerTick = 100 });
 
 		return world;
 	}

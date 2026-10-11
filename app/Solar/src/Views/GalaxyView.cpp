@@ -1,6 +1,7 @@
 #include <Views/GalaxyView.hpp>
 #include <GalaxyPushConstantObject.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
+#include <World/Goods.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
@@ -218,6 +219,11 @@ namespace
 		{
 			ImGui::TextUnformatted(system->name.c_str());
 			ImGui::TextUnformatted(("id " + std::to_string(system->id)).c_str());
+			for (const auto& stock : system->stocks)
+			{
+				ImGui::TextUnformatted(
+					(std::string(goodName(stock.goodId)) + " " + std::to_string(stock.goodAmount)).c_str());
+			}
 		}
 		ImGui::End();
 		return open;
