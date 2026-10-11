@@ -920,7 +920,8 @@ namespace hl
                 {
                     .model = modelTransform,
                     .colour = text->getColour(),
-                    .fontAtlasIndex = textSystem.getFontAtlasIndex(fontType, text->getFont())
+                    .fontAtlasIndex = textSystem.getFontAtlasIndex(fontType, text->getFont()),
+                    .cameraIndex = text->getCameraIndex()
                 };
 
                 vkCmdPushConstants(

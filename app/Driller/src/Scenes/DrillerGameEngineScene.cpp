@@ -191,7 +191,7 @@ namespace drl
 		_cameras.insert({ "Game", _gameCamera });
 		if (getCameraIndex("Ui") != 0)
 		{
-			throw std::runtime_error("Ui camera must be UBO slot 0 (ui.vert/text.vert)");
+			throw std::runtime_error("Ui camera must be UBO slot 0 (ui.vert)");
 		}
 		bindGameCameraToViews();
 		_engine.getEventBus().AddListener(this);
@@ -988,6 +988,7 @@ namespace drl
 			"roboto",
 			kWorldPopupFontSize);
 		textComponent->setColour(worldPopupColour(0.0f));
+		textComponent->setCameraIndex(static_cast<int>(getCameraIndex("Game")));
 
 		WorldPopup popup{};
 		popup.tile = tile;
@@ -1000,8 +1001,6 @@ namespace drl
 
 	void DrillerGameEngineScene::tickWorldPopups(float dt)
 	{
-		const float zoom = _gameCamera != nullptr ? _gameCamera->zoom() : 1.0f;
-		const glm::vec3 scale = worldPopupScale(zoom);
 		std::vector<WorldPopup> kept;
 		kept.reserve(_worldPopups.size());
 		for (WorldPopup& popup : _worldPopups)
@@ -1025,7 +1024,9 @@ namespace drl
 				continue;
 			}
 
-			glm::vec3 position = worldPopupPosition(
+			const float zoom = _gameCamera->zoom();
+			const glm::vec3 scale = worldPopupScale(zoom);
+			glm::vec3 position = worldPopupWorldPosition(
 				popup.tile,
 				_terrainView.originX(),
 				_terrainView.originY(),
@@ -1033,10 +1034,10 @@ namespace drl
 				popup.age,
 				zoom);
 			const glm::vec4 size = _engine.getTextSystem().getTextSize(text->getTextSystemId());
-			const float width = size.z - size.x;
-			position.x -= (width * 0.5f) * scale.x;
+			position.x -= (size.z - size.x) * 0.5f * scale.x;
 			transform->SetPosition(position);
 			transform->SetScale(scale);
+			text->setCameraIndex(static_cast<int>(getCameraIndex("Game")));
 			text->setColour(worldPopupColour(popup.age));
 			kept.push_back(std::move(popup));
 		}

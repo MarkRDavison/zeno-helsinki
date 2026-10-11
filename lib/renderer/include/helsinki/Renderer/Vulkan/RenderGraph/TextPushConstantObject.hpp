@@ -10,7 +10,8 @@ namespace hl
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::vec4 colour;
 		alignas(16) uint32_t fontAtlasIndex;
-		uint32_t pad[3]; // fills remaining bytes to 16
+		alignas(4) int cameraIndex{ 0 };
+		uint32_t pad[2];
 	};
 
 }

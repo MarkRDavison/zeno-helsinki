@@ -31,10 +31,14 @@ namespace hl
 		glm::vec4 getColour() const { return _colour; }
 		void setColour(const glm::vec4& colour) { _colour = colour; }
 
+		int getCameraIndex() const { return _cameraIndex; }
+		void setCameraIndex(int cameraIndex) { _cameraIndex = cameraIndex; }
+
 	private:
 		int _textSystemId{ -1 };
 		std::string _text;
 		std::string _font;
 		glm::vec4 _colour = { 1.0f, 1.0f, 1.0f, 1.0f };
+		int _cameraIndex{ 0 };
 	};
 }

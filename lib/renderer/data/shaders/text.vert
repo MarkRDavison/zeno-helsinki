@@ -6,7 +6,8 @@ layout(push_constant) uniform PushConstants {
     mat4 model;
     vec4 colour;
     int atlasIndex;
-    int pad[3];
+    int cameraIndex;
+    int pad[2];
 } pc; 
 
 
@@ -25,7 +26,7 @@ layout(location = 2) out vec4 textColor;
 
 void main()
 {
-    gl_Position = ubo[0].proj * ubo[0].view * pc.model * vec4(inPosition, 0.0, 1.0);
+    gl_Position = ubo[pc.cameraIndex].proj * ubo[pc.cameraIndex].view * pc.model * vec4(inPosition, 0.0, 1.0);
     fragTexCoord = inTexCoord;
     atlasIndex = pc.atlasIndex;
     textColor = pc.colour;

@@ -19,7 +19,24 @@ namespace drl
 		int entityId{ -1 };
 	};
 
-	inline glm::vec3 worldPopupPosition(
+	inline glm::vec2 worldPopupTileCenter(
+		glm::ivec2 tile,
+		float originX,
+		float originY,
+		float tileSize)
+	{
+		return glm::vec2(
+			originX + (static_cast<float>(tile.x) + 0.5f) * tileSize,
+			originY + (static_cast<float>(tile.y) + 0.5f) * tileSize);
+	}
+
+	inline glm::vec3 worldPopupScale(float zoom)
+	{
+		const float s = 1.0f / std::max(zoom, 0.001f);
+		return glm::vec3(s, s, 1.0f);
+	}
+
+	inline glm::vec3 worldPopupWorldPosition(
 		glm::ivec2 tile,
 		float originX,
 		float originY,
@@ -27,19 +44,10 @@ namespace drl
 		float age,
 		float zoom)
 	{
-		const float safeZoom = std::max(zoom, 0.001f);
+		const glm::vec2 center = worldPopupTileCenter(tile, originX, originY, tileSize);
 		const float t = std::clamp(age / kWorldPopupDuration, 0.0f, 1.0f);
-		const float riseWorld = (t * kWorldPopupRisePixels) / safeZoom;
-		return glm::vec3(
-			originX + (static_cast<float>(tile.x) + 0.5f) * tileSize,
-			originY + (static_cast<float>(tile.y) + 0.5f) * tileSize - riseWorld,
-			0.0f);
-	}
-
-	inline glm::vec3 worldPopupScale(float zoom)
-	{
-		const float s = 1.0f / std::max(zoom, 0.001f);
-		return glm::vec3(s, s, 1.0f);
+		const float riseWorld = (t * kWorldPopupRisePixels) / std::max(zoom, 0.001f);
+		return glm::vec3(center.x, center.y - riseWorld, 0.0f);
 	}
 
 	inline glm::vec4 worldPopupColour(float age)
