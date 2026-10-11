@@ -3,6 +3,7 @@ file(GLOB_RECURSE SOLAR_SOURCES
 )
 
 add_library(Solar STATIC ${SOLAR_SOURCES})
+helsinki_apply_target_options(Solar)
 target_include_directories(Solar PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )

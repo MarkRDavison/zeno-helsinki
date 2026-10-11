@@ -1,9 +1,12 @@
 #pragma once
 
+#include <Views/GalaxyCamera.hpp>
 #include <Views/GalaxyView.hpp>
+#include <World/WorldData.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
+#include <helsinki/System/glm.hpp>
 
 namespace slr
 {
@@ -28,10 +31,12 @@ namespace slr
 		void OnEvent(const hl::Event& event) override;
 
 	private:
-		void handleWindowSizeChange(int width, int height);
-
 		const hl::EngineConfiguration& _engineConfig;
+		WorldData _world;
 		GalaxyView _galaxy;
+		GalaxyCamera* _galaxyCamera{ nullptr };
+		bool _panning{ false };
+		glm::vec2 _lastMouse{ 0.0f };
 	};
 
 }

@@ -1,9 +1,16 @@
 #include <Scenes/GameEngineScene.hpp>
+#include <GalaxyPushConstantObject.hpp>
 #include <Scenes/TextMenuSupport.hpp>
 #include <Scenes/TitleEngineScene.hpp>
+#include <World/StarterMap.hpp>
+#include <helsinki/Engine/Input/InputManager.hpp>
+#include <helsinki/Renderer/RendererConfiguration.hpp>
+#include <helsinki/Renderer/RendererShaderRoot.hpp>
+#include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanVertex.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
-#include <helsinki/System/Events/WindowResizeEvent.hpp>
+#include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <GLFW/glfw3.h>
 
@@ -15,8 +22,22 @@ namespace slr
 		const hl::EngineConfiguration& engineConfig)
 		: EngineScene(engine)
 		, _engineConfig(engineConfig)
+		, _world(makeStarterMap())
 	{
-		_cameras.insert({ "Default", new hl::Camera2D() });
+		_cameras.insert({ "Ui", new hl::Camera2D() });
+		_galaxyCamera = new GalaxyCamera();
+		_cameras.insert({ "Galaxy", _galaxyCamera });
+
+		glm::vec2 sum{ 0.0f };
+		for (const auto& system : _world.systems)
+		{
+			sum += system.position;
+		}
+		if (!_world.systems.empty())
+		{
+			_galaxyCamera->setOrigin(sum / static_cast<float>(_world.systems.size()));
+		}
+
 		_engine.getEventBus().AddListener(this);
 	}
 
@@ -33,8 +54,77 @@ namespace slr
 		hl::VulkanCommandPool& transferCommandPool,
 		hl::ResourceManager& resourceManager)
 	{
+		auto sceneRenderpassInfo = hl::RenderpassInfo{
+			.name = "scene_pass",
+			.inputs = {},
+			.outputs =
+			{
+				hl::ResourceInfo{
+					.name = "scene_color",
+					.type = hl::ResourceType::Color,
+					.format = "VK_FORMAT_B8G8R8A8_SRGB",
+					.clear = VkClearValue{ .color = { { 0.02f, 0.03f, 0.06f, 1.0f } } }
+				},
+				hl::ResourceInfo{
+					.name = "scene_depth",
+					.type = hl::ResourceType::Depth,
+					.format = "VK_FORMAT_D32_SFLOAT"
+				}
+			},
+			.pipelineGroups =
+			{
+				{
+					hl::PipelineInfo{
+						.name = "entity_pipeline",
+						.shaderVert = _engineConfig.RootPath + std::string("/data/shaders/galaxy.vert"),
+						.shaderFrag = std::string(hl::RendererShaderRoot) + "/entity.frag",
+						.descriptorSets =
+						{
+							hl::DescriptorSetInfo{
+								.bindings =
+								{
+									hl::DescriptorBinding{
+										.binding = 0,
+										.type = "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+										.stage = "VERTEX",
+										.resource = cameraMatrixResourceId,
+										.count = MAX_CAMERAS
+									}
+								}
+							}
+						},
+						.vertexInputInfo = hl::VertexInputInfo{
+							.attributes =
+							{
+								{
+									.name = "inPosition",
+									.format = hl::VertexAttributeFormat::Vec2,
+									.location = 0,
+									.offset = offsetof(hl::Vertex2, pos)
+								}
+							},
+							.stride = sizeof(hl::Vertex2)
+						},
+						.depthState =
+						{
+							.writeEnable = true,
+							.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL
+						},
+						.rasterState =
+						{
+							.cullMode = VK_CULL_MODE_NONE
+						},
+						.enableBlending = false,
+						.pushConstantSize = sizeof(GalaxyPushConstantObject)
+					}
+				}
+			}
+		};
+
 		std::vector<hl::RenderpassInfo> renderpasses{
-			hl::RenderGraphHelpers::createTextRenderpassInfo(cameraMatrixResourceId)
+			sceneRenderpassInfo,
+			hl::RenderGraphHelpers::createTextRenderpassInfo(cameraMatrixResourceId),
+			hl::RenderGraphHelpers::createCompositeRenderpassInfo({ "scene_color", "text_color" })
 		};
 
 		hl::ResourceContext resourceContext{
@@ -46,13 +136,32 @@ namespace slr
 		};
 		loadTextResources(resourceManager, resourceContext);
 
-		_galaxy.initialise(_engine.getTextSystem(), _engineConfig.Width, _engineConfig.Height);
+		resourceManager.Load<hl::VertexArrayResource>(
+			"unit_quad",
+			resourceContext,
+			std::vector<hl::Vertex2>{
+				{ .pos = { -0.5f, -0.5f } },
+				{ .pos = { 0.5f, -0.5f } },
+				{ .pos = { 0.5f, 0.5f } },
+				{ .pos = { -0.5f, -0.5f } },
+				{ .pos = { 0.5f, 0.5f } },
+				{ .pos = { -0.5f, 0.5f } }
+			});
 
+		const auto galaxyCameraIndex = static_cast<int>(getCameraIndex("Galaxy"));
+		_galaxy.initialise(_engine.getTextSystem(), _world, galaxyCameraIndex);
+
+		registerPipelineDraw(
+			"entity_pipeline",
+			[this](hl::PipelineDrawData& pdd)
+			{
+				_galaxy.drawGraph(pdd, *_resourceManager);
+			});
 		registerPipelineDraw(
 			"sdf_text_pipeline",
 			[this](hl::PipelineDrawData& pdd)
 			{
-				_galaxy.draw(pdd, _engine.getTextSystem());
+				_galaxy.drawLabels(pdd, _engine.getTextSystem());
 			});
 
 		EngineScene::initialise(
@@ -67,6 +176,21 @@ namespace slr
 
 	void GameEngineScene::update(uint32_t, float)
 	{
+		const auto mouse = _engine.getInputManager().getMousePosition();
+		const bool middleDown = _engine.getInputManager().isButtonDown(GLFW_MOUSE_BUTTON_MIDDLE);
+		if (middleDown)
+		{
+			if (_panning)
+			{
+				_galaxyCamera->panByScreenDelta(mouse - _lastMouse);
+			}
+			_panning = true;
+			_lastMouse = mouse;
+		}
+		else
+		{
+			_panning = false;
+		}
 	}
 
 	void GameEngineScene::OnEvent(const hl::Event& event)
@@ -78,15 +202,10 @@ namespace slr
 				_engine.setScene(new TitleEngineScene(_engine, _engineConfig));
 			}
 		}
-		else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
+		else if (auto se = dynamic_cast<const hl::ScrollEvent*>(&event))
 		{
-			handleWindowSizeChange(wre->GetWidth(), wre->GetHeight());
+			_galaxyCamera->zoomAtScreen(_engine.getInputManager().getMousePosition(), se->getY());
 		}
-	}
-
-	void GameEngineScene::handleWindowSizeChange(int width, int height)
-	{
-		_galaxy.layout(_engine.getTextSystem(), width, height);
 	}
 
 }
