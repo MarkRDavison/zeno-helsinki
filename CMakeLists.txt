@@ -22,7 +22,7 @@ option(HELSINKI_ENABLE_TRACY "Enable Tracy Profiler" OFF)
 # Do not apply Werror to FetchContent deps. Helsinki targets use HELSINKI_WARNING_AS_ERROR.
 set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
 
-if(HELSINKI_IS_TOP_LEVEL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(HELSINKI_ENABLE_TRACY ON)
 endif()
 

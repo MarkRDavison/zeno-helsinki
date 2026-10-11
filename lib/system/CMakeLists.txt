@@ -1,5 +1,6 @@
 SET(MODULE_LIBS
 	glm::glm
+	ThirdParty_Tracy
 )
 
 SET(INCLUDE_DIRS

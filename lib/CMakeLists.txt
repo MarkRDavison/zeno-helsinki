@@ -69,10 +69,6 @@ FUNCTION(submodule MODULE_NAME MODULE_LIBS INCLUDE_DIRS)
 		target_compile_options(${LIB_NAME} PRIVATE /wd4251 /wd4275)
 	endif()
 
-	if(HELSINKI_ENABLE_TRACY)
-		list(APPEND MODULE_LIBS ThirdParty_Tracy)
-	endif()
-
 	foreach(liblib IN LISTS MODULE_LIBS)
 		TARGET_LINK_LIBRARIES(${LIB_NAME} PUBLIC ${liblib})
 	endforeach()

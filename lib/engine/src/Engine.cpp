@@ -242,6 +242,7 @@ namespace hl
 			_textSystem.processDeferredTextDestruction(1); // TODO: CONFIG/ a better place for idle destruction, another thread???
 
 			fps++;
+			FrameMark;
 		}
 
 		_device.waitIdle();
