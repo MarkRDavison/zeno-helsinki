@@ -25,6 +25,7 @@ TEST_CASE("starter map has one Rimward steel mine with empty stockpile", "[slr][
 TEST_CASE("stepGalaxy extracts onto the mine stockpile then advances tick", "[slr][Extraction]")
 {
 	WorldData world = makeStarterMap();
+	world.trucks.clear();
 	stepGalaxy(world);
 
 	const StarSystem* rimward = world.systemById(5);
@@ -39,6 +40,7 @@ TEST_CASE("stepGalaxy extracts onto the mine stockpile then advances tick", "[sl
 TEST_CASE("two galaxy steps double stockpile", "[slr][Extraction]")
 {
 	WorldData world = makeStarterMap();
+	world.trucks.clear();
 	stepGalaxy(world);
 	stepGalaxy(world);
 

@@ -45,8 +45,42 @@ namespace
 		addLane(world, 6, 8);
 
 		StarSystem* rimward = world.systemById(5);
-		rimward->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
+		rimward->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0, .need = 0 });
+
+		StarSystem* helion = world.systemById(1);
+		helion->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0, .need = 1000 });
+
 		world.mines.push_back(Mine{ .systemId = 5, .goodId = SteelGoodId, .outputPerTick = 100 });
+
+		constexpr float civilianTruckSpeed = 25.0f;
+		const std::vector<long long> rimwardToHelion{ 5, 3, 2, 1 };
+		world.trucks.push_back(Truck{
+			.id = 1,
+			.route = rimwardToHelion,
+			.hop = 0,
+			.progress = 1.0f,
+			.direction = 1,
+			.speed = civilianTruckSpeed,
+			.cargoGoodId = 0,
+			.cargoAmount = 0 });
+		world.trucks.push_back(Truck{
+			.id = 2,
+			.route = rimwardToHelion,
+			.hop = 0,
+			.progress = 0.0f,
+			.direction = 1,
+			.speed = civilianTruckSpeed,
+			.cargoGoodId = 0,
+			.cargoAmount = 0 });
+		world.trucks.push_back(Truck{
+			.id = 3,
+			.route = rimwardToHelion,
+			.hop = 0,
+			.progress = 0.5f,
+			.direction = 1,
+			.speed = civilianTruckSpeed,
+			.cargoGoodId = SteelGoodId,
+			.cargoAmount = TruckCapacity_Steel });
 
 		return world;
 	}
