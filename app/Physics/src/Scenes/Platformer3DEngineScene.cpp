@@ -6,6 +6,7 @@
 #include <helsinki/Engine/ECS/Components/ModelComponent.hpp>
 #include <helsinki/Engine/ECS/Components/TransformComponent.hpp>
 #include <helsinki/Engine/ECS/Entity.hpp>
+#include <helsinki/Imgui/Context.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <helsinki/Renderer/Resource/Material.hpp>
 #include <helsinki/Renderer/Resource/MaterialSystem.hpp>
@@ -625,7 +626,7 @@ namespace phys
 	{
 		auto& input = _engine.getInputManager();
 		const glm::vec2 mouse = input.getMousePosition();
-		if (input.isButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
+		if (!hl::imgui::Context::wantCaptureMouse() && input.isButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
 		{
 			if (_orbitDragging)
 			{

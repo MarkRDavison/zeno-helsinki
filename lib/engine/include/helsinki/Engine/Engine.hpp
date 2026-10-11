@@ -9,14 +9,25 @@
 #include <helsinki/Renderer/Resource/ParticleSystem.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/FrameResources.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanCommandPool.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanDevice.hpp>
+#include <helsinki/Renderer/Vulkan/VulkanInstance.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
 #include <helsinki/Renderer/Vulkan/VulkanSynchronisationContext.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
+#include <functional>
 
 struct GLFWwindow;
 
 namespace hl
 {
+
+	struct DebugOverlayHooks
+	{
+		std::function<void()> beginFrame;
+		std::function<void(VkCommandBuffer commandBuffer, uint32_t imageIndex)> record;
+		std::function<void()> onSwapchainRecreated;
+		std::function<void()> shutdown;
+	};
 
 	class Engine : NonCopyable
 	{
@@ -41,6 +52,16 @@ namespace hl
 		ParticleSystem& getParticleSystem() { return _particleSystem; }
 		InputManager& getInputManager() { return _inputManager; }
 		EventBus& getEventBus() { return _eventBus; }
+
+		void setDebugOverlay(DebugOverlayHooks hooks);
+		void beginDebugOverlayFrame();
+		void recordDebugOverlay(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+		GLFWwindow* window() const { return _window; }
+		VulkanInstance& instance() { return _instance; }
+		VulkanDevice& device() { return _device; }
+		VulkanSwapChain& swapChain() { return _swapChain; }
+		VulkanCommandPool& graphicsCommandPool() { return _graphicsCommandPool; }
 
 	private:
 		void mainLoop();
@@ -88,7 +109,7 @@ namespace hl
 		int _windowedWidth = 800;
 		int _windowedHeight = 600;
 
-
+		DebugOverlayHooks _debugOverlay;
 	};
 
 }

@@ -558,6 +558,8 @@ namespace hl
             }
         }
 
+		_engine.recordDebugOverlay(frame.primaryCmd, imageIndex);
+
         CHECK_VK_RESULT(vkEndCommandBuffer(frame.primaryCmd));
 
         return frame.primaryCmd;

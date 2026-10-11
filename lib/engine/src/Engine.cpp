@@ -225,6 +225,7 @@ namespace hl
 			setCurrentSceneAsAppropriate();
 
 			glfwPollEvents();
+			beginDebugOverlayFrame();
 
 			_particleSimSteps = 0;
 			while (accumulator >= delta)
@@ -245,6 +246,27 @@ namespace hl
 
 		_device.waitIdle();
 	}
+	void Engine::setDebugOverlay(DebugOverlayHooks hooks)
+	{
+		_debugOverlay = std::move(hooks);
+	}
+
+	void Engine::beginDebugOverlayFrame()
+	{
+		if (_debugOverlay.beginFrame)
+		{
+			_debugOverlay.beginFrame();
+		}
+	}
+
+	void Engine::recordDebugOverlay(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+	{
+		if (_debugOverlay.record)
+		{
+			_debugOverlay.record(commandBuffer, imageIndex);
+		}
+	}
+
 	void Engine::cleanup()
 	{
 		destroyScene();
@@ -252,6 +274,12 @@ namespace hl
 		_textSystem.destroy();
 		_particleSystem.destroy();
 		_materialSystem.destroy();
+
+		if (_debugOverlay.shutdown)
+		{
+			_debugOverlay.shutdown();
+		}
+		_debugOverlay = {};
 
 		_swapChain.destroy();
 
@@ -468,6 +496,11 @@ namespace hl
 
 		_currentEngineScene->recreate((uint32_t)width, (uint32_t)height);
 		_currentEngineScene->updateAllDescriptorSets();
+
+		if (_debugOverlay.onSwapchainRecreated)
+		{
+			_debugOverlay.onSwapchainRecreated();
+		}
 	}
 
 	void Engine::createScene(EngineScene* scene)

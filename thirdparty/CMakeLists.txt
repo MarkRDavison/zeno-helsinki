@@ -174,10 +174,24 @@ FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG v1.91.5)
-    
+
 FetchContent_MakeAvailable(imgui)
-add_library(imgui INTERFACE)
-target_include_directories(imgui INTERFACE ${imgui_SOURCE_DIR})
+
+add_library(ThirdParty_imgui STATIC
+    "${imgui_SOURCE_DIR}/imgui.cpp"
+    "${imgui_SOURCE_DIR}/imgui_draw.cpp"
+    "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+    "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+    "${imgui_SOURCE_DIR}/imgui_demo.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp"
+)
+set_target_properties(ThirdParty_imgui PROPERTIES
+    COMPILE_WARNING_AS_ERROR OFF
+)
+target_include_directories(ThirdParty_imgui PUBLIC "${imgui_SOURCE_DIR}")
+target_include_directories(ThirdParty_imgui PRIVATE "${imgui_SOURCE_DIR}/backends")
+target_link_libraries(ThirdParty_imgui PUBLIC glfw Vulkan::Vulkan)
 
 FetchContent_Declare(
     Tracy

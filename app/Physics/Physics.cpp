@@ -2,8 +2,10 @@
 #include <Scenes/TitleEngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
+#include <helsinki/Imgui/Context.hpp>
 #include <helsinki/Physics/Physics.hpp>
 #include <helsinki/System/Utils/ServiceProvider.hpp>
+#include <imgui.h>
 
 static void registerServices(hl::ServiceProvider& services)
 {
@@ -29,6 +31,10 @@ int main()
 	{
 		return EXIT_FAILURE;
 	}
+
+	hl::imgui::Context imgui;
+	imgui.init(engine);
+	imgui.setBuildUi([] { ImGui::ShowDemoWindow(); });
 
 	engine.setScene(new phys::TitleEngineScene(engine, engineConfig, physicsContext));
 	engine.run();

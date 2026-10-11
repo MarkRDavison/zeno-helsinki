@@ -45,18 +45,22 @@ namespace ClickRefuseTests
 		REQUIRE(invalid.tile == glm::ivec2(-1, 0));
 	}
 
-	TEST_CASE("world popup anchors the tile and rises in screen-up", "[drl][ClickRefuse]")
+	TEST_CASE("world popup anchors the tile and rises in world space", "[drl][ClickRefuse]")
 	{
-		const glm::vec3 start = worldPopupPosition({ 2, 1 }, 0.0f, 64.0f, 64.0f, 0.0f, 1.0f);
-		REQUIRE(start.x == 2.5f * 64.0f);
-		REQUIRE(start.y == 64.0f + 1.5f * 64.0f);
+		const glm::vec2 center = worldPopupTileCenter({ 2, 1 }, 0.0f, 64.0f, 64.0f);
+		REQUIRE(center.x == 2.5f * 64.0f);
+		REQUIRE(center.y == 64.0f + 1.5f * 64.0f);
 
-		const glm::vec3 later = worldPopupPosition({ 2, 1 }, 0.0f, 64.0f, 64.0f, 0.5f, 1.0f);
+		const glm::vec3 start = worldPopupWorldPosition({ 2, 1 }, 0.0f, 64.0f, 64.0f, 0.0f, 1.0f);
+		REQUIRE(start.x == center.x);
+		REQUIRE(start.y == center.y);
+
+		const glm::vec3 later = worldPopupWorldPosition({ 2, 1 }, 0.0f, 64.0f, 64.0f, 0.5f, 1.0f);
 		REQUIRE(later.x == start.x);
-		REQUIRE(later.y < start.y);
+		REQUIRE(later.y == start.y - 0.5f * kWorldPopupRisePixels);
 
-		const glm::vec3 zoomed = worldPopupPosition({ 2, 1 }, 0.0f, 64.0f, 64.0f, 0.5f, 2.0f);
-		REQUIRE(zoomed.y > later.y);
+		const glm::vec3 zoomed = worldPopupWorldPosition({ 2, 1 }, 0.0f, 64.0f, 64.0f, 0.5f, 2.0f);
+		REQUIRE(zoomed.y == center.y - 0.5f * kWorldPopupRisePixels / 2.0f);
 		REQUIRE(worldPopupScale(2.0f).x == 0.5f);
 		REQUIRE(worldPopupColour(0.0f).a == 1.0f);
 		REQUIRE(worldPopupColour(kWorldPopupDuration).a == 0.0f);

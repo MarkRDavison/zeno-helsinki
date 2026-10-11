@@ -2,6 +2,7 @@
 #include <Scenes/Platformer2DEngineScene.hpp>
 #include <Scenes/Platformer3DEngineScene.hpp>
 #include <Scenes/TextMenuSupport.hpp>
+#include <helsinki/Imgui/Context.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <helsinki/System/Events/KeyEvents.hpp>
 #include <helsinki/System/Events/WindowResizeEvent.hpp>
@@ -66,6 +67,11 @@ namespace phys
 
 	void TitleEngineScene::update(uint32_t, float)
 	{
+		if (hl::imgui::Context::wantCaptureMouse())
+		{
+			return;
+		}
+
 		const auto mouse = _engine.getInputManager().getMousePosition();
 		const auto checkClick = _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1);
 

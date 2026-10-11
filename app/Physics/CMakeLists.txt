@@ -11,12 +11,14 @@ TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-system${LIB_EXTENSION_SHARED}
 TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-renderer${LIB_EXTENSION_SHARED}")
 TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-engine${LIB_EXTENSION_SHARED}")
 TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-physics${LIB_EXTENSION_SHARED}")
+TARGET_LINK_LIBRARIES(PhysicsApp PRIVATE "helsinki-imgui${LIB_EXTENSION_SHARED}")
 
 SET(MODULE_LIBS
 	"helsinki-system${LIB_EXTENSION_SHARED}"
 	"helsinki-renderer${LIB_EXTENSION_SHARED}"
 	"helsinki-engine${LIB_EXTENSION_SHARED}"
 	"helsinki-physics${LIB_EXTENSION_SHARED}"
+	"helsinki-imgui${LIB_EXTENSION_SHARED}"
 	PhysicsApp
 )
 
