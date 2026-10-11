@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <format>
+#include <helsinki/System/RuntimeRoot.hpp>
 #include <helsinki/System/Utils/Json.hpp>
 #include <helsinki/System/Utils/String.hpp>
 
@@ -20,14 +21,15 @@ namespace hl
 
 		void applyConfig(const std::string& filename, const std::string& rootPath)
 		{
-			const auto& parsed = EngineConfiguration::Load(std::format("{}{}", rootPath, filename));
+			const auto resolvedRoot = runtimeRootPath(rootPath);
+			const auto& parsed = EngineConfiguration::Load(std::format("{}{}", resolvedRoot, filename));
 
 			this->EnableVsync = parsed.EnableVsync;
 			this->DisplayFps = parsed.DisplayFps;
 			this->Title = parsed.Title;
 			this->Width = parsed.Width;
 			this->Height = parsed.Height;
-			this->RootPath = rootPath;
+			this->RootPath = resolvedRoot;
 		}
 
 		static EngineConfiguration Load(const std::string& configPath)

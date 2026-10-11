@@ -6,6 +6,9 @@ FUNCTION(helsinkiApplication AppMain CPP_NAME MODULE_LIBS)
 		TARGET_LINK_LIBRARIES(${AppMain} PRIVATE ${library})
 	ENDFOREACH()
 
+	helsinki_deploy_app_data(${AppMain})
+	helsinki_deploy_renderer_shaders(${AppMain})
+
 ENDFUNCTION()
 
 ADD_SUBDIRECTORY(TwoDimensional)

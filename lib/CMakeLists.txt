@@ -102,3 +102,26 @@ ADD_SUBDIRECTORY(scripting)
 ADD_SUBDIRECTORY(renderer)
 ADD_SUBDIRECTORY(engine)
 ADD_SUBDIRECTORY(imgui)
+
+function(helsinki_deploy_app_data target)
+	set(_helsinki_app_data "${CMAKE_CURRENT_SOURCE_DIR}/data")
+	if(NOT EXISTS "${_helsinki_app_data}")
+		return()
+	endif()
+	add_custom_command(TARGET ${target} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory
+			"${_helsinki_app_data}"
+			"$<TARGET_FILE_DIR:${target}>/data"
+		COMMENT "Deploy app data next to ${target}")
+endfunction()
+
+function(helsinki_deploy_renderer_shaders target)
+	if(NOT HELSINKI_RENDERER_SHADER_SOURCE_DIR)
+		message(FATAL_ERROR "helsinki_deploy_renderer_shaders: renderer shaders are not configured")
+	endif()
+	add_custom_command(TARGET ${target} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory
+			"${HELSINKI_RENDERER_SHADER_SOURCE_DIR}"
+			"$<TARGET_FILE_DIR:${target}>/data/shaders"
+		COMMENT "Deploy Helsinki shaders to data/shaders next to ${target}")
+endfunction()

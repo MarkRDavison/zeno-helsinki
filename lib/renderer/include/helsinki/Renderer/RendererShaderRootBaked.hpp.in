@@ -1,0 +1,8 @@
+#pragma once
+
+namespace hl
+{
+
+	inline constexpr const char RendererShaderRootBaked[] = "@HELSINKI_RENDERER_SHADER_ROOT@";
+
+}
