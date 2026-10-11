@@ -1,7 +1,7 @@
 #include <World/StepGalaxy.hpp>
 #include <World/Goods.hpp>
+#include <World/LaneMotion.hpp>
 #include <algorithm>
-#include <utility>
 
 namespace slr
 {
@@ -62,57 +62,15 @@ namespace
 		}
 	}
 
-	bool hasHyperlane(const WorldData& world, long long a, long long b)
-	{
-		if (a > b)
-		{
-			std::swap(a, b);
-		}
-
-		for (const auto& lane : world.hyperlanes)
-		{
-			if (lane.a == a && lane.b == b)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	bool hopEndpoints(const Truck& truck, long long& fromId, long long& toId)
-	{
-		if (truck.route.size() < 2)
-		{
-			return false;
-		}
-
-		const int toIndex = truck.hop + truck.direction;
-		if (truck.hop < 0 || toIndex < 0)
-		{
-			return false;
-		}
-
-		if (truck.hop >= static_cast<int>(truck.route.size()) ||
-			toIndex >= static_cast<int>(truck.route.size()))
-		{
-			return false;
-		}
-
-		fromId = truck.route[static_cast<size_t>(truck.hop)];
-		toId = truck.route[static_cast<size_t>(toIndex)];
-		return true;
-	}
-
 	void loadIfDemandOpen(WorldData& world, Truck& truck)
 	{
-		if (truck.route.size() < 2 || truck.cargoAmount != 0)
+		if (truck.motion.route.size() < 2 || truck.cargoAmount != 0)
 		{
 			return;
 		}
 
-		const long long supplyId = truck.route.front();
-		const long long demandId = truck.route.back();
+		const long long supplyId = truck.motion.route.front();
+		const long long demandId = truck.motion.route.back();
 		if (!isTruckAtSystem(truck, supplyId))
 		{
 			return;
@@ -141,12 +99,12 @@ namespace
 
 	void dumpIfCarrying(WorldData& world, Truck& truck)
 	{
-		if (truck.route.size() < 2 || truck.cargoAmount <= 0)
+		if (truck.motion.route.size() < 2 || truck.cargoAmount <= 0)
 		{
 			return;
 		}
 
-		const long long demandId = truck.route.back();
+		const long long demandId = truck.motion.route.back();
 		if (!isTruckAtSystem(truck, demandId))
 		{
 			return;
@@ -166,52 +124,25 @@ namespace
 
 	bool waitEmptyAtSupply(const Truck& truck)
 	{
-		if (truck.route.size() < 2 || truck.cargoAmount != 0)
+		if (truck.motion.route.size() < 2 || truck.cargoAmount != 0)
 		{
 			return false;
 		}
 
-		return isTruckAtSystem(truck, truck.route.front());
+		return isTruckAtSystem(truck, truck.motion.route.front());
 	}
 
 	void advanceTruck(WorldData& world, Truck& truck)
 	{
-		long long fromId = 0;
-		long long toId = 0;
-		if (!hopEndpoints(truck, fromId, toId))
+		if (!advanceAlongLane(world, truck.motion))
 		{
 			return;
 		}
 
-		const StarSystem* from = world.systemById(fromId);
-		const StarSystem* to = world.systemById(toId);
-		if (from == nullptr || to == nullptr)
+		if (truck.motion.hop == 0 ||
+			truck.motion.hop == static_cast<int>(truck.motion.route.size()) - 1)
 		{
-			return;
-		}
-
-		if (!hasHyperlane(world, fromId, toId))
-		{
-			return;
-		}
-
-		const float length = glm::length(to->position - from->position);
-		if (length <= 0.0f || truck.speed <= 0.0f)
-		{
-			return;
-		}
-
-		truck.progress = std::min(1.0f, truck.progress + truck.speed / length);
-		if (truck.progress < 1.0f)
-		{
-			return;
-		}
-
-		truck.hop += truck.direction;
-		truck.progress = 0.0f;
-		if (truck.hop == 0 || truck.hop == static_cast<int>(truck.route.size()) - 1)
-		{
-			truck.direction = -truck.direction;
+			truck.motion.direction = -truck.motion.direction;
 		}
 	}
 
@@ -230,12 +161,42 @@ namespace
 		}
 	}
 
+	void advanceFleet(WorldData& world, Fleet& fleet)
+	{
+		if (!advanceAlongLane(world, fleet.motion))
+		{
+			return;
+		}
+
+		if (fleet.motion.hop < 0 ||
+			fleet.motion.hop >= static_cast<int>(fleet.motion.route.size()))
+		{
+			return;
+		}
+
+		fleet.systemId = fleet.motion.route[static_cast<size_t>(fleet.motion.hop)];
+		if (fleet.motion.hop == static_cast<int>(fleet.motion.route.size()) - 1)
+		{
+			fleet.motion.route.clear();
+			fleet.motion.hop = 0;
+		}
+	}
+
+	void moveFleets(WorldData& world)
+	{
+		for (auto& fleet : world.fleets)
+		{
+			advanceFleet(world, fleet);
+		}
+	}
+
 }
 
 	void stepGalaxy(WorldData& world)
 	{
 		applyExtraction(world);
 		moveTrucks(world);
+		moveFleets(world);
 		++world.tick;
 	}
 

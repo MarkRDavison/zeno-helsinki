@@ -3,6 +3,7 @@
 #include <Scenes/TextMenuSupport.hpp>
 #include <Scenes/TitleEngineScene.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
+#include <World/GameCommand.hpp>
 #include <World/PickFleet.hpp>
 #include <World/PickStarSystem.hpp>
 #include <World/StarterMap.hpp>
@@ -200,46 +201,70 @@ namespace slr
 
 	void GameEngineScene::update(uint32_t, float delta)
 	{
-		const int ticks = _clock.takeTicks(delta);
-		for (int i = 0; i < ticks; ++i)
+		if (!hl::imgui::Context::wantCaptureMouse())
 		{
-			stepGalaxy(_world);
-		}
-
-		if (hl::imgui::Context::wantCaptureMouse())
-		{
-			_panning = false;
-			return;
-		}
-
-		const auto mouse = _engine.getInputManager().getMousePosition();
-		const bool middleDown = _engine.getInputManager().isButtonDown(GLFW_MOUSE_BUTTON_MIDDLE);
-		if (middleDown)
-		{
-			if (_panning)
+			const auto mouse = _engine.getInputManager().getMousePosition();
+			const bool middleDown = _engine.getInputManager().isButtonDown(GLFW_MOUSE_BUTTON_MIDDLE);
+			if (middleDown)
 			{
-				_galaxyCamera->panByScreenDelta(mouse - _lastMouse);
+				if (_panning)
+				{
+					_galaxyCamera->panByScreenDelta(mouse - _lastMouse);
+				}
+				_panning = true;
+				_lastMouse = mouse;
 			}
-			_panning = true;
-			_lastMouse = mouse;
+			else
+			{
+				_panning = false;
+			}
+
+			if (!_panning && _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1))
+			{
+				const glm::vec2 world = _galaxyCamera->worldFromScreen(mouse);
+				const auto fleet = pickFleet(_world, world, GalaxyFleetSize * 0.5f, GalaxyFleetOffset);
+				if (fleet.has_value())
+				{
+					_galaxy.setSelectedFleetId(fleet);
+				}
+				else
+				{
+					_galaxy.setSelectedSystemId(pickStarSystem(_world, world, GalaxyNodeSize * 0.5f));
+				}
+			}
+
+			if (!_panning && _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_2))
+			{
+				const auto fleetId = _galaxy.selectedFleetId();
+				if (fleetId.has_value())
+				{
+					const glm::vec2 world = _galaxyCamera->worldFromScreen(mouse);
+					const auto system = pickStarSystem(_world, world, GalaxyNodeSize * 0.5f);
+					if (system.has_value())
+					{
+						_pendingCommands.push_back(GameCommand::moveFleetToSystem(
+							*fleetId,
+							*system,
+							CommandSource::Player));
+					}
+				}
+			}
 		}
 		else
 		{
 			_panning = false;
 		}
 
-		if (!_panning && _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1))
+		for (const auto& command : _pendingCommands)
 		{
-			const glm::vec2 world = _galaxyCamera->worldFromScreen(mouse);
-			const auto fleet = pickFleet(_world, world, GalaxyFleetSize * 0.5f, GalaxyFleetOffset);
-			if (fleet.has_value())
-			{
-				_galaxy.setSelectedFleetId(fleet);
-			}
-			else
-			{
-				_galaxy.setSelectedSystemId(pickStarSystem(_world, world, GalaxyNodeSize * 0.5f));
-			}
+			execute(_world, command);
+		}
+		_pendingCommands.clear();
+
+		const int ticks = _clock.takeTicks(delta);
+		for (int i = 0; i < ticks; ++i)
+		{
+			stepGalaxy(_world);
 		}
 	}
 

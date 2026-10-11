@@ -2,6 +2,7 @@
 #include <GalaxyPushConstantObject.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
 #include <World/Goods.hpp>
+#include <World/LaneMotion.hpp>
 #include <World/PickFleet.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
@@ -185,29 +186,14 @@ namespace
 
 		for (const auto& truck : _world->trucks)
 		{
-			if (truck.route.size() < 2)
+			const auto pos = laneWorldPosition(*_world, truck.motion);
+			if (!pos.has_value())
 			{
 				continue;
 			}
 
-			const int toIndex = truck.hop + truck.direction;
-			if (truck.hop < 0 || toIndex < 0 ||
-				truck.hop >= static_cast<int>(truck.route.size()) ||
-				toIndex >= static_cast<int>(truck.route.size()))
-			{
-				continue;
-			}
-
-			const StarSystem* from = _world->systemById(truck.route[static_cast<size_t>(truck.hop)]);
-			const StarSystem* to = _world->systemById(truck.route[static_cast<size_t>(toIndex)]);
-			if (from == nullptr || to == nullptr)
-			{
-				continue;
-			}
-
-			const glm::vec2 pos = glm::mix(from->position, to->position, truck.progress);
 			const glm::mat4 model =
-				glm::translate(glm::mat4(1.0f), glm::vec3(pos, 0.0f)) *
+				glm::translate(glm::mat4(1.0f), glm::vec3(*pos, 0.0f)) *
 				glm::scale(glm::mat4(1.0f), glm::vec3(GalaxyTruckSize, GalaxyTruckSize, 1.0f));
 			drawUnitQuad(pdd, quad, model, TruckColour, _galaxyCameraIndex);
 		}
@@ -287,7 +273,15 @@ namespace
 			{
 				ImGui::TextUnformatted(fleet->name.c_str());
 				ImGui::TextUnformatted(("id " + std::to_string(fleet->id)).c_str());
-				if (at != nullptr)
+				if (fleet->motion.route.size() >= 2)
+				{
+					const StarSystem* dest = _world->systemById(fleet->motion.route.back());
+					if (dest != nullptr)
+					{
+						ImGui::TextUnformatted(("en route to " + dest->name).c_str());
+					}
+				}
+				else if (at != nullptr)
 				{
 					ImGui::TextUnformatted(("at " + at->name).c_str());
 				}

@@ -35,14 +35,19 @@ namespace slr
 		long long outputPerTick{ 0 };
 	};
 
-	struct Truck
+	struct LaneMotion
 	{
-		long long id{ 0 };
 		std::vector<long long> route;
 		int hop{ 0 };
 		float progress{ 0.0f };
 		int direction{ 1 };
 		float speed{ 0.0f };
+	};
+
+	struct Truck
+	{
+		long long id{ 0 };
+		LaneMotion motion;
 		long long cargoGoodId{ 0 };
 		long long cargoAmount{ 0 };
 	};
@@ -65,6 +70,7 @@ namespace slr
 		std::string name;
 		long long systemId{ 0 };
 		std::vector<ClassCount> composition;
+		LaneMotion motion;
 	};
 
 	struct WorldData
@@ -89,5 +95,6 @@ namespace slr
 	long long getNeed(const StarSystem& system, long long goodId);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
+	bool hasHyperlane(const WorldData& world, long long a, long long b);
 
 }

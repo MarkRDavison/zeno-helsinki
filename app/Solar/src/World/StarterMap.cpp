@@ -56,29 +56,32 @@ namespace
 		const std::vector<long long> rimwardToHelion{ 5, 3, 2, 1 };
 		world.trucks.push_back(Truck{
 			.id = 1,
-			.route = rimwardToHelion,
-			.hop = 0,
-			.progress = 1.0f,
-			.direction = 1,
-			.speed = civilianTruckSpeed,
+			.motion = {
+				.route = rimwardToHelion,
+				.hop = 0,
+				.progress = 1.0f,
+				.direction = 1,
+				.speed = civilianTruckSpeed },
 			.cargoGoodId = 0,
 			.cargoAmount = 0 });
 		world.trucks.push_back(Truck{
 			.id = 2,
-			.route = rimwardToHelion,
-			.hop = 0,
-			.progress = 0.0f,
-			.direction = 1,
-			.speed = civilianTruckSpeed,
+			.motion = {
+				.route = rimwardToHelion,
+				.hop = 0,
+				.progress = 0.0f,
+				.direction = 1,
+				.speed = civilianTruckSpeed },
 			.cargoGoodId = 0,
 			.cargoAmount = 0 });
 		world.trucks.push_back(Truck{
 			.id = 3,
-			.route = rimwardToHelion,
-			.hop = 0,
-			.progress = 0.5f,
-			.direction = 1,
-			.speed = civilianTruckSpeed,
+			.motion = {
+				.route = rimwardToHelion,
+				.hop = 0,
+				.progress = 0.5f,
+				.direction = 1,
+				.speed = civilianTruckSpeed },
 			.cargoGoodId = SteelGoodId,
 			.cargoAmount = TruckCapacity_Steel });
 
@@ -86,6 +89,7 @@ namespace
 		const long long destroyerId = 2;
 		world.shipClasses.push_back(ShipClass{ .id = nikeId, .name = "Nike" });
 		world.shipClasses.push_back(ShipClass{ .id = destroyerId, .name = "Destroyer" });
+		constexpr float homeFleetSpeed = 50.0f;
 		world.fleets.push_back(Fleet{
 			.id = 1,
 			.name = "Home Fleet",
@@ -93,7 +97,8 @@ namespace
 			.composition = {
 				ClassCount{ .classId = nikeId, .count = 8 },
 				ClassCount{ .classId = destroyerId, .count = 12 },
-			} });
+			},
+			.motion = { .speed = homeFleetSpeed } });
 
 		return world;
 	}

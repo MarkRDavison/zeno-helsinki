@@ -1,4 +1,5 @@
 #include <World/WorldData.hpp>
+#include <utility>
 
 namespace slr
 {
@@ -85,13 +86,13 @@ namespace slr
 
 	bool isTruckAtSystem(const Truck& truck, long long systemId)
 	{
-		if (truck.progress != 0.0f || truck.hop < 0 ||
-			truck.hop >= static_cast<int>(truck.route.size()))
+		if (truck.motion.progress != 0.0f || truck.motion.hop < 0 ||
+			truck.motion.hop >= static_cast<int>(truck.motion.route.size()))
 		{
 			return false;
 		}
 
-		return truck.route[static_cast<size_t>(truck.hop)] == systemId;
+		return truck.motion.route[static_cast<size_t>(truck.motion.hop)] == systemId;
 	}
 
 	long long countTrucksAtSystem(const WorldData& world, long long systemId)
@@ -106,6 +107,24 @@ namespace slr
 		}
 
 		return count;
+	}
+
+	bool hasHyperlane(const WorldData& world, long long a, long long b)
+	{
+		if (a > b)
+		{
+			std::swap(a, b);
+		}
+
+		for (const auto& lane : world.hyperlanes)
+		{
+			if (lane.a == a && lane.b == b)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 }

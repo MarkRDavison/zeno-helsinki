@@ -1,4 +1,5 @@
 #include <World/PickFleet.hpp>
+#include <World/LaneMotion.hpp>
 #include <limits>
 
 namespace slr
@@ -6,6 +7,12 @@ namespace slr
 
 	std::optional<glm::vec2> fleetMarkerPosition(const WorldData& world, const Fleet& fleet, glm::vec2 offset)
 	{
+		const auto onLane = laneWorldPosition(world, fleet.motion);
+		if (onLane.has_value())
+		{
+			return onLane;
+		}
+
 		const StarSystem* system = world.systemById(fleet.systemId);
 		if (system == nullptr)
 		{

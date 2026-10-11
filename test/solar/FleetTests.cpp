@@ -1,4 +1,5 @@
 #include <Views/GalaxyDrawConstants.hpp>
+#include <World/LaneMotion.hpp>
 #include <World/PickFleet.hpp>
 #include <World/PickStarSystem.hpp>
 #include <World/StarterMap.hpp>
@@ -90,17 +91,9 @@ TEST_CASE("trucks are not pickable as fleets", "[slr][Fleet]")
 	const WorldData world = makeStarterMap();
 	REQUIRE_FALSE(world.trucks.empty());
 	const Truck& truck = world.trucks.front();
-	REQUIRE(truck.route.size() >= 2);
-	const StarSystem* from = world.systemById(truck.route[static_cast<size_t>(truck.hop)]);
-	const int toIndex = truck.hop + truck.direction;
-	REQUIRE(from != nullptr);
-	REQUIRE(toIndex >= 0);
-	REQUIRE(toIndex < static_cast<int>(truck.route.size()));
-	const StarSystem* to = world.systemById(truck.route[static_cast<size_t>(toIndex)]);
-	REQUIRE(to != nullptr);
-
-	const glm::vec2 truckPos = glm::mix(from->position, to->position, truck.progress);
-	REQUIRE_FALSE(pickFleet(world, truckPos, GalaxyFleetSize * 0.5f, GalaxyFleetOffset).has_value());
+	const auto truckPos = laneWorldPosition(world, truck.motion);
+	REQUIRE(truckPos.has_value());
+	REQUIRE_FALSE(pickFleet(world, *truckPos, GalaxyFleetSize * 0.5f, GalaxyFleetOffset).has_value());
 }
 
 }

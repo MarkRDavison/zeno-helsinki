@@ -3,8 +3,10 @@
 #include <Views/GalaxyCamera.hpp>
 #include <Views/GalaxyView.hpp>
 #include <Views/TimeChrome.hpp>
+#include <World/GameCommand.hpp>
 #include <World/SimClock.hpp>
 #include <World/WorldData.hpp>
+#include <vector>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
 #include <helsinki/Imgui/Context.hpp>
@@ -44,6 +46,7 @@ namespace slr
 		GalaxyCamera* _galaxyCamera{ nullptr };
 		bool _panning{ false };
 		glm::vec2 _lastMouse{ 0.0f };
+		std::vector<GameCommand> _pendingCommands;
 	};
 
 }

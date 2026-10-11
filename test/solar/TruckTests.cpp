@@ -12,7 +12,7 @@ namespace TruckTests
 	bool truckOnRimwardHelionRoute(const Truck& truck)
 	{
 		const std::vector<long long> expected{ 5, 3, 2, 1 };
-		return truck.route == expected;
+		return truck.motion.route == expected;
 	}
 
 TEST_CASE("starter map has trucks on the Rimward-Helion route", "[slr][Truck]")
@@ -62,7 +62,7 @@ TEST_CASE("after enough steps a truck is in progress on a hop", "[slr][Truck]")
 	bool onLane = false;
 	for (const auto& truck : world.trucks)
 	{
-		if (truck.progress > 0.0f && truck.progress < 1.0f)
+		if (truck.motion.progress > 0.0f && truck.motion.progress < 1.0f)
 		{
 			onLane = true;
 		}
@@ -81,18 +81,19 @@ TEST_CASE("truck hop progress this tick is speed over lane length", "[slr][Truck
 	world.hyperlanes.push_back(Hyperlane{ .a = 1, .b = 2 });
 	world.trucks.push_back(Truck{
 		.id = 1,
-		.route = { 1, 2 },
-		.hop = 0,
-		.progress = 0.0f,
-		.direction = 1,
-		.speed = 50.0f,
+		.motion = {
+			.route = { 1, 2 },
+			.hop = 0,
+			.progress = 0.0f,
+			.direction = 1,
+			.speed = 50.0f },
 		.cargoGoodId = SteelGoodId,
 		.cargoAmount = TruckCapacity_Steel });
 
 	stepGalaxy(world);
 
-	REQUIRE(world.trucks[0].progress == Catch::Approx(0.25f));
-	REQUIRE(world.trucks[0].hop == 0);
+	REQUIRE(world.trucks[0].motion.progress == Catch::Approx(0.25f));
+	REQUIRE(world.trucks[0].motion.hop == 0);
 }
 
 TEST_CASE("truck loads at Rimward only when Helion need remains", "[slr][Truck]")
@@ -101,10 +102,7 @@ TEST_CASE("truck loads at Rimward only when Helion need remains", "[slr][Truck]"
 	world.trucks.clear();
 	world.trucks.push_back(Truck{
 		.id = 1,
-		.route = { 5, 3, 2, 1 },
-		.hop = 0,
-		.progress = 0.0f,
-		.direction = 1,
+		.motion = { .route = { 5, 3, 2, 1 }, .hop = 0, .progress = 0.0f, .direction = 1 },
 		.cargoGoodId = 0,
 		.cargoAmount = 0 });
 
@@ -124,10 +122,7 @@ TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
 	world.mines.clear();
 	world.trucks.push_back(Truck{
 		.id = 1,
-		.route = { 5, 3, 2, 1 },
-		.hop = 3,
-		.progress = 0.0f,
-		.direction = -1,
+		.motion = { .route = { 5, 3, 2, 1 }, .hop = 3, .progress = 0.0f, .direction = -1 },
 		.cargoGoodId = SteelGoodId,
 		.cargoAmount = TruckCapacity_Steel });
 
@@ -150,10 +145,7 @@ TEST_CASE("empty truck at Rimward does not load when Helion need is 0", "[slr][T
 
 	world.trucks.push_back(Truck{
 		.id = 1,
-		.route = { 5, 3, 2, 1 },
-		.hop = 0,
-		.progress = 0.0f,
-		.direction = 1,
+		.motion = { .route = { 5, 3, 2, 1 }, .hop = 0, .progress = 0.0f, .direction = 1 },
 		.cargoGoodId = 0,
 		.cargoAmount = 0 });
 
@@ -163,8 +155,8 @@ TEST_CASE("empty truck at Rimward does not load when Helion need is 0", "[slr][T
 	REQUIRE(rimward != nullptr);
 	REQUIRE(getStockpileAmount(*rimward, SteelGoodId) == 100);
 	REQUIRE(world.trucks[0].cargoAmount == 0);
-	REQUIRE(world.trucks[0].progress == 0.0f);
-	REQUIRE(world.trucks[0].hop == 0);
+	REQUIRE(world.trucks[0].motion.progress == 0.0f);
+	REQUIRE(world.trucks[0].motion.hop == 0);
 }
 
 }
