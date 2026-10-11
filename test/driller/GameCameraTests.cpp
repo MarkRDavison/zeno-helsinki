@@ -7,6 +7,18 @@ namespace drl
 namespace GameCameraTests
 {
 
+TEST_CASE("worldToScreen inverts screenToWorld", "[drl][GameCamera]")
+{
+	GameCamera camera;
+	camera.panByScreenDelta({ 12.0f, -8.0f });
+	camera.zoomAt({ 100.0f, 40.0f }, GameCamera::ZoomStep);
+	const glm::vec2 screen{ 220.0f, 80.0f };
+	const glm::vec2 world = camera.screenToWorld(screen);
+	const glm::vec2 roundTrip = camera.worldToScreen(world);
+	REQUIRE(roundTrip.x == Catch::Approx(screen.x));
+	REQUIRE(roundTrip.y == Catch::Approx(screen.y));
+}
+
 TEST_CASE("screenToWorld is identity at default zoom and pan", "[drl][GameCamera]")
 {
 	GameCamera camera;

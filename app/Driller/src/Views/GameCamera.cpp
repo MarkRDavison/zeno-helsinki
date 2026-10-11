@@ -30,6 +30,11 @@ namespace drl
 		return screen / _zoom + _pan;
 	}
 
+	glm::vec2 GameCamera::worldToScreen(glm::vec2 world) const
+	{
+		return (world - _pan) * _zoom;
+	}
+
 	void GameCamera::zoomAt(glm::vec2 screen, float factor)
 	{
 		const glm::vec2 before = screenToWorld(screen);

@@ -386,6 +386,33 @@ namespace WorkerNeedServiceTests
 		REQUIRE(worker.state == WorkerState::WorkingJob);
 	}
 
+	TEST_CASE("in-progress restore is not preempted by a second seek need", "[drl][WorkerNeedService]")
+	{
+		Fixture f;
+		f.registerNeed("Need_Sleep", 1.0f, 25.0f);
+		f.registerNeed("Need_Food", 0.8f, 20.0f);
+		JobPrototype job{};
+		job.name = "Job_Sleep";
+		job.needRestore[needIdFromName("Need_Sleep")] = 15.0f;
+		f.jobPrototypes.registerPrototype(std::move(job));
+		JobInstance& sleep = f.jobData.jobs.emplace_back();
+		sleep.id = 1;
+		sleep.prototypeId = jobPrototypeIdFromName("Job_Sleep");
+		WorkerInstance& worker = f.addWorker();
+		worker.allocatedJobId = sleep.id;
+		sleep.allocatedWorkerId = worker.id;
+		worker.state = WorkerState::WorkingJob;
+		worker.needValues[needIdFromName("Need_Sleep")] = 26.0f;
+		worker.needValues[needIdFromName("Need_Food")] = 15.0f;
+
+		f.service.update(1.0f);
+
+		REQUIRE(worker.allocatedJobId == sleep.id);
+		REQUIRE(worker.state == WorkerState::WorkingJob);
+		REQUIRE(worker.needValues.at(needIdFromName("Need_Sleep")) == 40.0f);
+		REQUIRE(sleep.allocatedWorkerId == worker.id);
+	}
+
 	TEST_CASE("full restore unassigns worker and leaves repeating job", "[drl][WorkerNeedService]")
 	{
 		Fixture f;

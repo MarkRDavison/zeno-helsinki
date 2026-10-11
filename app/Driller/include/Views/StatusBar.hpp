@@ -27,6 +27,7 @@ namespace drl
 			const IUpgradeService& upgrades);
 		void layout(glm::vec2 framebufferSize);
 		void tickOverlays(float dt);
+		void syncTooltipFrom(hl::ui::Widget* source);
 
 	private:
 		struct ChipWidgets

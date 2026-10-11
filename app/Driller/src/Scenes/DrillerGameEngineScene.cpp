@@ -19,11 +19,14 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraph.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
 #include <Views/DirtFillPushConstantObject.hpp>
+#include <Views/ShaftInspect.hpp>
+#include <Views/WorkerInspect.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/System/Events/ScrollEvent.hpp>
 #include <helsinki/System/Infrastructure/Camera2D.hpp>
 #include <helsinki/System/Resource/ResourceDefinition.hpp>
 #include <algorithm>
+#include <optional>
 #include <stdexcept>
 
 namespace drl
@@ -33,6 +36,69 @@ namespace drl
 	{
 		constexpr float kTileSize = 64.0f;
 		constexpr float kTexSize = 1024.0f;
+		constexpr float kTexWhite = 0.0f;
+		constexpr float kWorkerOutlineThickness = 2.0f;
+		constexpr glm::vec4 kHoverOutlineColor{ 1.0f, 0.92f, 0.15f, 1.0f };
+		constexpr glm::vec4 kSelectedOutlineColor{ 0.28f, 0.92f, 1.0f, 1.0f };
+
+		void appendRectOutline(hl::UiBatch& batch, hl::ui::Box box, glm::vec4 color, float thickness)
+		{
+			const float t = std::min(thickness, std::min(box.size.x, box.size.y) * 0.5f);
+			if (t <= 0.0f)
+			{
+				return;
+			}
+
+			const glm::vec4 uv{ 0.0f, 0.0f, 1.0f, 1.0f };
+			batch.addQuad(hl::ui::Box{ box.pos.x, box.pos.y, box.size.x, t }, color, uv, kTexWhite);
+			batch.addQuad(
+				hl::ui::Box{ box.pos.x, box.pos.y + box.size.y - t, box.size.x, t },
+				color,
+				uv,
+				kTexWhite);
+			batch.addQuad(hl::ui::Box{ box.pos.x, box.pos.y, t, box.size.y }, color, uv, kTexWhite);
+			batch.addQuad(
+				hl::ui::Box{ box.pos.x + box.size.x - t, box.pos.y, t, box.size.y },
+				color,
+				uv,
+				kTexWhite);
+		}
+
+		void appendWorkerOutline(
+			hl::UiBatch& batch,
+			const GameCamera& camera,
+			const WorkerView& workerView,
+			const WorkerData& workers,
+			WorkerId workerId,
+			glm::vec4 color)
+		{
+			if (workerId == 0)
+			{
+				return;
+			}
+
+			for (const WorkerInstance& worker : workers.workers)
+			{
+				if (worker.id != workerId)
+				{
+					continue;
+				}
+
+				const WorkerSpriteBox world = workerSpriteBox(
+					worker,
+					workerView.originX(),
+					workerView.originY(),
+					workerView.tileSize());
+				const glm::vec2 screen = camera.worldToScreen({ world.left, world.top });
+				const float zoom = camera.zoom();
+				appendRectOutline(
+					batch,
+					hl::ui::Box{ screen.x, screen.y, world.width * zoom, world.height * zoom },
+					color,
+					kWorkerOutlineThickness);
+				return;
+			}
+		}
 	}
 
 	DrillerGameEngineScene::DrillerGameEngineScene(
@@ -434,7 +500,8 @@ namespace drl
 			_session.economyService(),
 			_session.upgradeService(),
 			_session.buildingPrototypeService(),
-			_session.uiService());
+			_session.uiService(),
+			_session.needPrototypeService());
 		registerPipelineDraw(
 			"ui_pipeline",
 			[this](hl::PipelineDrawData& pdd) -> void
@@ -511,6 +578,24 @@ namespace drl
 		SceneUiInput uiInput(_engine.getInputManager());
 		_session.uiService().update(uiInput);
 
+		const WorkerId selectedWorkerId = _session.uiService().selectedWorkerId();
+		if (selectedWorkerId != 0)
+		{
+			bool selectedAlive = false;
+			for (const WorkerInstance& worker : _session.gameData().worker.workers)
+			{
+				if (worker.id == selectedWorkerId)
+				{
+					selectedAlive = true;
+					break;
+				}
+			}
+			if (!selectedAlive)
+			{
+				_session.uiService().clearSelectedWorker();
+			}
+		}
+
 		const auto& input = _engine.getInputManager();
 		const auto framebuffer = input.getFramebufferSize();
 		const auto mouse = framebufferMouse();
@@ -543,15 +628,89 @@ namespace drl
 			.primaryReleased = input.isButtonReleased(GLFW_MOUSE_BUTTON_1)
 		};
 		_uiBatch.begin();
+		const WorkerId inspectId = _session.uiService().selectedWorkerId();
+		std::optional<WorkerInspectSnapshot> inspect;
+		if (inspectId != 0)
+		{
+			inspect = makeWorkerInspectSnapshot(
+				inspectId,
+				_session.gameData().worker,
+				_session.workerPrototypeService(),
+				_session.gameData().job,
+				_session.jobPrototypeService(),
+				_session.needPrototypeService());
+		}
+
+		std::optional<DrillHoverTooltip> drillHover;
+		if (_session.uiService().getCurrentState() == UiState::Default
+			&& pickDrillAt(
+				_session.gameData().terrain,
+				_gameCamera->screenToWorld(mouse),
+				_terrainView.originX(),
+				_terrainView.originY(),
+				_terrainView.tileSize()))
+		{
+			const ShaftSpriteBox world = drillSpriteBox(
+				_session.gameData().terrain,
+				_terrainView.originX(),
+				_terrainView.originY(),
+				_terrainView.tileSize());
+			const glm::vec2 screen = _gameCamera->worldToScreen({ world.left, world.top });
+			const float zoom = _gameCamera->zoom();
+			const int level = nextShaftLevel(_session.gameData().terrain.shaftLevel);
+			drillHover = DrillHoverTooltip{
+				.screenPos = screen,
+				.screenSize = { world.width * zoom, world.height * zoom },
+				.text = formatNextShaftTooltip(
+					playerShaftDigCost(level),
+					resourceHudLabel(economy, ResourceMoney))
+			};
+		}
+
 		_hud.tick(
 			_uiBatch,
 			framebuffer,
 			pointer,
 			delta,
 			economy,
-			_session.upgradeService());
+			_session.upgradeService(),
+			inspect,
+			drillHover);
 		const bool uiHit = _hud.hits(mouse);
 		const auto tile = _hoveredTile;
+
+		WorkerId hoveredWorkerId = 0;
+		if (_session.uiService().getCurrentState() == UiState::Default && !uiHit)
+		{
+			const auto picked = pickWorkerAt(
+				_session.gameData().worker,
+				_gameCamera->screenToWorld(mouse),
+				_workerView.originX(),
+				_workerView.originY(),
+				_workerView.tileSize());
+			if (picked.has_value())
+			{
+				hoveredWorkerId = *picked;
+			}
+		}
+		const WorkerId selectedWorkerOutlineId = _session.uiService().selectedWorkerId();
+		appendWorkerOutline(
+			_uiBatch,
+			*_gameCamera,
+			_workerView,
+			_session.gameData().worker,
+			selectedWorkerOutlineId,
+			kSelectedOutlineColor);
+		if (hoveredWorkerId != 0 && hoveredWorkerId != selectedWorkerOutlineId)
+		{
+			appendWorkerOutline(
+				_uiBatch,
+				*_gameCamera,
+				_workerView,
+				_session.gameData().worker,
+				hoveredWorkerId,
+				kHoverOutlineColor);
+		}
 
 		if (input.isButtonReleased(GLFW_MOUSE_BUTTON_2) && !uiHit
 			&& tile.y >= 0 && tile.x != 0)
@@ -592,6 +751,21 @@ namespace drl
 				}
 			}
 			return;
+		}
+
+		{
+			const auto picked = pickWorkerAt(
+				_session.gameData().worker,
+				_gameCamera->screenToWorld(mouse),
+				_workerView.originX(),
+				_workerView.originY(),
+				_workerView.tileSize());
+			if (picked.has_value())
+			{
+				_session.uiService().selectWorker(*picked);
+				return;
+			}
+			_session.uiService().clearSelectedWorker();
 		}
 
 		if (tile.y < 0)

@@ -1,4 +1,5 @@
 #include <Views/WorkerView.hpp>
+#include <Views/WorkerInspect.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/SpritePushConstantObject.hpp>
 #include <helsinki/System/glm.hpp>
 
@@ -8,8 +9,6 @@ namespace drl
 	namespace
 	{
 		constexpr int kFrameWorker = 17;
-		constexpr float kWorkerWidthTiles = 0.4f;
-		constexpr float kWorkerHeightTiles = 0.8f;
 	}
 
 	WorkerView::WorkerView(const WorkerData& workerData, float originX, float originY, float tileSize)

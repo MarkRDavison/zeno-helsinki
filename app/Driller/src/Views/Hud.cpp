@@ -111,7 +111,8 @@ namespace drl
 		const IEconomyResourceService& economy,
 		const IUpgradeService& upgrades,
 		const BuildingPrototypeService& buildingPrototypes,
-		IUiService& ui)
+		IUiService& ui,
+		const INeedPrototypeService& needPrototypes)
 	{
 		_typeface = std::make_unique<SceneFontTypeface>(font);
 		_root = std::make_unique<hl::ui::Node>();
@@ -119,6 +120,11 @@ namespace drl
 
 		_statusBar.initialise(*_typeface, *_root, economy, upgrades);
 		_buildBar.initialise(*_typeface, *_root, buildingPrototypes, ui);
+		_inspectPanel.initialise(*_typeface, *_root, needPrototypes);
+		_drillAnchor = std::make_unique<hl::ui::Panel>(_root->addChild());
+		_drillAnchor->opacity = 0.0f;
+		_drillAnchor->hitTestEnabled = false;
+		_drillAnchor->visible = false;
 		_snackbar = std::make_unique<hl::ui::SnackbarHost>(*_root, *_typeface);
 		_snackbar->corner = hl::ui::SnackbarCorner::TopRight;
 	}
@@ -129,7 +135,9 @@ namespace drl
 		const hl::ui::Pointer& pointer,
 		float dt,
 		const IEconomyResourceService& economy,
-		const IUpgradeService& upgrades)
+			const IUpgradeService& upgrades,
+			const std::optional<WorkerInspectSnapshot>& inspect,
+			const std::optional<DrillHoverTooltip>& drillHover)
 	{
 		if (_root == nullptr)
 		{
@@ -138,11 +146,35 @@ namespace drl
 
 		_statusBar.syncValues(economy, upgrades);
 		_buildBar.syncEnabled(economy);
+		_inspectPanel.sync(inspect);
+		if (_drillAnchor != nullptr)
+		{
+			const bool show = drillHover.has_value();
+			_drillAnchor->visible = show;
+			if (show)
+			{
+				_drillAnchor->tooltip = drillHover->text;
+				_drillAnchor->node().setTopLeft(drillHover->screenSize);
+				_drillAnchor->node().relative = drillHover->screenPos;
+				_drillAnchor->node().intrinsicSize.reset();
+			}
+			else
+			{
+				_drillAnchor->tooltip.clear();
+			}
+		}
+
 		hl::ui::prepareTree(*_root);
 		_statusBar.layout(framebufferSize);
 		_buildBar.layout();
+		_inspectPanel.layout(framebufferSize);
 		hl::ui::layout(*_root, hl::ui::Box{ 0.0f, 0.0f, framebufferSize.x, framebufferSize.y });
 		hl::ui::dispatch(*_root, pointer);
+		if (drillHover.has_value() && hl::ui::hitTest(*_root, pointer.position) == nullptr)
+		{
+			_statusBar.syncTooltipFrom(_drillAnchor.get());
+		}
+
 		_statusBar.tickOverlays(dt);
 		if (_snackbar != nullptr)
 		{

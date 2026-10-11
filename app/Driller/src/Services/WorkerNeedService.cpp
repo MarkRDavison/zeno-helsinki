@@ -216,6 +216,37 @@ namespace drl
 		return _jobPrototypes.getPrototype(job.prototypeId).needRestore.contains(needId);
 	}
 
+	bool WorkerNeedService::restoreJobIncomplete(const WorkerInstance& worker) const
+	{
+		if (worker.allocatedJobId == 0)
+		{
+			return false;
+		}
+
+		const JobInstance& job = _jobData.getJob(worker.allocatedJobId);
+		if (!_jobPrototypes.isPrototypeRegistered(job.prototypeId))
+		{
+			return false;
+		}
+
+		const JobPrototype& jobPrototype = _jobPrototypes.getPrototype(job.prototypeId);
+		if (jobPrototype.needRestore.empty())
+		{
+			return false;
+		}
+
+		for (const auto& [needId, restorePerSecond] : jobPrototype.needRestore)
+		{
+			const auto it = worker.needValues.find(needId);
+			if (it == worker.needValues.end() || it->second < jobPrototype.restoreUntil)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	void WorkerNeedService::unassign(WorkerInstance& worker)
 	{
 		if (worker.allocatedJobId == 0)
@@ -240,6 +271,11 @@ namespace drl
 		}
 
 		if (worker.allocatedJobId == 0)
+		{
+			return;
+		}
+
+		if (restoreJobIncomplete(worker))
 		{
 			return;
 		}

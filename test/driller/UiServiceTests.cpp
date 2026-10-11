@@ -73,6 +73,34 @@ namespace UiServiceTests
 		REQUIRE(f.ui.getActiveBuildingType().empty());
 	}
 
+	TEST_CASE("selectWorker does not enter placing", "[drl][UiService]")
+	{
+		Fixture f;
+		f.ui.selectWorker(7);
+		REQUIRE(f.ui.getCurrentState() == UiState::Default);
+		REQUIRE(f.ui.selectedWorkerId() == 7);
+		REQUIRE(f.ui.getActiveBuildingType().empty());
+	}
+
+	TEST_CASE("escape clears selected worker", "[drl][UiService]")
+	{
+		Fixture f;
+		f.ui.selectWorker(3);
+		FakeUiInput escape;
+		escape.down.insert(kUiKeyEscape);
+		f.ui.update(escape);
+		REQUIRE(f.ui.selectedWorkerId() == 0);
+	}
+
+	TEST_CASE("selectBuilding clears selected worker", "[drl][UiService]")
+	{
+		Fixture f;
+		f.ui.selectWorker(4);
+		f.ui.selectBuilding("Building_Bunk");
+		REQUIRE(f.ui.selectedWorkerId() == 0);
+		REQUIRE(f.ui.getCurrentState() == UiState::PlacingBuilding);
+	}
+
 	TEST_CASE("digit keys do not select a building", "[drl][UiService]")
 	{
 		Fixture f;

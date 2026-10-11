@@ -126,4 +126,14 @@ namespace drl
 		}
 	}
 
+	void StatusBar::syncTooltipFrom(hl::ui::Widget* source)
+	{
+		if (_tooltip == nullptr)
+		{
+			return;
+		}
+
+		_tooltip->syncFromHit(source);
+	}
+
 }

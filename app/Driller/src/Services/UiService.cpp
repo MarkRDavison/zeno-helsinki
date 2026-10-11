@@ -10,9 +10,19 @@ namespace drl
 
 	void UiService::update(const IUiInput& input)
 	{
-		if (input.isKeyDown(kUiKeyEscape) && !_activeBuilding.empty())
+		if (!input.isKeyDown(kUiKeyEscape))
+		{
+			return;
+		}
+
+		if (!_activeBuilding.empty())
 		{
 			clearActiveBuilding();
+		}
+
+		if (_selectedWorkerId != 0)
+		{
+			clearSelectedWorker();
 		}
 	}
 
@@ -24,6 +34,7 @@ namespace drl
 			{
 				_activeBuilding = prototypeName;
 				_currentState = UiState::PlacingBuilding;
+				clearSelectedWorker();
 				return;
 			}
 		}
@@ -43,6 +54,21 @@ namespace drl
 	{
 		_activeBuilding.clear();
 		_currentState = UiState::Default;
+	}
+
+	void UiService::selectWorker(WorkerId workerId)
+	{
+		_selectedWorkerId = workerId;
+	}
+
+	void UiService::clearSelectedWorker()
+	{
+		_selectedWorkerId = 0;
+	}
+
+	WorkerId UiService::selectedWorkerId() const
+	{
+		return _selectedWorkerId;
 	}
 
 }

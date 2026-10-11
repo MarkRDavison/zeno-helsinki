@@ -48,6 +48,7 @@ namespace drl
 		void preemptIfNeeded(WorkerInstance& worker);
 		void unassign(WorkerInstance& worker);
 		bool currentJobRestores(const WorkerInstance& worker, NeedId needId) const;
+		bool restoreJobIncomplete(const WorkerInstance& worker) const;
 		bool hasFreeRestoreJob(NeedId needId) const;
 
 		WorkerData& _workerData;

@@ -17,6 +17,7 @@ namespace drl
 		void notifyFramebufferChangeSize(uint32_t width, uint32_t height) override;
 
 		glm::vec2 screenToWorld(glm::vec2 screen) const;
+		glm::vec2 worldToScreen(glm::vec2 world) const;
 		void zoomAt(glm::vec2 screen, float factor);
 		void panByScreenDelta(glm::vec2 delta);
 
