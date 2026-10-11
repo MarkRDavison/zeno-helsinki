@@ -2,6 +2,7 @@ SET(MODULE_LIBS
 	"helsinki-system"
 	"helsinki-ui"
 	"helsinki-renderer"
+	glfw
 )
 
 SET(INCLUDE_DIRS

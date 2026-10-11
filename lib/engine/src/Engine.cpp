@@ -8,8 +8,10 @@
 #include <helsinki/Renderer/Vulkan/RenderGraph/CameraUniformBufferObject.hpp>
 #include <helsinki/Renderer/Resource/TextureResource.hpp>
 #include <helsinki/Renderer/Resource/ImageSamplerResource.hpp>
+#include <helsinki/Renderer/RendererConfiguration.hpp>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <vector>
 
 namespace hl
 {
@@ -433,11 +435,17 @@ namespace hl
 		{
 			{
 				ZoneScopedN("Create Instance");
-				_instance.create(title);
+				uint32_t glfwExtensionCount = 0;
+				const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+				_instance.create(
+					title,
+					std::vector<const char*>(glfwExtensions, glfwExtensions + glfwExtensionCount));
 			}
 			{
 				ZoneScopedN("Create Surface");
-				_surface.create(_window);
+				VkSurfaceKHR surface{ VK_NULL_HANDLE };
+				CHECK_VK_RESULT(glfwCreateWindowSurface(_instance.handle(), _window, nullptr, &surface));
+				_surface.create(surface);
 			}
 			{
 				ZoneScopedN("Create Device");
@@ -445,7 +453,15 @@ namespace hl
 			}
 			{
 				ZoneScopedN("Create swapchain");
-				_swapChain.create(_config.EnableVsync);
+				int width = 0;
+				int height = 0;
+				glfwGetFramebufferSize(_window, &width, &height);
+				_swapChain.create(
+					_config.EnableVsync,
+					VkExtent2D{
+						static_cast<uint32_t>(width),
+						static_cast<uint32_t>(height)
+					});
 			}
 			{
 				_graphicsCommandPool.create();
@@ -493,7 +509,12 @@ namespace hl
 		_syncContext.waitLastSubmitted();
 
 		_swapChain.destroy();
-		_swapChain.create(_config.EnableVsync);
+		_swapChain.create(
+			_config.EnableVsync,
+			VkExtent2D{
+				static_cast<uint32_t>(width),
+				static_cast<uint32_t>(height)
+			});
 
 		_currentEngineScene->recreate((uint32_t)width, (uint32_t)height);
 		_currentEngineScene->updateAllDescriptorSets();

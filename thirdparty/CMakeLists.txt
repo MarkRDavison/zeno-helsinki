@@ -75,13 +75,16 @@ if(HELSINKI_BUILD_TESTS)
 	FetchContent_MakeAvailable(FakeIt)
 endif()
 
+# GLFW keeps global state. Engine and imgui both call it; a static copy per
+# Helsinki DLL would disagree. Follow Helsinki BUILD_SHARED_LIBS.
+set(BUILD_SHARED_LIBS ${_helsinki_saved_build_shared_libs})
 FetchContent_Declare(
   glfw
   GIT_REPOSITORY https://github.com/glfw/glfw.git
   GIT_TAG        3.4
 )
-
 FetchContent_MakeAvailable(glfw)
+set(BUILD_SHARED_LIBS OFF)
 
 # SOURCE_SUBDIR skips glm's CMake (cmake_minimum_required 3.6 deprecation warning).
 FetchContent_Declare(

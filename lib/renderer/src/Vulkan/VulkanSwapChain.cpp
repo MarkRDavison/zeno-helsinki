@@ -1,12 +1,10 @@
 
 #include <helsinki/Renderer/Vulkan/VulkanSwapChain.hpp>
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 #include <iostream>
 #include <string>
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 
 namespace hl
 {
@@ -20,13 +18,13 @@ namespace hl
 
     }
 
-    void VulkanSwapChain::create(bool useVsync)
+    void VulkanSwapChain::create(bool useVsync, VkExtent2D framebufferExtent)
     {
         {
             auto swapChainSupport = hl::VulkanSwapChain::querySwapChainSupport(_device.physicalDevice(), _surface.handle());
             auto surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
             auto presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, useVsync);
-            auto extent = chooseSwapExtent(swapChainSupport.capabilities, _surface.window());
+            auto extent = chooseSwapExtent(swapChainSupport.capabilities, framebufferExtent);
 
             uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
             if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
@@ -178,27 +176,17 @@ namespace hl
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window)
+    VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, VkExtent2D framebufferExtent)
     {
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
         {
             return capabilities.currentExtent;
         }
-        else
-        {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
 
-            VkExtent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height)
-            };
-
-            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-
-            return actualExtent;
-        }
+        VkExtent2D actualExtent = framebufferExtent;
+        actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+        return actualExtent;
     }
 
     VkFormat VulkanSwapChain::findSupportedFormat(VkPhysicalDevice p, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)

@@ -2,7 +2,6 @@ SET(MODULE_LIBS
 	helsinki-system
 	Vulkan::Vulkan
 	glslang::glslang
-	glfw
 	stb
 	tinyobjloader
 	tinyxml2

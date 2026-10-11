@@ -2,9 +2,6 @@
 #include <helsinki/Renderer/RendererConfiguration.hpp>
 #include <glslang/Public/ShaderLang.h>
 #include <stdexcept>
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include <iostream>
 
 const char* EngineName = "No Engine";
@@ -43,7 +40,7 @@ static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugU
 
 namespace hl
 {
-	void VulkanInstance::create(const char* title)
+	void VulkanInstance::create(const char* title, const std::vector<const char*>& windowExtensions)
 	{
         if (enableValidationLayers && !checkValidationLayerSupport())
         {
@@ -62,7 +59,7 @@ namespace hl
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
 
-        auto extensions = VulkanInstance::getRequiredExtensions();
+        auto extensions = VulkanInstance::getRequiredExtensions(windowExtensions);
         createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
         createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -131,13 +128,9 @@ namespace hl
         return true;
 	}
 
-    std::vector<const char*> VulkanInstance::getRequiredExtensions()
+    std::vector<const char*> VulkanInstance::getRequiredExtensions(const std::vector<const char*>& windowExtensions)
     {
-        uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-        std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+        std::vector<const char*> extensions(windowExtensions);
 
         if (enableValidationLayers)
         {

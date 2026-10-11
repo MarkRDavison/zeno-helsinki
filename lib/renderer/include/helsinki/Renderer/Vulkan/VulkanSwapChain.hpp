@@ -20,13 +20,13 @@ namespace hl
 			VulkanDevice& device,
 			VulkanSurface& surface
 		);
-		void create(bool useVsync);
+		void create(bool useVsync, VkExtent2D framebufferExtent);
 		void destroy();
 
 		static VulkanSwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice p, VkSurfaceKHR s);
 		static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 		static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes, bool useVsync);
-		static VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow *window);
+		static VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, VkExtent2D framebufferExtent);
 
 		static VkFormat findSupportedFormat(VkPhysicalDevice p, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 		static VkFormat findDepthFormat(VkPhysicalDevice p);
