@@ -11,11 +11,13 @@ target_include_directories(Solar PUBLIC
 TARGET_LINK_LIBRARIES(Solar PRIVATE "helsinki-system")
 TARGET_LINK_LIBRARIES(Solar PRIVATE "helsinki-renderer")
 TARGET_LINK_LIBRARIES(Solar PRIVATE "helsinki-engine")
+TARGET_LINK_LIBRARIES(Solar PRIVATE "helsinki-imgui")
 
 SET(MODULE_LIBS
 	"helsinki-system"
 	"helsinki-renderer"
 	"helsinki-engine"
+	"helsinki-imgui"
 	Solar
 )
 

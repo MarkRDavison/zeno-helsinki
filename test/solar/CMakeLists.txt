@@ -2,6 +2,7 @@ SET(MODULE_LIBS
 	"Catch2::Catch2WithMain"
 	Solar
 	"helsinki-system"
+	"helsinki-imgui"
 )
 
 testsubmodule("solar" "${MODULE_LIBS}")

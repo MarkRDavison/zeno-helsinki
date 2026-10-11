@@ -1,5 +1,6 @@
 #include <Scenes/TitleEngineScene.hpp>
 #include <Scenes/GameEngineScene.hpp>
+#include <helsinki/Imgui/Context.hpp>
 #include <Scenes/TextMenuSupport.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/RenderGraphHelpers.hpp>
@@ -13,9 +14,11 @@ namespace slr
 
 	TitleEngineScene::TitleEngineScene(
 		hl::Engine& engine,
-		const hl::EngineConfiguration& engineConfig)
+		const hl::EngineConfiguration& engineConfig,
+		hl::imgui::Context& imgui)
 		: EngineScene(engine)
 		, _engineConfig(engineConfig)
+		, _imgui(imgui)
 	{
 		_cameras.insert({ "Default", new hl::Camera2D() });
 		_engine.getEventBus().AddListener(this);
@@ -64,6 +67,11 @@ namespace slr
 
 	void TitleEngineScene::update(uint32_t, float)
 	{
+		if (hl::imgui::Context::wantCaptureMouse())
+		{
+			return;
+		}
+
 		const auto mouse = _engine.getInputManager().getMousePosition();
 		const auto checkClick = _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1);
 
@@ -101,7 +109,7 @@ namespace slr
 		{
 			if (ke->GetKeyCode() == GLFW_KEY_ENTER)
 			{
-				_engine.setScene(new GameEngineScene(_engine, _engineConfig));
+				_engine.setScene(new GameEngineScene(_engine, _engineConfig, _imgui));
 			}
 		}
 		else if (auto wre = dynamic_cast<const hl::WindowResizeEvent*>(&event))
@@ -125,7 +133,7 @@ namespace slr
 		}
 		else if (name == "start")
 		{
-			_engine.setScene(new GameEngineScene(_engine, _engineConfig));
+			_engine.setScene(new GameEngineScene(_engine, _engineConfig, _imgui));
 		}
 	}
 

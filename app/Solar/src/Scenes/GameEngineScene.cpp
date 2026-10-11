@@ -2,6 +2,8 @@
 #include <GalaxyPushConstantObject.hpp>
 #include <Scenes/TextMenuSupport.hpp>
 #include <Scenes/TitleEngineScene.hpp>
+#include <Views/GalaxyDrawConstants.hpp>
+#include <World/PickStarSystem.hpp>
 #include <World/StarterMap.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
 #include <helsinki/Renderer/RendererConfiguration.hpp>
@@ -19,9 +21,11 @@ namespace slr
 
 	GameEngineScene::GameEngineScene(
 		hl::Engine& engine,
-		const hl::EngineConfiguration& engineConfig)
+		const hl::EngineConfiguration& engineConfig,
+		hl::imgui::Context& imgui)
 		: EngineScene(engine)
 		, _engineConfig(engineConfig)
+		, _imgui(imgui)
 		, _world(makeStarterMap())
 	{
 		_cameras.insert({ "Ui", new hl::Camera2D() });
@@ -39,10 +43,19 @@ namespace slr
 		}
 
 		_engine.getEventBus().AddListener(this);
+		_imgui.setBuildUi(
+			[this]
+			{
+				if (!_galaxy.drawInspector())
+				{
+					_galaxy.setSelectedSystemId(std::nullopt);
+				}
+			});
 	}
 
 	GameEngineScene::~GameEngineScene()
 	{
+		_imgui.setBuildUi({});
 		_engine.getEventBus().RemoveListener(this);
 	}
 
@@ -176,6 +189,12 @@ namespace slr
 
 	void GameEngineScene::update(uint32_t, float)
 	{
+		if (hl::imgui::Context::wantCaptureMouse())
+		{
+			_panning = false;
+			return;
+		}
+
 		const auto mouse = _engine.getInputManager().getMousePosition();
 		const bool middleDown = _engine.getInputManager().isButtonDown(GLFW_MOUSE_BUTTON_MIDDLE);
 		if (middleDown)
@@ -191,20 +210,30 @@ namespace slr
 		{
 			_panning = false;
 		}
+
+		if (!_panning && _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1))
+		{
+			const glm::vec2 world = _galaxyCamera->worldFromScreen(mouse);
+			_galaxy.setSelectedSystemId(pickStarSystem(_world, world, GalaxyNodeSize * 0.5f));
+		}
 	}
 
 	void GameEngineScene::OnEvent(const hl::Event& event)
 	{
 		if (auto ke = dynamic_cast<const hl::KeyPressEvent*>(&event))
 		{
-			if (ke->GetKeyCode() == GLFW_KEY_BACKSPACE)
+			if (!hl::imgui::Context::wantCaptureKeyboard()
+				&& ke->GetKeyCode() == GLFW_KEY_BACKSPACE)
 			{
-				_engine.setScene(new TitleEngineScene(_engine, _engineConfig));
+				_engine.setScene(new TitleEngineScene(_engine, _engineConfig, _imgui));
 			}
 		}
 		else if (auto se = dynamic_cast<const hl::ScrollEvent*>(&event))
 		{
-			_galaxyCamera->zoomAtScreen(_engine.getInputManager().getMousePosition(), se->getY());
+			if (!hl::imgui::Context::wantCaptureMouse())
+			{
+				_galaxyCamera->zoomAtScreen(_engine.getInputManager().getMousePosition(), se->getY());
+			}
 		}
 	}
 

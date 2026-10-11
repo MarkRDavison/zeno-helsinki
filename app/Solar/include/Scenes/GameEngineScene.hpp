@@ -5,6 +5,7 @@
 #include <World/WorldData.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
+#include <helsinki/Imgui/Context.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 #include <helsinki/System/glm.hpp>
 
@@ -16,7 +17,8 @@ namespace slr
 	public:
 		GameEngineScene(
 			hl::Engine& engine,
-			const hl::EngineConfiguration& engineConfig);
+			const hl::EngineConfiguration& engineConfig,
+			hl::imgui::Context& imgui);
 		~GameEngineScene();
 
 		void initialise(
@@ -32,6 +34,7 @@ namespace slr
 
 	private:
 		const hl::EngineConfiguration& _engineConfig;
+		hl::imgui::Context& _imgui;
 		WorldData _world;
 		GalaxyView _galaxy;
 		GalaxyCamera* _galaxyCamera{ nullptr };

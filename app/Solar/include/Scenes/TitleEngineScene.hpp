@@ -2,6 +2,7 @@
 
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
+#include <helsinki/Imgui/Context.hpp>
 #include <helsinki/System/Events/EventListener.hpp>
 
 namespace slr
@@ -12,7 +13,8 @@ namespace slr
 	public:
 		TitleEngineScene(
 			hl::Engine& engine,
-			const hl::EngineConfiguration& engineConfig);
+			const hl::EngineConfiguration& engineConfig,
+			hl::imgui::Context& imgui);
 		~TitleEngineScene();
 
 		void initialise(
@@ -31,6 +33,7 @@ namespace slr
 		void handleTextClicked(const std::string& name);
 
 		const hl::EngineConfiguration& _engineConfig;
+		hl::imgui::Context& _imgui;
 	};
 
 }

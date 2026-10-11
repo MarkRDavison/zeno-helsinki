@@ -2,6 +2,7 @@
 #include <Scenes/TitleEngineScene.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/Input/InputManager.hpp>
+#include <helsinki/Imgui/Context.hpp>
 #include <helsinki/System/Utils/ServiceProvider.hpp>
 
 static void registerServices(hl::ServiceProvider& services)
@@ -24,7 +25,11 @@ int main()
 	engineConfig.applyConfig("/data/config.json", std::string(slr::SolarConfig::RootPath));
 
 	engine.init(engineConfig);
-	engine.setScene(new slr::TitleEngineScene(engine, engineConfig));
+
+	hl::imgui::Context imgui;
+	imgui.init(engine);
+
+	engine.setScene(new slr::TitleEngineScene(engine, engineConfig, imgui));
 
 	engine.run();
 
