@@ -213,7 +213,7 @@ namespace
 		}
 
 		bool open = true;
-		ImGui::SetNextWindowPos(ImVec2(24.0f, 24.0f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(24.0f, 56.0f), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin("System", &open))
 		{
 			ImGui::TextUnformatted(system->name.c_str());

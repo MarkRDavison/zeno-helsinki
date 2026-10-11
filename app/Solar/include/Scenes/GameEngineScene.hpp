@@ -2,6 +2,8 @@
 
 #include <Views/GalaxyCamera.hpp>
 #include <Views/GalaxyView.hpp>
+#include <Views/TimeChrome.hpp>
+#include <World/SimClock.hpp>
 #include <World/WorldData.hpp>
 #include <helsinki/Engine/Engine.hpp>
 #include <helsinki/Engine/EngineScene.hpp>
@@ -36,6 +38,8 @@ namespace slr
 		const hl::EngineConfiguration& _engineConfig;
 		hl::imgui::Context& _imgui;
 		WorldData _world;
+		SimClock _clock;
+		TimeChrome _timeChrome;
 		GalaxyView _galaxy;
 		GalaxyCamera* _galaxyCamera{ nullptr };
 		bool _panning{ false };

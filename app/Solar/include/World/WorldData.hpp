@@ -22,6 +22,7 @@ namespace slr
 
 	struct WorldData
 	{
+		long long tick{ 0 };
 		std::vector<StarSystem> systems;
 		std::vector<Hyperlane> hyperlanes;
 

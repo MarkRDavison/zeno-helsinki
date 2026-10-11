@@ -46,6 +46,15 @@ namespace slr
 		_imgui.setBuildUi(
 			[this]
 			{
+				const TimeChromeResult time = _timeChrome.draw(_clock, _world.tick);
+				if (time.speed.has_value())
+				{
+					_clock.setSpeed(time.speed.value());
+				}
+				if (time.paused.has_value())
+				{
+					_clock.setPaused(time.paused.value());
+				}
 				if (!_galaxy.drawInspector())
 				{
 					_galaxy.setSelectedSystemId(std::nullopt);
@@ -187,8 +196,16 @@ namespace slr
 			renderpasses);
 	}
 
-	void GameEngineScene::update(uint32_t, float)
+	void GameEngineScene::update(uint32_t, float delta)
 	{
+		const int ticks = _clock.takeTicks(delta);
+		for (int i = 0; i < ticks; ++i)
+		{
+			// TODO: Should this instead call a world update service?
+			// Then that updates all the appropriate services, and then (or before) updates the tick number?
+			++_world.tick;
+		}
+
 		if (hl::imgui::Context::wantCaptureMouse())
 		{
 			_panning = false;
@@ -222,10 +239,17 @@ namespace slr
 	{
 		if (auto ke = dynamic_cast<const hl::KeyPressEvent*>(&event))
 		{
-			if (!hl::imgui::Context::wantCaptureKeyboard()
-				&& ke->GetKeyCode() == GLFW_KEY_BACKSPACE)
+			if (hl::imgui::Context::wantCaptureKeyboard())
+			{
+				return;
+			}
+			if (ke->GetKeyCode() == GLFW_KEY_BACKSPACE)
 			{
 				_engine.setScene(new TitleEngineScene(_engine, _engineConfig, _imgui));
+			}
+			else if (ke->GetKeyCode() == GLFW_KEY_SPACE)
+			{
+				_clock.togglePaused();
 			}
 		}
 		else if (auto se = dynamic_cast<const hl::ScrollEvent*>(&event))
