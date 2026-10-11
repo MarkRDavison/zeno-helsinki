@@ -82,6 +82,19 @@ namespace
 			.cargoGoodId = SteelGoodId,
 			.cargoAmount = TruckCapacity_Steel });
 
+		const long long nikeId = 1;
+		const long long destroyerId = 2;
+		world.shipClasses.push_back(ShipClass{ .id = nikeId, .name = "Nike" });
+		world.shipClasses.push_back(ShipClass{ .id = destroyerId, .name = "Destroyer" });
+		world.fleets.push_back(Fleet{
+			.id = 1,
+			.name = "Home Fleet",
+			.systemId = 1,
+			.composition = {
+				ClassCount{ .classId = nikeId, .count = 8 },
+				ClassCount{ .classId = destroyerId, .count = 12 },
+			} });
+
 		return world;
 	}
 

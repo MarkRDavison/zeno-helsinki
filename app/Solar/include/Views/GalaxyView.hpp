@@ -20,7 +20,9 @@ namespace slr
 	public:
 		void initialise(hl::TextSystem& textSystem, const WorldData& world, int galaxyCameraIndex);
 		void setSelectedSystemId(std::optional<long long> id);
+		void setSelectedFleetId(std::optional<long long> id);
 		std::optional<long long> selectedSystemId() const { return _selectedSystemId; }
+		std::optional<long long> selectedFleetId() const { return _selectedFleetId; }
 
 		void drawGraph(hl::PipelineDrawData& pdd, hl::ResourceManager& resourceManager) const;
 		void drawLabels(hl::PipelineDrawData& pdd, hl::TextSystem& textSystem) const;
@@ -37,6 +39,7 @@ namespace slr
 		int _galaxyCameraIndex{ 0 };
 		std::vector<Label> _labels;
 		std::optional<long long> _selectedSystemId;
+		std::optional<long long> _selectedFleetId;
 	};
 
 }

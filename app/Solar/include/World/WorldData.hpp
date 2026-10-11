@@ -47,6 +47,26 @@ namespace slr
 		long long cargoAmount{ 0 };
 	};
 
+	struct ShipClass
+	{
+		long long id{ 0 };
+		std::string name;
+	};
+
+	struct ClassCount
+	{
+		long long classId{ 0 };
+		long long count{ 0 };
+	};
+
+	struct Fleet
+	{
+		long long id{ 0 };
+		std::string name;
+		long long systemId{ 0 };
+		std::vector<ClassCount> composition;
+	};
+
 	struct WorldData
 	{
 		long long tick{ 0 };
@@ -54,9 +74,15 @@ namespace slr
 		std::vector<Hyperlane> hyperlanes;
 		std::vector<Mine> mines;
 		std::vector<Truck> trucks;
+		std::vector<ShipClass> shipClasses;
+		std::vector<Fleet> fleets;
 
 		const StarSystem* systemById(long long id) const;
 		StarSystem* systemById(long long id);
+		const ShipClass* shipClassById(long long id) const;
+		ShipClass* shipClassById(long long id);
+		const Fleet* fleetById(long long id) const;
+		Fleet* fleetById(long long id);
 	};
 
 	long long getStockpileAmount(const StarSystem& system, long long goodId);

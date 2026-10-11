@@ -2,6 +2,7 @@
 #include <GalaxyPushConstantObject.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
 #include <World/Goods.hpp>
+#include <World/PickFleet.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
@@ -20,6 +21,8 @@ namespace
 	const glm::vec4 SelectedNodeColour{ 1.0f, 0.95f, 0.75f, 1.0f };
 	const glm::vec4 LaneColour{ 0.28f, 0.36f, 0.48f, 1.0f };
 	const glm::vec4 TruckColour{ 0.95f, 0.65f, 0.22f, 1.0f };
+	const glm::vec4 FleetColour{ 0.45f, 0.82f, 0.62f, 1.0f };
+	const glm::vec4 SelectedFleetColour{ 0.7f, 0.95f, 0.8f, 1.0f };
 
 	void drawUnitQuad(
 		hl::PipelineDrawData& pdd,
@@ -115,6 +118,7 @@ namespace
 		_labels.clear();
 		_labels.reserve(world.systems.size());
 		_selectedSystemId.reset();
+		_selectedFleetId.reset();
 
 		for (const auto& system : world.systems)
 		{
@@ -127,10 +131,21 @@ namespace
 
 	void GalaxyView::setSelectedSystemId(std::optional<long long> id)
 	{
+		_selectedFleetId.reset();
 		_selectedSystemId = id;
 		if (_selectedSystemId.has_value() && _world != nullptr && _world->systemById(*_selectedSystemId) == nullptr)
 		{
 			_selectedSystemId.reset();
+		}
+	}
+
+	void GalaxyView::setSelectedFleetId(std::optional<long long> id)
+	{
+		_selectedSystemId.reset();
+		_selectedFleetId = id;
+		if (_selectedFleetId.has_value() && _world != nullptr && _world->fleetById(*_selectedFleetId) == nullptr)
+		{
+			_selectedFleetId.reset();
 		}
 	}
 
@@ -197,6 +212,26 @@ namespace
 			drawUnitQuad(pdd, quad, model, TruckColour, _galaxyCameraIndex);
 		}
 
+		for (const auto& fleet : _world->fleets)
+		{
+			const auto marker = fleetMarkerPosition(*_world, fleet, GalaxyFleetOffset);
+			if (!marker.has_value())
+			{
+				continue;
+			}
+
+			const bool selected = _selectedFleetId.has_value() && fleet.id == *_selectedFleetId;
+			const glm::mat4 model =
+				glm::translate(glm::mat4(1.0f), glm::vec3(*marker, 0.0f)) *
+				glm::scale(glm::mat4(1.0f), glm::vec3(GalaxyFleetSize, GalaxyFleetSize, 1.0f));
+			drawUnitQuad(
+				pdd,
+				quad,
+				model,
+				selected ? SelectedFleetColour : FleetColour,
+				_galaxyCameraIndex);
+		}
+
 		for (const auto& system : _world->systems)
 		{
 			const bool selected = _selectedSystemId.has_value() && system.id == *_selectedSystemId;
@@ -232,7 +267,47 @@ namespace
 
 	bool GalaxyView::drawInspector() const
 	{
-		if (!_selectedSystemId.has_value() || _world == nullptr)
+		if (_world == nullptr)
+		{
+			return true;
+		}
+
+		if (_selectedFleetId.has_value())
+		{
+			const Fleet* fleet = _world->fleetById(*_selectedFleetId);
+			if (fleet == nullptr)
+			{
+				return false;
+			}
+
+			const StarSystem* at = _world->systemById(fleet->systemId);
+			bool open = true;
+			ImGui::SetNextWindowPos(ImVec2(24.0f, 56.0f), ImGuiCond_FirstUseEver);
+			if (ImGui::Begin("Fleet", &open))
+			{
+				ImGui::TextUnformatted(fleet->name.c_str());
+				ImGui::TextUnformatted(("id " + std::to_string(fleet->id)).c_str());
+				if (at != nullptr)
+				{
+					ImGui::TextUnformatted(("at " + at->name).c_str());
+				}
+				for (const auto& row : fleet->composition)
+				{
+					const ShipClass* shipClass = _world->shipClassById(row.classId);
+					if (shipClass == nullptr)
+					{
+						continue;
+					}
+
+					ImGui::TextUnformatted(
+						(shipClass->name + " " + std::to_string(row.count)).c_str());
+				}
+			}
+			ImGui::End();
+			return open;
+		}
+
+		if (!_selectedSystemId.has_value())
 		{
 			return true;
 		}

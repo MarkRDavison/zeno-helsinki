@@ -3,6 +3,7 @@
 #include <Scenes/TextMenuSupport.hpp>
 #include <Scenes/TitleEngineScene.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
+#include <World/PickFleet.hpp>
 #include <World/PickStarSystem.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
@@ -230,7 +231,15 @@ namespace slr
 		if (!_panning && _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1))
 		{
 			const glm::vec2 world = _galaxyCamera->worldFromScreen(mouse);
-			_galaxy.setSelectedSystemId(pickStarSystem(_world, world, GalaxyNodeSize * 0.5f));
+			const auto fleet = pickFleet(_world, world, GalaxyFleetSize * 0.5f, GalaxyFleetOffset);
+			if (fleet.has_value())
+			{
+				_galaxy.setSelectedFleetId(fleet);
+			}
+			else
+			{
+				_galaxy.setSelectedSystemId(pickStarSystem(_world, world, GalaxyNodeSize * 0.5f));
+			}
 		}
 	}
 

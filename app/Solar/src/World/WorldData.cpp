@@ -21,6 +21,42 @@ namespace slr
 		return const_cast<StarSystem*>(static_cast<const WorldData*>(this)->systemById(id));
 	}
 
+	const ShipClass* WorldData::shipClassById(long long id) const
+	{
+		for (const auto& shipClass : shipClasses)
+		{
+			if (shipClass.id == id)
+			{
+				return &shipClass;
+			}
+		}
+
+		return nullptr;
+	}
+
+	ShipClass* WorldData::shipClassById(long long id)
+	{
+		return const_cast<ShipClass*>(static_cast<const WorldData*>(this)->shipClassById(id));
+	}
+
+	const Fleet* WorldData::fleetById(long long id) const
+	{
+		for (const auto& fleet : fleets)
+		{
+			if (fleet.id == id)
+			{
+				return &fleet;
+			}
+		}
+
+		return nullptr;
+	}
+
+	Fleet* WorldData::fleetById(long long id)
+	{
+		return const_cast<Fleet*>(static_cast<const WorldData*>(this)->fleetById(id));
+	}
+
 	long long getStockpileAmount(const StarSystem& system, long long goodId)
 	{
 		for (const auto& stock : system.stocks)
