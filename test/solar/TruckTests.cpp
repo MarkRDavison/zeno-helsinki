@@ -48,14 +48,14 @@ TEST_CASE("starter truck speeds vary by 5 percent around 25", "[slr][Truck]")
 	REQUIRE(anyDifferent);
 }
 
-TEST_CASE("Helion starts with steel need 1000 and Rimward ore need is 0", "[slr][Truck]")
+TEST_CASE("Helion starts with steel need 1200 and Rimward ore need is 0", "[slr][Truck]")
 {
 	const WorldData world = makeStarterMap();
 	const StarSystem* helion = world.systemById(1);
 	const StarSystem* rimward = world.systemById(5);
 	REQUIRE(helion != nullptr);
 	REQUIRE(rimward != nullptr);
-	REQUIRE(getNeed(*helion, SteelGoodId) == 1000);
+	REQUIRE(getNeed(*helion, SteelGoodId) == 1200);
 	REQUIRE(getNeed(*rimward, IronOreGoodId) == 0);
 	REQUIRE(getInbound(*helion, SteelGoodId) == TruckCapacity_Steel);
 	REQUIRE(getInbound(*rimward, IronOreGoodId) == 0);
@@ -169,7 +169,7 @@ TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
 	const StarSystem* helion = world.systemById(1);
 	REQUIRE(helion != nullptr);
 	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == TruckCapacity_Steel);
-	REQUIRE(getNeed(*helion, SteelGoodId) == 950);
+	REQUIRE(getNeed(*helion, SteelGoodId) == 1150);
 	REQUIRE(getInbound(*helion, SteelGoodId) == 0);
 	REQUIRE(world.trucks[0].cargoAmount == 0);
 	REQUIRE(world.trucks[0].haulJobId == 0);
@@ -246,7 +246,7 @@ TEST_CASE("destroy loaded truck lowers dest inbound and leaves stockpile and nee
 	REQUIRE(helion != nullptr);
 	REQUIRE(getInbound(*helion, SteelGoodId) == 0);
 	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
-	REQUIRE(getNeed(*helion, SteelGoodId) == 1000);
+	REQUIRE(getNeed(*helion, SteelGoodId) == 1200);
 }
 
 TEST_CASE("destroy empty truck does not change inbound", "[slr][Truck]")

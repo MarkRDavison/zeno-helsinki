@@ -8,14 +8,14 @@ namespace slr
 namespace NeedTests
 {
 
-TEST_CASE("empty consumer with desired 1000 posts need 1000 at map create", "[slr][Need]")
+TEST_CASE("empty consumer with desired 1200 posts need 1200 at map create", "[slr][Need]")
 {
 	const WorldData world = makeStarterMap();
 	const StarSystem* helion = world.systemById(1);
 	REQUIRE(helion != nullptr);
 	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
-	REQUIRE(consumerDesiredPile(world, 1, SteelGoodId) == 1000);
-	REQUIRE(getNeed(*helion, SteelGoodId) == 1000);
+	REQUIRE(consumerDesiredPile(world, 1, SteelGoodId) == 1200);
+	REQUIRE(getNeed(*helion, SteelGoodId) == 1200);
 	REQUIRE(consumerDesiredPile(world, 3, IronOreGoodId) == 1000);
 	REQUIRE(getNeed(*world.systemById(3), IronOreGoodId) == 1000);
 }

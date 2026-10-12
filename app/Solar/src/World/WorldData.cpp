@@ -234,6 +234,7 @@ namespace slr
 			if (yard.systemId == systemId)
 			{
 				desired += quantityForGood(yard.desiredPiles, goodId);
+				desired += quantityForGood(yard.populationReservedPiles, goodId);
 			}
 		}
 
@@ -246,6 +247,26 @@ namespace slr
 		}
 
 		return desired;
+	}
+
+	long long stockpileAvailableForYardConsume(const WorldData& world, long long systemId, long long goodId)
+	{
+		long long reserved = 0;
+		for (const auto& yard : world.yards)
+		{
+			if (yard.systemId == systemId)
+			{
+				reserved += quantityForGood(yard.populationReservedPiles, goodId);
+			}
+		}
+
+		const StarSystem* system = world.systemById(systemId);
+		if (system == nullptr)
+		{
+			return 0;
+		}
+
+		return std::max(0LL, getStockpileAmount(*system, goodId) - reserved);
 	}
 
 	void postNeedFromConsumerShortfall(WorldData& world, StarSystem& system, long long goodId)
@@ -286,6 +307,16 @@ namespace slr
 			}
 
 			for (const auto& pile : yard.desiredPiles)
+			{
+				postNeedFromConsumerShortfall(world, system, pile.goodId);
+			}
+
+			for (const auto& pile : yard.populationReservedPiles)
+			{
+				postNeedFromConsumerShortfall(world, system, pile.goodId);
+			}
+
+			for (const auto& pile : yard.populationConsumePerTick)
 			{
 				postNeedFromConsumerShortfall(world, system, pile.goodId);
 			}

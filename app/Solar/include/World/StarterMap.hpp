@@ -5,7 +5,7 @@
 namespace slr
 {
 
-	constexpr long long StarterCivilianTruckCount = 10;
+	constexpr long long StarterCivilianTruckCount = 16;
 
 	WorldData makeStarterMap();
 

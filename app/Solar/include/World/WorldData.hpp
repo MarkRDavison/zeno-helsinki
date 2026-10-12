@@ -65,6 +65,8 @@ namespace slr
 		long long systemId{ 0 };
 		long long empireId{ 0 };
 		std::vector<GoodQuantity> desiredPiles;
+		std::vector<GoodQuantity> populationConsumePerTick;
+		std::vector<GoodQuantity> populationReservedPiles;
 	};
 
 	struct Factory
@@ -203,6 +205,7 @@ namespace slr
 	long long mineOutputPerTick(const Mine& mine, long long goodId);
 	long long mineMaxStockpile(const Mine& mine, long long goodId);
 	long long consumerDesiredPile(const WorldData& world, long long systemId, long long goodId);
+	long long stockpileAvailableForYardConsume(const WorldData& world, long long systemId, long long goodId);
 	void postNeedFromConsumerShortfall(WorldData& world, StarSystem& system, long long goodId);
 	void postNeedsFromConsumerShortfalls(WorldData& world, StarSystem& system);
 	bool useFromStockpile(WorldData& world, long long systemId, long long goodId, long long amount);

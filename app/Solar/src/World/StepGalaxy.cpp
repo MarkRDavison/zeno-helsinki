@@ -52,6 +52,17 @@ namespace
 		}
 	}
 
+	void applyCivilianConsumption(WorldData& world)
+	{
+		for (const auto& yard : world.yards)
+		{
+			for (const auto& row : yard.populationConsumePerTick)
+			{
+				useFromStockpile(world, yard.systemId, row.goodId, row.amount);
+			}
+		}
+	}
+
 	void applyFactoryProduction(WorldData& world)
 	{
 		for (const auto& factory : world.factories)
@@ -480,6 +491,7 @@ namespace
 		syncHaulJobsFromUncoveredNeed(world);
 		applyExtraction(world);
 		applyFactoryProduction(world);
+		applyCivilianConsumption(world);
 		applyHaulJobAccepts(world);
 		moveTrucks(world);
 		syncHaulJobsFromUncoveredNeed(world);

@@ -19,9 +19,9 @@ TEST_CASE("starter Rimward mines ore; Junction mill wants ore; Helion wants stee
 	REQUIRE(world.factories[0].systemId == 3);
 	REQUIRE(quantityForGood(world.factories[0].desiredPiles, IronOreGoodId) == 1000);
 	REQUIRE(consumerDesiredPile(world, 3, IronOreGoodId) == 1000);
-	REQUIRE(consumerDesiredPile(world, 1, SteelGoodId) == 1000);
+	REQUIRE(consumerDesiredPile(world, 1, SteelGoodId) == 1200);
 	REQUIRE(getNeed(*world.systemById(3), IronOreGoodId) == 1000);
-	REQUIRE(getNeed(*world.systemById(1), SteelGoodId) == 1000);
+	REQUIRE(getNeed(*world.systemById(1), SteelGoodId) == 1200);
 	REQUIRE(haulJobFor(world, 3, IronOreGoodId) != nullptr);
 	REQUIRE(haulJobFor(world, 3, IronOreGoodId)->amount == 1000);
 }

@@ -15,14 +15,14 @@ TEST_CASE("starter Helion haul job is uncovered steel amount, not a truck", "[sl
 	const WorldData world = makeStarterMap();
 	const StarSystem* helion = world.systemById(1);
 	REQUIRE(helion != nullptr);
-	REQUIRE(uncoveredNeed(*helion, SteelGoodId) == 950);
+	REQUIRE(uncoveredNeed(*helion, SteelGoodId) == 1150);
 
 	const HaulJob* job = haulJobFor(world, 1, SteelGoodId);
 	REQUIRE(job != nullptr);
 	REQUIRE(job->destinationSystemId == 1);
 	REQUIRE(job->goodId == SteelGoodId);
 	REQUIRE(job->amount == uncoveredNeed(*helion, SteelGoodId));
-	REQUIRE(job->amount == 950);
+	REQUIRE(job->amount == 1150);
 	REQUIRE(world.haulJobById(job->id) == job);
 }
 
@@ -44,10 +44,10 @@ TEST_CASE("uncovered need below a truckload removes the haul job", "[slr][Job]")
 	REQUIRE(haulJobFor(world, 1, SteelGoodId) == nullptr);
 }
 
-TEST_CASE("a convoy of 19 steel trucks can carry Helion's 950 in one go; two cannot", "[slr][Job]")
+TEST_CASE("a convoy of 23 steel trucks can carry Helion's 1150 in one go; two cannot", "[slr][Job]")
 {
-	REQUIRE(convoyCarriesAmountInOneGo(19, 950, SteelGoodId));
-	REQUIRE_FALSE(convoyCarriesAmountInOneGo(2, 950, SteelGoodId));
+	REQUIRE(convoyCarriesAmountInOneGo(23, 1150, SteelGoodId));
+	REQUIRE_FALSE(convoyCarriesAmountInOneGo(2, 1150, SteelGoodId));
 }
 
 TEST_CASE("150 steel needs three trucks in one go", "[slr][Job]")

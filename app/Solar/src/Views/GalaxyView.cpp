@@ -636,6 +636,63 @@ namespace
 				ImGui::TextUnformatted("Yard");
 				const std::string yardTableId = "yard_" + std::to_string(yardIndex++);
 				drawGoodQuantityTable(yardTableId.c_str(), "desired", yard.desiredPiles);
+
+				if (yard.populationConsumePerTick.empty() && yard.populationReservedPiles.empty())
+				{
+					continue;
+				}
+
+				ImGui::TextUnformatted("Population");
+				const std::string populationTableId = "yard_pop_" + yardTableId;
+				if (ImGui::BeginTable(
+						populationTableId.c_str(),
+						3,
+						ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					ImGui::TableSetupColumn("good");
+					ImGui::TableSetupColumn("consume/tick");
+					ImGui::TableSetupColumn("reserved");
+					ImGui::TableHeadersRow();
+
+					std::vector<long long> populationGoodIds;
+					auto addPopulationGoodId = [&populationGoodIds](long long goodId)
+					{
+						for (long long existing : populationGoodIds)
+						{
+							if (existing == goodId)
+							{
+								return;
+							}
+						}
+
+						populationGoodIds.push_back(goodId);
+					};
+
+					for (const auto& row : yard.populationConsumePerTick)
+					{
+						addPopulationGoodId(row.goodId);
+					}
+
+					for (const auto& row : yard.populationReservedPiles)
+					{
+						addPopulationGoodId(row.goodId);
+					}
+
+					for (long long goodId : populationGoodIds)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextUnformatted(goodName(goodId));
+						ImGui::TableSetColumnIndex(1);
+						ImGui::TextUnformatted(
+							std::to_string(quantityForGood(yard.populationConsumePerTick, goodId)).c_str());
+						ImGui::TableSetColumnIndex(2);
+						ImGui::TextUnformatted(
+							std::to_string(quantityForGood(yard.populationReservedPiles, goodId)).c_str());
+					}
+
+					ImGui::EndTable();
+				}
 			}
 
 			int factoryIndex = 0;

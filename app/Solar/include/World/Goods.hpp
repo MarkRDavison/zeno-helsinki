@@ -12,6 +12,8 @@ namespace slr
 	constexpr long long FactoryMaxStockpile_Steel = 4000;
 	constexpr long long FactoryInputOrePerTick = 50;
 	constexpr long long FactoryOutputSteelPerTick = 50;
+	constexpr long long YardPopulationConsumePerTick_Steel = 10;
+	constexpr long long YardPopulationReserved_Steel = 200;
 
 	const char* goodName(long long goodId);
 	long long truckloadForGood(long long goodId);

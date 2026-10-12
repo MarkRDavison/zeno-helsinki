@@ -87,7 +87,11 @@ namespace
 		world.yards.push_back(Yard{
 			.systemId = 1,
 			.empireId = HelionEmpireId,
-			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } } });
+			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } },
+			.populationConsumePerTick = {
+				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationConsumePerTick_Steel } },
+			.populationReservedPiles = {
+				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } } });
 		postNeedsFromConsumerShortfalls(world, *helion);
 		postNeedsFromConsumerShortfalls(world, *junction);
 		postNeedsFromConsumerShortfalls(world, *rimward);
