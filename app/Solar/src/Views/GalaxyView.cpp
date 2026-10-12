@@ -4,6 +4,7 @@
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/PickFleet.hpp>
+#include <World/PickTruck.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
@@ -24,6 +25,7 @@ namespace
 	const glm::vec4 SelectedNodeColour{ 1.0f, 0.95f, 0.75f, 1.0f };
 	const glm::vec4 LaneColour{ 0.28f, 0.36f, 0.48f, 1.0f };
 	const glm::vec4 TruckColour{ 0.95f, 0.65f, 0.22f, 1.0f };
+	const glm::vec4 SelectedTruckColour{ 1.0f, 0.85f, 0.45f, 1.0f };
 	const glm::vec4 FleetColour{ 0.45f, 0.82f, 0.62f, 1.0f };
 	const glm::vec4 SelectedFleetColour{ 0.7f, 0.95f, 0.8f, 1.0f };
 	const glm::vec4 RivalFleetColour{ 0.85f, 0.38f, 0.4f, 1.0f };
@@ -166,6 +168,7 @@ namespace
 		_labels.reserve(world.systems.size());
 		_selectedSystemId.reset();
 		_selectedFleetId.reset();
+		_selectedTruckId.reset();
 
 		for (const auto& system : world.systems)
 		{
@@ -179,6 +182,7 @@ namespace
 	void GalaxyView::setSelectedSystemId(std::optional<long long> id)
 	{
 		_selectedFleetId.reset();
+		_selectedTruckId.reset();
 		_selectedSystemId = id;
 		if (_selectedSystemId.has_value() && _world != nullptr && _world->systemById(*_selectedSystemId) == nullptr)
 		{
@@ -189,10 +193,22 @@ namespace
 	void GalaxyView::setSelectedFleetId(std::optional<long long> id)
 	{
 		_selectedSystemId.reset();
+		_selectedTruckId.reset();
 		_selectedFleetId = id;
 		if (_selectedFleetId.has_value() && _world != nullptr && _world->fleetById(*_selectedFleetId) == nullptr)
 		{
 			_selectedFleetId.reset();
+		}
+	}
+
+	void GalaxyView::setSelectedTruckId(std::optional<long long> id)
+	{
+		_selectedSystemId.reset();
+		_selectedFleetId.reset();
+		_selectedTruckId = id;
+		if (_selectedTruckId.has_value() && _world != nullptr && _world->truckById(*_selectedTruckId) == nullptr)
+		{
+			_selectedTruckId.reset();
 		}
 	}
 
@@ -232,26 +248,22 @@ namespace
 
 		for (const auto& truck : _world->trucks)
 		{
-			std::optional<glm::vec2> pos = laneWorldPosition(*_world, truck.motion);
-			if (!pos.has_value())
-			{
-				const long long atId = truckSystemId(truck);
-				const StarSystem* at = _world->systemById(atId);
-				if (at != nullptr)
-				{
-					pos = at->position;
-				}
-			}
-
+			const auto pos = truckMarkerPosition(*_world, truck);
 			if (!pos.has_value())
 			{
 				continue;
 			}
 
+			const bool selected = _selectedTruckId.has_value() && truck.id == *_selectedTruckId;
 			const glm::mat4 model =
 				glm::translate(glm::mat4(1.0f), glm::vec3(*pos, 0.0f)) *
 				glm::scale(glm::mat4(1.0f), glm::vec3(GalaxyTruckSize, GalaxyTruckSize, 1.0f));
-			drawUnitQuad(pdd, quad, model, TruckColour, _galaxyCameraIndex);
+			drawUnitQuad(
+				pdd,
+				quad,
+				model,
+				selected ? SelectedTruckColour : TruckColour,
+				_galaxyCameraIndex);
 		}
 
 		for (const auto& fleet : _world->fleets)
@@ -317,6 +329,99 @@ namespace
 		if (_world == nullptr)
 		{
 			return true;
+		}
+
+		if (_selectedTruckId.has_value())
+		{
+			const Truck* truck = _world->truckById(*_selectedTruckId);
+			if (truck == nullptr)
+			{
+				return false;
+			}
+
+			bool open = true;
+			ImGui::SetNextWindowPos(ImVec2(24.0f, 56.0f), ImGuiCond_FirstUseEver);
+			if (ImGui::Begin("Truck", &open))
+			{
+				ImGui::TextUnformatted(("id " + std::to_string(truck->id)).c_str());
+				const Empire* empire = _world->empireById(truck->empireId);
+				if (empire != nullptr)
+				{
+					ImGui::TextUnformatted(empire->name.c_str());
+				}
+
+				const HaulJob* job = _world->haulJobById(truck->haulJobId);
+				if (job != nullptr)
+				{
+					const StarSystem* dest = _world->systemById(job->destinationSystemId);
+					if (dest != nullptr)
+					{
+						ImGui::TextUnformatted(("job dest " + dest->name).c_str());
+					}
+				}
+
+				if (truck->cargoAmount > 0)
+				{
+					ImGui::TextUnformatted(
+						(std::string(goodName(truck->cargoGoodId)) + " " +
+							std::to_string(truck->cargoAmount))
+							.c_str());
+				}
+				else
+				{
+					ImGui::TextUnformatted("empty");
+				}
+
+				if (truck->convoyId == 0)
+				{
+					ImGui::TextUnformatted("Convoy");
+					if (ImGui::BeginTable(
+							"truck_convoy",
+							2,
+							ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+					{
+						ImGui::TableSetupColumn("trucks");
+						ImGui::TableSetupColumn("status");
+						ImGui::TableHeadersRow();
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextUnformatted("0");
+						ImGui::TableSetColumnIndex(1);
+						ImGui::TextUnformatted("not in a convoy");
+						ImGui::EndTable();
+					}
+				}
+				else
+				{
+					const Convoy* convoy = _world->convoyById(truck->convoyId);
+					ImGui::TextUnformatted("Convoy");
+					if (ImGui::BeginTable(
+							"truck_convoy",
+							3,
+							ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+					{
+						ImGui::TableSetupColumn("trucks");
+						ImGui::TableSetupColumn("amount");
+						ImGui::TableSetupColumn("status");
+						ImGui::TableHeadersRow();
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextUnformatted(
+							std::to_string(countTrucksInConvoy(*_world, truck->convoyId)).c_str());
+						ImGui::TableSetColumnIndex(1);
+						ImGui::TextUnformatted(
+							convoy != nullptr
+								? std::to_string(convoyCargoOrReservedAmount(*_world, *convoy)).c_str()
+								: "0");
+						ImGui::TableSetColumnIndex(2);
+						ImGui::TextUnformatted(
+							convoy != nullptr && convoyIsUnderway(*convoy) ? "underway" : "assembling");
+						ImGui::EndTable();
+					}
+				}
+			}
+			ImGui::End();
+			return open;
 		}
 
 		if (_selectedFleetId.has_value())
@@ -398,6 +503,51 @@ namespace
 			{
 				ImGui::TextUnformatted("Haul jobs");
 				drawGoodQuantityTable("haul_jobs", "amount", haulJobRows);
+			}
+			bool anyConvoy = false;
+			for (const auto& convoy : _world->convoys)
+			{
+				const HaulJob* job = _world->haulJobById(convoy.haulJobId);
+				if (convoy.loadSystemId == system->id ||
+					(job != nullptr && job->destinationSystemId == system->id))
+				{
+					anyConvoy = true;
+					break;
+				}
+			}
+			if (anyConvoy)
+			{
+				ImGui::TextUnformatted("Convoys");
+				if (ImGui::BeginTable("convoys", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					ImGui::TableSetupColumn("trucks");
+					ImGui::TableSetupColumn("good");
+					ImGui::TableSetupColumn("amount");
+					ImGui::TableSetupColumn("status");
+					ImGui::TableHeadersRow();
+					for (const auto& convoy : _world->convoys)
+					{
+						const HaulJob* job = _world->haulJobById(convoy.haulJobId);
+						if (convoy.loadSystemId != system->id &&
+							(job == nullptr || job->destinationSystemId != system->id))
+						{
+							continue;
+						}
+
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextUnformatted(
+							std::to_string(countTrucksInConvoy(*_world, convoy.id)).c_str());
+						ImGui::TableSetColumnIndex(1);
+						ImGui::TextUnformatted(job != nullptr ? goodName(job->goodId) : "");
+						ImGui::TableSetColumnIndex(2);
+						ImGui::TextUnformatted(
+							std::to_string(convoyCargoOrReservedAmount(*_world, convoy)).c_str());
+						ImGui::TableSetColumnIndex(3);
+						ImGui::TextUnformatted(convoyIsUnderway(convoy) ? "underway" : "assembling");
+					}
+					ImGui::EndTable();
+				}
 			}
 			if (!system->stocks.empty())
 			{

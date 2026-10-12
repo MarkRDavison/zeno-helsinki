@@ -97,6 +97,24 @@ namespace slr
 		return const_cast<HaulJob*>(static_cast<const WorldData*>(this)->haulJobById(id));
 	}
 
+	const Convoy* WorldData::convoyById(long long id) const
+	{
+		for (const auto& convoy : convoys)
+		{
+			if (convoy.id == id)
+			{
+				return &convoy;
+			}
+		}
+
+		return nullptr;
+	}
+
+	Convoy* WorldData::convoyById(long long id)
+	{
+		return const_cast<Convoy*>(static_cast<const WorldData*>(this)->convoyById(id));
+	}
+
 	const Truck* WorldData::truckById(long long id) const
 	{
 		for (const auto& truck : trucks)
@@ -651,6 +669,80 @@ namespace slr
 		}
 
 		return truckCount * truckloadForGood(goodId) >= amount;
+	}
+
+	bool convoyIsUnderway(const Convoy& convoy)
+	{
+		return convoy.motion.route.size() >= 2;
+	}
+
+	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId)
+	{
+		for (auto& convoy : world.convoys)
+		{
+			if (convoy.haulJobId == haulJobId && !convoyIsUnderway(convoy))
+			{
+				return &convoy;
+			}
+		}
+
+		return nullptr;
+	}
+
+	long long countTrucksInConvoy(const WorldData& world, long long convoyId)
+	{
+		long long count = 0;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoyId)
+			{
+				++count;
+			}
+		}
+
+		return count;
+	}
+
+	long long convoyCargoOrReservedAmount(const WorldData& world, const Convoy& convoy)
+	{
+		long long amount = 0;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId != convoy.id)
+			{
+				continue;
+			}
+
+			if (truck.cargoAmount > 0)
+			{
+				amount += truck.cargoAmount;
+			}
+			else
+			{
+				const HaulJob* job = world.haulJobById(convoy.haulJobId);
+				if (job != nullptr)
+				{
+					amount += truckloadForGood(job->goodId);
+				}
+			}
+		}
+
+		return amount;
+	}
+
+	void removeConvoyIfNoMembers(WorldData& world, long long convoyId)
+	{
+		if (convoyId == 0 || countTrucksInConvoy(world, convoyId) > 0)
+		{
+			return;
+		}
+
+		world.convoys.erase(
+			std::remove_if(
+				world.convoys.begin(),
+				world.convoys.end(),
+				[convoyId](const Convoy& convoy) { return convoy.id == convoyId; }),
+			world.convoys.end());
 	}
 
 }

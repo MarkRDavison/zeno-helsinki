@@ -111,7 +111,15 @@ namespace
 		syncHaulJobsFromUncoveredNeed(world);
 		if (const HaulJob* job = haulJobFor(world, 1, SteelGoodId))
 		{
-			world.trucks.back().haulJobId = job->id;
+			Truck& flying = world.trucks.back();
+			flying.haulJobId = job->id;
+			world.convoys.push_back(Convoy{
+				.id = 1,
+				.haulJobId = job->id,
+				.empireId = HelionEmpireId,
+				.loadSystemId = 5,
+				.motion = flying.motion });
+			flying.convoyId = world.convoys.back().id;
 		}
 
 		world.empires = {

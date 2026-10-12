@@ -84,6 +84,7 @@ namespace slr
 		long long cargoGoodId{ 0 };
 		long long cargoAmount{ 0 };
 		long long haulJobId{ 0 };
+		long long convoyId{ 0 };
 	};
 
 	struct ShipClass
@@ -140,6 +141,15 @@ namespace slr
 		long long amount{ 0 };
 	};
 
+	struct Convoy
+	{
+		long long id{ 0 };
+		long long haulJobId{ 0 };
+		long long empireId{ 0 };
+		long long loadSystemId{ 0 };
+		LaneMotion motion;
+	};
+
 	struct WorldData
 	{
 		long long tick{ 0 };
@@ -151,6 +161,7 @@ namespace slr
 		std::vector<Yard> yards;
 		std::vector<Truck> trucks;
 		std::vector<HaulJob> haulJobs;
+		std::vector<Convoy> convoys;
 		std::vector<ShipClass> shipClasses;
 		std::vector<Fleet> fleets;
 		std::vector<BattleReport> battleReports;
@@ -165,6 +176,8 @@ namespace slr
 		Fleet* fleetById(long long id);
 		const HaulJob* haulJobById(long long id) const;
 		HaulJob* haulJobById(long long id);
+		const Convoy* convoyById(long long id) const;
+		Convoy* convoyById(long long id);
 		const Truck* truckById(long long id) const;
 		Truck* truckById(long long id);
 	};
@@ -192,6 +205,11 @@ namespace slr
 	void parkTruckAt(Truck& truck, long long systemId);
 	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId);
 	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId);
+	bool convoyIsUnderway(const Convoy& convoy);
+	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId);
+	long long countTrucksInConvoy(const WorldData& world, long long convoyId);
+	long long convoyCargoOrReservedAmount(const WorldData& world, const Convoy& convoy);
+	void removeConvoyIfNoMembers(WorldData& world, long long convoyId);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
 	bool hasHyperlane(const WorldData& world, long long a, long long b);

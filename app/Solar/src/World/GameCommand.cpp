@@ -70,37 +70,57 @@ namespace
 			return false;
 		}
 
-		const long long supplyId = nearestSupplySystemId(
-			world,
-			here,
-			job->goodId,
-			job->destinationSystemId);
-		if (supplyId == 0)
+		Convoy* convoy = openConvoyForHaulJob(world, job->id);
+		if (convoy == nullptr)
 		{
-			return false;
+			const long long supplyId = nearestSupplySystemId(
+				world,
+				here,
+				job->goodId,
+				job->destinationSystemId);
+			if (supplyId == 0)
+			{
+				return false;
+			}
+
+			long long nextId = 1;
+			for (const auto& existing : world.convoys)
+			{
+				if (existing.id >= nextId)
+				{
+					nextId = existing.id + 1;
+				}
+			}
+
+			world.convoys.push_back(Convoy{
+				.id = nextId,
+				.haulJobId = job->id,
+				.empireId = job->empireId,
+				.loadSystemId = supplyId });
+			convoy = &world.convoys.back();
 		}
 
-		std::vector<long long> path;
-		if (here == supplyId)
+		if (here != convoy->loadSystemId)
 		{
-			path = shortestLanePath(world, supplyId, job->destinationSystemId);
+			const std::vector<long long> path = shortestLanePath(world, here, convoy->loadSystemId);
+			if (path.size() < 2)
+			{
+				return false;
+			}
+
+			truck->motion.route = path;
+			truck->motion.hop = 0;
+			truck->motion.progress = 0.0f;
+			truck->motion.direction = 1;
 		}
 		else
 		{
-			path = shortestLanePath(world, here, supplyId);
-		}
-
-		if (path.empty())
-		{
-			return false;
+			parkTruckAt(*truck, convoy->loadSystemId);
 		}
 
 		job->amount -= truckload;
 		truck->haulJobId = job->id;
-		truck->motion.route = path;
-		truck->motion.hop = 0;
-		truck->motion.progress = 0.0f;
-		truck->motion.direction = 1;
+		truck->convoyId = convoy->id;
 		return true;
 	}
 

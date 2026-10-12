@@ -61,11 +61,15 @@ TEST_CASE("two empty trucks accept the same Helion job and pathfind Rimward to H
 	REQUIRE(jobBefore != nullptr);
 	const long long jobId = jobBefore->id;
 	const long long amountBefore = jobBefore->amount;
+	const long long flyingConvoyId = world.trucks[2].convoyId;
 
 	stepGalaxy(world);
 
 	REQUIRE(world.trucks[0].haulJobId == jobId);
 	REQUIRE(world.trucks[1].haulJobId == jobId);
+	REQUIRE(world.trucks[0].convoyId != 0);
+	REQUIRE(world.trucks[0].convoyId == world.trucks[1].convoyId);
+	REQUIRE(world.trucks[0].convoyId != flyingConvoyId);
 	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 1));
 	REQUIRE(world.trucks[1].motion.route == shortestLanePath(world, 5, 1));
 	const HaulJob* job = world.haulJobById(jobId);

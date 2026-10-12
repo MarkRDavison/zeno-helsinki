@@ -5,6 +5,7 @@
 #include <Views/GalaxyDrawConstants.hpp>
 #include <World/GameCommand.hpp>
 #include <World/PickFleet.hpp>
+#include <World/PickTruck.hpp>
 #include <World/PickStarSystem.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
@@ -230,7 +231,15 @@ namespace slr
 				}
 				else
 				{
-					_galaxy.setSelectedSystemId(pickStarSystem(_world, world, GalaxyNodeSize * 0.5f));
+					const auto truck = pickTruck(_world, world, GalaxyTruckSize * 0.5f);
+					if (truck.has_value())
+					{
+						_galaxy.setSelectedTruckId(truck);
+					}
+					else
+					{
+						_galaxy.setSelectedSystemId(pickStarSystem(_world, world, GalaxyNodeSize * 0.5f));
+					}
 				}
 			}
 

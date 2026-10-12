@@ -75,19 +75,98 @@ namespace
 		}
 	}
 
-	void setRouteToDestination(WorldData& world, Truck& truck, long long fromId, long long destId)
+	void copyConvoyMotionOntoMembers(WorldData& world, const Convoy& convoy)
 	{
-		const std::vector<long long> path = shortestLanePath(world, fromId, destId);
-		if (path.size() < 2)
+		for (auto& truck : world.trucks)
 		{
-			parkTruckAt(truck, fromId);
-			return;
+			if (truck.convoyId != convoy.id)
+			{
+				continue;
+			}
+
+			const float speed = truck.motion.speed;
+			truck.motion.route = convoy.motion.route;
+			truck.motion.hop = convoy.motion.hop;
+			truck.motion.progress = convoy.motion.progress;
+			truck.motion.direction = convoy.motion.direction;
+			truck.motion.speed = speed;
+		}
+	}
+
+	bool convoyMembersReadyToSail(const WorldData& world, const Convoy& convoy)
+	{
+		bool anyMember = false;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId != convoy.id)
+			{
+				continue;
+			}
+
+			anyMember = true;
+			if (truck.cargoAmount <= 0 || !isTruckAtSystem(truck, convoy.loadSystemId))
+			{
+				return false;
+			}
 		}
 
-		truck.motion.route = path;
-		truck.motion.hop = 0;
-		truck.motion.progress = 0.0f;
-		truck.motion.direction = 1;
+		return anyMember;
+	}
+
+	float slowestMemberSpeed(const WorldData& world, long long convoyId)
+	{
+		float slowest = 0.0f;
+		bool any = false;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId != convoyId)
+			{
+				continue;
+			}
+
+			if (!any || truck.motion.speed < slowest)
+			{
+				slowest = truck.motion.speed;
+				any = true;
+			}
+		}
+
+		return slowest;
+	}
+
+	void departReadyConvoys(WorldData& world)
+	{
+		for (auto& convoy : world.convoys)
+		{
+			if (convoyIsUnderway(convoy))
+			{
+				continue;
+			}
+
+			if (!convoyMembersReadyToSail(world, convoy))
+			{
+				continue;
+			}
+
+			const HaulJob* job = world.haulJobById(convoy.haulJobId);
+			if (job == nullptr)
+			{
+				continue;
+			}
+
+			const std::vector<long long> path =
+				shortestLanePath(world, convoy.loadSystemId, job->destinationSystemId);
+			if (path.size() < 2)
+			{
+				continue;
+			}
+
+			convoy.motion.route = path;
+			convoy.motion.hop = 0;
+			convoy.motion.progress = 0.0f;
+			convoy.motion.direction = 1;
+			copyConvoyMotionOntoMembers(world, convoy);
+		}
 	}
 
 	void loadIfJoinedJob(WorldData& world, Truck& truck)
@@ -98,23 +177,14 @@ namespace
 		}
 
 		HaulJob* job = world.haulJobById(truck.haulJobId);
-		if (job == nullptr)
+		const Convoy* convoy = world.convoyById(truck.convoyId);
+		if (job == nullptr || convoy == nullptr)
 		{
 			return;
 		}
 
 		const long long here = truckSystemId(truck);
-		if (here == 0)
-		{
-			return;
-		}
-
-		const long long supplyId = nearestSupplySystemId(
-			world,
-			here,
-			job->goodId,
-			job->destinationSystemId);
-		if (here != supplyId)
+		if (here == 0 || here != convoy->loadSystemId)
 		{
 			return;
 		}
@@ -135,10 +205,6 @@ namespace
 		truck.cargoGoodId = job->goodId;
 		truck.cargoAmount = truckload;
 		raiseInboundOnLoad(*demand, job->goodId, truckload);
-		if (here != job->destinationSystemId)
-		{
-			setRouteToDestination(world, truck, here, job->destinationSystemId);
-		}
 	}
 
 	void dumpIfCarrying(WorldData& world, Truck& truck)
@@ -168,15 +234,13 @@ namespace
 		reduceInboundOnArrival(*demand, truck.cargoGoodId, truck.cargoAmount);
 		addToStockpile(*demand, truck.cargoGoodId, truck.cargoAmount);
 		reduceNeed(*demand, truck.cargoGoodId, truck.cargoAmount);
+		const long long convoyId = truck.convoyId;
 		truck.cargoGoodId = 0;
 		truck.cargoAmount = 0;
 		truck.haulJobId = 0;
+		truck.convoyId = 0;
 		parkTruckAt(truck, job->destinationSystemId);
-	}
-
-	void advanceTruck(WorldData& world, Truck& truck)
-	{
-		advanceAlongLane(world, truck.motion);
+		removeConvoyIfNoMembers(world, convoyId);
 	}
 
 	void moveTrucks(WorldData& world)
@@ -184,8 +248,36 @@ namespace
 		for (auto& truck : world.trucks)
 		{
 			loadIfJoinedJob(world, truck);
+		}
+
+		departReadyConvoys(world);
+
+		for (auto& truck : world.trucks)
+		{
 			dumpIfCarrying(world, truck);
-			advanceTruck(world, truck);
+		}
+
+		for (auto& truck : world.trucks)
+		{
+			const Convoy* convoy = world.convoyById(truck.convoyId);
+			if (convoy != nullptr && convoyIsUnderway(*convoy))
+			{
+				continue;
+			}
+
+			advanceAlongLane(world, truck.motion);
+		}
+
+		for (auto& convoy : world.convoys)
+		{
+			if (!convoyIsUnderway(convoy))
+			{
+				continue;
+			}
+
+			convoy.motion.speed = slowestMemberSpeed(world, convoy.id);
+			advanceAlongLane(world, convoy.motion);
+			copyConvoyMotionOntoMembers(world, convoy);
 		}
 	}
 

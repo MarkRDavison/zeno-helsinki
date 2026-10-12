@@ -80,7 +80,9 @@ namespace
 				}
 			}
 
+			const long long convoyId = it->convoyId;
 			world.trucks.erase(it);
+			removeConvoyIfNoMembers(world, convoyId);
 			return true;
 		}
 
