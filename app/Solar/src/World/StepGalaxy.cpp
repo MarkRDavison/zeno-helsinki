@@ -52,6 +52,37 @@ namespace
 		}
 	}
 
+	void applyFactoryProduction(WorldData& world)
+	{
+		for (const auto& factory : world.factories)
+		{
+			StarSystem* system = world.systemById(factory.systemId);
+			if (system == nullptr)
+			{
+				continue;
+			}
+
+			if (factory.inputAmountPerTick <= 0 || factory.outputAmountPerTick <= 0)
+			{
+				continue;
+			}
+
+			const long long outputRoom =
+				factory.outputMaxStockpile - getStockpileAmount(*system, factory.outputGoodId);
+			if (outputRoom < factory.outputAmountPerTick)
+			{
+				continue;
+			}
+
+			if (!useFromStockpile(world, factory.systemId, factory.inputGoodId, factory.inputAmountPerTick))
+			{
+				continue;
+			}
+
+			addToStockpile(*system, factory.outputGoodId, factory.outputAmountPerTick);
+		}
+	}
+
 	void applyExtraction(WorldData& world)
 	{
 		for (const auto& mine : world.mines)
@@ -95,6 +126,7 @@ namespace
 
 	bool convoyMembersReadyToSail(const WorldData& world, const Convoy& convoy)
 	{
+		bool anyLoadedAtRally = false;
 		bool anyMember = false;
 		for (const auto& truck : world.trucks)
 		{
@@ -104,13 +136,18 @@ namespace
 			}
 
 			anyMember = true;
-			if (truck.cargoAmount <= 0 || !isTruckAtSystem(truck, convoy.loadSystemId))
+			if (!isTruckAtSystem(truck, convoy.loadSystemId))
 			{
 				return false;
 			}
+
+			if (truck.cargoAmount > 0)
+			{
+				anyLoadedAtRally = true;
+			}
 		}
 
-		return anyMember;
+		return anyMember && anyLoadedAtRally;
 	}
 
 	float slowestMemberSpeed(const WorldData& world, long long convoyId)
@@ -134,8 +171,32 @@ namespace
 		return slowest;
 	}
 
+	long long nextConvoyId(const WorldData& world)
+	{
+		long long nextId = 1;
+		for (const auto& convoy : world.convoys)
+		{
+			if (convoy.id >= nextId)
+			{
+				nextId = convoy.id + 1;
+			}
+		}
+
+		return nextId;
+	}
+
 	void departReadyConvoys(WorldData& world)
 	{
+		struct LeftoverWave
+		{
+			long long haulJobId{ 0 };
+			long long empireId{ 0 };
+			long long loadSystemId{ 0 };
+			std::vector<long long> truckIds;
+		};
+
+		std::vector<LeftoverWave> leftoverWaves;
+
 		for (auto& convoy : world.convoys)
 		{
 			if (convoyIsUnderway(convoy))
@@ -161,11 +222,51 @@ namespace
 				continue;
 			}
 
+			LeftoverWave leftover{
+				.haulJobId = convoy.haulJobId,
+				.empireId = convoy.empireId,
+				.loadSystemId = convoy.loadSystemId };
+			for (auto& truck : world.trucks)
+			{
+				if (truck.convoyId != convoy.id || truck.cargoAmount != 0)
+				{
+					continue;
+				}
+
+				leftover.truckIds.push_back(truck.id);
+				truck.convoyId = 0;
+			}
+
+			if (!leftover.truckIds.empty())
+			{
+				leftoverWaves.push_back(std::move(leftover));
+			}
+
 			convoy.motion.route = path;
 			convoy.motion.hop = 0;
 			convoy.motion.progress = 0.0f;
 			convoy.motion.direction = 1;
 			copyConvoyMotionOntoMembers(world, convoy);
+		}
+
+		long long nextId = nextConvoyId(world);
+		for (const auto& wave : leftoverWaves)
+		{
+			world.convoys.push_back(Convoy{
+				.id = nextId,
+				.haulJobId = wave.haulJobId,
+				.empireId = wave.empireId,
+				.loadSystemId = wave.loadSystemId });
+			for (const long long truckId : wave.truckIds)
+			{
+				Truck* truck = world.truckById(truckId);
+				if (truck != nullptr)
+				{
+					truck->convoyId = nextId;
+				}
+			}
+
+			++nextId;
 		}
 	}
 
@@ -291,6 +392,12 @@ namespace
 				continue;
 			}
 
+			const long long here = truckSystemId(truck);
+			if (here == 0)
+			{
+				continue;
+			}
+
 			long long bestJobId = 0;
 			for (const auto& job : world.haulJobs)
 			{
@@ -300,6 +407,11 @@ namespace
 				}
 
 				if (job.amount < truckloadForGood(job.goodId))
+				{
+					continue;
+				}
+
+				if (nearestSupplySystemId(world, here, job.goodId, job.destinationSystemId) == 0)
 				{
 					continue;
 				}
@@ -367,6 +479,7 @@ namespace
 		applyDeferredNeedPosts(world);
 		syncHaulJobsFromUncoveredNeed(world);
 		applyExtraction(world);
+		applyFactoryProduction(world);
 		applyHaulJobAccepts(world);
 		moveTrucks(world);
 		syncHaulJobsFromUncoveredNeed(world);

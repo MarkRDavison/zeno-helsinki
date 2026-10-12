@@ -71,18 +71,34 @@ namespace
 		}
 
 		Convoy* convoy = openConvoyForHaulJob(world, job->id);
-		if (convoy == nullptr)
+		long long loadSystemId = 0;
+		long long assemblingConvoyId = 0;
+		if (convoy != nullptr)
 		{
-			const long long supplyId = nearestSupplySystemId(
+			loadSystemId = convoy->loadSystemId;
+			assemblingConvoyId = convoy->id;
+		}
+		else
+		{
+			loadSystemId = nearestSupplySystemId(
 				world,
 				here,
 				job->goodId,
 				job->destinationSystemId);
-			if (supplyId == 0)
-			{
-				return false;
-			}
+		}
 
+		if (loadSystemId == 0)
+		{
+			return false;
+		}
+
+		if (!haulWaveHasStockpileForAnotherTruck(world, loadSystemId, job->goodId, assemblingConvoyId))
+		{
+			return false;
+		}
+
+		if (convoy == nullptr)
+		{
 			long long nextId = 1;
 			for (const auto& existing : world.convoys)
 			{
@@ -96,7 +112,7 @@ namespace
 				.id = nextId,
 				.haulJobId = job->id,
 				.empireId = job->empireId,
-				.loadSystemId = supplyId });
+				.loadSystemId = loadSystemId });
 			convoy = &world.convoys.back();
 		}
 

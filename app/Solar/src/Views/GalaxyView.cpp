@@ -46,6 +46,12 @@ namespace
 		return selected ? SelectedRivalFleetColour : RivalFleetColour;
 	}
 
+	std::string convoyTrucksPresentOfTotal(const WorldData& world, const Convoy& convoy)
+	{
+		return std::to_string(countTrucksInConvoyPresent(world, convoy)) + "/" +
+			std::to_string(countTrucksInConvoy(world, convoy.id));
+	}
+
 	void drawGoodQuantityTable(const char* tableId, const char* amountHeader, const std::vector<GoodQuantity>& rows)
 	{
 		if (rows.empty())
@@ -406,8 +412,15 @@ namespace
 						ImGui::TableHeadersRow();
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
-						ImGui::TextUnformatted(
-							std::to_string(countTrucksInConvoy(*_world, truck->convoyId)).c_str());
+						if (convoy != nullptr)
+						{
+							const std::string trucks = convoyTrucksPresentOfTotal(*_world, *convoy);
+							ImGui::TextUnformatted(trucks.c_str());
+						}
+						else
+						{
+							ImGui::TextUnformatted("0/0");
+						}
 						ImGui::TableSetColumnIndex(1);
 						ImGui::TextUnformatted(
 							convoy != nullptr
@@ -536,8 +549,8 @@ namespace
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
-						ImGui::TextUnformatted(
-							std::to_string(countTrucksInConvoy(*_world, convoy.id)).c_str());
+						const std::string trucks = convoyTrucksPresentOfTotal(*_world, convoy);
+						ImGui::TextUnformatted(trucks.c_str());
 						ImGui::TableSetColumnIndex(1);
 						ImGui::TextUnformatted(job != nullptr ? goodName(job->goodId) : "");
 						ImGui::TableSetColumnIndex(2);
@@ -623,6 +636,42 @@ namespace
 				ImGui::TextUnformatted("Yard");
 				const std::string yardTableId = "yard_" + std::to_string(yardIndex++);
 				drawGoodQuantityTable(yardTableId.c_str(), "desired", yard.desiredPiles);
+			}
+
+			int factoryIndex = 0;
+			for (const auto& factory : _world->factories)
+			{
+				if (factory.systemId != system->id)
+				{
+					continue;
+				}
+
+				ImGui::TextUnformatted("Factory");
+				const std::string factoryTableId = "factory_" + std::to_string(factoryIndex++);
+				if (ImGui::BeginTable(
+						factoryTableId.c_str(),
+						5,
+						ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					ImGui::TableSetupColumn("input");
+					ImGui::TableSetupColumn("in/tick");
+					ImGui::TableSetupColumn("output");
+					ImGui::TableSetupColumn("out/tick");
+					ImGui::TableSetupColumn("max");
+					ImGui::TableHeadersRow();
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::TextUnformatted(goodName(factory.inputGoodId));
+					ImGui::TableSetColumnIndex(1);
+					ImGui::TextUnformatted(std::to_string(factory.inputAmountPerTick).c_str());
+					ImGui::TableSetColumnIndex(2);
+					ImGui::TextUnformatted(goodName(factory.outputGoodId));
+					ImGui::TableSetColumnIndex(3);
+					ImGui::TextUnformatted(std::to_string(factory.outputAmountPerTick).c_str());
+					ImGui::TableSetColumnIndex(4);
+					ImGui::TextUnformatted(std::to_string(factory.outputMaxStockpile).c_str());
+					ImGui::EndTable();
+				}
 			}
 		}
 		ImGui::End();

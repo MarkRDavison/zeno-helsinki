@@ -237,6 +237,14 @@ namespace slr
 			}
 		}
 
+		for (const auto& factory : world.factories)
+		{
+			if (factory.systemId == systemId)
+			{
+				desired += quantityForGood(factory.desiredPiles, goodId);
+			}
+		}
+
 		return desired;
 	}
 
@@ -278,6 +286,19 @@ namespace slr
 			}
 
 			for (const auto& pile : yard.desiredPiles)
+			{
+				postNeedFromConsumerShortfall(world, system, pile.goodId);
+			}
+		}
+
+		for (const auto& factory : world.factories)
+		{
+			if (factory.systemId != system.id)
+			{
+				continue;
+			}
+
+			for (const auto& pile : factory.desiredPiles)
 			{
 				postNeedFromConsumerShortfall(world, system, pile.goodId);
 			}
@@ -458,6 +479,14 @@ namespace slr
 				if (yard.systemId == systemId)
 				{
 					return yard.empireId;
+				}
+			}
+
+			for (const auto& factory : world.factories)
+			{
+				if (factory.systemId == systemId)
+				{
+					return factory.empireId;
 				}
 			}
 
@@ -701,6 +730,61 @@ namespace slr
 		}
 
 		return count;
+	}
+
+	long long countTrucksInConvoyPresent(const WorldData& world, const Convoy& convoy)
+	{
+		if (convoyIsUnderway(convoy))
+		{
+			return countTrucksInConvoy(world, convoy.id);
+		}
+
+		long long count = 0;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoy.id && isTruckAtSystem(truck, convoy.loadSystemId))
+			{
+				++count;
+			}
+		}
+
+		return count;
+	}
+
+	long long emptyTrucksInConvoy(const WorldData& world, long long convoyId)
+	{
+		long long count = 0;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoyId && truck.cargoAmount == 0)
+			{
+				++count;
+			}
+		}
+
+		return count;
+	}
+
+	bool haulWaveHasStockpileForAnotherTruck(
+		const WorldData& world,
+		long long loadSystemId,
+		long long goodId,
+		long long assemblingConvoyId)
+	{
+		const StarSystem* supply = world.systemById(loadSystemId);
+		if (supply == nullptr)
+		{
+			return false;
+		}
+
+		const long long truckload = truckloadForGood(goodId);
+		long long reserved = 0;
+		if (assemblingConvoyId != 0)
+		{
+			reserved = emptyTrucksInConvoy(world, assemblingConvoyId) * truckload;
+		}
+
+		return getStockpileAmount(*supply, goodId) >= reserved + truckload;
 	}
 
 	long long convoyCargoOrReservedAmount(const WorldData& world, const Convoy& convoy)

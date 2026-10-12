@@ -10,6 +10,11 @@ namespace slr
 			return "steel";
 		}
 
+		if (goodId == IronOreGoodId)
+		{
+			return "iron ore";
+		}
+
 		return "unknown";
 	}
 
@@ -17,6 +22,8 @@ namespace slr
 	{
 		switch (goodId)
 		{
+		case IronOreGoodId:
+			return TruckCapacity_IronOre;
 		case SteelGoodId:
 			return TruckCapacity_Steel;
 		default:

@@ -15,20 +15,21 @@ namespace ConvoyTests
 TEST_CASE("starter in-flight truck is a size-1 departed convoy", "[slr][Convoy]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.trucks.size() >= 3);
-	REQUIRE(world.trucks[2].convoyId != 0);
+	REQUIRE(world.trucks.size() == StarterCivilianTruckCount);
+	REQUIRE(world.trucks.back().convoyId != 0);
 	REQUIRE(world.trucks[0].convoyId == 0);
 	REQUIRE(world.trucks[1].convoyId == 0);
-	const Convoy* convoy = world.convoyById(world.trucks[2].convoyId);
+	const Convoy* convoy = world.convoyById(world.trucks.back().convoyId);
 	REQUIRE(convoy != nullptr);
 	REQUIRE(countTrucksInConvoy(world, convoy->id) == 1);
+	REQUIRE(countTrucksInConvoyPresent(world, *convoy) == 1);
 	REQUIRE(convoyIsUnderway(*convoy));
 }
 
 TEST_CASE("two Rimward empties join one new convoy; size 1 still exists", "[slr][Convoy]")
 {
 	WorldData world = makeStarterMap();
-	const long long flyingConvoyId = world.trucks[2].convoyId;
+	const long long flyingConvoyId = world.trucks.back().convoyId;
 
 	stepGalaxy(world);
 
@@ -54,12 +55,14 @@ TEST_CASE("loaded truck waits at supply for a straggler on the same convoy", "[s
 
 	REQUIRE(world.trucks[0].convoyId != 0);
 	REQUIRE(world.trucks[0].convoyId == world.trucks[1].convoyId);
-	REQUIRE(world.trucks[0].cargoAmount == TruckCapacity_Steel);
+	REQUIRE(world.trucks[0].cargoAmount == TruckCapacity_IronOre);
 	REQUIRE(isTruckAtSystem(world.trucks[0], 5));
 	REQUIRE_FALSE(convoyIsUnderway(*world.convoyById(world.trucks[0].convoyId)));
 	REQUIRE(world.trucks[0].motion.route == std::vector<long long>{ 5 });
 	REQUIRE(world.trucks[1].cargoAmount == 0);
 	REQUIRE_FALSE(isTruckAtSystem(world.trucks[1], 5));
+	REQUIRE(countTrucksInConvoyPresent(world, *world.convoyById(world.trucks[0].convoyId)) == 1);
+	REQUIRE(countTrucksInConvoy(world, world.trucks[0].convoyId) == 2);
 
 	const long long convoyId = world.trucks[0].convoyId;
 	while (!convoyIsUnderway(*world.convoyById(convoyId)))
@@ -68,7 +71,7 @@ TEST_CASE("loaded truck waits at supply for a straggler on the same convoy", "[s
 		REQUIRE(isTruckAtSystem(world.trucks[0], 5));
 		stepGalaxy(world);
 	}
-	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 1));
+	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 3));
 	REQUIRE(world.trucks[1].motion.route == world.trucks[0].motion.route);
 }
 
@@ -119,7 +122,7 @@ TEST_CASE("destroy a waiting empty lets the loaded truck depart", "[slr][Convoy]
 
 	REQUIRE(world.trucks.size() == 1);
 	REQUIRE(convoyIsUnderway(*world.convoyById(world.trucks[0].convoyId)));
-	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 1));
+	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 3));
 }
 
 }

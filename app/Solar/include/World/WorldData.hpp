@@ -67,6 +67,18 @@ namespace slr
 		std::vector<GoodQuantity> desiredPiles;
 	};
 
+	struct Factory
+	{
+		long long systemId{ 0 };
+		long long empireId{ 0 };
+		std::vector<GoodQuantity> desiredPiles;
+		long long inputGoodId{ 0 };
+		long long inputAmountPerTick{ 0 };
+		long long outputGoodId{ 0 };
+		long long outputAmountPerTick{ 0 };
+		long long outputMaxStockpile{ 0 };
+	};
+
 	struct LaneMotion
 	{
 		std::vector<long long> route;
@@ -159,6 +171,7 @@ namespace slr
 		std::vector<Hyperlane> hyperlanes;
 		std::vector<Mine> mines;
 		std::vector<Yard> yards;
+		std::vector<Factory> factories;
 		std::vector<Truck> trucks;
 		std::vector<HaulJob> haulJobs;
 		std::vector<Convoy> convoys;
@@ -208,6 +221,13 @@ namespace slr
 	bool convoyIsUnderway(const Convoy& convoy);
 	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId);
 	long long countTrucksInConvoy(const WorldData& world, long long convoyId);
+	long long countTrucksInConvoyPresent(const WorldData& world, const Convoy& convoy);
+	long long emptyTrucksInConvoy(const WorldData& world, long long convoyId);
+	bool haulWaveHasStockpileForAnotherTruck(
+		const WorldData& world,
+		long long loadSystemId,
+		long long goodId,
+		long long assemblingConvoyId);
 	long long convoyCargoOrReservedAmount(const WorldData& world, const Convoy& convoy);
 	void removeConvoyIfNoMembers(WorldData& world, long long convoyId);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);

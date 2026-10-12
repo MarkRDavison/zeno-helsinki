@@ -15,6 +15,8 @@ TEST_CASE("Helion yard wants a steel buffer; Rimward mine does not", "[slr][Yard
 	REQUIRE(quantityForGood(world.yards.front().desiredPiles, SteelGoodId) == 1000);
 	REQUIRE(consumerDesiredPile(world, 1, SteelGoodId) == 1000);
 	REQUIRE(consumerDesiredPile(world, 5, SteelGoodId) == 0);
+	REQUIRE(consumerDesiredPile(world, 5, IronOreGoodId) == 0);
+	REQUIRE(consumerDesiredPile(world, 3, IronOreGoodId) == 1000);
 
 	const StarSystem* helion = world.systemById(1);
 	const StarSystem* rimward = world.systemById(5);

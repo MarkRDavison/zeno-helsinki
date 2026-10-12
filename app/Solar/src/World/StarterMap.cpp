@@ -59,7 +59,11 @@ namespace
 		addLane(world, 6, 8);
 
 		StarSystem* rimward = world.systemById(5);
-		rimward->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0, .need = 0 });
+		rimward->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .goodAmount = 0, .need = 0 });
+
+		StarSystem* junction = world.systemById(3);
+		junction->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .goodAmount = 0 });
+		junction->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
 
 		StarSystem* helion = world.systemById(1);
 		helion->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
@@ -68,43 +72,47 @@ namespace
 			.systemId = 5,
 			.outputsPerTick = {
 				MineOutput{
-					.goodId = SteelGoodId,
+					.goodId = IronOreGoodId,
 					.amountPerTick = 100,
-					.maxStockpile = MineMaxStockpile_Steel } } });
+					.maxStockpile = MineMaxStockpile_IronOre } } });
+		world.factories.push_back(Factory{
+			.systemId = 3,
+			.empireId = HelionEmpireId,
+			.desiredPiles = { GoodQuantity{ .goodId = IronOreGoodId, .amount = 1000 } },
+			.inputGoodId = IronOreGoodId,
+			.inputAmountPerTick = FactoryInputOrePerTick,
+			.outputGoodId = SteelGoodId,
+			.outputAmountPerTick = FactoryOutputSteelPerTick,
+			.outputMaxStockpile = FactoryMaxStockpile_Steel });
 		world.yards.push_back(Yard{
 			.systemId = 1,
 			.empireId = HelionEmpireId,
 			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } } });
 		postNeedsFromConsumerShortfalls(world, *helion);
+		postNeedsFromConsumerShortfalls(world, *junction);
 		postNeedsFromConsumerShortfalls(world, *rimward);
 
+		for (long long truckId = 1; truckId < StarterCivilianTruckCount; ++truckId)
+		{
+			world.trucks.push_back(Truck{
+				.id = truckId,
+				.empireId = HelionEmpireId,
+				.motion = {
+					.route = { 5 },
+					.hop = 0,
+					.progress = 0.0f,
+					.direction = 1,
+					.speed = starterCivilianTruckSpeed(world, truckId) } });
+		}
 		world.trucks.push_back(Truck{
-			.id = 1,
-			.empireId = HelionEmpireId,
-			.motion = {
-				.route = { 5 },
-				.hop = 0,
-				.progress = 0.0f,
-				.direction = 1,
-				.speed = starterCivilianTruckSpeed(world, 1) } });
-		world.trucks.push_back(Truck{
-			.id = 2,
-			.empireId = HelionEmpireId,
-			.motion = {
-				.route = { 5 },
-				.hop = 0,
-				.progress = 0.0f,
-				.direction = 1,
-				.speed = starterCivilianTruckSpeed(world, 2) } });
-		world.trucks.push_back(Truck{
-			.id = 3,
+			.id = StarterCivilianTruckCount,
 			.empireId = HelionEmpireId,
 			.motion = {
 				.route = shortestLanePath(world, 5, 1),
 				.hop = 0,
 				.progress = 0.5f,
 				.direction = 1,
-				.speed = starterCivilianTruckSpeed(world, 3) },
+				.speed = starterCivilianTruckSpeed(world, StarterCivilianTruckCount) },
 			.cargoGoodId = SteelGoodId,
 			.cargoAmount = TruckCapacity_Steel });
 		raiseInboundOnLoad(*helion, SteelGoodId, TruckCapacity_Steel);

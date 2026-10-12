@@ -14,7 +14,7 @@ namespace TruckPickTests
 TEST_CASE("pick hits the in-flight starter truck", "[slr][Truck][Pick]")
 {
 	const WorldData world = makeStarterMap();
-	const Truck* flying = world.truckById(3);
+	const Truck* flying = world.truckById(StarterCivilianTruckCount);
 	REQUIRE(flying != nullptr);
 	const auto marker = truckMarkerPosition(world, *flying);
 	REQUIRE(marker.has_value());
@@ -48,9 +48,9 @@ TEST_CASE("parked truck marker misses the system node", "[slr][Truck][Pick]")
 TEST_CASE("stacked convoy members pick the smaller truck id", "[slr][Truck][Pick]")
 {
 	WorldData world = makeStarterMap();
-	world.trucks[0].motion = world.trucks[2].motion;
-	world.trucks[0].convoyId = world.trucks[2].convoyId;
-	const auto marker = truckMarkerPosition(world, world.trucks[2]);
+	world.trucks[0].motion = world.trucks.back().motion;
+	world.trucks[0].convoyId = world.trucks.back().convoyId;
+	const auto marker = truckMarkerPosition(world, world.trucks.back());
 	REQUIRE(marker.has_value());
 	const auto hit = pickTruck(world, *marker, GalaxyTruckSize * 0.5f);
 	REQUIRE(hit.has_value());

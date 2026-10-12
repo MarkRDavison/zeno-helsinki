@@ -30,6 +30,7 @@ TEST_CASE("Rimward has no haul job", "[slr][Job]")
 {
 	const WorldData world = makeStarterMap();
 	REQUIRE(haulJobFor(world, 5, SteelGoodId) == nullptr);
+	REQUIRE(haulJobFor(world, 5, IronOreGoodId) == nullptr);
 }
 
 TEST_CASE("uncovered need below a truckload removes the haul job", "[slr][Job]")
@@ -54,14 +55,14 @@ TEST_CASE("150 steel needs three trucks in one go", "[slr][Job]")
 	REQUIRE(truckCountToCarryAmountInOneGo(150, SteelGoodId) == 3);
 }
 
-TEST_CASE("two empty trucks accept the same Helion job and pathfind Rimward to Helion", "[slr][Job]")
+TEST_CASE("two empty trucks accept the Junction ore job and pathfind Rimward to Junction", "[slr][Job]")
 {
 	WorldData world = makeStarterMap();
-	const HaulJob* jobBefore = haulJobFor(world, 1, SteelGoodId);
+	const HaulJob* jobBefore = haulJobFor(world, 3, IronOreGoodId);
 	REQUIRE(jobBefore != nullptr);
 	const long long jobId = jobBefore->id;
 	const long long amountBefore = jobBefore->amount;
-	const long long flyingConvoyId = world.trucks[2].convoyId;
+	const long long flyingConvoyId = world.trucks.back().convoyId;
 
 	stepGalaxy(world);
 
@@ -70,20 +71,24 @@ TEST_CASE("two empty trucks accept the same Helion job and pathfind Rimward to H
 	REQUIRE(world.trucks[0].convoyId != 0);
 	REQUIRE(world.trucks[0].convoyId == world.trucks[1].convoyId);
 	REQUIRE(world.trucks[0].convoyId != flyingConvoyId);
-	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 1));
-	REQUIRE(world.trucks[1].motion.route == shortestLanePath(world, 5, 1));
+	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 3));
+	REQUIRE(world.trucks[1].motion.route == shortestLanePath(world, 5, 3));
 	const HaulJob* job = world.haulJobById(jobId);
 	REQUIRE(job != nullptr);
-	REQUIRE(job->amount == amountBefore - 2 * TruckCapacity_Steel);
+	REQUIRE(world.trucks[2].haulJobId == 0);
+	REQUIRE(job->amount == amountBefore - 2 * TruckCapacity_IronOre);
 }
 
 TEST_CASE("second accept drops when remaining room is one truckload", "[slr][Job]")
 {
 	WorldData world = makeStarterMap();
 	world.trucks.clear();
-	HaulJob* job = world.haulJobById(haulJobFor(world, 1, SteelGoodId)->id);
+	HaulJob* job = world.haulJobById(haulJobFor(world, 3, IronOreGoodId)->id);
 	REQUIRE(job != nullptr);
-	job->amount = TruckCapacity_Steel;
+	job->amount = TruckCapacity_IronOre;
+	StarSystem* rimward = world.systemById(5);
+	REQUIRE(rimward != nullptr);
+	rimward->stocks[0].goodAmount = 100;
 	world.trucks.push_back(Truck{
 		.id = 10,
 		.empireId = HelionEmpireId,

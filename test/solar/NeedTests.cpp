@@ -16,6 +16,8 @@ TEST_CASE("empty consumer with desired 1000 posts need 1000 at map create", "[sl
 	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
 	REQUIRE(consumerDesiredPile(world, 1, SteelGoodId) == 1000);
 	REQUIRE(getNeed(*helion, SteelGoodId) == 1000);
+	REQUIRE(consumerDesiredPile(world, 3, IronOreGoodId) == 1000);
+	REQUIRE(getNeed(*world.systemById(3), IronOreGoodId) == 1000);
 }
 
 TEST_CASE("full desired pile posts no need", "[slr][Need]")
