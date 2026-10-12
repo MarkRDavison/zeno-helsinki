@@ -1,4 +1,5 @@
 #include <World/StepGalaxy.hpp>
+#include <World/Combat.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <algorithm>
@@ -197,6 +198,7 @@ namespace
 		applyExtraction(world);
 		moveTrucks(world);
 		moveFleets(world);
+		resolveBattles(world);
 		++world.tick;
 	}
 

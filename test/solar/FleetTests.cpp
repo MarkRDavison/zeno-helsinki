@@ -47,32 +47,38 @@ TEST_CASE("starter map seeds Nike and Destroyer classes and Home Fleet at Helion
 	REQUIRE(destroyer->id != 0);
 	REQUIRE(nike->id != destroyer->id);
 
-	REQUIRE(world.fleets.size() == 1);
-	const Fleet& fleet = world.fleets.front();
-	REQUIRE(fleet.name == "Home Fleet");
-	REQUIRE(fleet.systemId == 1);
-	REQUIRE(compositionCount(fleet, nike->id) == 8);
-	REQUIRE(compositionCount(fleet, destroyer->id) == 12);
+	REQUIRE(world.fleets.size() == 2);
+	const Fleet* fleet = world.fleetById(1);
+	REQUIRE(fleet != nullptr);
+	REQUIRE(fleet->name == "Home Fleet");
+	REQUIRE(fleet->empireId == HelionEmpireId);
+	REQUIRE(fleet->systemId == 1);
+	REQUIRE(compositionCount(*fleet, nike->id) == 8);
+	REQUIRE(compositionCount(*fleet, destroyer->id) == 12);
+	REQUIRE(nike->empireId == HelionEmpireId);
+	REQUIRE(destroyer->empireId == HelionEmpireId);
 }
 
 TEST_CASE("pick hits the fleet offset marker and misses Helion node centre", "[slr][Fleet]")
 {
 	const WorldData world = makeStarterMap();
 	REQUIRE_FALSE(world.fleets.empty());
-	const auto marker = fleetMarkerPosition(world, world.fleets.front(), GalaxyFleetOffset);
+	const Fleet* home = world.fleetById(1);
+	REQUIRE(home != nullptr);
+	const auto marker = fleetMarkerPosition(world, *home);
 	REQUIRE(marker.has_value());
 
 	const float fleetRadius = GalaxyFleetSize * 0.5f;
 	const float systemRadius = GalaxyNodeSize * 0.5f;
 	REQUIRE(glm::length(GalaxyFleetOffset) > fleetRadius + systemRadius);
 
-	const auto fleetHit = pickFleet(world, *marker, fleetRadius, GalaxyFleetOffset);
+	const auto fleetHit = pickFleet(world, *marker, fleetRadius);
 	REQUIRE(fleetHit.has_value());
-	REQUIRE(*fleetHit == world.fleets.front().id);
+	REQUIRE(*fleetHit == home->id);
 
 	const StarSystem* helion = world.systemById(1);
 	REQUIRE(helion != nullptr);
-	REQUIRE_FALSE(pickFleet(world, helion->position, fleetRadius, GalaxyFleetOffset).has_value());
+	REQUIRE_FALSE(pickFleet(world, helion->position, fleetRadius).has_value());
 	REQUIRE_FALSE(pickStarSystem(world, *marker, systemRadius).has_value());
 }
 
@@ -93,7 +99,7 @@ TEST_CASE("trucks are not pickable as fleets", "[slr][Fleet]")
 	const Truck& truck = world.trucks.front();
 	const auto truckPos = laneWorldPosition(world, truck.motion);
 	REQUIRE(truckPos.has_value());
-	REQUIRE_FALSE(pickFleet(world, *truckPos, GalaxyFleetSize * 0.5f, GalaxyFleetOffset).has_value());
+	REQUIRE_FALSE(pickFleet(world, *truckPos, GalaxyFleetSize * 0.5f).has_value());
 }
 
 }

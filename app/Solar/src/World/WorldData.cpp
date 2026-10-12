@@ -4,6 +4,24 @@
 namespace slr
 {
 
+	const Empire* WorldData::empireById(long long id) const
+	{
+		for (const auto& empire : empires)
+		{
+			if (empire.id == id)
+			{
+				return &empire;
+			}
+		}
+
+		return nullptr;
+	}
+
+	Empire* WorldData::empireById(long long id)
+	{
+		return const_cast<Empire*>(static_cast<const WorldData*>(this)->empireById(id));
+	}
+
 	const StarSystem* WorldData::systemById(long long id) const
 	{
 		for (const auto& system : systems)
@@ -107,6 +125,30 @@ namespace slr
 		}
 
 		return count;
+	}
+
+	long long fleetShipCount(const Fleet& fleet)
+	{
+		long long count = 0;
+		for (const auto& row : fleet.composition)
+		{
+			count += row.count;
+		}
+
+		return count;
+	}
+
+	long long classCountFor(const std::vector<ClassCount>& composition, long long classId)
+	{
+		for (const auto& row : composition)
+		{
+			if (row.classId == classId)
+			{
+				return row.count;
+			}
+		}
+
+		return 0;
 	}
 
 	bool hasHyperlane(const WorldData& world, long long a, long long b)

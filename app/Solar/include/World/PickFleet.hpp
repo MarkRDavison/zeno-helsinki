@@ -7,12 +7,8 @@
 namespace slr
 {
 
-	std::optional<glm::vec2> fleetMarkerPosition(const WorldData& world, const Fleet& fleet, glm::vec2 offset);
-
-	std::optional<long long> pickFleet(
-		const WorldData& world,
-		glm::vec2 worldPos,
-		float radius,
-		glm::vec2 markerOffset);
+	glm::vec2 fleetParkedOffset(const WorldData& world, const Fleet& fleet);
+	std::optional<glm::vec2> fleetMarkerPosition(const WorldData& world, const Fleet& fleet);
+	std::optional<long long> pickFleet(const WorldData& world, glm::vec2 worldPos, float radius);
 
 }

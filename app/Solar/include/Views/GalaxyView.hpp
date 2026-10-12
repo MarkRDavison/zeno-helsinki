@@ -27,6 +27,7 @@ namespace slr
 		void drawGraph(hl::PipelineDrawData& pdd, hl::ResourceManager& resourceManager) const;
 		void drawLabels(hl::PipelineDrawData& pdd, hl::TextSystem& textSystem) const;
 		bool drawInspector() const;
+		void drawBattleReport();
 
 	private:
 		struct Label
@@ -40,6 +41,7 @@ namespace slr
 		std::vector<Label> _labels;
 		std::optional<long long> _selectedSystemId;
 		std::optional<long long> _selectedFleetId;
+		std::optional<long long> _dismissedReportId;
 	};
 
 }

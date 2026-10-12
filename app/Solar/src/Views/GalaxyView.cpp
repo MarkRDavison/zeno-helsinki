@@ -13,6 +13,7 @@
 #include <imgui.h>
 #include <cmath>
 #include <string>
+#include <vector>
 
 namespace slr
 {
@@ -24,6 +25,23 @@ namespace
 	const glm::vec4 TruckColour{ 0.95f, 0.65f, 0.22f, 1.0f };
 	const glm::vec4 FleetColour{ 0.45f, 0.82f, 0.62f, 1.0f };
 	const glm::vec4 SelectedFleetColour{ 0.7f, 0.95f, 0.8f, 1.0f };
+	const glm::vec4 RivalFleetColour{ 0.85f, 0.38f, 0.4f, 1.0f };
+	const glm::vec4 SelectedRivalFleetColour{ 1.0f, 0.55f, 0.55f, 1.0f };
+
+	bool isPlayerFleet(const WorldData& world, const Fleet& fleet)
+	{
+		return world.empires.empty() || fleet.empireId == world.empires.front().id;
+	}
+
+	glm::vec4 fleetDrawColour(const WorldData& world, const Fleet& fleet, bool selected)
+	{
+		if (isPlayerFleet(world, fleet))
+		{
+			return selected ? SelectedFleetColour : FleetColour;
+		}
+
+		return selected ? SelectedRivalFleetColour : RivalFleetColour;
+	}
 
 	void drawUnitQuad(
 		hl::PipelineDrawData& pdd,
@@ -200,7 +218,12 @@ namespace
 
 		for (const auto& fleet : _world->fleets)
 		{
-			const auto marker = fleetMarkerPosition(*_world, fleet, GalaxyFleetOffset);
+			if (fleetShipCount(fleet) == 0)
+			{
+				continue;
+			}
+
+			const auto marker = fleetMarkerPosition(*_world, fleet);
 			if (!marker.has_value())
 			{
 				continue;
@@ -214,7 +237,7 @@ namespace
 				pdd,
 				quad,
 				model,
-				selected ? SelectedFleetColour : FleetColour,
+				fleetDrawColour(*_world, fleet, selected),
 				_galaxyCameraIndex);
 		}
 
@@ -271,8 +294,13 @@ namespace
 			ImGui::SetNextWindowPos(ImVec2(24.0f, 56.0f), ImGuiCond_FirstUseEver);
 			if (ImGui::Begin("Fleet", &open))
 			{
-				ImGui::TextUnformatted(fleet->name.c_str());
-				ImGui::TextUnformatted(("id " + std::to_string(fleet->id)).c_str());
+			ImGui::TextUnformatted(fleet->name.c_str());
+			ImGui::TextUnformatted(("id " + std::to_string(fleet->id)).c_str());
+			const Empire* empire = _world->empireById(fleet->empireId);
+			if (empire != nullptr)
+			{
+				ImGui::TextUnformatted(empire->name.c_str());
+			}
 				if (fleet->motion.route.size() >= 2)
 				{
 					const StarSystem* dest = _world->systemById(fleet->motion.route.back());
@@ -329,6 +357,73 @@ namespace
 		}
 		ImGui::End();
 		return open;
+	}
+
+	void GalaxyView::drawBattleReport()
+	{
+		if (_world == nullptr || _world->battleReports.empty())
+		{
+			return;
+		}
+
+		const BattleReport& report = _world->battleReports.back();
+		if (_dismissedReportId.has_value() && *_dismissedReportId == report.id)
+		{
+			return;
+		}
+
+		bool open = true;
+		ImGui::SetNextWindowPos(ImVec2(24.0f, 220.0f), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin("Battle report", &open))
+		{
+			const StarSystem* system = _world->systemById(report.systemId);
+			if (system != nullptr)
+			{
+				ImGui::TextUnformatted(("at " + system->name).c_str());
+			}
+
+			for (const auto& side : report.sides)
+			{
+				const Fleet* fleet = _world->fleetById(side.fleetId);
+				if (fleet != nullptr)
+				{
+					ImGui::TextUnformatted(fleet->name.c_str());
+				}
+				else
+				{
+					ImGui::TextUnformatted(("fleet " + std::to_string(side.fleetId)).c_str());
+				}
+
+				std::vector<long long> classIds;
+				for (const auto& row : side.before)
+				{
+					classIds.push_back(row.classId);
+				}
+				for (const auto& row : side.after)
+				{
+					if (classCountFor(side.before, row.classId) == 0)
+					{
+						classIds.push_back(row.classId);
+					}
+				}
+
+				for (const long long classId : classIds)
+				{
+					const ShipClass* shipClass = _world->shipClassById(classId);
+					const std::string name = shipClass != nullptr ? shipClass->name : ("class " + std::to_string(classId));
+					const long long before = classCountFor(side.before, classId);
+					const long long after = classCountFor(side.after, classId);
+					ImGui::TextUnformatted(
+						(name + " " + std::to_string(before) + " -> " + std::to_string(after)).c_str());
+				}
+			}
+		}
+
+		ImGui::End();
+		if (!open)
+		{
+			_dismissedReportId = report.id;
+		}
 	}
 
 }

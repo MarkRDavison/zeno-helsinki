@@ -76,7 +76,7 @@ TEST_CASE("fleet marker on a hop is not the from-node", "[slr][FleetOrder]")
 	REQUIRE(execute(world, GameCommand::moveFleetToSystem(world.fleets.front().id, 2, CommandSource::Player)));
 	world.fleets.front().motion.progress = 0.5f;
 
-	const auto marker = fleetMarkerPosition(world, world.fleets.front(), GalaxyFleetOffset);
+	const auto marker = fleetMarkerPosition(world, world.fleets.front());
 	REQUIRE(marker.has_value());
 	const StarSystem* helion = world.systemById(1);
 	const StarSystem* kestrel = world.systemById(2);
@@ -94,7 +94,7 @@ TEST_CASE("pickStarSystem still hits Helion; trucks are not fleets", "[slr][Flee
 	const auto hit = pickStarSystem(world, helion->position, GalaxyNodeSize * 0.5f);
 	REQUIRE(hit.has_value());
 	REQUIRE(*hit == 1);
-	REQUIRE_FALSE(pickFleet(world, helion->position, GalaxyFleetSize * 0.5f, GalaxyFleetOffset).has_value());
+	REQUIRE_FALSE(pickFleet(world, helion->position, GalaxyFleetSize * 0.5f).has_value());
 }
 
 }

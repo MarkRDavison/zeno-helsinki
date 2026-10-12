@@ -58,6 +58,7 @@ namespace slr
 				{
 					_clock.setPaused(time.paused.value());
 				}
+				_galaxy.drawBattleReport();
 				if (!_galaxy.drawInspector())
 				{
 					_galaxy.setSelectedSystemId(std::nullopt);
@@ -222,7 +223,7 @@ namespace slr
 			if (!_panning && _engine.getInputManager().isButtonReleased(GLFW_MOUSE_BUTTON_1))
 			{
 				const glm::vec2 world = _galaxyCamera->worldFromScreen(mouse);
-				const auto fleet = pickFleet(_world, world, GalaxyFleetSize * 0.5f, GalaxyFleetOffset);
+				const auto fleet = pickFleet(_world, world, GalaxyFleetSize * 0.5f);
 				if (fleet.has_value())
 				{
 					_galaxy.setSelectedFleetId(fleet);

@@ -1,11 +1,21 @@
 #pragma once
 
 #include <helsinki/System/glm.hpp>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace slr
 {
+
+	constexpr long long HelionEmpireId = 1;
+	constexpr long long AshreachEmpireId = 2;
+
+	struct Empire
+	{
+		long long id{ 0 };
+		std::string name;
+	};
 
 	struct GoodStock
 	{
@@ -55,7 +65,14 @@ namespace slr
 	struct ShipClass
 	{
 		long long id{ 0 };
+		long long empireId{ 0 };
 		std::string name;
+		float range{ 0.0f };
+		float accuracy{ 0.0f };
+		long long laserDamage{ 0 };
+		long long maxShields{ 0 };
+		long long maxHull{ 0 };
+		float closeRate{ 0.0f };
 	};
 
 	struct ClassCount
@@ -67,22 +84,44 @@ namespace slr
 	struct Fleet
 	{
 		long long id{ 0 };
+		long long empireId{ 0 };
 		std::string name;
 		long long systemId{ 0 };
 		std::vector<ClassCount> composition;
 		LaneMotion motion;
 	};
 
+	struct BattleSideReport
+	{
+		long long fleetId{ 0 };
+		long long empireId{ 0 };
+		std::vector<ClassCount> before;
+		std::vector<ClassCount> after;
+	};
+
+	struct BattleReport
+	{
+		long long id{ 0 };
+		long long tick{ 0 };
+		long long systemId{ 0 };
+		std::vector<BattleSideReport> sides;
+	};
+
 	struct WorldData
 	{
 		long long tick{ 0 };
+		std::uint64_t masterSeed{ 1 };
+		std::vector<Empire> empires;
 		std::vector<StarSystem> systems;
 		std::vector<Hyperlane> hyperlanes;
 		std::vector<Mine> mines;
 		std::vector<Truck> trucks;
 		std::vector<ShipClass> shipClasses;
 		std::vector<Fleet> fleets;
+		std::vector<BattleReport> battleReports;
 
+		const Empire* empireById(long long id) const;
+		Empire* empireById(long long id);
 		const StarSystem* systemById(long long id) const;
 		StarSystem* systemById(long long id);
 		const ShipClass* shipClassById(long long id) const;
@@ -96,5 +135,7 @@ namespace slr
 	bool isTruckAtSystem(const Truck& truck, long long systemId);
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
 	bool hasHyperlane(const WorldData& world, long long a, long long b);
+	long long fleetShipCount(const Fleet& fleet);
+	long long classCountFor(const std::vector<ClassCount>& composition, long long classId);
 
 }

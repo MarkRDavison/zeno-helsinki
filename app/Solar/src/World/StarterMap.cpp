@@ -85,18 +85,75 @@ namespace
 			.cargoGoodId = SteelGoodId,
 			.cargoAmount = TruckCapacity_Steel });
 
+		world.empires = {
+			Empire{ .id = HelionEmpireId, .name = "Helion" },
+			Empire{ .id = AshreachEmpireId, .name = "Ashreach" },
+		};
+
 		const long long nikeId = 1;
 		const long long destroyerId = 2;
-		world.shipClasses.push_back(ShipClass{ .id = nikeId, .name = "Nike" });
-		world.shipClasses.push_back(ShipClass{ .id = destroyerId, .name = "Destroyer" });
+		const long long lanceId = 3;
+		const long long cutterId = 4;
+		world.shipClasses.push_back(ShipClass{
+			.id = nikeId,
+			.empireId = HelionEmpireId,
+			.name = "Nike",
+			.range = 55.0f,
+			.accuracy = 0.75f,
+			.laserDamage = 8,
+			.maxShields = 20,
+			.maxHull = 28,
+			.closeRate = 4.0f });
+		world.shipClasses.push_back(ShipClass{
+			.id = destroyerId,
+			.empireId = HelionEmpireId,
+			.name = "Destroyer",
+			.range = 35.0f,
+			.accuracy = 0.80f,
+			.laserDamage = 4,
+			.maxShields = 8,
+			.maxHull = 12,
+			.closeRate = 6.0f });
+		world.shipClasses.push_back(ShipClass{
+			.id = lanceId,
+			.empireId = AshreachEmpireId,
+			.name = "Lance",
+			.range = 75.0f,
+			.accuracy = 0.65f,
+			.laserDamage = 7,
+			.maxShields = 18,
+			.maxHull = 24,
+			.closeRate = 3.0f });
+		world.shipClasses.push_back(ShipClass{
+			.id = cutterId,
+			.empireId = AshreachEmpireId,
+			.name = "Cutter",
+			.range = 30.0f,
+			.accuracy = 0.78f,
+			.laserDamage = 3,
+			.maxShields = 6,
+			.maxHull = 10,
+			.closeRate = 7.0f });
+
 		constexpr float homeFleetSpeed = 50.0f;
 		world.fleets.push_back(Fleet{
 			.id = 1,
+			.empireId = HelionEmpireId,
 			.name = "Home Fleet",
 			.systemId = 1,
 			.composition = {
 				ClassCount{ .classId = nikeId, .count = 8 },
 				ClassCount{ .classId = destroyerId, .count = 12 },
+			},
+			.motion = { .speed = homeFleetSpeed } });
+		world.fleets.push_back(Fleet{
+			.id = 2,
+			.empireId = AshreachEmpireId,
+			.name = "Kestrel Squadron",
+			.systemId = 2,
+			.composition = {
+				ClassCount{ .classId = lanceId, .count = 6 },
+				ClassCount{ .classId = cutterId, .count = 10 },
 			},
 			.motion = { .speed = homeFleetSpeed } });
 
