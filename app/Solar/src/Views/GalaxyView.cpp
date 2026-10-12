@@ -43,6 +43,33 @@ namespace
 		return selected ? SelectedRivalFleetColour : RivalFleetColour;
 	}
 
+	void drawGoodQuantityTable(const char* tableId, const char* amountHeader, const std::vector<GoodQuantity>& rows)
+	{
+		if (rows.empty())
+		{
+			return;
+		}
+
+		if (!ImGui::BeginTable(tableId, 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+		{
+			return;
+		}
+
+		ImGui::TableSetupColumn("good");
+		ImGui::TableSetupColumn(amountHeader);
+		ImGui::TableHeadersRow();
+		for (const auto& row : rows)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::TextUnformatted(goodName(row.goodId));
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextUnformatted(std::to_string(row.amount).c_str());
+		}
+
+		ImGui::EndTable();
+	}
+
 	void drawUnitQuad(
 		hl::PipelineDrawData& pdd,
 		const hl::VertexArrayResource& quad,
@@ -348,12 +375,77 @@ namespace
 			ImGui::TextUnformatted(("id " + std::to_string(system->id)).c_str());
 			ImGui::TextUnformatted(
 				("trucks " + std::to_string(countTrucksAtSystem(*_world, system->id))).c_str());
-			for (const auto& stock : system->stocks)
+			if (!system->stocks.empty() &&
+				ImGui::BeginTable("system_goods", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 			{
-				ImGui::TextUnformatted(goodName(stock.goodId));
-				ImGui::TextUnformatted(("stockpile " + std::to_string(stock.goodAmount)).c_str());
-				ImGui::TextUnformatted(("inbound " + std::to_string(stock.inbound)).c_str());
-				ImGui::TextUnformatted(("need " + std::to_string(stock.need)).c_str());
+				ImGui::TableSetupColumn("good");
+				ImGui::TableSetupColumn("stockpile");
+				ImGui::TableSetupColumn("inbound");
+				ImGui::TableSetupColumn("need");
+				ImGui::TableSetupColumn("desired");
+				ImGui::TableHeadersRow();
+				for (const auto& stock : system->stocks)
+				{
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::TextUnformatted(goodName(stock.goodId));
+					ImGui::TableSetColumnIndex(1);
+					ImGui::TextUnformatted(std::to_string(stock.goodAmount).c_str());
+					ImGui::TableSetColumnIndex(2);
+					ImGui::TextUnformatted(std::to_string(stock.inbound).c_str());
+					ImGui::TableSetColumnIndex(3);
+					ImGui::TextUnformatted(std::to_string(stock.need).c_str());
+					ImGui::TableSetColumnIndex(4);
+					ImGui::TextUnformatted(
+						std::to_string(consumerDesiredPile(*_world, system->id, stock.goodId)).c_str());
+				}
+
+				ImGui::EndTable();
+			}
+
+			int mineIndex = 0;
+			for (const auto& mine : _world->mines)
+			{
+				if (mine.systemId != system->id)
+				{
+					continue;
+				}
+
+				ImGui::TextUnformatted("Mine");
+				const std::string mineTableId = "mine_" + std::to_string(mineIndex++);
+				if (!mine.outputsPerTick.empty() &&
+					ImGui::BeginTable(mineTableId.c_str(), 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					ImGui::TableSetupColumn("good");
+					ImGui::TableSetupColumn("per tick");
+					ImGui::TableSetupColumn("max");
+					ImGui::TableHeadersRow();
+					for (const auto& output : mine.outputsPerTick)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextUnformatted(goodName(output.goodId));
+						ImGui::TableSetColumnIndex(1);
+						ImGui::TextUnformatted(std::to_string(output.amountPerTick).c_str());
+						ImGui::TableSetColumnIndex(2);
+						ImGui::TextUnformatted(std::to_string(output.maxStockpile).c_str());
+					}
+
+					ImGui::EndTable();
+				}
+			}
+
+			int yardIndex = 0;
+			for (const auto& yard : _world->yards)
+			{
+				if (yard.systemId != system->id)
+				{
+					continue;
+				}
+
+				ImGui::TextUnformatted("Yard");
+				const std::string yardTableId = "yard_" + std::to_string(yardIndex++);
+				drawGoodQuantityTable(yardTableId.c_str(), "desired", yard.desiredPiles);
 			}
 		}
 		ImGui::End();

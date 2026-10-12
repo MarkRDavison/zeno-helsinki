@@ -39,11 +39,29 @@ namespace slr
 		long long b{ 0 };
 	};
 
+	struct GoodQuantity
+	{
+		long long goodId{ 0 };
+		long long amount{ 0 };
+	};
+
+	struct MineOutput
+	{
+		long long goodId{ 0 };
+		long long amountPerTick{ 0 };
+		long long maxStockpile{ 0 };
+	};
+
 	struct Mine
 	{
 		long long systemId{ 0 };
-		long long goodId{ 0 };
-		long long outputPerTick{ 0 };
+		std::vector<MineOutput> outputsPerTick;
+	};
+
+	struct Yard
+	{
+		long long systemId{ 0 };
+		std::vector<GoodQuantity> desiredPiles;
 	};
 
 	struct LaneMotion
@@ -116,6 +134,7 @@ namespace slr
 		std::vector<StarSystem> systems;
 		std::vector<Hyperlane> hyperlanes;
 		std::vector<Mine> mines;
+		std::vector<Yard> yards;
 		std::vector<Truck> trucks;
 		std::vector<ShipClass> shipClasses;
 		std::vector<Fleet> fleets;
@@ -135,6 +154,12 @@ namespace slr
 	long long getInbound(const StarSystem& system, long long goodId);
 	long long getNeed(const StarSystem& system, long long goodId);
 	long long uncoveredNeed(const StarSystem& system, long long goodId);
+	long long quantityForGood(const std::vector<GoodQuantity>& rows, long long goodId);
+	long long mineOutputPerTick(const Mine& mine, long long goodId);
+	long long mineMaxStockpile(const Mine& mine, long long goodId);
+	long long consumerDesiredPile(const WorldData& world, long long systemId, long long goodId);
+	void setNeedFromConsumerDesiredPile(WorldData& world, StarSystem& system, long long goodId);
+	void setNeedsFromConsumerDesiredPiles(WorldData& world, StarSystem& system);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
 	bool hasHyperlane(const WorldData& world, long long a, long long b);

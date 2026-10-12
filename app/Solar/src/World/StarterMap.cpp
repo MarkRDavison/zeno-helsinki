@@ -49,9 +49,20 @@ namespace
 		rimward->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0, .need = 0 });
 
 		StarSystem* helion = world.systemById(1);
-		helion->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0, .need = 1000 });
+		helion->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
 
-		world.mines.push_back(Mine{ .systemId = 5, .goodId = SteelGoodId, .outputPerTick = 100 });
+		world.mines.push_back(Mine{
+			.systemId = 5,
+			.outputsPerTick = {
+				MineOutput{
+					.goodId = SteelGoodId,
+					.amountPerTick = 100,
+					.maxStockpile = MineMaxStockpile_Steel } } });
+		world.yards.push_back(Yard{
+			.systemId = 1,
+			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } } });
+		setNeedsFromConsumerDesiredPiles(world, *helion);
+		setNeedsFromConsumerDesiredPiles(world, *rimward);
 
 		constexpr float civilianTruckSpeed = 25.0f;
 		const std::vector<long long> rimwardToHelion{ 5, 3, 2, 1 };

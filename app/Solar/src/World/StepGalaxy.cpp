@@ -60,7 +60,16 @@ namespace
 				continue;
 			}
 
-			addToStockpile(*system, mine.goodId, mine.outputPerTick);
+			for (const auto& output : mine.outputsPerTick)
+			{
+				const long long room = output.maxStockpile - getStockpileAmount(*system, output.goodId);
+				if (room <= 0 || output.amountPerTick <= 0)
+				{
+					continue;
+				}
+
+				addToStockpile(*system, output.goodId, std::min(output.amountPerTick, room));
+			}
 		}
 	}
 

@@ -6,6 +6,8 @@
 .DESCRIPTION
     Uses Ninja + MSVC (via vcvars64.bat). On first run or after -Rebuild,
     runs CMake configure. By default performs an incremental build and runs CTest.
+    Success prints "Build passed" and "Test passed". Command output is shown
+    only when a step fails.
 
 .PARAMETER Rebuild
     Delete the build directory, reconfigure from scratch, build, and test.
@@ -93,31 +95,40 @@ function Invoke-InMsvcEnvironment {
         [string] $Command,
 
         [Parameter(Mandatory)]
-        [string] $WorkingDirectory
+        [string] $WorkingDirectory,
+
+        [Parameter(Mandatory)]
+        [string] $FailedLabel
     )
 
     $escapedVcVars = $VcVars64.Replace('"', '""')
-    $fullCommand = "call `"$escapedVcVars`" >nul && $Command"
+    $logFile = [System.IO.Path]::GetTempFileName()
+    $escapedLog = $logFile.Replace('"', '""')
+    $fullCommand = "call `"$escapedVcVars`" >nul 2>&1 && ($Command) > `"$escapedLog`" 2>&1"
 
     Push-Location $WorkingDirectory
     try {
         cmd /c $fullCommand
-        if ($LASTEXITCODE -ne 0) {
-            throw "Command failed with exit code $LASTEXITCODE`: $Command"
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -ne 0) {
+            if (Test-Path -LiteralPath $logFile) {
+                Get-Content -LiteralPath $logFile -Raw | Write-Host
+            }
+            Write-Host $FailedLabel
+            exit $exitCode
         }
     }
     finally {
         Pop-Location
+        if (Test-Path -LiteralPath $logFile) {
+            Remove-Item -LiteralPath $logFile -Force
+        }
     }
 }
 
 function Remove-BuildDirectory {
     if (Test-Path $BuildDir) {
-        Write-Host "Removing build directory: $BuildDir"
         Remove-Item -LiteralPath $BuildDir -Recurse -Force
-    }
-    else {
-        Write-Host "Build directory does not exist: $BuildDir"
     }
 }
 
@@ -128,7 +139,6 @@ function Test-NeedsConfigure {
 
 if ($CleanOnly) {
     Remove-BuildDirectory
-    Write-Host "Clean complete."
     exit 0
 }
 
@@ -143,25 +153,16 @@ if ($Clean) {
 $vcvars = Get-VcVars64Path
 
 if (Test-NeedsConfigure) {
-    Write-Host "Configuring ($BuildType)..."
     $configureCommand = "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=$BuildType"
-    Invoke-InMsvcEnvironment -VcVars64 $vcvars -Command $configureCommand -WorkingDirectory $RepoRoot
-}
-else {
-    Write-Host "Skipping configure (existing build directory)."
+    Invoke-InMsvcEnvironment -VcVars64 $vcvars -Command $configureCommand -WorkingDirectory $RepoRoot -FailedLabel 'Configure failed'
 }
 
-Write-Host "Building ($BuildType)..."
 $buildCommand = 'cmake --build build'
-Invoke-InMsvcEnvironment -VcVars64 $vcvars -Command $buildCommand -WorkingDirectory $RepoRoot
+Invoke-InMsvcEnvironment -VcVars64 $vcvars -Command $buildCommand -WorkingDirectory $RepoRoot -FailedLabel 'Build failed'
+Write-Host 'Build passed'
 
 if (-not $NoTest) {
-    Write-Host 'Running tests...'
     $testCommand = "ctest -C $BuildType --output-on-failure --test-dir build"
-    Invoke-InMsvcEnvironment -VcVars64 $vcvars -Command $testCommand -WorkingDirectory $RepoRoot
+    Invoke-InMsvcEnvironment -VcVars64 $vcvars -Command $testCommand -WorkingDirectory $RepoRoot -FailedLabel 'Test failed'
+    Write-Host 'Test passed'
 }
-else {
-    Write-Host 'Skipping tests (-NoTest).'
-}
-
-Write-Host 'Done.'
