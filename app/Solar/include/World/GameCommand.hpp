@@ -76,6 +76,12 @@ namespace slr
 		long long systemId{ 0 };
 	};
 
+	struct StartYardBuild
+	{
+		long long systemId{ 0 };
+		long long classId{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
@@ -89,7 +95,8 @@ namespace slr
 			JoinStandingConvoy,
 			AcceptStandingConvoyHaulJob,
 			SetCivilianHaulForbidden,
-			StartYardSlip>
+			StartYardSlip,
+			StartYardBuild>
 			payload;
 
 		static GameCommand moveFleetToSystem(
@@ -133,6 +140,7 @@ namespace slr
 			bool forbidden,
 			CommandSource source);
 		static GameCommand startYardSlip(long long systemId, CommandSource source);
+		static GameCommand startYardBuild(long long systemId, long long classId, CommandSource source);
 	};
 
 	bool execute(WorldData& world, const GameCommand& command);

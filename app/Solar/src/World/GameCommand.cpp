@@ -583,6 +583,29 @@ namespace
 		return true;
 	}
 
+	bool applyStartYardBuild(WorldData& world, const StartYardBuild& order)
+	{
+		Yard* yard = yardAtSystem(world, order.systemId);
+		if (yard == nullptr)
+		{
+			return false;
+		}
+
+		const ShipClass* shipClass = world.shipClassById(order.classId);
+		if (shipClass == nullptr || !shipClassIsTruckOfEmpire(*shipClass, yard->empireId))
+		{
+			return false;
+		}
+
+		if (shipClass->steelCost <= 0 || shipClass->buildTicks <= 0)
+		{
+			return false;
+		}
+
+		yard->hullBuildQueue.push_back(shipClass->id);
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -706,6 +729,14 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::startYardBuild(long long systemId, long long classId, CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = StartYardBuild{ .systemId = systemId, .classId = classId };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -751,6 +782,10 @@ namespace
 				else if constexpr (std::is_same_v<Payload, StartYardSlip>)
 				{
 					return applyStartYardSlip(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, StartYardBuild>)
+				{
+					return applyStartYardBuild(world, payload);
 				}
 				else
 				{

@@ -105,6 +105,8 @@ namespace slr
 	{
 		long long id{ 0 };
 		long long remainingBuildTicks{ 0 };
+		long long hullClassId{ 0 };
+		long long remainingHullBuildTicks{ 0 };
 	};
 
 	struct Yard
@@ -116,6 +118,7 @@ namespace slr
 		std::vector<GoodQuantity> populationReservedPiles;
 		std::vector<YardSlip> slips;
 		long long nextSlipConstructionId{ 0 };
+		std::vector<long long> hullBuildQueue;
 	};
 
 	struct Factory
@@ -151,6 +154,7 @@ namespace slr
 		long long cargoAmount{ 0 }; 
 		long long haulJobId{ 0 };
 		long long convoyId{ 0 };
+		long long classId{ 0 };
 		bool isMilitary{ false };
 	};
 
@@ -165,6 +169,10 @@ namespace slr
 		long long maxShields{ 0 };
 		long long maxHull{ 0 };
 		float closeRate{ 0.0f };
+		bool isTruck{ false };
+		bool isMilitary{ false };
+		long long steelCost{ 0 };
+		long long buildTicks{ 0 };
 	};
 
 	struct ClassCount
@@ -366,5 +374,9 @@ namespace slr
 	long long nextYardSlipId(const WorldData& world);
 	long long countIdleYardSlips(const Yard& yard);
 	void applyYardSlipConstruction(WorldData& world);
+	bool shipClassIsTruckOfEmpire(const ShipClass& shipClass, long long empireId);
+	long long hullSteelPerTick(const ShipClass& shipClass);
+	long long nextTruckId(const WorldData& world);
+	void applyYardHullConstruction(WorldData& world);
 
 }

@@ -128,7 +128,8 @@ namespace
 					.hop = 0,
 					.progress = 0.0f,
 					.direction = 1,
-					.speed = starterTruckSpeed(world, truckId) } });
+					.speed = starterTruckSpeed(world, truckId) },
+				.classId = HelionCivilianTruckClassId });
 		}
 		world.trucks.push_back(Truck{
 			.id = StarterCivilianTruckCount,
@@ -140,7 +141,8 @@ namespace
 				.direction = 1,
 				.speed = starterTruckSpeed(world, StarterCivilianTruckCount) },
 			.cargoGoodId = SteelGoodId,
-			.cargoAmount = TruckCapacity_Steel });
+			.cargoAmount = TruckCapacity_Steel,
+			.classId = HelionCivilianTruckClassId });
 		raiseInboundOnLoad(*helion, SteelGoodId, TruckCapacity_Steel);
 		syncHaulJobsFromUncoveredNeed(world);
 		if (const HaulJob* job = haulJobFor(world, 1, SteelGoodId))
@@ -168,6 +170,7 @@ namespace
 					.progress = 0.0f,
 					.direction = 1,
 					.speed = starterTruckSpeed(world, truckId) },
+				.classId = HelionMilitaryTruckClassId,
 				.isMilitary = true });
 		}
 
@@ -242,6 +245,36 @@ namespace
 			.maxShields = 6,
 			.maxHull = 10,
 			.closeRate = 7.0f });
+		world.shipClasses.push_back(ShipClass{
+			.id = HelionCivilianTruckClassId,
+			.empireId = HelionEmpireId,
+			.name = "Civilian truck",
+			.isTruck = true,
+			.steelCost = TruckHullSteelCost,
+			.buildTicks = TruckHullBuildTicks });
+		world.shipClasses.push_back(ShipClass{
+			.id = HelionMilitaryTruckClassId,
+			.empireId = HelionEmpireId,
+			.name = "Military truck",
+			.isTruck = true,
+			.isMilitary = true,
+			.steelCost = TruckHullSteelCost,
+			.buildTicks = TruckHullBuildTicks });
+		world.shipClasses.push_back(ShipClass{
+			.id = AshreachCivilianTruckClassId,
+			.empireId = AshreachEmpireId,
+			.name = "Civilian truck",
+			.isTruck = true,
+			.steelCost = TruckHullSteelCost,
+			.buildTicks = TruckHullBuildTicks });
+		world.shipClasses.push_back(ShipClass{
+			.id = AshreachMilitaryTruckClassId,
+			.empireId = AshreachEmpireId,
+			.name = "Military truck",
+			.isTruck = true,
+			.isMilitary = true,
+			.steelCost = TruckHullSteelCost,
+			.buildTicks = TruckHullBuildTicks });
 
 		constexpr float homeFleetSpeed = 50.0f;
 		world.fleets.push_back(Fleet{

@@ -806,15 +806,46 @@ namespace
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextUnformatted(std::to_string(slip.id).c_str());
 						ImGui::TableSetColumnIndex(1);
-						if (slip.remainingBuildTicks == 0)
-						{
-							ImGui::TextUnformatted("idle");
-						}
-						else
+						if (slip.remainingBuildTicks > 0)
 						{
 							ImGui::TextUnformatted(
 								(std::to_string(slip.remainingBuildTicks) + " ticks left").c_str());
 						}
+						else if (slip.hullClassId != 0)
+						{
+							const ShipClass* hullClass = _world->shipClassById(slip.hullClassId);
+							const std::string hullName =
+								hullClass != nullptr ? hullClass->name : ("class " + std::to_string(slip.hullClassId));
+							ImGui::TextUnformatted(
+								(hullName + " " + std::to_string(slip.remainingHullBuildTicks) + " ticks left")
+									.c_str());
+						}
+						else
+						{
+							ImGui::TextUnformatted("idle");
+						}
+					}
+
+					ImGui::EndTable();
+				}
+
+				ImGui::TextUnformatted("Build queue");
+				const std::string queueTableId = "yard_queue_" + yardTableId;
+				if (ImGui::BeginTable(
+						queueTableId.c_str(),
+						1,
+						ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					ImGui::TableSetupColumn("class");
+					ImGui::TableHeadersRow();
+					for (const long long classId : yard.hullBuildQueue)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						const ShipClass* queuedClass = _world->shipClassById(classId);
+						const std::string queuedName =
+							queuedClass != nullptr ? queuedClass->name : ("class " + std::to_string(classId));
+						ImGui::TextUnformatted(queuedName.c_str());
 					}
 
 					ImGui::EndTable();
@@ -825,6 +856,23 @@ namespace
 				{
 					pendingCommands.push_back(
 						GameCommand::startYardSlip(system->id, CommandSource::Player));
+				}
+
+				for (const auto& shipClass : _world->shipClasses)
+				{
+					if (!shipClassIsTruckOfEmpire(shipClass, yard.empireId))
+					{
+						continue;
+					}
+
+					const std::string buttonId = "Queue " + shipClass.name + "##" + std::to_string(shipClass.id);
+					if (ImGui::Button(buttonId.c_str()))
+					{
+						pendingCommands.push_back(GameCommand::startYardBuild(
+							system->id,
+							shipClass.id,
+							CommandSource::Player));
+					}
 				}
 				ImGui::PopID();
 

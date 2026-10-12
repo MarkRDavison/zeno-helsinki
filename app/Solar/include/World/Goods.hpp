@@ -16,6 +16,8 @@ namespace slr
 	constexpr long long YardPopulationReserved_Steel = 200;
 	constexpr long long YardSlipSteelCost = 200; // StartYardSlip spends this immediately from available steel
 	constexpr long long YardSlipBuildTicks = 8; // remainingBuildTicks on a new slip; 0 is idle
+	constexpr long long TruckHullSteelCost = 1000;
+	constexpr long long TruckHullBuildTicks = 10; // per-tick steel is TruckHullSteelCost / TruckHullBuildTicks
 	constexpr long long CivilianHazardFadeTicks = 8;
 
 	const char* goodName(long long goodId);

@@ -902,6 +902,7 @@ namespace
 		applyFactoryProduction(world);
 		applyCivilianConsumption(world);
 		applyYardSlipConstruction(world);
+		applyYardHullConstruction(world);
 		applyStandingConvoyJoins(world);
 		applyHaulJobAccepts(world);
 		applyStandingConvoyHaulAccepts(world);

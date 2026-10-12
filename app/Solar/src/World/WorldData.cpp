@@ -1567,13 +1567,175 @@ namespace slr
 		long long count = 0;
 		for (const auto& slip : yard.slips)
 		{
-			if (slip.remainingBuildTicks == 0)
+			if (slip.remainingBuildTicks == 0 && slip.hullClassId == 0)
 			{
 				++count;
 			}
 		}
 
 		return count;
+	}
+
+	bool shipClassIsTruckOfEmpire(const ShipClass& shipClass, long long empireId)
+	{
+		return shipClass.isTruck && shipClass.empireId == empireId;
+	}
+
+	long long hullSteelPerTick(const ShipClass& shipClass)
+	{
+		if (shipClass.buildTicks <= 0)
+		{
+			return 0;
+		}
+
+		return shipClass.steelCost / shipClass.buildTicks;
+	}
+
+	long long nextTruckId(const WorldData& world)
+	{
+		long long nextId = 1;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.id >= nextId)
+			{
+				nextId = truck.id + 1;
+			}
+		}
+
+		return nextId;
+	}
+
+	bool yardSlipIsAvailableForHull(const YardSlip& slip)
+	{
+		return slip.remainingBuildTicks == 0 && slip.hullClassId == 0;
+	}
+
+	void assignYardHullJobsToAvailableSlips(WorldData& world, Yard& yard)
+	{
+		std::vector<long long> availableIds;
+		for (const auto& slip : yard.slips)
+		{
+			if (yardSlipIsAvailableForHull(slip))
+			{
+				availableIds.push_back(slip.id);
+			}
+		}
+
+		std::sort(availableIds.begin(), availableIds.end());
+		for (const long long slipId : availableIds)
+		{
+			const ShipClass* shipClass = nullptr;
+			while (!yard.hullBuildQueue.empty() && shipClass == nullptr)
+			{
+				const long long classId = yard.hullBuildQueue.front();
+				shipClass = world.shipClassById(classId);
+				if (shipClass == nullptr || shipClass->buildTicks <= 0)
+				{
+					yard.hullBuildQueue.erase(yard.hullBuildQueue.begin());
+					shipClass = nullptr;
+				}
+			}
+
+			if (shipClass == nullptr)
+			{
+				break;
+			}
+
+			for (auto& slip : yard.slips)
+			{
+				if (slip.id != slipId)
+				{
+					continue;
+				}
+
+				yard.hullBuildQueue.erase(yard.hullBuildQueue.begin());
+				slip.hullClassId = shipClass->id;
+				slip.remainingHullBuildTicks = shipClass->buildTicks;
+				break;
+			}
+		}
+	}
+
+	void spawnParkedTruckFromClass(WorldData& world, const Yard& yard, const ShipClass& shipClass)
+	{
+		Truck truck;
+		truck.id = nextTruckId(world);
+		truck.empireId = yard.empireId;
+		truck.classId = shipClass.id;
+		truck.isMilitary = shipClass.isMilitary;
+		truck.motion.speed = 25.0f;
+		parkTruckAt(truck, yard.systemId);
+		world.trucks.push_back(truck);
+	}
+
+	void applyYardHullConstruction(WorldData& world)
+	{
+		for (auto& yard : world.yards)
+		{
+			assignYardHullJobsToAvailableSlips(world, yard);
+
+			std::vector<long long> busyIds;
+			for (const auto& slip : yard.slips)
+			{
+				if (slip.hullClassId != 0)
+				{
+					busyIds.push_back(slip.id);
+				}
+			}
+
+			std::sort(busyIds.begin(), busyIds.end());
+			for (const long long slipId : busyIds)
+			{
+				YardSlip* slip = nullptr;
+				for (auto& candidate : yard.slips)
+				{
+					if (candidate.id == slipId)
+					{
+						slip = &candidate;
+						break;
+					}
+				}
+
+				if (slip == nullptr)
+				{
+					continue;
+				}
+
+				const ShipClass* shipClass = world.shipClassById(slip->hullClassId);
+				if (shipClass == nullptr)
+				{
+					slip->hullClassId = 0;
+					slip->remainingHullBuildTicks = 0;
+					continue;
+				}
+
+				const long long slice = hullSteelPerTick(*shipClass);
+				if (slice <= 0)
+				{
+					continue;
+				}
+
+				if (stockpileAvailableForYardConsume(world, yard.systemId, SteelGoodId) < slice)
+				{
+					continue;
+				}
+
+				if (!useFromStockpile(world, yard.systemId, SteelGoodId, slice))
+				{
+					continue;
+				}
+
+				slip->remainingHullBuildTicks -= 1;
+				if (slip->remainingHullBuildTicks > 0)
+				{
+					continue;
+				}
+
+				spawnParkedTruckFromClass(world, yard, *shipClass);
+				slip->hullClassId = 0;
+				slip->remainingHullBuildTicks = 0;
+			}
+		}
 	}
 
 	void applyYardSlipConstruction(WorldData& world)
@@ -1610,7 +1772,7 @@ namespace slr
 			{
 				if (slip.id == chosenId)
 				{
-					--slip.remainingBuildTicks;
+					slip.remainingBuildTicks -= 1;
 					break;
 				}
 			}
