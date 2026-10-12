@@ -148,6 +148,7 @@ namespace slr
 		std::vector<ClassCount> composition;
 		LaneMotion motion;
 		long long policyId{ 0 };
+		long long escortConvoyId{ 0 };
 	};
 
 	struct BattleSideReport
@@ -182,6 +183,8 @@ namespace slr
 		long long empireId{ 0 };
 		long long loadSystemId{ 0 };
 		LaneMotion motion;
+		long long escortFleetId{ 0 };
+		long long desiredTruckCount{ 0 };
 	};
 
 	struct WorldData
@@ -251,6 +254,11 @@ namespace slr
 	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId);
 	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId);
 	bool convoyIsUnderway(const Convoy& convoy);
+	bool convoyIsStanding(const Convoy& convoy);
+	long long nextConvoyId(const WorldData& world);
+	long long fleetRallySystemId(const Fleet& fleet);
+	long long standingRallySystemId(const WorldData& world, const Convoy& convoy);
+	void pathTruckToSystem(WorldData& world, Truck& truck, long long systemId);
 	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId);
 	long long countTrucksInConvoy(const WorldData& world, long long convoyId);
 	long long countTrucksInConvoyPresent(const WorldData& world, const Convoy& convoy);

@@ -1,6 +1,7 @@
 #include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
+#include <algorithm>
 #include <type_traits>
 #include <utility>
 
@@ -20,6 +21,15 @@ namespace
 		if (fleet->motion.progress > 0.0f)
 		{
 			return false;
+		}
+
+		if (fleet->escortConvoyId != 0)
+		{
+			const Convoy* escort = world.convoyById(fleet->escortConvoyId);
+			if (escort != nullptr && (escort->haulJobId != 0 || convoyIsUnderway(*escort)))
+			{
+				return false;
+			}
 		}
 
 		if (fleet->systemId == order.systemId)
@@ -50,6 +60,12 @@ namespace
 		}
 
 		if (truck->haulJobId != 0 || truck->cargoAmount != 0)
+		{
+			return false;
+		}
+
+		const Convoy* existingConvoy = world.convoyById(truck->convoyId);
+		if (existingConvoy != nullptr && convoyIsStanding(*existingConvoy))
 		{
 			return false;
 		}
@@ -100,17 +116,8 @@ namespace
 
 		if (convoy == nullptr)
 		{
-			long long nextId = 1;
-			for (const auto& existing : world.convoys)
-			{
-				if (existing.id >= nextId)
-				{
-					nextId = existing.id + 1;
-				}
-			}
-
 			world.convoys.push_back(Convoy{
-				.id = nextId,
+				.id = nextConvoyId(world),
 				.haulJobId = job->id,
 				.empireId = job->empireId,
 				.loadSystemId = loadSystemId });
@@ -213,6 +220,251 @@ namespace
 		return true;
 	}
 
+	void releaseTrucksFromConvoy(WorldData& world, long long convoyId)
+	{
+		for (auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoyId)
+			{
+				truck.convoyId = 0;
+			}
+		}
+	}
+
+	void removeConvoyById(WorldData& world, long long convoyId)
+	{
+		world.convoys.erase(
+			std::remove_if(
+				world.convoys.begin(),
+				world.convoys.end(),
+				[convoyId](const Convoy& convoy) { return convoy.id == convoyId; }),
+			world.convoys.end());
+	}
+
+	bool applySetFleetEscort(WorldData& world, const SetFleetEscort& order)
+	{
+		Fleet* fleet = world.fleetById(order.fleetId);
+		if (fleet == nullptr || order.desiredTruckCount < 0)
+		{
+			return false;
+		}
+
+		if (order.desiredTruckCount == 0)
+		{
+			if (fleet->escortConvoyId == 0)
+			{
+				return false;
+			}
+
+			Convoy* convoy = world.convoyById(fleet->escortConvoyId);
+			fleet->escortConvoyId = 0;
+			if (convoy == nullptr)
+			{
+				return true;
+			}
+
+			if (convoy->haulJobId == 0)
+			{
+				const long long convoyId = convoy->id;
+				releaseTrucksFromConvoy(world, convoyId);
+				removeConvoyById(world, convoyId);
+			}
+			else
+			{
+				convoy->escortFleetId = 0;
+				convoy->desiredTruckCount = 0;
+			}
+
+			return true;
+		}
+
+		if (fleet->escortConvoyId != 0)
+		{
+			Convoy* convoy = world.convoyById(fleet->escortConvoyId);
+			if (convoy == nullptr || !convoyIsStanding(*convoy))
+			{
+				return false;
+			}
+
+			if (order.desiredTruckCount < convoy->desiredTruckCount)
+			{
+				while (countTrucksInConvoy(world, convoy->id) > order.desiredTruckCount)
+				{
+					Truck* extra = nullptr;
+					for (auto& truck : world.trucks)
+					{
+						if (truck.convoyId != convoy->id || truck.haulJobId != 0 || truck.cargoAmount != 0)
+						{
+							continue;
+						}
+
+						if (extra == nullptr || truck.id > extra->id)
+						{
+							extra = &truck;
+						}
+					}
+
+					if (extra == nullptr)
+					{
+						return false;
+					}
+
+					extra->convoyId = 0;
+				}
+			}
+
+			convoy->desiredTruckCount = order.desiredTruckCount;
+			return true;
+		}
+
+		world.convoys.push_back(Convoy{
+			.id = nextConvoyId(world),
+			.empireId = fleet->empireId,
+			.loadSystemId = fleetRallySystemId(*fleet),
+			.escortFleetId = fleet->id,
+			.desiredTruckCount = order.desiredTruckCount });
+		fleet->escortConvoyId = world.convoys.back().id;
+		return true;
+	}
+
+	bool applyJoinStandingConvoy(WorldData& world, const JoinStandingConvoy& order)
+	{
+		Truck* truck = world.truckById(order.truckId);
+		Convoy* convoy = world.convoyById(order.convoyId);
+		if (truck == nullptr || convoy == nullptr)
+		{
+			return false;
+		}
+
+		if (!convoyIsStanding(*convoy) || convoy->empireId != truck->empireId)
+		{
+			return false;
+		}
+
+		if (truck->haulJobId != 0 || truck->cargoAmount != 0 || truck->convoyId != 0)
+		{
+			return false;
+		}
+
+		if (countTrucksInConvoy(world, convoy->id) >= convoy->desiredTruckCount)
+		{
+			return false;
+		}
+
+		const Fleet* fleet = world.fleetById(convoy->escortFleetId);
+		if (fleet == nullptr)
+		{
+			return false;
+		}
+
+		const long long rally = fleetRallySystemId(*fleet);
+		if (rally == 0)
+		{
+			return false;
+		}
+
+		pathTruckToSystem(world, *truck, rally);
+		truck->convoyId = convoy->id;
+		return true;
+	}
+
+	bool standingConvoyMembersReadyAtRally(const WorldData& world, const Convoy& convoy)
+	{
+		if (!convoyIsStanding(convoy) || convoy.desiredTruckCount <= 0 || convoy.haulJobId != 0)
+		{
+			return false;
+		}
+
+		if (countTrucksInConvoy(world, convoy.id) != convoy.desiredTruckCount)
+		{
+			return false;
+		}
+
+		const Fleet* fleet = world.fleetById(convoy.escortFleetId);
+		if (fleet == nullptr || fleet->motion.route.size() >= 2)
+		{
+			return false;
+		}
+
+		const long long rally = fleetRallySystemId(*fleet);
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId != convoy.id)
+			{
+				continue;
+			}
+
+			if (truck.haulJobId != 0 || truck.cargoAmount != 0 || !isTruckAtSystem(truck, rally))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	bool applyAcceptStandingConvoyHaulJob(WorldData& world, const AcceptStandingConvoyHaulJob& order)
+	{
+		Convoy* convoy = world.convoyById(order.convoyId);
+		HaulJob* job = world.haulJobById(order.jobId);
+		if (convoy == nullptr || job == nullptr)
+		{
+			return false;
+		}
+
+		if (!standingConvoyMembersReadyAtRally(world, *convoy))
+		{
+			return false;
+		}
+
+		if (job->empireId != convoy->empireId)
+		{
+			return false;
+		}
+
+		const long long truckload = truckloadForGood(job->goodId);
+		const long long reserved = convoy->desiredTruckCount * truckload;
+		if (job->amount < reserved)
+		{
+			return false;
+		}
+
+		const Fleet* fleet = world.fleetById(convoy->escortFleetId);
+		if (fleet == nullptr)
+		{
+			return false;
+		}
+
+		const long long rally = fleetRallySystemId(*fleet);
+		const long long loadSystemId =
+			nearestSupplySystemId(world, rally, job->goodId, job->destinationSystemId);
+		if (loadSystemId == 0)
+		{
+			return false;
+		}
+
+		const StarSystem* supply = world.systemById(loadSystemId);
+		if (supply == nullptr || getStockpileAmount(*supply, job->goodId) < reserved)
+		{
+			return false;
+		}
+
+		job->amount -= reserved;
+		convoy->haulJobId = job->id;
+		convoy->loadSystemId = loadSystemId;
+		for (auto& truck : world.trucks)
+		{
+			if (truck.convoyId != convoy->id)
+			{
+				continue;
+			}
+
+			truck.haulJobId = job->id;
+		}
+
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -276,6 +528,39 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::setFleetEscort(
+		long long fleetId,
+		long long desiredTruckCount,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = SetFleetEscort{ .fleetId = fleetId, .desiredTruckCount = desiredTruckCount };
+		return command;
+	}
+
+	GameCommand GameCommand::joinStandingConvoy(
+		long long truckId,
+		long long convoyId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = JoinStandingConvoy{ .truckId = truckId, .convoyId = convoyId };
+		return command;
+	}
+
+	GameCommand GameCommand::acceptStandingConvoyHaulJob(
+		long long convoyId,
+		long long jobId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = AcceptStandingConvoyHaulJob{ .convoyId = convoyId, .jobId = jobId };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -301,6 +586,18 @@ namespace
 				else if constexpr (std::is_same_v<Payload, SetFleetPolicyOverride>)
 				{
 					return applySetFleetPolicyOverride(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, SetFleetEscort>)
+				{
+					return applySetFleetEscort(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, JoinStandingConvoy>)
+				{
+					return applyJoinStandingConvoy(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, AcceptStandingConvoyHaulJob>)
+				{
+					return applyAcceptStandingConvoyHaulJob(world, payload);
 				}
 				else
 				{

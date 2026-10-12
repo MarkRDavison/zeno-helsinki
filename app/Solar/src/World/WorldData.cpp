@@ -837,10 +837,86 @@ namespace slr
 		return convoy.motion.route.size() >= 2;
 	}
 
+	bool convoyIsStanding(const Convoy& convoy)
+	{
+		return convoy.escortFleetId != 0;
+	}
+
+	long long nextConvoyId(const WorldData& world)
+	{
+		long long nextId = 1;
+		for (const auto& convoy : world.convoys)
+		{
+			if (convoy.id >= nextId)
+			{
+				nextId = convoy.id + 1;
+			}
+		}
+
+		return nextId;
+	}
+
+	long long fleetRallySystemId(const Fleet& fleet)
+	{
+		if (fleet.motion.route.size() >= 2)
+		{
+			return fleet.motion.route.back();
+		}
+
+		return fleet.systemId;
+	}
+
+	long long standingRallySystemId(const WorldData& world, const Convoy& convoy)
+	{
+		const Fleet* fleet = world.fleetById(convoy.escortFleetId);
+		if (fleet != nullptr)
+		{
+			return fleetRallySystemId(*fleet);
+		}
+
+		return convoy.loadSystemId;
+	}
+
+	void pathTruckToSystem(WorldData& world, Truck& truck, long long systemId)
+	{
+		const long long here = truckSystemId(truck);
+		if (here == 0 || world.systemById(systemId) == nullptr)
+		{
+			return;
+		}
+
+		if (here == systemId)
+		{
+			parkTruckAt(truck, systemId);
+			return;
+		}
+
+		if (!truck.motion.route.empty() && truck.motion.route.back() == systemId)
+		{
+			return;
+		}
+
+		const std::vector<long long> path = shortestLanePath(world, here, systemId);
+		if (path.size() < 2)
+		{
+			return;
+		}
+
+		truck.motion.route = path;
+		truck.motion.hop = 0;
+		truck.motion.progress = 0.0f;
+		truck.motion.direction = 1;
+	}
+
 	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId)
 	{
 		for (auto& convoy : world.convoys)
 		{
+			if (convoyIsStanding(convoy))
+			{
+				continue;
+			}
+
 			if (convoy.haulJobId == haulJobId && !convoyIsUnderway(convoy))
 			{
 				return &convoy;
@@ -871,10 +947,13 @@ namespace slr
 			return countTrucksInConvoy(world, convoy.id);
 		}
 
+		const long long presentAt = convoyIsStanding(convoy) && convoy.haulJobId == 0
+			? standingRallySystemId(world, convoy)
+			: convoy.loadSystemId;
 		long long count = 0;
 		for (const auto& truck : world.trucks)
 		{
-			if (truck.convoyId == convoy.id && isTruckAtSystem(truck, convoy.loadSystemId))
+			if (truck.convoyId == convoy.id && isTruckAtSystem(truck, presentAt))
 			{
 				++count;
 			}
@@ -949,6 +1028,12 @@ namespace slr
 	void removeConvoyIfNoMembers(WorldData& world, long long convoyId)
 	{
 		if (convoyId == 0 || countTrucksInConvoy(world, convoyId) > 0)
+		{
+			return;
+		}
+
+		const Convoy* convoy = world.convoyById(convoyId);
+		if (convoy != nullptr && convoyIsStanding(*convoy))
 		{
 			return;
 		}

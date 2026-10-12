@@ -45,6 +45,24 @@ namespace slr
 		long long policyId{ 0 };
 	};
 
+	struct SetFleetEscort
+	{
+		long long fleetId{ 0 };
+		long long desiredTruckCount{ 0 };
+	};
+
+	struct JoinStandingConvoy
+	{
+		long long truckId{ 0 };
+		long long convoyId{ 0 };
+	};
+
+	struct AcceptStandingConvoyHaulJob
+	{
+		long long convoyId{ 0 };
+		long long jobId{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
@@ -53,7 +71,10 @@ namespace slr
 			AcceptHaulJob,
 			UpsertEngagementPolicy,
 			SetEmpireDefaultPolicy,
-			SetFleetPolicyOverride>
+			SetFleetPolicyOverride,
+			SetFleetEscort,
+			JoinStandingConvoy,
+			AcceptStandingConvoyHaulJob>
 			payload;
 
 		static GameCommand moveFleetToSystem(
@@ -77,6 +98,18 @@ namespace slr
 		static GameCommand setFleetPolicyOverride(
 			long long fleetId,
 			long long policyId,
+			CommandSource source);
+		static GameCommand setFleetEscort(
+			long long fleetId,
+			long long desiredTruckCount,
+			CommandSource source);
+		static GameCommand joinStandingConvoy(
+			long long truckId,
+			long long convoyId,
+			CommandSource source);
+		static GameCommand acceptStandingConvoyHaulJob(
+			long long convoyId,
+			long long jobId,
 			CommandSource source);
 	};
 

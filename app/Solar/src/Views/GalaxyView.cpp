@@ -253,26 +253,6 @@ namespace
 			drawUnitQuad(pdd, quad, model, LaneColour, _galaxyCameraIndex);
 		}
 
-		for (const auto& truck : _world->trucks)
-		{
-			const auto pos = truckMarkerPosition(*_world, truck);
-			if (!pos.has_value())
-			{
-				continue;
-			}
-
-			const bool selected = _selectedTruckId.has_value() && truck.id == *_selectedTruckId;
-			const glm::mat4 model =
-				glm::translate(glm::mat4(1.0f), glm::vec3(*pos, 0.0f)) *
-				glm::scale(glm::mat4(1.0f), glm::vec3(GalaxyTruckSize, GalaxyTruckSize, 1.0f));
-			drawUnitQuad(
-				pdd,
-				quad,
-				model,
-				selected ? SelectedTruckColour : TruckColour,
-				_galaxyCameraIndex);
-		}
-
 		for (const auto& fleet : _world->fleets)
 		{
 			if (fleetShipCount(fleet) == 0)
@@ -309,6 +289,26 @@ namespace
 				quad,
 				model,
 				selected ? SelectedNodeColour : NodeColour,
+				_galaxyCameraIndex);
+		}
+
+		for (const auto& truck : _world->trucks)
+		{
+			const auto pos = truckMarkerPosition(*_world, truck);
+			if (!pos.has_value())
+			{
+				continue;
+			}
+
+			const bool selected = _selectedTruckId.has_value() && truck.id == *_selectedTruckId;
+			const glm::mat4 model =
+				glm::translate(glm::mat4(1.0f), glm::vec3(*pos, 0.0f)) *
+				glm::scale(glm::mat4(1.0f), glm::vec3(GalaxyTruckSize, GalaxyTruckSize, 1.0f));
+			drawUnitQuad(
+				pdd,
+				quad,
+				model,
+				selected ? SelectedTruckColour : TruckColour,
 				_galaxyCameraIndex);
 		}
 	}
@@ -432,6 +432,20 @@ namespace
 							convoy != nullptr && convoyIsUnderway(*convoy) ? "underway" : "assembling");
 						ImGui::EndTable();
 					}
+
+					if (convoy != nullptr)
+					{
+						ImGui::TextUnformatted(
+							convoyIsStanding(*convoy) ? "standing" : "job group");
+						if (convoyIsStanding(*convoy))
+						{
+							const Fleet* escort = _world->fleetById(convoy->escortFleetId);
+							if (escort != nullptr)
+							{
+								ImGui::TextUnformatted(("escort " + escort->name).c_str());
+							}
+						}
+					}
 				}
 			}
 			ImGui::End();
@@ -535,6 +549,54 @@ namespace
 						}
 
 						ImGui::EndCombo();
+					}
+
+					const Convoy* escortConvoy = _world->convoyById(fleet->escortConvoyId);
+					const bool escorting = escortConvoy != nullptr && convoyIsStanding(*escortConvoy);
+					const char* stanceLabel = escorting ? "Escort" : "Front";
+					if (ImGui::BeginCombo("Stance", stanceLabel))
+					{
+						if (ImGui::Selectable("Front", !escorting) && escorting)
+						{
+							pendingCommands.push_back(GameCommand::setFleetEscort(
+								fleet->id,
+								0,
+								CommandSource::Player));
+						}
+
+						if (ImGui::Selectable("Escort", escorting) && !escorting)
+						{
+							pendingCommands.push_back(GameCommand::setFleetEscort(
+								fleet->id,
+								1,
+								CommandSource::Player));
+						}
+
+						ImGui::EndCombo();
+					}
+
+					if (escorting)
+					{
+						int trucksWanted = static_cast<int>(escortConvoy->desiredTruckCount);
+						if (ImGui::InputInt("Trucks", &trucksWanted))
+						{
+							if (trucksWanted < 0)
+							{
+								trucksWanted = 0;
+							}
+
+							pendingCommands.push_back(GameCommand::setFleetEscort(
+								fleet->id,
+								trucksWanted,
+								CommandSource::Player));
+						}
+
+						ImGui::TextUnformatted(
+							("joined " +
+								std::to_string(countTrucksInConvoy(*_world, escortConvoy->id)) +
+								"/" +
+								std::to_string(escortConvoy->desiredTruckCount))
+								.c_str());
 					}
 				}
 			}

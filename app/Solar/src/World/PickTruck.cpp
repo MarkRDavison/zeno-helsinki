@@ -6,11 +6,56 @@
 namespace slr
 {
 
+	LaneMotion truckMotionForMarker(const WorldData& world, const Truck& truck)
+	{
+		const Convoy* convoy = world.convoyById(truck.convoyId);
+		if (convoy == nullptr || !convoyIsUnderway(*convoy))
+		{
+			return truck.motion;
+		}
+
+		LaneMotion motion = convoy->motion;
+		motion.speed = truck.motion.speed;
+		return motion;
+	}
+
 	std::optional<glm::vec2> truckMarkerPosition(const WorldData& world, const Truck& truck)
 	{
-		const auto onLane = laneWorldPosition(world, truck.motion);
+		const LaneMotion motion = truckMotionForMarker(world, truck);
+		const auto onLane = laneWorldPosition(world, motion);
 		if (onLane.has_value())
 		{
+			const Convoy* convoy = world.convoyById(truck.convoyId);
+			if (convoy != nullptr && convoyIsStanding(*convoy) && convoyIsUnderway(*convoy) &&
+				motion.progress > 0.0f && motion.progress < 1.0f)
+			{
+				long long fromId = 0;
+				long long toId = 0;
+				if (!hopEndpoints(motion, fromId, toId))
+				{
+					return onLane;
+				}
+
+				const StarSystem* from = world.systemById(fromId);
+				const StarSystem* to = world.systemById(toId);
+				if (from == nullptr || to == nullptr)
+				{
+					return onLane;
+				}
+
+				const glm::vec2 delta = to->position - from->position;
+				const float length = glm::length(delta);
+				if (length <= 0.0f)
+				{
+					return onLane;
+				}
+
+				const glm::vec2 along = delta / length;
+				const float trail =
+					GalaxyFleetSize * 0.5f + GalaxyTruckSize * 0.5f + 4.0f;
+				return *onLane - along * trail;
+			}
+
 			return onLane;
 		}
 
