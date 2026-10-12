@@ -1,4 +1,5 @@
 #include <World/Goods.hpp>
+#include <World/LaneMotion.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
 #include <World/TruckCargo.hpp>
@@ -11,27 +12,39 @@ namespace slr
 namespace TruckTests
 {
 
-	bool truckOnRimwardHelionRoute(const Truck& truck)
-	{
-		const std::vector<long long> expected{ 5, 3, 2, 1 };
-		return truck.motion.route == expected;
-	}
-
-TEST_CASE("starter map has trucks on the Rimward-Helion route", "[slr][Truck]")
+TEST_CASE("starter empty trucks park at Rimward; one loaded truck is Helion-bound", "[slr][Truck]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.trucks.size() >= 1);
+	REQUIRE(world.trucks.size() >= 3);
+	REQUIRE(world.trucks[0].motion.route == std::vector<long long>{ 5 });
+	REQUIRE(world.trucks[1].motion.route == std::vector<long long>{ 5 });
+	REQUIRE(world.trucks[2].motion.route == shortestLanePath(world, 5, 1));
+	REQUIRE(world.trucks[2].cargoAmount == TruckCapacity_Steel);
+	REQUIRE(world.trucks[2].haulJobId != 0);
+}
 
-	int onRoute = 0;
-	for (const auto& truck : world.trucks)
+TEST_CASE("starter truck speeds vary by 5 percent around 25", "[slr][Truck]")
+{
+	const WorldData a = makeStarterMap();
+	const WorldData b = makeStarterMap();
+	REQUIRE(a.trucks.size() == 3);
+	REQUIRE(b.trucks.size() == 3);
+	constexpr float base = 25.0f;
+	constexpr float minSpeed = base * 0.95f;
+	constexpr float maxSpeed = base * 1.05f;
+	bool anyDifferent = false;
+	for (size_t i = 0; i < a.trucks.size(); ++i)
 	{
-		if (truckOnRimwardHelionRoute(truck))
+		const float speed = a.trucks[i].motion.speed;
+		REQUIRE(speed >= minSpeed);
+		REQUIRE(speed < maxSpeed);
+		REQUIRE(speed == b.trucks[i].motion.speed);
+		if (speed != a.trucks[0].motion.speed)
 		{
-			++onRoute;
+			anyDifferent = true;
 		}
 	}
-
-	REQUIRE(onRoute >= 1);
+	REQUIRE(anyDifferent);
 }
 
 TEST_CASE("Helion starts with steel need 1000 and Rimward steel need is 0", "[slr][Truck]")
@@ -48,7 +61,7 @@ TEST_CASE("Helion starts with steel need 1000 and Rimward steel need is 0", "[sl
 	long long cargoTowardHelion = 0;
 	for (const auto& truck : world.trucks)
 	{
-		if (truck.motion.route.size() >= 2 && truck.motion.route.back() == 1)
+		if (truck.cargoAmount > 0)
 		{
 			cargoTowardHelion += truck.cargoAmount;
 		}
@@ -59,7 +72,7 @@ TEST_CASE("Helion starts with steel need 1000 and Rimward steel need is 0", "[sl
 TEST_CASE("trucks at a system are those sitting on the node", "[slr][Truck]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(countTrucksAtSystem(world, 5) == 1);
+	REQUIRE(countTrucksAtSystem(world, 5) == 2);
 	REQUIRE(countTrucksAtSystem(world, 1) == 0);
 	REQUIRE(countTrucksAtSystem(world, 3) == 0);
 }
@@ -115,7 +128,8 @@ TEST_CASE("truck loads at Rimward only when Helion need remains", "[slr][Truck]"
 	world.trucks.clear();
 	world.trucks.push_back(Truck{
 		.id = 1,
-		.motion = { .route = { 5, 3, 2, 1 }, .hop = 0, .progress = 0.0f, .direction = 1 },
+		.empireId = HelionEmpireId,
+		.motion = { .route = { 5 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
 		.cargoGoodId = 0,
 		.cargoAmount = 0 });
 
@@ -131,6 +145,8 @@ TEST_CASE("truck loads at Rimward only when Helion need remains", "[slr][Truck]"
 	REQUIRE(getInbound(*helion, SteelGoodId) == TruckCapacity_Steel * 2);
 	REQUIRE(world.trucks[0].cargoGoodId == SteelGoodId);
 	REQUIRE(world.trucks[0].cargoAmount == TruckCapacity_Steel);
+	REQUIRE(world.trucks[0].haulJobId != 0);
+	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 1));
 }
 
 TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
@@ -138,11 +154,15 @@ TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
 	WorldData world = makeStarterMap();
 	world.trucks.clear();
 	world.mines.clear();
+	const HaulJob* job = haulJobFor(world, 1, SteelGoodId);
+	REQUIRE(job != nullptr);
 	world.trucks.push_back(Truck{
 		.id = 1,
-		.motion = { .route = { 5, 3, 2, 1 }, .hop = 3, .progress = 0.0f, .direction = -1 },
+		.empireId = HelionEmpireId,
+		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
 		.cargoGoodId = SteelGoodId,
-		.cargoAmount = TruckCapacity_Steel });
+		.cargoAmount = TruckCapacity_Steel,
+		.haulJobId = job->id });
 
 	stepGalaxy(world);
 
@@ -152,6 +172,7 @@ TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
 	REQUIRE(getNeed(*helion, SteelGoodId) == 950);
 	REQUIRE(getInbound(*helion, SteelGoodId) == 0);
 	REQUIRE(world.trucks[0].cargoAmount == 0);
+	REQUIRE(world.trucks[0].haulJobId == 0);
 }
 
 TEST_CASE("empty truck at Rimward does not load when Helion need is 0", "[slr][Truck]")
@@ -164,7 +185,8 @@ TEST_CASE("empty truck at Rimward does not load when Helion need is 0", "[slr][T
 
 	world.trucks.push_back(Truck{
 		.id = 1,
-		.motion = { .route = { 5, 3, 2, 1 }, .hop = 0, .progress = 0.0f, .direction = 1 },
+		.empireId = HelionEmpireId,
+		.motion = { .route = { 5 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
 		.cargoGoodId = 0,
 		.cargoAmount = 0 });
 
@@ -174,6 +196,7 @@ TEST_CASE("empty truck at Rimward does not load when Helion need is 0", "[slr][T
 	REQUIRE(rimward != nullptr);
 	REQUIRE(getStockpileAmount(*rimward, SteelGoodId) == 100);
 	REQUIRE(world.trucks[0].cargoAmount == 0);
+	REQUIRE(world.trucks[0].haulJobId == 0);
 	REQUIRE(world.trucks[0].motion.progress == 0.0f);
 	REQUIRE(world.trucks[0].motion.hop == 0);
 }
@@ -189,7 +212,8 @@ TEST_CASE("empty truck at Rimward does not load when uncovered need is below a t
 
 	world.trucks.push_back(Truck{
 		.id = 1,
-		.motion = { .route = { 5, 3, 2, 1 }, .hop = 0, .progress = 0.0f, .direction = 1 },
+		.empireId = HelionEmpireId,
+		.motion = { .route = { 5 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
 		.cargoGoodId = 0,
 		.cargoAmount = 0 });
 

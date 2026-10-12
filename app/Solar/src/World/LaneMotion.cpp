@@ -1,5 +1,8 @@
 #include <World/LaneMotion.hpp>
 #include <algorithm>
+#include <map>
+#include <queue>
+#include <unordered_map>
 
 namespace slr
 {
@@ -83,6 +86,77 @@ namespace slr
 		motion.hop += motion.direction;
 		motion.progress = 0.0f;
 		return true;
+	}
+
+	std::vector<long long> shortestLanePath(const WorldData& world, long long fromId, long long toId)
+	{
+		if (world.systemById(fromId) == nullptr || world.systemById(toId) == nullptr)
+		{
+			return {};
+		}
+
+		if (fromId == toId)
+		{
+			return { fromId };
+		}
+
+		std::map<long long, std::vector<long long>> adj;
+		for (const auto& lane : world.hyperlanes)
+		{
+			adj[lane.a].push_back(lane.b);
+			adj[lane.b].push_back(lane.a);
+		}
+
+		for (auto& entry : adj)
+		{
+			std::sort(entry.second.begin(), entry.second.end());
+		}
+
+		std::queue<long long> frontier;
+		std::unordered_map<long long, long long> parent;
+		frontier.push(fromId);
+		parent.emplace(fromId, fromId);
+
+		while (!frontier.empty())
+		{
+			const long long current = frontier.front();
+			frontier.pop();
+			if (current == toId)
+			{
+				break;
+			}
+
+			const auto found = adj.find(current);
+			if (found == adj.end())
+			{
+				continue;
+			}
+
+			for (const long long next : found->second)
+			{
+				if (parent.contains(next))
+				{
+					continue;
+				}
+
+				parent.emplace(next, current);
+				frontier.push(next);
+			}
+		}
+
+		if (!parent.contains(toId))
+		{
+			return {};
+		}
+
+		std::vector<long long> path;
+		for (long long at = toId; at != fromId; at = parent[at])
+		{
+			path.push_back(at);
+		}
+		path.push_back(fromId);
+		std::reverse(path.begin(), path.end());
+		return path;
 	}
 
 }

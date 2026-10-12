@@ -96,8 +96,17 @@ TEST_CASE("trucks are not pickable as fleets", "[slr][Fleet]")
 {
 	const WorldData world = makeStarterMap();
 	REQUIRE_FALSE(world.trucks.empty());
-	const Truck& truck = world.trucks.front();
-	const auto truckPos = laneWorldPosition(world, truck.motion);
+	const Truck* flying = nullptr;
+	for (const auto& truck : world.trucks)
+	{
+		if (laneWorldPosition(world, truck.motion).has_value())
+		{
+			flying = &truck;
+			break;
+		}
+	}
+	REQUIRE(flying != nullptr);
+	const auto truckPos = laneWorldPosition(world, flying->motion);
 	REQUIRE(truckPos.has_value());
 	REQUIRE_FALSE(pickFleet(world, *truckPos, GalaxyFleetSize * 0.5f).has_value());
 }

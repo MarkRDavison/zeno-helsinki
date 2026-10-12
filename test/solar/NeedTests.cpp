@@ -97,16 +97,20 @@ TEST_CASE("arrival still lowers need", "[slr][Need]")
 	helion->stocks[0].need = 1000;
 	helion->stocks[0].inbound = TruckCapacity_Steel;
 
+	const HaulJob* job = haulJobFor(world, 1, SteelGoodId);
+	REQUIRE(job != nullptr);
 	world.trucks.push_back(Truck{
 		.id = 1,
+		.empireId = HelionEmpireId,
 		.motion = {
-			.route = { 5, 1 },
-			.hop = 1,
+			.route = { 1 },
+			.hop = 0,
 			.progress = 0.0f,
 			.direction = 1,
 			.speed = 25.0f },
 		.cargoGoodId = SteelGoodId,
-		.cargoAmount = TruckCapacity_Steel });
+		.cargoAmount = TruckCapacity_Steel,
+		.haulJobId = job->id });
 
 	stepGalaxy(world);
 

@@ -1,5 +1,6 @@
 #include <World/WorldData.hpp>
 #include <World/Goods.hpp>
+#include <World/LaneMotion.hpp>
 #include <algorithm>
 #include <utility>
 
@@ -94,6 +95,24 @@ namespace slr
 	HaulJob* WorldData::haulJobById(long long id)
 	{
 		return const_cast<HaulJob*>(static_cast<const WorldData*>(this)->haulJobById(id));
+	}
+
+	const Truck* WorldData::truckById(long long id) const
+	{
+		for (const auto& truck : trucks)
+		{
+			if (truck.id == id)
+			{
+				return &truck;
+			}
+		}
+
+		return nullptr;
+	}
+
+	Truck* WorldData::truckById(long long id)
+	{
+		return const_cast<Truck*>(static_cast<const WorldData*>(this)->truckById(id));
 	}
 
 	long long getStockpileAmount(const StarSystem& system, long long goodId)
@@ -375,6 +394,158 @@ namespace slr
 		return nullptr;
 	}
 
+	long long truckSystemId(const Truck& truck)
+	{
+		if (truck.motion.progress == 0.0f && truck.motion.hop >= 0 &&
+			truck.motion.hop < static_cast<int>(truck.motion.route.size()))
+		{
+			return truck.motion.route[static_cast<size_t>(truck.motion.hop)];
+		}
+
+		long long fromId = 0;
+		long long toId = 0;
+		if (hopEndpoints(truck.motion, fromId, toId))
+		{
+			return fromId;
+		}
+
+		return 0;
+	}
+
+	namespace
+	{
+
+		bool systemCanSupplyGood(const WorldData& world, const StarSystem& system, long long goodId)
+		{
+			if (getStockpileAmount(system, goodId) >= truckloadForGood(goodId))
+			{
+				return true;
+			}
+
+			for (const auto& mine : world.mines)
+			{
+				if (mine.systemId == system.id && mineOutputPerTick(mine, goodId) > 0)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		long long empireIdForHaulDestination(const WorldData& world, long long systemId)
+		{
+			for (const auto& yard : world.yards)
+			{
+				if (yard.systemId == systemId)
+				{
+					return yard.empireId;
+				}
+			}
+
+			return 0;
+		}
+
+		long long emptyAssignedOnJob(const WorldData& world, long long jobId, long long goodId)
+		{
+			const long long truckload = truckloadForGood(goodId);
+			long long reserved = 0;
+			for (const auto& truck : world.trucks)
+			{
+				if (truck.haulJobId == jobId && truck.cargoAmount == 0)
+				{
+					reserved += truckload;
+				}
+			}
+
+			return reserved;
+		}
+
+		long long remainingAcceptRoom(const WorldData& world, const StarSystem& destination, const HaulJob& job)
+		{
+			const long long uncovered = uncoveredNeed(destination, job.goodId);
+			const long long reserved = emptyAssignedOnJob(world, job.id, job.goodId);
+			if (uncovered <= reserved)
+			{
+				return 0;
+			}
+
+			return uncovered - reserved;
+		}
+
+		bool anyTruckAssignedToJob(const WorldData& world, long long jobId)
+		{
+			for (const auto& truck : world.trucks)
+			{
+				if (truck.haulJobId == jobId)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+	}
+
+	long long nearestSupplySystemId(
+		const WorldData& world,
+		long long fromSystemId,
+		long long goodId,
+		long long destinationSystemId)
+	{
+		auto pick = [&](bool allowDestination) -> long long
+		{
+			long long bestId = 0;
+			long long bestHops = 0;
+			bool found = false;
+			for (const auto& system : world.systems)
+			{
+				if (!allowDestination && system.id == destinationSystemId)
+				{
+					continue;
+				}
+
+				if (!systemCanSupplyGood(world, system, goodId))
+				{
+					continue;
+				}
+
+				const std::vector<long long> path = shortestLanePath(world, fromSystemId, system.id);
+				if (path.empty())
+				{
+					continue;
+				}
+
+				const long long hops = static_cast<long long>(path.size()) - 1;
+				if (!found || hops < bestHops || (hops == bestHops && system.id < bestId))
+				{
+					found = true;
+					bestHops = hops;
+					bestId = system.id;
+				}
+			}
+
+			return bestId;
+		};
+
+		const long long skipDest = pick(false);
+		if (skipDest != 0)
+		{
+			return skipDest;
+		}
+
+		return pick(true);
+	}
+
+	void parkTruckAt(Truck& truck, long long systemId)
+	{
+		truck.motion.route = { systemId };
+		truck.motion.hop = 0;
+		truck.motion.progress = 0.0f;
+		truck.motion.direction = 1;
+	}
+
 	void syncHaulJobsFromUncoveredNeed(WorldData& world)
 	{
 		long long nextId = 1;
@@ -390,12 +561,6 @@ namespace slr
 		{
 			for (const auto& stock : system.stocks)
 			{
-				const long long uncovered = uncoveredNeed(system, stock.goodId);
-				if (uncovered < truckloadForGood(stock.goodId))
-				{
-					continue;
-				}
-
 				HaulJob* existing = nullptr;
 				for (auto& job : world.haulJobs)
 				{
@@ -406,17 +571,40 @@ namespace slr
 					}
 				}
 
+				const long long truckload = truckloadForGood(stock.goodId);
+				long long remaining = 0;
 				if (existing != nullptr)
 				{
-					existing->amount = uncovered;
+					remaining = remainingAcceptRoom(world, system, *existing);
 				}
 				else
+				{
+					remaining = uncoveredNeed(system, stock.goodId);
+				}
+
+				const bool assigned = existing != nullptr && anyTruckAssignedToJob(world, existing->id);
+				if (remaining < truckload && !assigned)
+				{
+					continue;
+				}
+
+				const long long empireId = empireIdForHaulDestination(world, system.id);
+				if (existing != nullptr)
+				{
+					existing->amount = remaining;
+					if (existing->empireId == 0)
+					{
+						existing->empireId = empireId;
+					}
+				}
+				else if (remaining >= truckload)
 				{
 					world.haulJobs.push_back(HaulJob{
 						.id = nextId,
 						.destinationSystemId = system.id,
+						.empireId = empireId,
 						.goodId = stock.goodId,
-						.amount = uncovered });
+						.amount = remaining });
 					++nextId;
 				}
 			}
@@ -434,7 +622,12 @@ namespace slr
 						return true;
 					}
 
-					return uncoveredNeed(*system, job.goodId) < truckloadForGood(job.goodId);
+					if (anyTruckAssignedToJob(world, job.id))
+					{
+						return false;
+					}
+
+					return remainingAcceptRoom(world, *system, job) < truckloadForGood(job.goodId);
 				}),
 			world.haulJobs.end());
 	}

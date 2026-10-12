@@ -22,6 +22,15 @@ namespace
 
 	StarSystem* destinationForTruck(WorldData& world, const Truck& truck)
 	{
+		if (truck.haulJobId != 0)
+		{
+			const HaulJob* job = world.haulJobById(truck.haulJobId);
+			if (job != nullptr)
+			{
+				return world.systemById(job->destinationSystemId);
+			}
+		}
+
 		if (truck.motion.route.size() < 2)
 		{
 			return nullptr;

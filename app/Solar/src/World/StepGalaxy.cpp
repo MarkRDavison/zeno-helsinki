@@ -1,9 +1,11 @@
 #include <World/StepGalaxy.hpp>
 #include <World/Combat.hpp>
+#include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/TruckCargo.hpp>
 #include <algorithm>
+#include <vector>
 
 namespace slr
 {
@@ -73,56 +75,91 @@ namespace
 		}
 	}
 
-	void loadIfDemandOpen(WorldData& world, Truck& truck)
+	void setRouteToDestination(WorldData& world, Truck& truck, long long fromId, long long destId)
 	{
-		if (truck.motion.route.size() < 2 || truck.cargoAmount != 0)
+		const std::vector<long long> path = shortestLanePath(world, fromId, destId);
+		if (path.size() < 2)
+		{
+			parkTruckAt(truck, fromId);
+			return;
+		}
+
+		truck.motion.route = path;
+		truck.motion.hop = 0;
+		truck.motion.progress = 0.0f;
+		truck.motion.direction = 1;
+	}
+
+	void loadIfJoinedJob(WorldData& world, Truck& truck)
+	{
+		if (truck.haulJobId == 0 || truck.cargoAmount != 0)
 		{
 			return;
 		}
 
-		const long long supplyId = truck.motion.route.front();
-		const long long demandId = truck.motion.route.back();
-		if (!isTruckAtSystem(truck, supplyId))
+		HaulJob* job = world.haulJobById(truck.haulJobId);
+		if (job == nullptr)
 		{
 			return;
 		}
 
-		StarSystem* demand = world.systemById(demandId);
-		StarSystem* supply = world.systemById(supplyId);
-		if (demand == nullptr || supply == nullptr)
+		const long long here = truckSystemId(truck);
+		if (here == 0)
 		{
 			return;
 		}
 
-		if (uncoveredNeed(*demand, SteelGoodId) < TruckCapacity_Steel)
+		const long long supplyId = nearestSupplySystemId(
+			world,
+			here,
+			job->goodId,
+			job->destinationSystemId);
+		if (here != supplyId)
 		{
 			return;
 		}
 
-		if (!takeFromStockpile(*supply, SteelGoodId, TruckCapacity_Steel))
+		StarSystem* supply = world.systemById(here);
+		StarSystem* demand = world.systemById(job->destinationSystemId);
+		if (supply == nullptr || demand == nullptr)
 		{
 			return;
 		}
 
-		truck.cargoGoodId = SteelGoodId;
-		truck.cargoAmount = TruckCapacity_Steel;
-		raiseInboundOnLoad(*demand, SteelGoodId, TruckCapacity_Steel);
+		const long long truckload = truckloadForGood(job->goodId);
+		if (!takeFromStockpile(*supply, job->goodId, truckload))
+		{
+			return;
+		}
+
+		truck.cargoGoodId = job->goodId;
+		truck.cargoAmount = truckload;
+		raiseInboundOnLoad(*demand, job->goodId, truckload);
+		if (here != job->destinationSystemId)
+		{
+			setRouteToDestination(world, truck, here, job->destinationSystemId);
+		}
 	}
 
 	void dumpIfCarrying(WorldData& world, Truck& truck)
 	{
-		if (truck.motion.route.size() < 2 || truck.cargoAmount <= 0)
+		if (truck.cargoAmount <= 0 || truck.haulJobId == 0)
 		{
 			return;
 		}
 
-		const long long demandId = truck.motion.route.back();
-		if (!isTruckAtSystem(truck, demandId))
+		HaulJob* job = world.haulJobById(truck.haulJobId);
+		if (job == nullptr)
 		{
 			return;
 		}
 
-		StarSystem* demand = world.systemById(demandId);
+		if (!isTruckAtSystem(truck, job->destinationSystemId))
+		{
+			return;
+		}
+
+		StarSystem* demand = world.systemById(job->destinationSystemId);
 		if (demand == nullptr)
 		{
 			return;
@@ -133,44 +170,72 @@ namespace
 		reduceNeed(*demand, truck.cargoGoodId, truck.cargoAmount);
 		truck.cargoGoodId = 0;
 		truck.cargoAmount = 0;
-	}
-
-	bool waitEmptyAtSupply(const Truck& truck)
-	{
-		if (truck.motion.route.size() < 2 || truck.cargoAmount != 0)
-		{
-			return false;
-		}
-
-		return isTruckAtSystem(truck, truck.motion.route.front());
+		truck.haulJobId = 0;
+		parkTruckAt(truck, job->destinationSystemId);
 	}
 
 	void advanceTruck(WorldData& world, Truck& truck)
 	{
-		if (!advanceAlongLane(world, truck.motion))
-		{
-			return;
-		}
-
-		if (truck.motion.hop == 0 ||
-			truck.motion.hop == static_cast<int>(truck.motion.route.size()) - 1)
-		{
-			truck.motion.direction = -truck.motion.direction;
-		}
+		advanceAlongLane(world, truck.motion);
 	}
 
 	void moveTrucks(WorldData& world)
 	{
 		for (auto& truck : world.trucks)
 		{
-			loadIfDemandOpen(world, truck);
+			loadIfJoinedJob(world, truck);
 			dumpIfCarrying(world, truck);
-			if (waitEmptyAtSupply(truck))
+			advanceTruck(world, truck);
+		}
+	}
+
+	void applyHaulJobAccepts(WorldData& world)
+	{
+		std::vector<GameCommand> accepts;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.cargoAmount != 0 || truck.haulJobId != 0)
 			{
 				continue;
 			}
 
-			advanceTruck(world, truck);
+			long long bestJobId = 0;
+			for (const auto& job : world.haulJobs)
+			{
+				if (job.empireId != truck.empireId)
+				{
+					continue;
+				}
+
+				if (job.amount < truckloadForGood(job.goodId))
+				{
+					continue;
+				}
+
+				if (bestJobId == 0 || job.id < bestJobId)
+				{
+					bestJobId = job.id;
+				}
+			}
+
+			if (bestJobId != 0)
+			{
+				accepts.push_back(GameCommand::acceptHaulJob(truck.id, bestJobId, CommandSource::Ai));
+			}
+		}
+
+		std::sort(
+			accepts.begin(),
+			accepts.end(),
+			[](const GameCommand& a, const GameCommand& b)
+			{
+				return std::get<AcceptHaulJob>(a.payload).truckId <
+					std::get<AcceptHaulJob>(b.payload).truckId;
+			});
+
+		for (const auto& command : accepts)
+		{
+			execute(world, command);
 		}
 	}
 
@@ -208,7 +273,9 @@ namespace
 	void stepGalaxy(WorldData& world)
 	{
 		applyDeferredNeedPosts(world);
+		syncHaulJobsFromUncoveredNeed(world);
 		applyExtraction(world);
+		applyHaulJobAccepts(world);
 		moveTrucks(world);
 		syncHaulJobsFromUncoveredNeed(world);
 		moveFleets(world);

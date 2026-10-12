@@ -63,6 +63,7 @@ namespace slr
 	struct Yard
 	{
 		long long systemId{ 0 };
+		long long empireId{ 0 };
 		std::vector<GoodQuantity> desiredPiles;
 	};
 
@@ -78,9 +79,11 @@ namespace slr
 	struct Truck
 	{
 		long long id{ 0 };
+		long long empireId{ 0 };
 		LaneMotion motion;
 		long long cargoGoodId{ 0 };
 		long long cargoAmount{ 0 };
+		long long haulJobId{ 0 };
 	};
 
 	struct ShipClass
@@ -132,6 +135,7 @@ namespace slr
 	{
 		long long id{ 0 };
 		long long destinationSystemId{ 0 };
+		long long empireId{ 0 };
 		long long goodId{ 0 };
 		long long amount{ 0 };
 	};
@@ -161,6 +165,8 @@ namespace slr
 		Fleet* fleetById(long long id);
 		const HaulJob* haulJobById(long long id) const;
 		HaulJob* haulJobById(long long id);
+		const Truck* truckById(long long id) const;
+		Truck* truckById(long long id);
 	};
 
 	long long getStockpileAmount(const StarSystem& system, long long goodId);
@@ -177,6 +183,13 @@ namespace slr
 	void applyDeferredNeedPosts(WorldData& world);
 	void syncHaulJobsFromUncoveredNeed(WorldData& world);
 	const HaulJob* haulJobFor(const WorldData& world, long long destinationSystemId, long long goodId);
+	long long truckSystemId(const Truck& truck);
+	long long nearestSupplySystemId(
+		const WorldData& world,
+		long long fromSystemId,
+		long long goodId,
+		long long destinationSystemId);
+	void parkTruckAt(Truck& truck, long long systemId);
 	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId);
 	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);

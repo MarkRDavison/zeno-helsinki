@@ -12,6 +12,7 @@
 #include <helsinki/System/glm.hpp>
 #include <imgui.h>
 #include <cmath>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -231,7 +232,17 @@ namespace
 
 		for (const auto& truck : _world->trucks)
 		{
-			const auto pos = laneWorldPosition(*_world, truck.motion);
+			std::optional<glm::vec2> pos = laneWorldPosition(*_world, truck.motion);
+			if (!pos.has_value())
+			{
+				const long long atId = truckSystemId(truck);
+				const StarSystem* at = _world->systemById(atId);
+				if (at != nullptr)
+				{
+					pos = at->position;
+				}
+			}
+
 			if (!pos.has_value())
 			{
 				continue;

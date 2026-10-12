@@ -1,6 +1,8 @@
 #include <World/StarterMap.hpp>
 #include <World/Goods.hpp>
+#include <World/LaneMotion.hpp>
 #include <World/TruckCargo.hpp>
+#include <helsinki/System/Utils/SplitMix64.hpp>
 #include <utility>
 
 namespace slr
@@ -16,6 +18,17 @@ namespace
 		}
 
 		world.hyperlanes.push_back(Hyperlane{ .a = a, .b = b });
+	}
+
+	float starterCivilianTruckSpeed(const WorldData& world, long long truckId)
+	{
+		constexpr float baseSpeed = 25.0f;
+		constexpr std::uint64_t truckSpeedDomain = 0x5452554B535044ULL;
+		std::uint64_t rng = hl::splitMix64Seed({
+			world.masterSeed,
+			truckSpeedDomain,
+			static_cast<std::uint64_t>(truckId) });
+		return baseSpeed * (0.95f + 0.10f * hl::splitMix64Unit(rng));
 	}
 
 }
@@ -60,44 +73,46 @@ namespace
 					.maxStockpile = MineMaxStockpile_Steel } } });
 		world.yards.push_back(Yard{
 			.systemId = 1,
+			.empireId = HelionEmpireId,
 			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } } });
 		postNeedsFromConsumerShortfalls(world, *helion);
 		postNeedsFromConsumerShortfalls(world, *rimward);
 
-		constexpr float civilianTruckSpeed = 25.0f;
-		const std::vector<long long> rimwardToHelion{ 5, 3, 2, 1 };
 		world.trucks.push_back(Truck{
 			.id = 1,
+			.empireId = HelionEmpireId,
 			.motion = {
-				.route = rimwardToHelion,
-				.hop = 0,
-				.progress = 1.0f,
-				.direction = 1,
-				.speed = civilianTruckSpeed },
-			.cargoGoodId = 0,
-			.cargoAmount = 0 });
-		world.trucks.push_back(Truck{
-			.id = 2,
-			.motion = {
-				.route = rimwardToHelion,
+				.route = { 5 },
 				.hop = 0,
 				.progress = 0.0f,
 				.direction = 1,
-				.speed = civilianTruckSpeed },
-			.cargoGoodId = 0,
-			.cargoAmount = 0 });
+				.speed = starterCivilianTruckSpeed(world, 1) } });
+		world.trucks.push_back(Truck{
+			.id = 2,
+			.empireId = HelionEmpireId,
+			.motion = {
+				.route = { 5 },
+				.hop = 0,
+				.progress = 0.0f,
+				.direction = 1,
+				.speed = starterCivilianTruckSpeed(world, 2) } });
 		world.trucks.push_back(Truck{
 			.id = 3,
+			.empireId = HelionEmpireId,
 			.motion = {
-				.route = rimwardToHelion,
+				.route = shortestLanePath(world, 5, 1),
 				.hop = 0,
 				.progress = 0.5f,
 				.direction = 1,
-				.speed = civilianTruckSpeed },
+				.speed = starterCivilianTruckSpeed(world, 3) },
 			.cargoGoodId = SteelGoodId,
 			.cargoAmount = TruckCapacity_Steel });
 		raiseInboundOnLoad(*helion, SteelGoodId, TruckCapacity_Steel);
 		syncHaulJobsFromUncoveredNeed(world);
+		if (const HaulJob* job = haulJobFor(world, 1, SteelGoodId))
+		{
+			world.trucks.back().haulJobId = job->id;
+		}
 
 		world.empires = {
 			Empire{ .id = HelionEmpireId, .name = "Helion" },

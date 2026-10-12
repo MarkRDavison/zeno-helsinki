@@ -1,86 +1,12 @@
 #include <World/GameCommand.hpp>
-#include <algorithm>
-#include <map>
-#include <queue>
+#include <World/Goods.hpp>
+#include <World/LaneMotion.hpp>
 #include <type_traits>
-#include <unordered_map>
-#include <utility>
 
 namespace slr
 {
 namespace
 {
-
-	std::vector<long long> shortestLanePath(const WorldData& world, long long fromId, long long toId)
-	{
-		if (world.systemById(fromId) == nullptr || world.systemById(toId) == nullptr)
-		{
-			return {};
-		}
-
-		if (fromId == toId)
-		{
-			return { fromId };
-		}
-
-		std::map<long long, std::vector<long long>> adj;
-		for (const auto& lane : world.hyperlanes)
-		{
-			adj[lane.a].push_back(lane.b);
-			adj[lane.b].push_back(lane.a);
-		}
-
-		for (auto& entry : adj)
-		{
-			std::sort(entry.second.begin(), entry.second.end());
-		}
-
-		std::queue<long long> frontier;
-		std::unordered_map<long long, long long> parent;
-		frontier.push(fromId);
-		parent.emplace(fromId, fromId);
-
-		while (!frontier.empty())
-		{
-			const long long current = frontier.front();
-			frontier.pop();
-			if (current == toId)
-			{
-				break;
-			}
-
-			const auto found = adj.find(current);
-			if (found == adj.end())
-			{
-				continue;
-			}
-
-			for (const long long next : found->second)
-			{
-				if (parent.contains(next))
-				{
-					continue;
-				}
-
-				parent.emplace(next, current);
-				frontier.push(next);
-			}
-		}
-
-		if (!parent.contains(toId))
-		{
-			return {};
-		}
-
-		std::vector<long long> path;
-		for (long long at = toId; at != fromId; at = parent[at])
-		{
-			path.push_back(at);
-		}
-		path.push_back(fromId);
-		std::reverse(path.begin(), path.end());
-		return path;
-	}
 
 	bool applyMoveFleet(WorldData& world, const MoveFleetToSystem& order)
 	{
@@ -113,6 +39,71 @@ namespace
 		return true;
 	}
 
+	bool applyAcceptHaulJob(WorldData& world, const AcceptHaulJob& order)
+	{
+		Truck* truck = world.truckById(order.truckId);
+		HaulJob* job = world.haulJobById(order.jobId);
+		if (truck == nullptr || job == nullptr)
+		{
+			return false;
+		}
+
+		if (truck->haulJobId != 0 || truck->cargoAmount != 0)
+		{
+			return false;
+		}
+
+		if (truck->empireId != job->empireId)
+		{
+			return false;
+		}
+
+		const long long truckload = truckloadForGood(job->goodId);
+		if (job->amount < truckload)
+		{
+			return false;
+		}
+
+		const long long here = truckSystemId(*truck);
+		if (here == 0)
+		{
+			return false;
+		}
+
+		const long long supplyId = nearestSupplySystemId(
+			world,
+			here,
+			job->goodId,
+			job->destinationSystemId);
+		if (supplyId == 0)
+		{
+			return false;
+		}
+
+		std::vector<long long> path;
+		if (here == supplyId)
+		{
+			path = shortestLanePath(world, supplyId, job->destinationSystemId);
+		}
+		else
+		{
+			path = shortestLanePath(world, here, supplyId);
+		}
+
+		if (path.empty())
+		{
+			return false;
+		}
+
+		job->amount -= truckload;
+		truck->haulJobId = job->id;
+		truck->motion.route = path;
+		truck->motion.hop = 0;
+		truck->motion.progress = 0.0f;
+		truck->motion.direction = 1;
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -126,6 +117,17 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::acceptHaulJob(
+		long long truckId,
+		long long jobId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = AcceptHaulJob{ .truckId = truckId, .jobId = jobId };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -135,6 +137,10 @@ namespace
 				if constexpr (std::is_same_v<Payload, MoveFleetToSystem>)
 				{
 					return applyMoveFleet(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, AcceptHaulJob>)
+				{
+					return applyAcceptHaulJob(world, payload);
 				}
 			},
 			command.payload);
