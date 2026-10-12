@@ -16,6 +16,7 @@ namespace hl
 		VulkanSynchronisationContext(VulkanDevice& device);
 
 		void create();
+		void recreatePresentWaitSemaphores(uint32_t swapchainImageCount);
 		void destroy();
 
 		void waitFrame(uint32_t frameIndex);
@@ -24,14 +25,14 @@ namespace hl
 		void onSubmitSucceeded(uint32_t frameIndex, uint64_t signalValue);
 
 		VulkanSemaphore& getImageAvailableSemaphore(uint32_t frameIndex);
-		VulkanSemaphore& getRenderFinishedSemaphore(uint32_t frameIndex);
+		VulkanSemaphore& getPresentWaitSemaphore(uint32_t swapchainImageIndex);
 		VulkanSemaphore& graphicsTimeline();
 
 	public: // private: TODO to private
 		VulkanDevice& _device;
 
 		std::vector<VulkanSemaphore> _imageAvailableSemaphores;
-		std::vector<VulkanSemaphore> _renderFinishedSemaphores;
+		std::vector<VulkanSemaphore> _presentWaitSemaphores;
 		VulkanSemaphore _graphicsTimeline;
 		uint64_t _lastSignaledValue{ 0 };
 		std::array<uint64_t, MAX_FRAMES_IN_FLIGHT> _slotSignaledValue{};

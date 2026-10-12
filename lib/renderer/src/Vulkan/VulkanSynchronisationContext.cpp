@@ -19,9 +19,6 @@ namespace hl
 			_imageAvailableSemaphores.emplace_back(_device);
 			_imageAvailableSemaphores.back().create();
 
-			_renderFinishedSemaphores.emplace_back(_device);
-			_renderFinishedSemaphores.back().create();
-
 			_slotSignaledValue[i] = 0;
 		}
 
@@ -29,11 +26,30 @@ namespace hl
 		_lastSignaledValue = 0;
 	}
 
+	void VulkanSynchronisationContext::recreatePresentWaitSemaphores(uint32_t swapchainImageCount)
+	{
+		for (VulkanSemaphore& semaphore : _presentWaitSemaphores)
+		{
+			semaphore.destroy();
+		}
+		_presentWaitSemaphores.clear();
+
+		for (uint32_t i = 0; i < swapchainImageCount; i++)
+		{
+			_presentWaitSemaphores.emplace_back(_device);
+			_presentWaitSemaphores.back().create();
+		}
+	}
+
 	void VulkanSynchronisationContext::destroy()
 	{
+		for (VulkanSemaphore& semaphore : _presentWaitSemaphores)
+		{
+			semaphore.destroy();
+		}
+
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
-			_renderFinishedSemaphores[i].destroy();
 			_imageAvailableSemaphores[i].destroy();
 			_slotSignaledValue[i] = 0;
 		}
@@ -41,7 +57,7 @@ namespace hl
 		_graphicsTimeline.destroy();
 		_lastSignaledValue = 0;
 
-		_renderFinishedSemaphores.clear();
+		_presentWaitSemaphores.clear();
 		_imageAvailableSemaphores.clear();
 	}
 
@@ -81,9 +97,9 @@ namespace hl
 	{
 		return _imageAvailableSemaphores[frameIndex];
 	}
-	VulkanSemaphore& VulkanSynchronisationContext::getRenderFinishedSemaphore(uint32_t frameIndex)
+	VulkanSemaphore& VulkanSynchronisationContext::getPresentWaitSemaphore(uint32_t swapchainImageIndex)
 	{
-		return _renderFinishedSemaphores[frameIndex];
+		return _presentWaitSemaphores[swapchainImageIndex];
 	}
 	VulkanSemaphore& VulkanSynchronisationContext::graphicsTimeline()
 	{

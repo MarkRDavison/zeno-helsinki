@@ -354,8 +354,8 @@ namespace hl
 		VkSemaphore waitSemaphores[] = { _syncContext.getImageAvailableSemaphore(_currentFrame)._semaphore };
 		const uint64_t waitValues[] = { 0 };
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		VkSemaphore renderFinished = _syncContext.getRenderFinishedSemaphore(_currentFrame)._semaphore;
-		VkSemaphore signalSemaphores[] = { renderFinished, _syncContext.graphicsTimeline()._semaphore };
+		VkSemaphore presentWait = _syncContext.getPresentWaitSemaphore(imageIndex)._semaphore;
+		VkSemaphore signalSemaphores[] = { presentWait, _syncContext.graphicsTimeline()._semaphore };
 		const uint64_t signalValues[] = { 0, timelineSignalValue };
 
 		VkTimelineSemaphoreSubmitInfo timelineSubmitInfo{};
@@ -390,7 +390,7 @@ namespace hl
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &renderFinished;
+		presentInfo.pWaitSemaphores = &presentWait;
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = swapChains;
 		presentInfo.pImageIndices = &imageIndex;
@@ -467,6 +467,8 @@ namespace hl
 				_graphicsCommandPool.create();
 				_transferCommandPool.createTransferPool();
 				_syncContext.create();
+				_syncContext.recreatePresentWaitSemaphores(
+					static_cast<uint32_t>(_swapChain.images().size()));
 			}
 			{
 				ZoneScopedN("LoadResources");
@@ -515,6 +517,8 @@ namespace hl
 				static_cast<uint32_t>(width),
 				static_cast<uint32_t>(height)
 			});
+		_syncContext.recreatePresentWaitSemaphores(
+			static_cast<uint32_t>(_swapChain.images().size()));
 
 		_currentEngineScene->recreate((uint32_t)width, (uint32_t)height);
 		_currentEngineScene->updateAllDescriptorSets();
