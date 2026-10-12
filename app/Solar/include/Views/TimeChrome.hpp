@@ -25,7 +25,7 @@ namespace slr
 	class TimeChrome
 	{
 	public:
-		static constexpr float BarHeight = 40.0f;
+		static constexpr float SpeedButtonWidth = 36.0f;
 
 		TimeChromeResult draw(const SimClock& clock, long long tick) const;
 	};

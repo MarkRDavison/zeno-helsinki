@@ -198,6 +198,7 @@ namespace slr
 	};
 
 	long long getStockpileAmount(const StarSystem& system, long long goodId);
+	long long locatedGoodAmount(const WorldData& world, long long goodId);
 	long long getInbound(const StarSystem& system, long long goodId);
 	long long getNeed(const StarSystem& system, long long goodId);
 	long long uncoveredNeed(const StarSystem& system, long long goodId);

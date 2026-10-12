@@ -50,7 +50,7 @@ namespace slr
 		_imgui.setBuildUi(
 			[this]
 			{
-				const TimeChromeResult time = _timeChrome.draw(_clock, _world.tick);
+				const TimeChromeResult time = _hudBar.draw(_clock, _world.tick, _world);
 				if (time.speed.has_value())
 				{
 					_clock.setSpeed(time.speed.value());

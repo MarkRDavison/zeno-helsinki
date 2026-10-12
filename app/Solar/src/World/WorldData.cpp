@@ -146,6 +146,25 @@ namespace slr
 		return 0;
 	}
 
+	long long locatedGoodAmount(const WorldData& world, long long goodId)
+	{
+		long long total = 0;
+		for (const auto& system : world.systems)
+		{
+			total += getStockpileAmount(system, goodId);
+		}
+
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.cargoGoodId == goodId)
+			{
+				total += truck.cargoAmount;
+			}
+		}
+
+		return total;
+	}
+
 	long long getInbound(const StarSystem& system, long long goodId)
 	{
 		for (const auto& stock : system.stocks)

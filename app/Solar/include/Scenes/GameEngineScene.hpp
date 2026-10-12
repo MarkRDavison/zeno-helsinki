@@ -2,7 +2,7 @@
 
 #include <Views/GalaxyCamera.hpp>
 #include <Views/GalaxyView.hpp>
-#include <Views/TimeChrome.hpp>
+#include <Views/HudBar.hpp>
 #include <World/GameCommand.hpp>
 #include <World/SimClock.hpp>
 #include <World/WorldData.hpp>
@@ -41,7 +41,7 @@ namespace slr
 		hl::imgui::Context& _imgui;
 		WorldData _world;
 		SimClock _clock;
-		TimeChrome _timeChrome;
+		HudBar _hudBar;
 		GalaxyView _galaxy;
 		GalaxyCamera* _galaxyCamera{ nullptr };
 		bool _panning{ false };

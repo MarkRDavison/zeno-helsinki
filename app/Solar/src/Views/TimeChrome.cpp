@@ -38,7 +38,7 @@ namespace slr
 			ImGui::PushStyleColor(ImGuiCol_Button, active ? ActiveFill : InactiveFill);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, active ? ActiveFillHovered : InactiveFillHovered);
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, active ? ActiveFill : InactiveFill);
-			const bool clicked = ImGui::Button(label, ImVec2(36.0f, 24.0f));
+			const bool clicked = ImGui::Button(label, ImVec2(TimeChrome::SpeedButtonWidth, 24.0f));
 			ImGui::PopStyleColor(4);
 			return clicked;
 		}
@@ -49,26 +49,9 @@ namespace slr
 		TimeChromeResult result{};
 		const auto active = activeTimeControl(clock.paused(), clock.speed());
 		const std::string date = formatGalaxyDate(tick);
-
-		ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-		ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, BarHeight));
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::Begin(
-			"TimeChrome",
-			nullptr,
-			ImGuiWindowFlags_NoTitleBar
-				| ImGuiWindowFlags_NoResize
-				| ImGuiWindowFlags_NoMove
-				| ImGuiWindowFlags_NoScrollbar
-				| ImGuiWindowFlags_NoSavedSettings
-				| ImGuiWindowFlags_NoNav);
-
-		const float padding = 12.0f;
 		const float gap = 6.0f;
-		const float clusterWidth = ImGui::CalcTextSize(date.c_str()).x + gap + 36.0f * 4.0f + gap * 3.0f;
-		ImGui::SetCursorPosX(ImGui::GetWindowSize().x - clusterWidth - padding);
-		ImGui::SetCursorPosY(8.0f);
+
+		ImGui::AlignTextToFramePadding();
 		ImGui::TextUnformatted(date.c_str());
 		ImGui::SameLine(0.0f, gap);
 
@@ -98,8 +81,6 @@ namespace slr
 			result.paused = false;
 		}
 
-		ImGui::End();
-		ImGui::PopStyleVar(2);
 		return result;
 	}
 
