@@ -1,5 +1,6 @@
 #include <World/StarterMap.hpp>
 #include <World/Goods.hpp>
+#include <World/TruckCargo.hpp>
 #include <utility>
 
 namespace slr
@@ -84,6 +85,7 @@ namespace
 				.speed = civilianTruckSpeed },
 			.cargoGoodId = SteelGoodId,
 			.cargoAmount = TruckCapacity_Steel });
+		raiseInboundOnLoad(*helion, SteelGoodId, TruckCapacity_Steel);
 
 		world.empires = {
 			Empire{ .id = HelionEmpireId, .name = "Helion" },

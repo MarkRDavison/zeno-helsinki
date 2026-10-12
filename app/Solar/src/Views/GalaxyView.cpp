@@ -350,8 +350,9 @@ namespace
 				("trucks " + std::to_string(countTrucksAtSystem(*_world, system->id))).c_str());
 			for (const auto& stock : system->stocks)
 			{
-				ImGui::TextUnformatted(
-					(std::string(goodName(stock.goodId)) + " " + std::to_string(stock.goodAmount)).c_str());
+				ImGui::TextUnformatted(goodName(stock.goodId));
+				ImGui::TextUnformatted(("stockpile " + std::to_string(stock.goodAmount)).c_str());
+				ImGui::TextUnformatted(("inbound " + std::to_string(stock.inbound)).c_str());
 				ImGui::TextUnformatted(("need " + std::to_string(stock.need)).c_str());
 			}
 		}

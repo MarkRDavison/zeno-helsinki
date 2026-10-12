@@ -1,8 +1,10 @@
 #include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <World/TruckCargo.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 
 namespace slr
 {
@@ -41,6 +43,17 @@ TEST_CASE("Helion starts with steel need 1000 and Rimward steel need is 0", "[sl
 	REQUIRE(rimward != nullptr);
 	REQUIRE(getNeed(*helion, SteelGoodId) == 1000);
 	REQUIRE(getNeed(*rimward, SteelGoodId) == 0);
+	REQUIRE(getInbound(*helion, SteelGoodId) == TruckCapacity_Steel);
+	REQUIRE(getInbound(*rimward, SteelGoodId) == 0);
+	long long cargoTowardHelion = 0;
+	for (const auto& truck : world.trucks)
+	{
+		if (truck.motion.route.size() >= 2 && truck.motion.route.back() == 1)
+		{
+			cargoTowardHelion += truck.cargoAmount;
+		}
+	}
+	REQUIRE(getInbound(*helion, SteelGoodId) == cargoTowardHelion);
 }
 
 TEST_CASE("trucks at a system are those sitting on the node", "[slr][Truck]")
@@ -109,8 +122,13 @@ TEST_CASE("truck loads at Rimward only when Helion need remains", "[slr][Truck]"
 	stepGalaxy(world);
 
 	const StarSystem* rimward = world.systemById(5);
+	const StarSystem* helion = world.systemById(1);
 	REQUIRE(rimward != nullptr);
+	REQUIRE(helion != nullptr);
 	REQUIRE(getStockpileAmount(*rimward, SteelGoodId) == 50);
+	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
+	REQUIRE(getNeed(*helion, SteelGoodId) == 1000);
+	REQUIRE(getInbound(*helion, SteelGoodId) == TruckCapacity_Steel * 2);
 	REQUIRE(world.trucks[0].cargoGoodId == SteelGoodId);
 	REQUIRE(world.trucks[0].cargoAmount == TruckCapacity_Steel);
 }
@@ -132,6 +150,7 @@ TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
 	REQUIRE(helion != nullptr);
 	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == TruckCapacity_Steel);
 	REQUIRE(getNeed(*helion, SteelGoodId) == 950);
+	REQUIRE(getInbound(*helion, SteelGoodId) == 0);
 	REQUIRE(world.trucks[0].cargoAmount == 0);
 }
 
@@ -157,6 +176,55 @@ TEST_CASE("empty truck at Rimward does not load when Helion need is 0", "[slr][T
 	REQUIRE(world.trucks[0].cargoAmount == 0);
 	REQUIRE(world.trucks[0].motion.progress == 0.0f);
 	REQUIRE(world.trucks[0].motion.hop == 0);
+}
+
+TEST_CASE("empty truck at Rimward does not load when uncovered need is below a truckload", "[slr][Truck]")
+{
+	WorldData world = makeStarterMap();
+	world.trucks.clear();
+	StarSystem* helion = world.systemById(1);
+	REQUIRE(helion != nullptr);
+	helion->stocks[0].need = TruckCapacity_Steel;
+	helion->stocks[0].inbound = TruckCapacity_Steel;
+
+	world.trucks.push_back(Truck{
+		.id = 1,
+		.motion = { .route = { 5, 3, 2, 1 }, .hop = 0, .progress = 0.0f, .direction = 1 },
+		.cargoGoodId = 0,
+		.cargoAmount = 0 });
+
+	stepGalaxy(world);
+
+	REQUIRE(world.trucks[0].cargoAmount == 0);
+	REQUIRE(getInbound(*helion, SteelGoodId) == TruckCapacity_Steel);
+}
+
+TEST_CASE("destroy loaded truck lowers dest inbound and leaves stockpile and need", "[slr][Truck]")
+{
+	WorldData world = makeStarterMap();
+	const StarSystem* helionBefore = world.systemById(1);
+	REQUIRE(helionBefore != nullptr);
+	REQUIRE(getInbound(*helionBefore, SteelGoodId) == TruckCapacity_Steel);
+	REQUIRE(destroyTruckAndReduceInbound(world, 3));
+	REQUIRE(std::none_of(
+		world.trucks.begin(),
+		world.trucks.end(),
+		[](const Truck& truck) { return truck.id == 3; }));
+
+	const StarSystem* helion = world.systemById(1);
+	REQUIRE(helion != nullptr);
+	REQUIRE(getInbound(*helion, SteelGoodId) == 0);
+	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
+	REQUIRE(getNeed(*helion, SteelGoodId) == 1000);
+}
+
+TEST_CASE("destroy empty truck does not change inbound", "[slr][Truck]")
+{
+	WorldData world = makeStarterMap();
+	REQUIRE(destroyTruckAndReduceInbound(world, 2));
+	const StarSystem* helion = world.systemById(1);
+	REQUIRE(helion != nullptr);
+	REQUIRE(getInbound(*helion, SteelGoodId) == TruckCapacity_Steel);
 }
 
 }

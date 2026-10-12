@@ -21,6 +21,7 @@ namespace slr
 	{
 		long long goodId{ 0 };
 		long long goodAmount{ 0 };
+		long long inbound{ 0 };
 		long long need{ 0 };
 	};
 
@@ -131,7 +132,9 @@ namespace slr
 	};
 
 	long long getStockpileAmount(const StarSystem& system, long long goodId);
+	long long getInbound(const StarSystem& system, long long goodId);
 	long long getNeed(const StarSystem& system, long long goodId);
+	long long uncoveredNeed(const StarSystem& system, long long goodId);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
 	bool hasHyperlane(const WorldData& world, long long a, long long b);

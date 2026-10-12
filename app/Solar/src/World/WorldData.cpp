@@ -89,6 +89,19 @@ namespace slr
 		return 0;
 	}
 
+	long long getInbound(const StarSystem& system, long long goodId)
+	{
+		for (const auto& stock : system.stocks)
+		{
+			if (stock.goodId == goodId)
+			{
+				return stock.inbound;
+			}
+		}
+
+		return 0;
+	}
+
 	long long getNeed(const StarSystem& system, long long goodId)
 	{
 		for (const auto& stock : system.stocks)
@@ -100,6 +113,18 @@ namespace slr
 		}
 
 		return 0;
+	}
+
+	long long uncoveredNeed(const StarSystem& system, long long goodId)
+	{
+		const long long inbound = getInbound(system, goodId);
+		const long long need = getNeed(system, goodId);
+		if (need <= inbound)
+		{
+			return 0;
+		}
+
+		return need - inbound;
 	}
 
 	bool isTruckAtSystem(const Truck& truck, long long systemId)

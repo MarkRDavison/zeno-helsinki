@@ -2,6 +2,7 @@
 #include <World/Combat.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
+#include <World/TruckCargo.hpp>
 #include <algorithm>
 
 namespace slr
@@ -84,7 +85,7 @@ namespace
 			return;
 		}
 
-		if (getNeed(*demand, SteelGoodId) <= 0)
+		if (uncoveredNeed(*demand, SteelGoodId) < TruckCapacity_Steel)
 		{
 			return;
 		}
@@ -96,6 +97,7 @@ namespace
 
 		truck.cargoGoodId = SteelGoodId;
 		truck.cargoAmount = TruckCapacity_Steel;
+		raiseInboundOnLoad(*demand, SteelGoodId, TruckCapacity_Steel);
 	}
 
 	void dumpIfCarrying(WorldData& world, Truck& truck)
@@ -117,6 +119,7 @@ namespace
 			return;
 		}
 
+		reduceInboundOnArrival(*demand, truck.cargoGoodId, truck.cargoAmount);
 		addToStockpile(*demand, truck.cargoGoodId, truck.cargoAmount);
 		reduceNeed(*demand, truck.cargoGoodId, truck.cargoAmount);
 		truck.cargoGoodId = 0;
