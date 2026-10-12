@@ -61,8 +61,8 @@ namespace
 		world.yards.push_back(Yard{
 			.systemId = 1,
 			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } } });
-		setNeedsFromConsumerDesiredPiles(world, *helion);
-		setNeedsFromConsumerDesiredPiles(world, *rimward);
+		postNeedsFromConsumerShortfalls(world, *helion);
+		postNeedsFromConsumerShortfalls(world, *rimward);
 
 		constexpr float civilianTruckSpeed = 25.0f;
 		const std::vector<long long> rimwardToHelion{ 5, 3, 2, 1 };

@@ -1,4 +1,5 @@
 #include <World/WorldData.hpp>
+#include <World/Goods.hpp>
 #include <utility>
 
 namespace slr
@@ -183,27 +184,35 @@ namespace slr
 		return desired;
 	}
 
-	void setNeedFromConsumerDesiredPile(WorldData& world, StarSystem& system, long long goodId)
+	void postNeedFromConsumerShortfall(WorldData& world, StarSystem& system, long long goodId)
 	{
 		const long long desired = consumerDesiredPile(world, system.id, goodId);
+		const long long stockpile = getStockpileAmount(system, goodId);
+		long long shortfall = desired - stockpile;
+		if (shortfall < 0)
+		{
+			shortfall = 0;
+		}
+
+		const long long posted = (shortfall >= truckloadForGood(goodId)) ? shortfall : 0;
 		for (auto& stock : system.stocks)
 		{
 			if (stock.goodId == goodId)
 			{
-				stock.need = desired;
+				stock.need = posted;
 				return;
 			}
 		}
 
-		if (desired == 0)
+		if (posted == 0)
 		{
 			return;
 		}
 
-		system.stocks.push_back(GoodStock{ .goodId = goodId, .need = desired });
+		system.stocks.push_back(GoodStock{ .goodId = goodId, .need = posted });
 	}
 
-	void setNeedsFromConsumerDesiredPiles(WorldData& world, StarSystem& system)
+	void postNeedsFromConsumerShortfalls(WorldData& world, StarSystem& system)
 	{
 		for (const auto& yard : world.yards)
 		{
@@ -214,7 +223,55 @@ namespace slr
 
 			for (const auto& pile : yard.desiredPiles)
 			{
-				setNeedFromConsumerDesiredPile(world, system, pile.goodId);
+				postNeedFromConsumerShortfall(world, system, pile.goodId);
+			}
+		}
+	}
+
+	bool useFromStockpile(WorldData& world, long long systemId, long long goodId, long long amount)
+	{
+		if (amount <= 0)
+		{
+			return false;
+		}
+
+		StarSystem* system = world.systemById(systemId);
+		if (system == nullptr)
+		{
+			return false;
+		}
+
+		for (auto& stock : system->stocks)
+		{
+			if (stock.goodId == goodId && stock.goodAmount >= amount)
+			{
+				stock.goodAmount -= amount;
+				stock.deferredNeed += amount;
+				stock.deferredNeedHeldOneTick = false;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void applyDeferredNeedPosts(WorldData& world)
+	{
+		for (auto& system : world.systems)
+		{
+			for (auto& stock : system.stocks)
+			{
+				const long long truckload = truckloadForGood(stock.goodId);
+				if (stock.deferredNeedHeldOneTick && stock.deferredNeed >= truckload)
+				{
+					stock.need += stock.deferredNeed;
+					stock.deferredNeed = 0;
+					stock.deferredNeedHeldOneTick = false;
+				}
+				else if (stock.deferredNeed > 0)
+				{
+					stock.deferredNeedHeldOneTick = true;
+				}
 			}
 		}
 	}

@@ -30,12 +30,12 @@ TEST_CASE("mine systems do not get desired pile from digging", "[slr][Yard]")
 	StarSystem* rimward = world.systemById(5);
 	REQUIRE(rimward != nullptr);
 	rimward->stocks[0].goodAmount = 500;
-	setNeedFromConsumerDesiredPile(world, *rimward, SteelGoodId);
+	postNeedFromConsumerShortfall(world, *rimward, SteelGoodId);
 	REQUIRE(getNeed(*rimward, SteelGoodId) == 0);
 	REQUIRE(consumerDesiredPile(world, 5, SteelGoodId) == 0);
 }
 
-TEST_CASE("need on a consumer system comes from the yard desired pile", "[slr][Yard]")
+TEST_CASE("need on an empty consumer system is the shortfall from the yard desired pile", "[slr][Yard]")
 {
 	WorldData world;
 	world.systems = { StarSystem{ .id = 1, .name = "A", .position = { 0.0f, 0.0f } } };
@@ -43,7 +43,7 @@ TEST_CASE("need on a consumer system comes from the yard desired pile", "[slr][Y
 	world.yards.push_back(Yard{
 		.systemId = 1,
 		.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } } });
-	setNeedFromConsumerDesiredPile(world, world.systems.front(), SteelGoodId);
+	postNeedFromConsumerShortfall(world, world.systems.front(), SteelGoodId);
 	REQUIRE(getNeed(world.systems.front(), SteelGoodId) == 1000);
 }
 
@@ -57,7 +57,7 @@ TEST_CASE("a yard can want more than one good", "[slr][Yard]")
 		.desiredPiles = {
 			GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 },
 			GoodQuantity{ .goodId = platesId, .amount = 200 } } });
-	setNeedsFromConsumerDesiredPiles(world, world.systems.front());
+	postNeedsFromConsumerShortfalls(world, world.systems.front());
 	REQUIRE(getNeed(world.systems.front(), SteelGoodId) == 1000);
 	REQUIRE(getNeed(world.systems.front(), platesId) == 200);
 }

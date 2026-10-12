@@ -23,6 +23,8 @@ namespace slr
 		long long goodAmount{ 0 };
 		long long inbound{ 0 };
 		long long need{ 0 };
+		long long deferredNeed{ 0 };
+		bool deferredNeedHeldOneTick{ false };
 	};
 
 	struct StarSystem
@@ -158,8 +160,10 @@ namespace slr
 	long long mineOutputPerTick(const Mine& mine, long long goodId);
 	long long mineMaxStockpile(const Mine& mine, long long goodId);
 	long long consumerDesiredPile(const WorldData& world, long long systemId, long long goodId);
-	void setNeedFromConsumerDesiredPile(WorldData& world, StarSystem& system, long long goodId);
-	void setNeedsFromConsumerDesiredPiles(WorldData& world, StarSystem& system);
+	void postNeedFromConsumerShortfall(WorldData& world, StarSystem& system, long long goodId);
+	void postNeedsFromConsumerShortfalls(WorldData& world, StarSystem& system);
+	bool useFromStockpile(WorldData& world, long long systemId, long long goodId, long long amount);
+	void applyDeferredNeedPosts(WorldData& world);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
 	bool hasHyperlane(const WorldData& world, long long a, long long b);

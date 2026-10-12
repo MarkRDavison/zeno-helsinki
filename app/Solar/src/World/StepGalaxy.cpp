@@ -207,6 +207,7 @@ namespace
 
 	void stepGalaxy(WorldData& world)
 	{
+		applyDeferredNeedPosts(world);
 		applyExtraction(world);
 		moveTrucks(world);
 		moveFleets(world);

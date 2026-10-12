@@ -8,5 +8,6 @@ namespace slr
 	constexpr long long MineMaxStockpile_Steel = 4000;
 
 	const char* goodName(long long goodId);
+	long long truckloadForGood(long long goodId);
 
 }
