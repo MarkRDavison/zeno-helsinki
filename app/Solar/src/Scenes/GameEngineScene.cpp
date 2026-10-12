@@ -50,17 +50,22 @@ namespace slr
 		_imgui.setBuildUi(
 			[this]
 			{
-				const TimeChromeResult time = _hudBar.draw(_clock, _world.tick, _world);
-				if (time.speed.has_value())
+				const HudBarResult hud = _hudBar.draw(_clock, _world.tick, _world);
+				if (hud.time.speed.has_value())
 				{
-					_clock.setSpeed(time.speed.value());
+					_clock.setSpeed(hud.time.speed.value());
 				}
-				if (time.paused.has_value())
+				if (hud.time.paused.has_value())
 				{
-					_clock.setPaused(time.paused.value());
+					_clock.setPaused(hud.time.paused.value());
 				}
+				if (hud.openPolicyEditor)
+				{
+					_engagementPolicyChrome.setOpen(true);
+				}
+				_engagementPolicyChrome.draw(_world, _pendingCommands);
 				_galaxy.drawBattleReport();
-				if (!_galaxy.drawInspector())
+				if (!_galaxy.drawInspector(_pendingCommands))
 				{
 					_galaxy.setSelectedSystemId(std::nullopt);
 				}

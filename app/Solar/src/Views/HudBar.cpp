@@ -6,12 +6,14 @@
 namespace slr
 {
 
-	TimeChromeResult HudBar::draw(const SimClock& clock, long long tick, const WorldData& world) const
+	HudBarResult HudBar::draw(const SimClock& clock, long long tick, const WorldData& world) const
 	{
+		HudBarResult hud{};
 		const std::string date = formatGalaxyDate(tick);
 		const float padding = 12.0f;
 		const float gap = 6.0f;
 		const float rowHeight = 24.0f;
+		const float policiesWidth = 88.0f;
 		const float timeWidth = ImGui::CalcTextSize(date.c_str()).x + gap +
 			TimeChrome::SpeedButtonWidth * 4.0f + gap * 3.0f;
 
@@ -32,7 +34,7 @@ namespace slr
 		ImGui::SetCursorPosX(padding);
 		ImGui::SetCursorPosY(8.0f);
 		const float situationWidth =
-			ImGui::GetWindowSize().x - padding * 2.0f - gap - timeWidth;
+			ImGui::GetWindowSize().x - padding * 2.0f - gap * 2.0f - policiesWidth - timeWidth;
 		ImGui::BeginChild(
 			"SituationChrome",
 			ImVec2(situationWidth, rowHeight),
@@ -42,17 +44,23 @@ namespace slr
 		ImGui::EndChild();
 
 		ImGui::SameLine(0.0f, gap);
+		if (ImGui::Button("Policies", ImVec2(policiesWidth, rowHeight)))
+		{
+			hud.openPolicyEditor = true;
+		}
+
+		ImGui::SameLine(0.0f, gap);
 		ImGui::BeginChild(
 			"TimeChrome",
 			ImVec2(timeWidth, rowHeight),
 			false,
 			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings);
-		const TimeChromeResult result = _timeChrome.draw(clock, tick);
+		hud.time = _timeChrome.draw(clock, tick);
 		ImGui::EndChild();
 
 		ImGui::End();
 		ImGui::PopStyleVar(2);
-		return result;
+		return hud;
 	}
 
 }

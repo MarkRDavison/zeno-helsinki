@@ -296,6 +296,11 @@ namespace
 			return;
 		}
 
+		if (!anyFleetOpensFire(world, fleetIds))
+		{
+			return;
+		}
+
 		const long long empireA = *empires.begin();
 		const long long empireB = *std::next(empires.begin());
 		const long long battleId = static_cast<long long>(world.battleReports.size()) + 1;

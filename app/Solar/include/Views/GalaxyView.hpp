@@ -1,5 +1,6 @@
 #pragma once
 
+#include <World/GameCommand.hpp>
 #include <World/WorldData.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
 #include <helsinki/System/glm.hpp>
@@ -28,7 +29,7 @@ namespace slr
 
 		void drawGraph(hl::PipelineDrawData& pdd, hl::ResourceManager& resourceManager) const;
 		void drawLabels(hl::PipelineDrawData& pdd, hl::TextSystem& textSystem) const;
-		bool drawInspector() const;
+		bool drawInspector(std::vector<GameCommand>& pendingCommands);
 		void drawBattleReport();
 
 	private:

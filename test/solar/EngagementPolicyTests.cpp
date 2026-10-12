@@ -1,0 +1,118 @@
+#include <World/GameCommand.hpp>
+#include <World/StarterMap.hpp>
+#include <World/StepGalaxy.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+namespace slr
+{
+namespace EngagementPolicyTests
+{
+
+TEST_CASE("starter empires default to hold fire", "[slr][EngagementPolicy]")
+{
+	const WorldData world = makeStarterMap();
+	const Empire* helion = world.empireById(HelionEmpireId);
+	const Empire* ashreach = world.empireById(AshreachEmpireId);
+	REQUIRE(helion != nullptr);
+	REQUIRE(ashreach != nullptr);
+	const EngagementPolicy* helionDefault = world.engagementPolicyById(helion->defaultPolicyId);
+	const EngagementPolicy* ashreachDefault = world.engagementPolicyById(ashreach->defaultPolicyId);
+	REQUIRE(helionDefault != nullptr);
+	REQUIRE(ashreachDefault != nullptr);
+	REQUIRE(helionDefault->ruleOfEngagement == RuleOfEngagement::DoNotFireUnlessFiredUpon);
+	REQUIRE(ashreachDefault->ruleOfEngagement == RuleOfEngagement::DoNotFireUnlessFiredUpon);
+	REQUIRE(world.fleetById(1)->policyId == 0);
+	REQUIRE(activeEngagementPolicy(world, *world.fleetById(1)) == helionDefault);
+}
+
+TEST_CASE("two hold-fire fleets sharing a system do not fight", "[slr][EngagementPolicy]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	REQUIRE(home != nullptr);
+	home->systemId = 2;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.empty());
+}
+
+TEST_CASE("fleet override weapons-free starts a fight against hold fire", "[slr][EngagementPolicy]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	REQUIRE(home != nullptr);
+	home->systemId = 2;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			0,
+			HelionEmpireId,
+			"Weapons free",
+			RuleOfEngagement::FireIfEnemySeen,
+			CommandSource::Player)));
+	long long freeId = 0;
+	for (const auto& policy : world.engagementPolicies)
+	{
+		if (policy.empireId == HelionEmpireId && policy.name == "Weapons free")
+		{
+			freeId = policy.id;
+		}
+	}
+
+	REQUIRE(freeId != 0);
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(1, freeId, CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.size() == 1);
+}
+
+TEST_CASE("upsert creates then edits a policy", "[slr][EngagementPolicy]")
+{
+	WorldData world = makeStarterMap();
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			0,
+			HelionEmpireId,
+			"Picket",
+			RuleOfEngagement::FireIfEnemySeen,
+			CommandSource::Player)));
+	long long picketId = 0;
+	for (const auto& policy : world.engagementPolicies)
+	{
+		if (policy.name == "Picket")
+		{
+			picketId = policy.id;
+		}
+	}
+
+	REQUIRE(picketId != 0);
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			picketId,
+			HelionEmpireId,
+			"Picket hold",
+			RuleOfEngagement::DoNotFireUnlessFiredUpon,
+			CommandSource::Player)));
+	const EngagementPolicy* picket = world.engagementPolicyById(picketId);
+	REQUIRE(picket != nullptr);
+	REQUIRE(picket->name == "Picket hold");
+	REQUIRE(picket->ruleOfEngagement == RuleOfEngagement::DoNotFireUnlessFiredUpon);
+}
+
+TEST_CASE("cannot override a fleet with another empire's policy", "[slr][EngagementPolicy]")
+{
+	WorldData world = makeStarterMap();
+	REQUIRE_FALSE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(1, 2, CommandSource::Player)));
+	REQUIRE(world.fleetById(1)->policyId == 0);
+}
+
+}
+}

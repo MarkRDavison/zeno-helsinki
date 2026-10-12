@@ -49,6 +49,20 @@ namespace CombatTests
 		world.systems = {
 			StarSystem{ .id = systemId, .name = "Arena", .position = { 0.0f, 0.0f } },
 		};
+		world.engagementPolicies = {
+			EngagementPolicy{
+				.id = 1,
+				.empireId = empireA,
+				.name = "Weapons free",
+				.ruleOfEngagement = RuleOfEngagement::FireIfEnemySeen },
+			EngagementPolicy{
+				.id = 2,
+				.empireId = empireB,
+				.name = "Weapons free",
+				.ruleOfEngagement = RuleOfEngagement::FireIfEnemySeen },
+		};
+		world.empires[0].defaultPolicyId = 1;
+		world.empires[1].defaultPolicyId = 2;
 		return world;
 	}
 
@@ -281,6 +295,27 @@ TEST_CASE("same seed twice matches folded counts", "[slr][Combat]")
 		home->systemId = 2;
 		home->motion.route.clear();
 		home->motion.progress = 0.0f;
+		REQUIRE(execute(
+			world,
+			GameCommand::upsertEngagementPolicy(
+				0,
+				HelionEmpireId,
+				"Weapons free",
+				RuleOfEngagement::FireIfEnemySeen,
+				CommandSource::Player)));
+		long long freeId = 0;
+		for (const auto& policy : world.engagementPolicies)
+		{
+			if (policy.empireId == HelionEmpireId && policy.name == "Weapons free")
+			{
+				freeId = policy.id;
+			}
+		}
+
+		REQUIRE(freeId != 0);
+		REQUIRE(execute(
+			world,
+			GameCommand::setFleetPolicyOverride(1, freeId, CommandSource::Player)));
 		return world;
 	};
 
@@ -338,29 +373,27 @@ TEST_CASE("wipe leaves empty composition and report for both sides", "[slr][Comb
 	REQUIRE(world.battleReports.front().sides[1].after.empty());
 }
 
-TEST_CASE("Home Fleet arriving at Kestrel fights that tick", "[slr][Combat]")
+TEST_CASE("Home Fleet arriving at Kestrel does not fight under hold fire", "[slr][Combat]")
 {
 	WorldData world = makeStarterMap();
 	REQUIRE(execute(world, GameCommand::moveFleetToSystem(1, 2, CommandSource::Player)));
 	REQUIRE(world.battleReports.empty());
 
-	bool fought = false;
+	bool arrived = false;
 	for (int i = 0; i < 64; ++i)
 	{
-		const long long tickBefore = world.tick;
 		stepGalaxy(world);
 		const Fleet* home = world.fleetById(1);
 		REQUIRE(home != nullptr);
-		if (home->systemId == 2 && home->motion.route.empty() && !world.battleReports.empty())
+		if (home->systemId == 2 && home->motion.route.empty())
 		{
-			REQUIRE(world.battleReports.back().tick == tickBefore);
-			REQUIRE(world.battleReports.back().systemId == 2);
-			fought = true;
+			arrived = true;
 			break;
 		}
 	}
 
-	REQUIRE(fought);
+	REQUIRE(arrived);
+	REQUIRE(world.battleReports.empty());
 }
 
 TEST_CASE("rival marker is mirrored and both fleets pick at Kestrel", "[slr][Combat]")

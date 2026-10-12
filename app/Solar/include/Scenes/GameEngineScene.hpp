@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Views/EngagementPolicyChrome.hpp>
 #include <Views/GalaxyCamera.hpp>
 #include <Views/GalaxyView.hpp>
 #include <Views/HudBar.hpp>
@@ -42,6 +43,7 @@ namespace slr
 		WorldData _world;
 		SimClock _clock;
 		HudBar _hudBar;
+		EngagementPolicyChrome _engagementPolicyChrome;
 		GalaxyView _galaxy;
 		GalaxyCamera* _galaxyCamera{ nullptr };
 		bool _panning{ false };

@@ -8,12 +8,18 @@
 namespace slr
 {
 
+	struct HudBarResult
+	{
+		TimeChromeResult time;
+		bool openPolicyEditor{ false };
+	};
+
 	class HudBar
 	{
 	public:
 		static constexpr float BarHeight = 40.0f;
 
-		TimeChromeResult draw(const SimClock& clock, long long tick, const WorldData& world) const;
+		HudBarResult draw(const SimClock& clock, long long tick, const WorldData& world) const;
 
 	private:
 		TimeChrome _timeChrome;

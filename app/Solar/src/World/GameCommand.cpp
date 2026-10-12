@@ -2,6 +2,7 @@
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <type_traits>
+#include <utility>
 
 namespace slr
 {
@@ -140,6 +141,78 @@ namespace
 		return true;
 	}
 
+	bool policyBelongsToEmpire(const WorldData& world, long long policyId, long long empireId)
+	{
+		const EngagementPolicy* policy = world.engagementPolicyById(policyId);
+		return policy != nullptr && policy->empireId == empireId;
+	}
+
+	bool applyUpsertEngagementPolicy(WorldData& world, const UpsertEngagementPolicy& order)
+	{
+		if (world.empireById(order.empireId) == nullptr || order.name.empty())
+		{
+			return false;
+		}
+
+		if (order.policyId == 0)
+		{
+			long long nextId = 1;
+			for (const auto& policy : world.engagementPolicies)
+			{
+				if (policy.id >= nextId)
+				{
+					nextId = policy.id + 1;
+				}
+			}
+
+			world.engagementPolicies.push_back(EngagementPolicy{
+				.id = nextId,
+				.empireId = order.empireId,
+				.name = order.name,
+				.ruleOfEngagement = order.ruleOfEngagement });
+			return true;
+		}
+
+		EngagementPolicy* existing = world.engagementPolicyById(order.policyId);
+		if (existing == nullptr || existing->empireId != order.empireId)
+		{
+			return false;
+		}
+
+		existing->name = order.name;
+		existing->ruleOfEngagement = order.ruleOfEngagement;
+		return true;
+	}
+
+	bool applySetEmpireDefaultPolicy(WorldData& world, const SetEmpireDefaultPolicy& order)
+	{
+		Empire* empire = world.empireById(order.empireId);
+		if (empire == nullptr || !policyBelongsToEmpire(world, order.policyId, order.empireId))
+		{
+			return false;
+		}
+
+		empire->defaultPolicyId = order.policyId;
+		return true;
+	}
+
+	bool applySetFleetPolicyOverride(WorldData& world, const SetFleetPolicyOverride& order)
+	{
+		Fleet* fleet = world.fleetById(order.fleetId);
+		if (fleet == nullptr)
+		{
+			return false;
+		}
+
+		if (order.policyId != 0 && !policyBelongsToEmpire(world, order.policyId, fleet->empireId))
+		{
+			return false;
+		}
+
+		fleet->policyId = order.policyId;
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -164,6 +237,45 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::upsertEngagementPolicy(
+		long long policyId,
+		long long empireId,
+		std::string name,
+		RuleOfEngagement ruleOfEngagement,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = UpsertEngagementPolicy{
+			.policyId = policyId,
+			.empireId = empireId,
+			.name = std::move(name),
+			.ruleOfEngagement = ruleOfEngagement };
+		return command;
+	}
+
+	GameCommand GameCommand::setEmpireDefaultPolicy(
+		long long empireId,
+		long long policyId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = SetEmpireDefaultPolicy{ .empireId = empireId, .policyId = policyId };
+		return command;
+	}
+
+	GameCommand GameCommand::setFleetPolicyOverride(
+		long long fleetId,
+		long long policyId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = SetFleetPolicyOverride{ .fleetId = fleetId, .policyId = policyId };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -177,6 +289,22 @@ namespace
 				else if constexpr (std::is_same_v<Payload, AcceptHaulJob>)
 				{
 					return applyAcceptHaulJob(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, UpsertEngagementPolicy>)
+				{
+					return applyUpsertEngagementPolicy(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, SetEmpireDefaultPolicy>)
+				{
+					return applySetEmpireDefaultPolicy(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, SetFleetPolicyOverride>)
+				{
+					return applySetFleetPolicyOverride(world, payload);
+				}
+				else
+				{
+					return false;
 				}
 			},
 			command.payload);

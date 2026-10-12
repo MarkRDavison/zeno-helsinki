@@ -1,6 +1,7 @@
 #include <Views/GalaxyView.hpp>
 #include <GalaxyPushConstantObject.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
+#include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/PickFleet.hpp>
@@ -330,7 +331,7 @@ namespace
 		}
 	}
 
-	bool GalaxyView::drawInspector() const
+	bool GalaxyView::drawInspector(std::vector<GameCommand>& pendingCommands)
 	{
 		if (_world == nullptr)
 		{
@@ -479,6 +480,62 @@ namespace
 
 					ImGui::TextUnformatted(
 						(shipClass->name + " " + std::to_string(row.count)).c_str());
+				}
+
+				const EngagementPolicy* active = activeEngagementPolicy(*_world, *fleet);
+				const char* activeRule = active != nullptr
+					? ruleOfEngagementName(active->ruleOfEngagement)
+					: "none";
+				const std::string activeLabel = fleet->policyId == 0
+					? std::string("default: ") + (active != nullptr ? active->name : "none")
+					: (active != nullptr ? active->name : "none");
+				ImGui::TextUnformatted(("ROE " + activeLabel).c_str());
+				ImGui::TextUnformatted(activeRule);
+
+				if (isPlayerFleet(*_world, *fleet))
+				{
+					const Empire* playerEmpire = _world->empireById(fleet->empireId);
+					std::string defaultCombo = "Empire default";
+					if (playerEmpire != nullptr)
+					{
+						const EngagementPolicy* defaultPolicy =
+							_world->engagementPolicyById(playerEmpire->defaultPolicyId);
+						if (defaultPolicy != nullptr)
+						{
+							defaultCombo += " (" + defaultPolicy->name + ")";
+						}
+					}
+
+					if (ImGui::BeginCombo("Policy", activeLabel.c_str()))
+					{
+						if (ImGui::Selectable(defaultCombo.c_str(), fleet->policyId == 0))
+						{
+							pendingCommands.push_back(GameCommand::setFleetPolicyOverride(
+								fleet->id,
+								0,
+								CommandSource::Player));
+						}
+
+						for (const auto& policy : _world->engagementPolicies)
+						{
+							if (policy.empireId != fleet->empireId)
+							{
+								continue;
+							}
+
+							const bool selected = fleet->policyId == policy.id;
+							const std::string itemId = policy.name + "##p" + std::to_string(policy.id);
+							if (ImGui::Selectable(itemId.c_str(), selected))
+							{
+								pendingCommands.push_back(GameCommand::setFleetPolicyOverride(
+									fleet->id,
+									policy.id,
+									CommandSource::Player));
+							}
+						}
+
+						ImGui::EndCombo();
+					}
 				}
 			}
 			ImGui::End();

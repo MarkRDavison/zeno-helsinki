@@ -134,9 +134,21 @@ namespace
 			flying.convoyId = world.convoys.back().id;
 		}
 
+		world.engagementPolicies = {
+			EngagementPolicy{
+				.id = 1,
+				.empireId = HelionEmpireId,
+				.name = "Hold fire",
+				.ruleOfEngagement = RuleOfEngagement::DoNotFireUnlessFiredUpon },
+			EngagementPolicy{
+				.id = 2,
+				.empireId = AshreachEmpireId,
+				.name = "Hold fire",
+				.ruleOfEngagement = RuleOfEngagement::DoNotFireUnlessFiredUpon },
+		};
 		world.empires = {
-			Empire{ .id = HelionEmpireId, .name = "Helion" },
-			Empire{ .id = AshreachEmpireId, .name = "Ashreach" },
+			Empire{ .id = HelionEmpireId, .name = "Helion", .defaultPolicyId = 1 },
+			Empire{ .id = AshreachEmpireId, .name = "Ashreach", .defaultPolicyId = 2 },
 		};
 
 		const long long nikeId = 1;

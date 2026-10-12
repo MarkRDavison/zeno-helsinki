@@ -11,10 +11,25 @@ namespace slr
 	constexpr long long HelionEmpireId = 1;
 	constexpr long long AshreachEmpireId = 2;
 
+	enum class RuleOfEngagement
+	{
+		DoNotFireUnlessFiredUpon,
+		FireIfEnemySeen
+	};
+
+	struct EngagementPolicy
+	{
+		long long id{ 0 };
+		long long empireId{ 0 };
+		std::string name;
+		RuleOfEngagement ruleOfEngagement{ RuleOfEngagement::DoNotFireUnlessFiredUpon };
+	};
+
 	struct Empire
 	{
 		long long id{ 0 };
 		std::string name;
+		long long defaultPolicyId{ 0 };
 	};
 
 	struct GoodStock
@@ -128,6 +143,7 @@ namespace slr
 		long long systemId{ 0 };
 		std::vector<ClassCount> composition;
 		LaneMotion motion;
+		long long policyId{ 0 };
 	};
 
 	struct BattleSideReport
@@ -179,6 +195,7 @@ namespace slr
 		std::vector<Convoy> convoys;
 		std::vector<ShipClass> shipClasses;
 		std::vector<Fleet> fleets;
+		std::vector<EngagementPolicy> engagementPolicies;
 		std::vector<BattleReport> battleReports;
 
 		const Empire* empireById(long long id) const;
@@ -195,7 +212,14 @@ namespace slr
 		Convoy* convoyById(long long id);
 		const Truck* truckById(long long id) const;
 		Truck* truckById(long long id);
+		const EngagementPolicy* engagementPolicyById(long long id) const;
+		EngagementPolicy* engagementPolicyById(long long id);
 	};
+
+	bool ruleOfEngagementOpensFire(RuleOfEngagement rule);
+	const char* ruleOfEngagementName(RuleOfEngagement rule);
+	const EngagementPolicy* activeEngagementPolicy(const WorldData& world, const Fleet& fleet);
+	bool anyFleetOpensFire(const WorldData& world, const std::vector<long long>& fleetIds);
 
 	long long getStockpileAmount(const StarSystem& system, long long goodId);
 	long long locatedGoodAmount(const WorldData& world, long long goodId);

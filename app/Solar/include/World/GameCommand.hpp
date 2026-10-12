@@ -1,6 +1,7 @@
 #pragma once
 
 #include <World/WorldData.hpp>
+#include <string>
 #include <variant>
 
 namespace slr
@@ -24,10 +25,36 @@ namespace slr
 		long long jobId{ 0 };
 	};
 
+	struct UpsertEngagementPolicy
+	{
+		long long policyId{ 0 };
+		long long empireId{ 0 };
+		std::string name;
+		RuleOfEngagement ruleOfEngagement{ RuleOfEngagement::DoNotFireUnlessFiredUpon };
+	};
+
+	struct SetEmpireDefaultPolicy
+	{
+		long long empireId{ 0 };
+		long long policyId{ 0 };
+	};
+
+	struct SetFleetPolicyOverride
+	{
+		long long fleetId{ 0 };
+		long long policyId{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
-		std::variant<MoveFleetToSystem, AcceptHaulJob> payload;
+		std::variant<
+			MoveFleetToSystem,
+			AcceptHaulJob,
+			UpsertEngagementPolicy,
+			SetEmpireDefaultPolicy,
+			SetFleetPolicyOverride>
+			payload;
 
 		static GameCommand moveFleetToSystem(
 			long long fleetId,
@@ -36,6 +63,20 @@ namespace slr
 		static GameCommand acceptHaulJob(
 			long long truckId,
 			long long jobId,
+			CommandSource source);
+		static GameCommand upsertEngagementPolicy(
+			long long policyId,
+			long long empireId,
+			std::string name,
+			RuleOfEngagement ruleOfEngagement,
+			CommandSource source);
+		static GameCommand setEmpireDefaultPolicy(
+			long long empireId,
+			long long policyId,
+			CommandSource source);
+		static GameCommand setFleetPolicyOverride(
+			long long fleetId,
+			long long policyId,
 			CommandSource source);
 	};
 

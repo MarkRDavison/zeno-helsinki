@@ -133,6 +133,88 @@ namespace slr
 		return const_cast<Truck*>(static_cast<const WorldData*>(this)->truckById(id));
 	}
 
+	const EngagementPolicy* WorldData::engagementPolicyById(long long id) const
+	{
+		for (const auto& policy : engagementPolicies)
+		{
+			if (policy.id == id)
+			{
+				return &policy;
+			}
+		}
+
+		return nullptr;
+	}
+
+	EngagementPolicy* WorldData::engagementPolicyById(long long id)
+	{
+		return const_cast<EngagementPolicy*>(static_cast<const WorldData*>(this)->engagementPolicyById(id));
+	}
+
+	bool ruleOfEngagementOpensFire(RuleOfEngagement rule)
+	{
+		return rule == RuleOfEngagement::FireIfEnemySeen;
+	}
+
+	const char* ruleOfEngagementName(RuleOfEngagement rule)
+	{
+		switch (rule)
+		{
+		case RuleOfEngagement::FireIfEnemySeen:
+			return "fire if enemy seen";
+		case RuleOfEngagement::DoNotFireUnlessFiredUpon:
+			return "do not fire unless fired upon";
+		}
+
+		return "unknown";
+	}
+
+	const EngagementPolicy* activeEngagementPolicy(const WorldData& world, const Fleet& fleet)
+	{
+		if (fleet.policyId != 0)
+		{
+			const EngagementPolicy* overridePolicy = world.engagementPolicyById(fleet.policyId);
+			if (overridePolicy != nullptr && overridePolicy->empireId == fleet.empireId)
+			{
+				return overridePolicy;
+			}
+		}
+
+		const Empire* empire = world.empireById(fleet.empireId);
+		if (empire == nullptr || empire->defaultPolicyId == 0)
+		{
+			return nullptr;
+		}
+
+		const EngagementPolicy* defaultPolicy = world.engagementPolicyById(empire->defaultPolicyId);
+		if (defaultPolicy == nullptr || defaultPolicy->empireId != fleet.empireId)
+		{
+			return nullptr;
+		}
+
+		return defaultPolicy;
+	}
+
+	bool anyFleetOpensFire(const WorldData& world, const std::vector<long long>& fleetIds)
+	{
+		for (const long long fleetId : fleetIds)
+		{
+			const Fleet* fleet = world.fleetById(fleetId);
+			if (fleet == nullptr)
+			{
+				continue;
+			}
+
+			const EngagementPolicy* policy = activeEngagementPolicy(world, *fleet);
+			if (policy != nullptr && ruleOfEngagementOpensFire(policy->ruleOfEngagement))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	long long getStockpileAmount(const StarSystem& system, long long goodId)
 	{
 		for (const auto& stock : system.stocks)
