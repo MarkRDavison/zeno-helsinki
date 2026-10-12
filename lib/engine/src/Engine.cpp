@@ -508,7 +508,7 @@ namespace hl
 			glfwWaitEvents();
 		}
 
-		_syncContext.waitLastSubmitted();
+		_device.waitIdle();
 
 		_swapChain.destroy();
 		_swapChain.create(
