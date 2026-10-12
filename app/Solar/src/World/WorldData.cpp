@@ -1527,4 +1527,122 @@ namespace slr
 			.forbiddenEmpireId = forbiddenEmpireId });
 	}
 
+	const Yard* yardAtSystem(const WorldData& world, long long systemId)
+	{
+		for (const auto& yard : world.yards)
+		{
+			if (yard.systemId == systemId)
+			{
+				return &yard;
+			}
+		}
+
+		return nullptr;
+	}
+
+	Yard* yardAtSystem(WorldData& world, long long systemId)
+	{
+		return const_cast<Yard*>(yardAtSystem(static_cast<const WorldData&>(world), systemId));
+	}
+
+	long long nextYardSlipId(const WorldData& world)
+	{
+		long long nextId = 1;
+		for (const auto& yard : world.yards)
+		{
+			for (const auto& slip : yard.slips)
+			{
+				if (slip.id >= nextId)
+				{
+					nextId = slip.id + 1;
+				}
+			}
+		}
+
+		return nextId;
+	}
+
+	long long countIdleYardSlips(const Yard& yard)
+	{
+		long long count = 0;
+		for (const auto& slip : yard.slips)
+		{
+			if (slip.remainingBuildTicks == 0)
+			{
+				++count;
+			}
+		}
+
+		return count;
+	}
+
+	void applyYardSlipConstruction(WorldData& world)
+	{
+		for (auto& yard : world.yards)
+		{
+			std::vector<long long> constructing;
+			for (const auto& slip : yard.slips)
+			{
+				if (slip.remainingBuildTicks > 0)
+				{
+					constructing.push_back(slip.id);
+				}
+			}
+
+			if (constructing.empty())
+			{
+				yard.nextSlipConstructionId = 0;
+				continue;
+			}
+
+			std::sort(constructing.begin(), constructing.end());
+			long long chosenId = constructing.front();
+			for (const long long id : constructing)
+			{
+				if (id >= yard.nextSlipConstructionId)
+				{
+					chosenId = id;
+					break;
+				}
+			}
+
+			for (auto& slip : yard.slips)
+			{
+				if (slip.id == chosenId)
+				{
+					--slip.remainingBuildTicks;
+					break;
+				}
+			}
+
+			constructing.clear();
+			for (const auto& slip : yard.slips)
+			{
+				if (slip.remainingBuildTicks > 0)
+				{
+					constructing.push_back(slip.id);
+				}
+			}
+
+			if (constructing.empty())
+			{
+				yard.nextSlipConstructionId = 0;
+				continue;
+			}
+
+			std::sort(constructing.begin(), constructing.end());
+			long long nextId = constructing.front();
+			for (const long long id : constructing)
+			{
+				if (id > chosenId)
+				{
+					nextId = id;
+					break;
+				}
+			}
+
+			yard.nextSlipConstructionId = nextId;
+		}
+	}
+
 }

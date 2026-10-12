@@ -95,7 +95,8 @@ namespace
 			.populationConsumePerTick = {
 				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationConsumePerTick_Steel } },
 			.populationReservedPiles = {
-				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } } });
+				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } },
+			.slips = { YardSlip{ .id = 1, .remainingBuildTicks = 0 } } });
 		world.mines.push_back(Mine{
 			.systemId = 8,
 			.outputsPerTick = {
@@ -110,7 +111,8 @@ namespace
 			.populationConsumePerTick = {
 				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationConsumePerTick_Steel } },
 			.populationReservedPiles = {
-				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } } });
+				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } },
+			.slips = { YardSlip{ .id = 2, .remainingBuildTicks = 0 } } });
 		postNeedsFromConsumerShortfalls(world, *helion);
 		postNeedsFromConsumerShortfalls(world, *junction);
 		postNeedsFromConsumerShortfalls(world, *rimward);

@@ -790,6 +790,44 @@ namespace
 				const std::string yardTableId = "yard_" + std::to_string(yardIndex++);
 				drawGoodQuantityTable(yardTableId.c_str(), "desired", yard.desiredPiles);
 
+				ImGui::TextUnformatted("Slips");
+				const std::string slipsTableId = "yard_slips_" + yardTableId;
+				if (ImGui::BeginTable(
+						slipsTableId.c_str(),
+						2,
+						ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					ImGui::TableSetupColumn("id");
+					ImGui::TableSetupColumn("status");
+					ImGui::TableHeadersRow();
+					for (const auto& slip : yard.slips)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextUnformatted(std::to_string(slip.id).c_str());
+						ImGui::TableSetColumnIndex(1);
+						if (slip.remainingBuildTicks == 0)
+						{
+							ImGui::TextUnformatted("idle");
+						}
+						else
+						{
+							ImGui::TextUnformatted(
+								(std::to_string(slip.remainingBuildTicks) + " ticks left").c_str());
+						}
+					}
+
+					ImGui::EndTable();
+				}
+
+				ImGui::PushID(static_cast<int>(yard.systemId));
+				if (ImGui::Button("Add slip"))
+				{
+					pendingCommands.push_back(
+						GameCommand::startYardSlip(system->id, CommandSource::Player));
+				}
+				ImGui::PopID();
+
 				if (yard.populationConsumePerTick.empty() && yard.populationReservedPiles.empty())
 				{
 					continue;

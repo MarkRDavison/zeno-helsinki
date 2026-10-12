@@ -101,6 +101,12 @@ namespace slr
 		std::vector<MineOutput> outputsPerTick;
 	};
 
+	struct YardSlip
+	{
+		long long id{ 0 };
+		long long remainingBuildTicks{ 0 };
+	};
+
 	struct Yard
 	{
 		long long systemId{ 0 };
@@ -108,6 +114,8 @@ namespace slr
 		std::vector<GoodQuantity> desiredPiles;
 		std::vector<GoodQuantity> populationConsumePerTick;
 		std::vector<GoodQuantity> populationReservedPiles;
+		std::vector<YardSlip> slips;
+		long long nextSlipConstructionId{ 0 };
 	};
 
 	struct Factory
@@ -137,7 +145,10 @@ namespace slr
 		long long empireId{ 0 };
 		LaneMotion motion;
 		long long cargoGoodId{ 0 };
-		long long cargoAmount{ 0 };
+		// TODO: eventually trucks can transport more than 1 thing at a time
+		// i.e. have room for X standard containers
+		// and resources can fit Y resource in 1 standard container
+		long long cargoAmount{ 0 }; 
 		long long haulJobId{ 0 };
 		long long convoyId{ 0 };
 		bool isMilitary{ false };
@@ -350,5 +361,10 @@ namespace slr
 		long long empireId,
 		long long forbiddenEmpireId,
 		bool forbidden);
+	const Yard* yardAtSystem(const WorldData& world, long long systemId);
+	Yard* yardAtSystem(WorldData& world, long long systemId);
+	long long nextYardSlipId(const WorldData& world);
+	long long countIdleYardSlips(const Yard& yard);
+	void applyYardSlipConstruction(WorldData& world);
 
 }

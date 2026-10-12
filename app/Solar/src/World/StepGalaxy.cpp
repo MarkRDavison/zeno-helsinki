@@ -901,6 +901,7 @@ namespace
 		applyExtraction(world);
 		applyFactoryProduction(world);
 		applyCivilianConsumption(world);
+		applyYardSlipConstruction(world);
 		applyStandingConvoyJoins(world);
 		applyHaulJobAccepts(world);
 		applyStandingConvoyHaulAccepts(world);

@@ -559,6 +559,30 @@ namespace
 		return true;
 	}
 
+	bool applyStartYardSlip(WorldData& world, const StartYardSlip& order)
+	{
+		Yard* yard = yardAtSystem(world, order.systemId);
+		if (yard == nullptr)
+		{
+			return false;
+		}
+
+		if (stockpileAvailableForYardConsume(world, order.systemId, SteelGoodId) < YardSlipSteelCost)
+		{
+			return false;
+		}
+
+		if (!useFromStockpile(world, order.systemId, SteelGoodId, YardSlipSteelCost))
+		{
+			return false;
+		}
+
+		yard->slips.push_back(YardSlip{
+			.id = nextYardSlipId(world),
+			.remainingBuildTicks = YardSlipBuildTicks });
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -674,6 +698,14 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::startYardSlip(long long systemId, CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = StartYardSlip{ .systemId = systemId };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -715,6 +747,10 @@ namespace
 				else if constexpr (std::is_same_v<Payload, SetCivilianHaulForbidden>)
 				{
 					return applySetCivilianHaulForbidden(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, StartYardSlip>)
+				{
+					return applyStartYardSlip(world, payload);
 				}
 				else
 				{
