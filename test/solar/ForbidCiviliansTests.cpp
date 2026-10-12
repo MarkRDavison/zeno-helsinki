@@ -25,6 +25,9 @@ TEST_CASE("forbidding Ashreach blocks unescorted Kestrel but not Junction ore", 
 	REQUIRE(civilianLanePath(world, 5, 1, HelionEmpireId).empty());
 	REQUIRE(civilianLanePath(world, 5, 1, HelionEmpireId, true) == shortestLanePath(world, 5, 1));
 
+	StarSystem* rimward = world.systemById(5);
+	REQUIRE(rimward != nullptr);
+	rimward->stocks[0].goodAmount = TruckCapacity_IronOre;
 	const HaulJob* steel = haulJobFor(world, 1, SteelGoodId);
 	const HaulJob* ore = haulJobFor(world, 3, IronOreGoodId);
 	REQUIRE(steel != nullptr);
@@ -84,7 +87,7 @@ TEST_CASE("standing escort still takes Helion steel when Ashreach claims are for
 			AshreachEmpireId,
 			true,
 			CommandSource::Player)));
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, 0, CommandSource::Player)));
 	stepGalaxy(world);
 
 	const Convoy* standing = world.convoyById(home->escortConvoyId);

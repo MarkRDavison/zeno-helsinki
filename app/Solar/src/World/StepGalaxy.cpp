@@ -199,7 +199,7 @@ namespace
 			}
 
 			return anyMember && allLoaded &&
-				countTrucksInConvoy(world, convoy.id) == convoy.desiredTruckCount;
+				countTrucksInConvoy(world, convoy.id) == standingDesiredTruckCount(convoy);
 		}
 
 		return anyMember && anyLoadedAtRally;
@@ -256,12 +256,16 @@ namespace
 				continue;
 			}
 
-			const std::vector<long long> path = civilianLanePath(
+			const bool militaryPath = convoyIsStanding(convoy)
+				? standingConvoyUsesMilitaryHaulPath(convoy)
+				: convoyJobGroupIsMilitary(world, convoy);
+			const std::vector<long long> path = haulLanePath(
 				world,
 				convoy.loadSystemId,
 				job->destinationSystemId,
 				convoy.empireId,
-				convoyIsStanding(convoy));
+				convoyIsStanding(convoy),
+				militaryPath);
 			if (path.size() < 2)
 			{
 				continue;
@@ -644,7 +648,7 @@ namespace
 					continue;
 				}
 
-				if (countTrucksInConvoy(world, convoy.id) >= convoy.desiredTruckCount)
+				if (!standingConvoyHasJoinSlotForTruck(world, convoy, truck))
 				{
 					continue;
 				}
@@ -686,7 +690,7 @@ namespace
 				continue;
 			}
 
-			if (countTrucksInConvoy(world, convoy.id) != convoy.desiredTruckCount)
+			if (countTrucksInConvoy(world, convoy.id) != standingDesiredTruckCount(convoy))
 			{
 				continue;
 			}
@@ -707,7 +711,7 @@ namespace
 				}
 
 				const long long truckload = truckloadForGood(job.goodId);
-				const long long reserved = convoy.desiredTruckCount * truckload;
+				const long long reserved = standingDesiredTruckCount(convoy) * truckload;
 				if (job.amount < reserved)
 				{
 					continue;
@@ -719,7 +723,8 @@ namespace
 					job.goodId,
 					job.destinationSystemId,
 					convoy.empireId,
-					true);
+					true,
+					standingConvoyUsesMilitaryHaulPath(convoy));
 				if (loadSystemId == 0)
 				{
 					continue;
@@ -776,6 +781,7 @@ namespace
 			}
 
 			long long bestJobId = 0;
+			long long bestRisk = -1;
 			for (const auto& job : world.haulJobs)
 			{
 				if (job.empireId != truck.empireId)
@@ -784,7 +790,7 @@ namespace
 				}
 
 				const StarSystem* destination = world.systemById(job.destinationSystemId);
-				if (destination != nullptr && destination->empireId != 0 &&
+				if (!truck.isMilitary && destination != nullptr && destination->empireId != 0 &&
 					civilianHaulIsForbidden(world, truck.empireId, destination->empireId))
 				{
 					continue;
@@ -800,12 +806,31 @@ namespace
 						here,
 						job.goodId,
 						job.destinationSystemId,
-						truck.empireId) == 0)
+						truck.empireId,
+						false,
+						truck.isMilitary) == 0)
 				{
 					continue;
 				}
 
-				if (bestJobId == 0 || job.id < bestJobId)
+				const long long civilianSupply = nearestSupplySystemId(
+					world,
+					here,
+					job.goodId,
+					job.destinationSystemId,
+					truck.empireId);
+				const bool destForbidden = destination != nullptr && destination->empireId != 0 &&
+					civilianHaulIsForbidden(world, truck.empireId, destination->empireId);
+				const long long risk = (civilianSupply == 0 || destForbidden) ? 1 : 0;
+				if (truck.isMilitary)
+				{
+					if (bestJobId == 0 || risk > bestRisk || (risk == bestRisk && job.id < bestJobId))
+					{
+						bestRisk = risk;
+						bestJobId = job.id;
+					}
+				}
+				else if (bestJobId == 0 || job.id < bestJobId)
 				{
 					bestJobId = job.id;
 				}

@@ -351,6 +351,7 @@ namespace
 			if (ImGui::Begin("Truck", &open))
 			{
 				ImGui::TextUnformatted(("id " + std::to_string(truck->id)).c_str());
+				ImGui::TextUnformatted(truck->isMilitary ? "military" : "civilian");
 				const Empire* empire = _world->empireById(truck->empireId);
 				if (empire != nullptr)
 				{
@@ -561,6 +562,7 @@ namespace
 							pendingCommands.push_back(GameCommand::setFleetEscort(
 								fleet->id,
 								0,
+								0,
 								CommandSource::Player));
 						}
 
@@ -569,6 +571,7 @@ namespace
 							pendingCommands.push_back(GameCommand::setFleetEscort(
 								fleet->id,
 								1,
+								0,
 								CommandSource::Player));
 						}
 
@@ -577,25 +580,49 @@ namespace
 
 					if (escorting)
 					{
-						int trucksWanted = static_cast<int>(escortConvoy->desiredTruckCount);
-						if (ImGui::InputInt("Trucks", &trucksWanted))
+						int civiliansWanted =
+							static_cast<int>(escortConvoy->desiredCivilianTruckCount);
+						int militaryWanted =
+							static_cast<int>(escortConvoy->desiredMilitaryTruckCount);
+						bool countsChanged = false;
+						if (ImGui::InputInt("Civilian trucks", &civiliansWanted))
 						{
-							if (trucksWanted < 0)
+							if (civiliansWanted < 0)
 							{
-								trucksWanted = 0;
+								civiliansWanted = 0;
 							}
 
+							countsChanged = true;
+						}
+
+						if (ImGui::InputInt("Military trucks", &militaryWanted))
+						{
+							if (militaryWanted < 0)
+							{
+								militaryWanted = 0;
+							}
+
+							countsChanged = true;
+						}
+
+						if (countsChanged)
+						{
 							pendingCommands.push_back(GameCommand::setFleetEscort(
 								fleet->id,
-								trucksWanted,
+								civiliansWanted,
+								militaryWanted,
 								CommandSource::Player));
 						}
 
 						ImGui::TextUnformatted(
-							("joined " +
-								std::to_string(countTrucksInConvoy(*_world, escortConvoy->id)) +
+							("joined civilian " +
+								std::to_string(countCivilianTrucksInConvoy(*_world, escortConvoy->id)) +
 								"/" +
-								std::to_string(escortConvoy->desiredTruckCount))
+								std::to_string(escortConvoy->desiredCivilianTruckCount) +
+								" military " +
+								std::to_string(countMilitaryTrucksInConvoy(*_world, escortConvoy->id)) +
+								"/" +
+								std::to_string(escortConvoy->desiredMilitaryTruckCount))
 								.c_str());
 					}
 				}

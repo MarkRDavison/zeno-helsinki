@@ -48,9 +48,11 @@ TEST_CASE("parked truck marker misses the system node", "[slr][Truck][Pick]")
 TEST_CASE("stacked convoy members pick the smaller truck id", "[slr][Truck][Pick]")
 {
 	WorldData world = makeStarterMap();
-	world.trucks[0].motion = world.trucks.back().motion;
-	world.trucks[0].convoyId = world.trucks.back().convoyId;
-	const auto marker = truckMarkerPosition(world, world.trucks.back());
+	const Truck* flying = world.truckById(StarterCivilianTruckCount);
+	REQUIRE(flying != nullptr);
+	world.trucks[0].motion = flying->motion;
+	world.trucks[0].convoyId = flying->convoyId;
+	const auto marker = truckMarkerPosition(world, *flying);
 	REQUIRE(marker.has_value());
 	const auto hit = pickTruck(world, *marker, GalaxyTruckSize * 0.5f);
 	REQUIRE(hit.has_value());

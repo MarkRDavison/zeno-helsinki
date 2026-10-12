@@ -678,7 +678,8 @@ namespace slr
 		long long goodId,
 		long long destinationSystemId,
 		long long viewerEmpireId,
-		bool seesEscort)
+		bool seesEscort,
+		bool isMilitary)
 	{
 		auto pick = [&](bool allowDestination) -> long long
 		{
@@ -697,23 +698,25 @@ namespace slr
 					continue;
 				}
 
-				const long long toSupply = civilianLanePathCost(
+				const long long toSupply = haulLanePathCost(
 					world,
 					fromSystemId,
 					system.id,
 					viewerEmpireId,
-					seesEscort);
+					seesEscort,
+					isMilitary);
 				if (toSupply < 0)
 				{
 					continue;
 				}
 
-				const long long toDest = civilianLanePathCost(
+				const long long toDest = haulLanePathCost(
 					world,
 					system.id,
 					destinationSystemId,
 					viewerEmpireId,
-					seesEscort);
+					seesEscort,
+					isMilitary);
 				if (toDest < 0)
 				{
 					continue;
@@ -865,6 +868,17 @@ namespace slr
 		return convoy.escortFleetId != 0;
 	}
 
+	bool standingConvoyUsesMilitaryHaulPath(const Convoy& convoy)
+	{
+		return convoyIsStanding(convoy) && convoy.desiredCivilianTruckCount == 0 &&
+			convoy.desiredMilitaryTruckCount > 0;
+	}
+
+	long long standingDesiredTruckCount(const Convoy& convoy)
+	{
+		return convoy.desiredCivilianTruckCount + convoy.desiredMilitaryTruckCount;
+	}
+
 	long long nextConvoyId(const WorldData& world)
 	{
 		long long nextId = 1;
@@ -920,13 +934,16 @@ namespace slr
 		}
 
 		bool seesEscort = false;
+		bool standingMilitaryPath = false;
 		if (const Convoy* convoy = world.convoyById(truck.convoyId))
 		{
 			seesEscort = convoyIsStanding(*convoy);
+			standingMilitaryPath = standingConvoyUsesMilitaryHaulPath(*convoy);
 		}
 
+		const bool isMilitary = truck.isMilitary && (!seesEscort || standingMilitaryPath);
 		const std::vector<long long> path =
-			civilianLanePath(world, here, systemId, truck.empireId, seesEscort);
+			haulLanePath(world, here, systemId, truck.empireId, seesEscort, isMilitary);
 		if (path.size() < 2)
 		{
 			return false;
@@ -939,7 +956,33 @@ namespace slr
 		return true;
 	}
 
-	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId)
+	bool convoyJobGroupIsMilitary(const WorldData& world, const Convoy& convoy)
+	{
+		if (convoyIsStanding(convoy))
+		{
+			return false;
+		}
+
+		bool any = false;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId != convoy.id)
+			{
+				continue;
+			}
+
+			if (!truck.isMilitary)
+			{
+				return false;
+			}
+
+			any = true;
+		}
+
+		return any;
+	}
+
+	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId, bool isMilitary)
 	{
 		for (auto& convoy : world.convoys)
 		{
@@ -948,10 +991,22 @@ namespace slr
 				continue;
 			}
 
-			if (convoy.haulJobId == haulJobId && !convoyIsUnderway(convoy))
+			if (convoy.haulJobId != haulJobId || convoyIsUnderway(convoy))
 			{
-				return &convoy;
+				continue;
 			}
+
+			if (countTrucksInConvoy(world, convoy.id) == 0)
+			{
+				continue;
+			}
+
+			if (convoyJobGroupIsMilitary(world, convoy) != isMilitary)
+			{
+				continue;
+			}
+
+			return &convoy;
 		}
 
 		return nullptr;
@@ -969,6 +1024,43 @@ namespace slr
 		}
 
 		return count;
+	}
+
+	long long countMilitaryTrucksInConvoy(const WorldData& world, long long convoyId)
+	{
+		long long count = 0;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoyId && truck.isMilitary)
+			{
+				++count;
+			}
+		}
+
+		return count;
+	}
+
+	long long countCivilianTrucksInConvoy(const WorldData& world, long long convoyId)
+	{
+		return countTrucksInConvoy(world, convoyId) - countMilitaryTrucksInConvoy(world, convoyId);
+	}
+
+	bool standingConvoyHasJoinSlotForTruck(
+		const WorldData& world,
+		const Convoy& convoy,
+		const Truck& truck)
+	{
+		if (!convoyIsStanding(convoy))
+		{
+			return false;
+		}
+
+		if (truck.isMilitary)
+		{
+			return countMilitaryTrucksInConvoy(world, convoy.id) < convoy.desiredMilitaryTruckCount;
+		}
+
+		return countCivilianTrucksInConvoy(world, convoy.id) < convoy.desiredCivilianTruckCount;
 	}
 
 	long long countTrucksInConvoyPresent(const WorldData& world, const Convoy& convoy)
@@ -1021,9 +1113,27 @@ namespace slr
 
 		const long long truckload = truckloadForGood(goodId);
 		long long reserved = 0;
-		if (assemblingConvoyId != 0)
+		for (const auto& truck : world.trucks)
 		{
-			reserved = emptyTrucksInConvoy(world, assemblingConvoyId) * truckload;
+			if (truck.cargoAmount != 0 || truck.haulJobId == 0)
+			{
+				continue;
+			}
+
+			const HaulJob* job = world.haulJobById(truck.haulJobId);
+			if (job == nullptr || job->goodId != goodId)
+			{
+				continue;
+			}
+
+			const Convoy* convoy = world.convoyById(truck.convoyId);
+			if (convoy == nullptr || convoyIsUnderway(*convoy) ||
+				convoy->loadSystemId != loadSystemId)
+			{
+				continue;
+			}
+
+			reserved += truckload;
 		}
 
 		return getStockpileAmount(*supply, goodId) >= reserved + truckload;

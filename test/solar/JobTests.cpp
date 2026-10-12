@@ -62,7 +62,7 @@ TEST_CASE("two empty trucks accept the Junction ore job and pathfind Rimward to 
 	REQUIRE(jobBefore != nullptr);
 	const long long jobId = jobBefore->id;
 	const long long amountBefore = jobBefore->amount;
-	const long long flyingConvoyId = world.trucks.back().convoyId;
+	const long long flyingConvoyId = world.truckById(StarterCivilianTruckCount)->convoyId;
 
 	stepGalaxy(world);
 

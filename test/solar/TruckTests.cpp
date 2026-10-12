@@ -15,21 +15,32 @@ namespace TruckTests
 TEST_CASE("starter empty trucks park at Rimward; one loaded truck is Helion-bound", "[slr][Truck]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.trucks.size() == StarterCivilianTruckCount);
+	REQUIRE(world.trucks.size() == StarterCivilianTruckCount + StarterMilitaryTruckCount);
 	REQUIRE(world.trucks[0].motion.route == std::vector<long long>{ 5 });
 	REQUIRE(world.trucks[1].motion.route == std::vector<long long>{ 5 });
-	const Truck& flying = world.trucks.back();
-	REQUIRE(flying.motion.route == shortestLanePath(world, 5, 1));
-	REQUIRE(flying.cargoAmount == TruckCapacity_Steel);
-	REQUIRE(flying.haulJobId != 0);
+	const Truck* flying = world.truckById(StarterCivilianTruckCount);
+	REQUIRE(flying != nullptr);
+	REQUIRE(flying->motion.route == shortestLanePath(world, 5, 1));
+	REQUIRE(flying->cargoAmount == TruckCapacity_Steel);
+	REQUIRE(flying->haulJobId != 0);
+	long long militaryCount = 0;
+	for (const auto& truck : world.trucks)
+	{
+		if (truck.isMilitary)
+		{
+			++militaryCount;
+			REQUIRE(truck.motion.route == std::vector<long long>{ 1 });
+		}
+	}
+	REQUIRE(militaryCount == StarterMilitaryTruckCount);
 }
 
 TEST_CASE("starter truck speeds vary by 5 percent around 25", "[slr][Truck]")
 {
 	const WorldData a = makeStarterMap();
 	const WorldData b = makeStarterMap();
-	REQUIRE(a.trucks.size() == StarterCivilianTruckCount);
-	REQUIRE(b.trucks.size() == StarterCivilianTruckCount);
+	REQUIRE(a.trucks.size() == StarterCivilianTruckCount + StarterMilitaryTruckCount);
+	REQUIRE(b.trucks.size() == StarterCivilianTruckCount + StarterMilitaryTruckCount);
 	constexpr float base = 25.0f;
 	constexpr float minSpeed = base * 0.95f;
 	constexpr float maxSpeed = base * 1.05f;
@@ -74,7 +85,7 @@ TEST_CASE("trucks at a system are those sitting on the node", "[slr][Truck]")
 {
 	const WorldData world = makeStarterMap();
 	REQUIRE(countTrucksAtSystem(world, 5) == StarterCivilianTruckCount - 1);
-	REQUIRE(countTrucksAtSystem(world, 1) == 0);
+	REQUIRE(countTrucksAtSystem(world, 1) == StarterMilitaryTruckCount);
 	REQUIRE(countTrucksAtSystem(world, 3) == 0);
 }
 

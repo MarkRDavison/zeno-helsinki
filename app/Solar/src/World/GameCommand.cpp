@@ -76,7 +76,7 @@ namespace
 		}
 
 		const StarSystem* destination = world.systemById(job->destinationSystemId);
-		if (destination != nullptr && destination->empireId != 0 &&
+		if (!truck->isMilitary && destination != nullptr && destination->empireId != 0 &&
 			civilianHaulIsForbidden(world, truck->empireId, destination->empireId))
 		{
 			return false;
@@ -94,7 +94,7 @@ namespace
 			return false;
 		}
 
-		Convoy* convoy = openConvoyForHaulJob(world, job->id);
+		Convoy* convoy = openConvoyForHaulJob(world, job->id, truck->isMilitary);
 		long long loadSystemId = 0;
 		long long assemblingConvoyId = 0;
 		if (convoy != nullptr)
@@ -109,7 +109,9 @@ namespace
 				here,
 				job->goodId,
 				job->destinationSystemId,
-				truck->empireId);
+				truck->empireId,
+				false,
+				truck->isMilitary);
 		}
 
 		if (loadSystemId == 0)
@@ -132,19 +134,26 @@ namespace
 			convoy = &world.convoys.back();
 		}
 
-		if (civilianLanePathCost(
+		if (haulLanePathCost(
 				world,
 				loadSystemId,
 				job->destinationSystemId,
-				truck->empireId) < 0)
+				truck->empireId,
+				false,
+				truck->isMilitary) < 0)
 		{
 			return false;
 		}
 
 		if (here != convoy->loadSystemId)
 		{
-			const std::vector<long long> path =
-				civilianLanePath(world, here, convoy->loadSystemId, truck->empireId);
+			const std::vector<long long> path = haulLanePath(
+				world,
+				here,
+				convoy->loadSystemId,
+				truck->empireId,
+				false,
+				truck->isMilitary);
 			if (path.size() < 2)
 			{
 				return false;
@@ -259,15 +268,60 @@ namespace
 			world.convoys.end());
 	}
 
+	bool dropEmptyStandingTrucksOfKind(
+		WorldData& world,
+		long long convoyId,
+		bool isMilitary,
+		long long keep)
+	{
+		auto countKind = [&world, convoyId, isMilitary]()
+		{
+			return isMilitary ? countMilitaryTrucksInConvoy(world, convoyId)
+							  : countCivilianTrucksInConvoy(world, convoyId);
+		};
+
+		while (countKind() > keep)
+		{
+			Truck* extra = nullptr;
+			for (auto& truck : world.trucks)
+			{
+				if (truck.convoyId != convoyId || truck.haulJobId != 0 || truck.cargoAmount != 0)
+				{
+					continue;
+				}
+
+				if (truck.isMilitary != isMilitary)
+				{
+					continue;
+				}
+
+				if (extra == nullptr || truck.id > extra->id)
+				{
+					extra = &truck;
+				}
+			}
+
+			if (extra == nullptr)
+			{
+				return false;
+			}
+
+			extra->convoyId = 0;
+		}
+
+		return true;
+	}
+
 	bool applySetFleetEscort(WorldData& world, const SetFleetEscort& order)
 	{
 		Fleet* fleet = world.fleetById(order.fleetId);
-		if (fleet == nullptr || order.desiredTruckCount < 0)
+		if (fleet == nullptr || order.desiredCivilianTruckCount < 0 ||
+			order.desiredMilitaryTruckCount < 0)
 		{
 			return false;
 		}
 
-		if (order.desiredTruckCount == 0)
+		if (order.desiredCivilianTruckCount == 0 && order.desiredMilitaryTruckCount == 0)
 		{
 			if (fleet->escortConvoyId == 0)
 			{
@@ -290,7 +344,8 @@ namespace
 			else
 			{
 				convoy->escortFleetId = 0;
-				convoy->desiredTruckCount = 0;
+				convoy->desiredCivilianTruckCount = 0;
+				convoy->desiredMilitaryTruckCount = 0;
 			}
 
 			return true;
@@ -304,34 +359,28 @@ namespace
 				return false;
 			}
 
-			if (order.desiredTruckCount < convoy->desiredTruckCount)
+			if (order.desiredCivilianTruckCount < convoy->desiredCivilianTruckCount &&
+				!dropEmptyStandingTrucksOfKind(
+					world,
+					convoy->id,
+					false,
+					order.desiredCivilianTruckCount))
 			{
-				while (countTrucksInConvoy(world, convoy->id) > order.desiredTruckCount)
-				{
-					Truck* extra = nullptr;
-					for (auto& truck : world.trucks)
-					{
-						if (truck.convoyId != convoy->id || truck.haulJobId != 0 || truck.cargoAmount != 0)
-						{
-							continue;
-						}
-
-						if (extra == nullptr || truck.id > extra->id)
-						{
-							extra = &truck;
-						}
-					}
-
-					if (extra == nullptr)
-					{
-						return false;
-					}
-
-					extra->convoyId = 0;
-				}
+				return false;
 			}
 
-			convoy->desiredTruckCount = order.desiredTruckCount;
+			if (order.desiredMilitaryTruckCount < convoy->desiredMilitaryTruckCount &&
+				!dropEmptyStandingTrucksOfKind(
+					world,
+					convoy->id,
+					true,
+					order.desiredMilitaryTruckCount))
+			{
+				return false;
+			}
+
+			convoy->desiredCivilianTruckCount = order.desiredCivilianTruckCount;
+			convoy->desiredMilitaryTruckCount = order.desiredMilitaryTruckCount;
 			return true;
 		}
 
@@ -340,7 +389,8 @@ namespace
 			.empireId = fleet->empireId,
 			.loadSystemId = fleetRallySystemId(*fleet),
 			.escortFleetId = fleet->id,
-			.desiredTruckCount = order.desiredTruckCount });
+			.desiredCivilianTruckCount = order.desiredCivilianTruckCount,
+			.desiredMilitaryTruckCount = order.desiredMilitaryTruckCount });
 		fleet->escortConvoyId = world.convoys.back().id;
 		return true;
 	}
@@ -364,7 +414,7 @@ namespace
 			return false;
 		}
 
-		if (countTrucksInConvoy(world, convoy->id) >= convoy->desiredTruckCount)
+		if (!standingConvoyHasJoinSlotForTruck(world, *convoy, *truck))
 		{
 			return false;
 		}
@@ -393,12 +443,13 @@ namespace
 
 	bool standingConvoyMembersReadyAtRally(const WorldData& world, const Convoy& convoy)
 	{
-		if (!convoyIsStanding(convoy) || convoy.desiredTruckCount <= 0 || convoy.haulJobId != 0)
+		if (!convoyIsStanding(convoy) || standingDesiredTruckCount(convoy) <= 0 ||
+			convoy.haulJobId != 0)
 		{
 			return false;
 		}
 
-		if (countTrucksInConvoy(world, convoy.id) != convoy.desiredTruckCount)
+		if (countTrucksInConvoy(world, convoy.id) != standingDesiredTruckCount(convoy))
 		{
 			return false;
 		}
@@ -446,7 +497,7 @@ namespace
 		}
 
 		const long long truckload = truckloadForGood(job->goodId);
-		const long long reserved = convoy->desiredTruckCount * truckload;
+		const long long reserved = standingDesiredTruckCount(*convoy) * truckload;
 		if (job->amount < reserved)
 		{
 			return false;
@@ -466,7 +517,8 @@ namespace
 				job->goodId,
 				job->destinationSystemId,
 				convoy->empireId,
-				true);
+				true,
+				standingConvoyUsesMilitaryHaulPath(*convoy));
 		if (loadSystemId == 0)
 		{
 			return false;
@@ -572,12 +624,16 @@ namespace
 
 	GameCommand GameCommand::setFleetEscort(
 		long long fleetId,
-		long long desiredTruckCount,
+		long long desiredCivilianTruckCount,
+		long long desiredMilitaryTruckCount,
 		CommandSource source)
 	{
 		GameCommand command;
 		command.source = source;
-		command.payload = SetFleetEscort{ .fleetId = fleetId, .desiredTruckCount = desiredTruckCount };
+		command.payload = SetFleetEscort{
+			.fleetId = fleetId,
+			.desiredCivilianTruckCount = desiredCivilianTruckCount,
+			.desiredMilitaryTruckCount = desiredMilitaryTruckCount };
 		return command;
 	}
 

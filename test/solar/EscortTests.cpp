@@ -42,14 +42,15 @@ TEST_CASE("escort stance joins empties up to N at the fleet", "[slr][Escort]")
 {
 	WorldData world = makeStarterMap();
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 2, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 2, 0, CommandSource::Player)));
 	const Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
 	REQUIRE(home->escortConvoyId != 0);
 	const Convoy* standing = world.convoyById(home->escortConvoyId);
 	REQUIRE(standing != nullptr);
 	REQUIRE(convoyIsStanding(*standing));
-	REQUIRE(standing->desiredTruckCount == 2);
+	REQUIRE(standing->desiredCivilianTruckCount == 2);
+	REQUIRE(standing->desiredMilitaryTruckCount == 0);
 
 	stepGalaxy(world);
 
@@ -64,7 +65,7 @@ TEST_CASE("standing group does not take a haul job until N are at the rally", "[
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 3, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 3, 0, CommandSource::Player)));
 
 	stepGalaxy(world);
 
@@ -82,7 +83,7 @@ TEST_CASE("dump does not dissolve a standing convoy", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, 0, CommandSource::Player)));
 
 	const long long standingId = world.fleetById(1)->escortConvoyId;
 	while (world.trucks[0].cargoAmount == 0 || world.trucks[0].haulJobId == 0)
@@ -112,7 +113,7 @@ TEST_CASE("after dump the standing group can take another job", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, 0, CommandSource::Player)));
 
 	while (world.trucks[0].haulJobId == 0)
 	{
@@ -141,7 +142,7 @@ TEST_CASE("escort travels to the load system instead of jumping onto the deliver
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, 0, CommandSource::Player)));
 
 	while (world.trucks[0].haulJobId == 0)
 	{
@@ -178,12 +179,12 @@ TEST_CASE("clear escort releases assembling trucks", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 3, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 3, 0, CommandSource::Player)));
 	stepGalaxy(world);
 	const long long standingId = world.fleetById(1)->escortConvoyId;
 	REQUIRE(countTrucksInConvoy(world, standingId) == 2);
 
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 0, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 0, 0, CommandSource::Player)));
 	REQUIRE(world.fleetById(1)->escortConvoyId == 0);
 	REQUIRE(world.convoyById(standingId) == nullptr);
 	REQUIRE(world.trucks[0].convoyId == 0);
@@ -195,7 +196,7 @@ TEST_CASE("escorted trucks use the convoy hop, not a parked system offset", "[sl
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, 0, CommandSource::Player)));
 
 	const long long standingId = world.fleetById(1)->escortConvoyId;
 	while (!convoyIsUnderway(*world.convoyById(standingId)))
@@ -228,7 +229,7 @@ TEST_CASE("joining standing trucks stay on their own hop with no escort trail", 
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 3, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 3, 0, CommandSource::Player)));
 	stepGalaxy(world);
 
 	const Convoy* standing = world.convoyById(world.fleetById(1)->escortConvoyId);
@@ -254,7 +255,7 @@ TEST_CASE("move fleet while escorting a run fails", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, 0, CommandSource::Player)));
 
 	while (!convoyIsUnderway(*world.convoyById(world.fleetById(1)->escortConvoyId)))
 	{
@@ -270,7 +271,7 @@ TEST_CASE("move fleet while assembling relocates the rally", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 1, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 3, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 3, 0, CommandSource::Player)));
 	stepGalaxy(world);
 	REQUIRE(world.fleetById(1)->escortConvoyId != 0);
 	REQUIRE(world.convoyById(world.fleetById(1)->escortConvoyId)->haulJobId == 0);
@@ -309,7 +310,7 @@ TEST_CASE("Ashreach escort does not take Helion trucks", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 2, 5);
-	REQUIRE(execute(world, GameCommand::setFleetEscort(2, 2, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(2, 2, 0, CommandSource::Player)));
 
 	stepGalaxy(world);
 

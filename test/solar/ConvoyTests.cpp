@@ -15,11 +15,13 @@ namespace ConvoyTests
 TEST_CASE("starter in-flight truck is a size-1 departed convoy", "[slr][Convoy]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.trucks.size() == StarterCivilianTruckCount);
-	REQUIRE(world.trucks.back().convoyId != 0);
+	REQUIRE(world.trucks.size() == StarterCivilianTruckCount + StarterMilitaryTruckCount);
+	const Truck* flying = world.truckById(StarterCivilianTruckCount);
+	REQUIRE(flying != nullptr);
+	REQUIRE(flying->convoyId != 0);
 	REQUIRE(world.trucks[0].convoyId == 0);
 	REQUIRE(world.trucks[1].convoyId == 0);
-	const Convoy* convoy = world.convoyById(world.trucks.back().convoyId);
+	const Convoy* convoy = world.convoyById(flying->convoyId);
 	REQUIRE(convoy != nullptr);
 	REQUIRE(countTrucksInConvoy(world, convoy->id) == 1);
 	REQUIRE(countTrucksInConvoyPresent(world, *convoy) == 1);
@@ -29,7 +31,7 @@ TEST_CASE("starter in-flight truck is a size-1 departed convoy", "[slr][Convoy]"
 TEST_CASE("two Rimward empties join one new convoy; size 1 still exists", "[slr][Convoy]")
 {
 	WorldData world = makeStarterMap();
-	const long long flyingConvoyId = world.trucks.back().convoyId;
+	const long long flyingConvoyId = world.truckById(StarterCivilianTruckCount)->convoyId;
 
 	stepGalaxy(world);
 

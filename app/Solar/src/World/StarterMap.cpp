@@ -20,7 +20,7 @@ namespace
 		world.hyperlanes.push_back(Hyperlane{ .a = a, .b = b });
 	}
 
-	float starterCivilianTruckSpeed(const WorldData& world, long long truckId)
+	float starterTruckSpeed(const WorldData& world, long long truckId)
 	{
 		constexpr float baseSpeed = 25.0f;
 		constexpr std::uint64_t truckSpeedDomain = 0x5452554B535044ULL;
@@ -126,7 +126,7 @@ namespace
 					.hop = 0,
 					.progress = 0.0f,
 					.direction = 1,
-					.speed = starterCivilianTruckSpeed(world, truckId) } });
+					.speed = starterTruckSpeed(world, truckId) } });
 		}
 		world.trucks.push_back(Truck{
 			.id = StarterCivilianTruckCount,
@@ -136,22 +136,37 @@ namespace
 				.hop = 0,
 				.progress = 0.5f,
 				.direction = 1,
-				.speed = starterCivilianTruckSpeed(world, StarterCivilianTruckCount) },
+				.speed = starterTruckSpeed(world, StarterCivilianTruckCount) },
 			.cargoGoodId = SteelGoodId,
 			.cargoAmount = TruckCapacity_Steel });
 		raiseInboundOnLoad(*helion, SteelGoodId, TruckCapacity_Steel);
 		syncHaulJobsFromUncoveredNeed(world);
 		if (const HaulJob* job = haulJobFor(world, 1, SteelGoodId))
 		{
-			Truck& flying = world.trucks.back();
-			flying.haulJobId = job->id;
+			Truck* flying = world.truckById(StarterCivilianTruckCount);
+			flying->haulJobId = job->id;
 			world.convoys.push_back(Convoy{
 				.id = 1,
 				.haulJobId = job->id,
 				.empireId = HelionEmpireId,
 				.loadSystemId = 5,
-				.motion = flying.motion });
-			flying.convoyId = world.convoys.back().id;
+				.motion = flying->motion });
+			flying->convoyId = world.convoys.back().id;
+		}
+
+		for (long long i = 0; i < StarterMilitaryTruckCount; ++i)
+		{
+			const long long truckId = StarterCivilianTruckCount + 1 + i;
+			world.trucks.push_back(Truck{
+				.id = truckId,
+				.empireId = HelionEmpireId,
+				.motion = {
+					.route = { 1 },
+					.hop = 0,
+					.progress = 0.0f,
+					.direction = 1,
+					.speed = starterTruckSpeed(world, truckId) },
+				.isMilitary = true });
 		}
 
 		world.engagementPolicies = {

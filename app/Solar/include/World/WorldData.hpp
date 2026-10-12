@@ -140,6 +140,7 @@ namespace slr
 		long long cargoAmount{ 0 };
 		long long haulJobId{ 0 };
 		long long convoyId{ 0 };
+		bool isMilitary{ false };
 	};
 
 	struct ShipClass
@@ -213,7 +214,8 @@ namespace slr
 		long long loadSystemId{ 0 };
 		LaneMotion motion;
 		long long escortFleetId{ 0 };
-		long long desiredTruckCount{ 0 };
+		long long desiredCivilianTruckCount{ 0 };
+		long long desiredMilitaryTruckCount{ 0 };
 		long long expectedArrivalTick{ 0 };
 	};
 
@@ -284,17 +286,24 @@ namespace slr
 		long long goodId,
 		long long destinationSystemId,
 		long long viewerEmpireId,
-		bool seesEscort = false);
+		bool seesEscort = false,
+		bool isMilitary = false);
+	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId, bool isMilitary);
 	void parkTruckAt(Truck& truck, long long systemId);
 	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId);
 	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId);
 	bool convoyIsUnderway(const Convoy& convoy);
 	bool convoyIsStanding(const Convoy& convoy);
+	bool convoyJobGroupIsMilitary(const WorldData& world, const Convoy& convoy);
+	bool standingConvoyUsesMilitaryHaulPath(const Convoy& convoy);
+	long long standingDesiredTruckCount(const Convoy& convoy);
+	long long countMilitaryTrucksInConvoy(const WorldData& world, long long convoyId);
+	long long countCivilianTrucksInConvoy(const WorldData& world, long long convoyId);
+	bool standingConvoyHasJoinSlotForTruck(const WorldData& world, const Convoy& convoy, const Truck& truck);
 	long long nextConvoyId(const WorldData& world);
 	long long fleetRallySystemId(const Fleet& fleet);
 	long long standingRallySystemId(const WorldData& world, const Convoy& convoy);
 	bool pathTruckToSystem(WorldData& world, Truck& truck, long long systemId);
-	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId);
 	long long countTrucksInConvoy(const WorldData& world, long long convoyId);
 	long long countTrucksInConvoyPresent(const WorldData& world, const Convoy& convoy);
 	long long emptyTrucksInConvoy(const WorldData& world, long long convoyId);

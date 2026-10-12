@@ -163,19 +163,24 @@ namespace slr
 		return path;
 	}
 
-	long long civilianEnterHopCost(
+	long long haulEnterHopCost(
 		const WorldData& world,
 		long long systemId,
 		long long viewerEmpireId,
-		bool seesEscort)
+		bool seesEscort,
+		bool isMilitary)
 	{
-		if (systemHasParkedHostileFleet(world, systemId, viewerEmpireId) ||
-			systemClaimBlocksCivilian(world, systemId, viewerEmpireId))
+		if (systemHasParkedHostileFleet(world, systemId, viewerEmpireId))
 		{
 			return -1;
 		}
 
-		if (!seesEscort)
+		if (!isMilitary && systemClaimBlocksCivilian(world, systemId, viewerEmpireId))
+		{
+			return -1;
+		}
+
+		if (!isMilitary && !seesEscort)
 		{
 			const StarSystem* system = world.systemById(systemId);
 			if (system != nullptr && system->empireId != 0 &&
@@ -197,12 +202,13 @@ namespace slr
 		return 1;
 	}
 
-	std::vector<long long> civilianLanePath(
+	std::vector<long long> haulLanePath(
 		const WorldData& world,
 		long long fromId,
 		long long toId,
 		long long viewerEmpireId,
-		bool seesEscort)
+		bool seesEscort,
+		bool isMilitary)
 	{
 		if (world.systemById(fromId) == nullptr || world.systemById(toId) == nullptr)
 		{
@@ -226,7 +232,6 @@ namespace slr
 			std::sort(entry.second.begin(), entry.second.end());
 		}
 
-		constexpr long long unreachable = std::numeric_limits<long long>::max();
 		std::unordered_map<long long, long long> bestCost;
 		std::unordered_map<long long, long long> parent;
 		std::priority_queue<
@@ -260,7 +265,8 @@ namespace slr
 
 			for (const long long next : found->second)
 			{
-				const long long hop = civilianEnterHopCost(world, next, viewerEmpireId, seesEscort);
+				const long long hop =
+					haulEnterHopCost(world, next, viewerEmpireId, seesEscort, isMilitary);
 				if (hop < 0)
 				{
 					continue;
@@ -295,15 +301,16 @@ namespace slr
 		return path;
 	}
 
-	long long civilianLanePathCost(
+	long long haulLanePathCost(
 		const WorldData& world,
 		long long fromId,
 		long long toId,
 		long long viewerEmpireId,
-		bool seesEscort)
+		bool seesEscort,
+		bool isMilitary)
 	{
 		const std::vector<long long> path =
-			civilianLanePath(world, fromId, toId, viewerEmpireId, seesEscort);
+			haulLanePath(world, fromId, toId, viewerEmpireId, seesEscort, isMilitary);
 		if (path.empty())
 		{
 			return -1;
@@ -317,7 +324,8 @@ namespace slr
 		long long cost = 0;
 		for (size_t i = 1; i < path.size(); ++i)
 		{
-			const long long hop = civilianEnterHopCost(world, path[i], viewerEmpireId, seesEscort);
+			const long long hop =
+				haulEnterHopCost(world, path[i], viewerEmpireId, seesEscort, isMilitary);
 			if (hop < 0)
 			{
 				return -1;
@@ -327,6 +335,35 @@ namespace slr
 		}
 
 		return cost;
+	}
+
+	long long civilianEnterHopCost(
+		const WorldData& world,
+		long long systemId,
+		long long viewerEmpireId,
+		bool seesEscort)
+	{
+		return haulEnterHopCost(world, systemId, viewerEmpireId, seesEscort, false);
+	}
+
+	std::vector<long long> civilianLanePath(
+		const WorldData& world,
+		long long fromId,
+		long long toId,
+		long long viewerEmpireId,
+		bool seesEscort)
+	{
+		return haulLanePath(world, fromId, toId, viewerEmpireId, seesEscort, false);
+	}
+
+	long long civilianLanePathCost(
+		const WorldData& world,
+		long long fromId,
+		long long toId,
+		long long viewerEmpireId,
+		bool seesEscort)
+	{
+		return haulLanePathCost(world, fromId, toId, viewerEmpireId, seesEscort, false);
 	}
 
 	long long laneMotionRemainingTicks(const WorldData& world, const LaneMotion& motion)

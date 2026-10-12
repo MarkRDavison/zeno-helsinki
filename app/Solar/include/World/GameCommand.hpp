@@ -48,7 +48,8 @@ namespace slr
 	struct SetFleetEscort
 	{
 		long long fleetId{ 0 };
-		long long desiredTruckCount{ 0 };
+		long long desiredCivilianTruckCount{ 0 };
+		long long desiredMilitaryTruckCount{ 0 };
 	};
 
 	struct JoinStandingConvoy
@@ -109,7 +110,8 @@ namespace slr
 			CommandSource source);
 		static GameCommand setFleetEscort(
 			long long fleetId,
-			long long desiredTruckCount,
+			long long desiredCivilianTruckCount,
+			long long desiredMilitaryTruckCount,
 			CommandSource source);
 		static GameCommand joinStandingConvoy(
 			long long truckId,
