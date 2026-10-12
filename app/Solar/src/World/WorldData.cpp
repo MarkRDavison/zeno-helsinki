@@ -2,6 +2,7 @@
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <algorithm>
+#include <map>
 #include <utility>
 
 namespace slr
@@ -537,6 +538,102 @@ namespace slr
 		}
 
 		return 0;
+	}
+
+	long long nextFleetHullId(const WorldData& world)
+	{
+		long long nextId = 1;
+		for (const auto& fleet : world.fleets)
+		{
+			for (const auto& hull : fleet.hulls)
+			{
+				if (hull.id >= nextId)
+				{
+					nextId = hull.id + 1;
+				}
+			}
+		}
+
+		return nextId;
+	}
+
+	long long fleetMissileAmmo(const Fleet& fleet)
+	{
+		long long ammo = 0;
+		for (const auto& hull : fleet.hulls)
+		{
+			ammo += hull.missileAmmo;
+		}
+
+		return ammo;
+	}
+
+	long long fleetMissileAmmoForClass(const Fleet& fleet, long long classId)
+	{
+		long long ammo = 0;
+		for (const auto& hull : fleet.hulls)
+		{
+			if (hull.classId == classId)
+			{
+				ammo += hull.missileAmmo;
+			}
+		}
+
+		return ammo;
+	}
+
+	long long fleetMagazineMaxForClass(const WorldData& world, const Fleet& fleet, long long classId)
+	{
+		const ShipClass* shipClass = world.shipClassById(classId);
+		if (shipClass == nullptr)
+		{
+			return 0;
+		}
+
+		long long hulls = 0;
+		for (const auto& hull : fleet.hulls)
+		{
+			if (hull.classId == classId)
+			{
+				++hulls;
+			}
+		}
+
+		return hulls * shipClass->magazineSize;
+	}
+
+	void syncFleetCompositionFromHulls(Fleet& fleet)
+	{
+		std::map<long long, long long> counts;
+		for (const auto& hull : fleet.hulls)
+		{
+			counts[hull.classId] += 1;
+		}
+
+		fleet.composition.clear();
+		for (const auto& [classId, count] : counts)
+		{
+			fleet.composition.push_back(ClassCount{ .classId = classId, .count = count });
+		}
+	}
+
+	void appendFullMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count)
+	{
+		const ShipClass* shipClass = world.shipClassById(classId);
+		if (shipClass == nullptr || count <= 0)
+		{
+			return;
+		}
+
+		for (long long i = 0; i < count; ++i)
+		{
+			fleet.hulls.push_back(FleetHull{
+				.id = nextFleetHullId(world),
+				.classId = shipClass->id,
+				.missileAmmo = shipClass->magazineSize });
+		}
+
+		syncFleetCompositionFromHulls(fleet);
 	}
 
 	bool hasHyperlane(const WorldData& world, long long a, long long b)

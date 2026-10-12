@@ -214,7 +214,13 @@ namespace
 			.laserDamage = 8,
 			.maxShields = 20,
 			.maxHull = 28,
-			.closeRate = 4.0f });
+			.closeRate = 4.0f,
+			.missileTubes = 4,
+			.missileReloadInnerTicks = 3,
+			.magazineSize = 24,
+			.missileDamage = 10,
+			.missileRange = 90.0f,
+			.missileSpeed = 25.0f });
 		world.shipClasses.push_back(ShipClass{
 			.id = destroyerId,
 			.empireId = HelionEmpireId,
@@ -224,7 +230,13 @@ namespace
 			.laserDamage = 4,
 			.maxShields = 8,
 			.maxHull = 12,
-			.closeRate = 6.0f });
+			.closeRate = 6.0f,
+			.missileTubes = 2,
+			.missileReloadInnerTicks = 3,
+			.magazineSize = 16,
+			.missileDamage = 5,
+			.missileRange = 60.0f,
+			.missileSpeed = 22.0f });
 		world.shipClasses.push_back(ShipClass{
 			.id = lanceId,
 			.empireId = AshreachEmpireId,
@@ -234,7 +246,13 @@ namespace
 			.laserDamage = 7,
 			.maxShields = 18,
 			.maxHull = 24,
-			.closeRate = 3.0f });
+			.closeRate = 3.0f,
+			.missileTubes = 3,
+			.missileReloadInnerTicks = 4,
+			.magazineSize = 20,
+			.missileDamage = 9,
+			.missileRange = 120.0f,
+			.missileSpeed = 28.0f });
 		world.shipClasses.push_back(ShipClass{
 			.id = cutterId,
 			.empireId = AshreachEmpireId,
@@ -244,7 +262,13 @@ namespace
 			.laserDamage = 3,
 			.maxShields = 6,
 			.maxHull = 10,
-			.closeRate = 7.0f });
+			.closeRate = 7.0f,
+			.missileTubes = 1,
+			.missileReloadInnerTicks = 2,
+			.magazineSize = 12,
+			.missileDamage = 4,
+			.missileRange = 50.0f,
+			.missileSpeed = 20.0f });
 		world.shipClasses.push_back(ShipClass{
 			.id = HelionCivilianTruckClassId,
 			.empireId = HelionEmpireId,
@@ -282,21 +306,17 @@ namespace
 			.empireId = HelionEmpireId,
 			.name = "Home Fleet",
 			.systemId = 1,
-			.composition = {
-				ClassCount{ .classId = nikeId, .count = 8 },
-				ClassCount{ .classId = destroyerId, .count = 12 },
-			},
 			.motion = { .speed = homeFleetSpeed } });
+		appendFullMagazineHulls(world, world.fleets.back(), nikeId, 8);
+		appendFullMagazineHulls(world, world.fleets.back(), destroyerId, 12);
 		world.fleets.push_back(Fleet{
 			.id = 2,
 			.empireId = AshreachEmpireId,
 			.name = "Kestrel Squadron",
 			.systemId = 4,
-			.composition = {
-				ClassCount{ .classId = lanceId, .count = 6 },
-				ClassCount{ .classId = cutterId, .count = 10 },
-			},
 			.motion = { .speed = homeFleetSpeed } });
+		appendFullMagazineHulls(world, world.fleets.back(), lanceId, 6);
+		appendFullMagazineHulls(world, world.fleets.back(), cutterId, 10);
 
 		return world;
 	}

@@ -21,13 +21,30 @@ namespace
 		long long fleetId{ 0 };
 		long long empireId{ 0 };
 		long long classId{ 0 };
+		long long hullId{ 0 };
 		float position{ 0.0f };
 		float range{ 0.0f };
+		float missileRange{ 0.0f };
 		float accuracy{ 0.0f };
 		long long laserDamage{ 0 };
+		long long missileDamage{ 0 };
+		long long missileTubes{ 0 };
+		long long missileReloadInnerTicks{ 0 };
+		long long missileReloadRemaining{ 0 };
+		long long missileAmmo{ 0 };
+		float missileSpeed{ 0.0f };
 		long long shields{ 0 };
 		long long hull{ 0 };
 		float closeRate{ 0.0f };
+	};
+
+	struct CombatMissile
+	{
+		float position{ 0.0f };
+		float speed{ 0.0f };
+		float accuracy{ 0.0f };
+		long long damage{ 0 };
+		long long targetId{ 0 };
 	};
 
 	bool isParked(const Fleet& fleet)
@@ -40,7 +57,10 @@ namespace
 		return ship.hull > 0;
 	}
 
-	const CombatShip* lowestLivingEnemyInRange(const std::vector<CombatShip>& ships, const CombatShip& self)
+	const CombatShip* lowestLivingEnemyInWeaponRange(
+		const std::vector<CombatShip>& ships,
+		const CombatShip& self,
+		float weaponRange)
 	{
 		const CombatShip* best = nullptr;
 		for (const auto& ship : ships)
@@ -50,7 +70,7 @@ namespace
 				continue;
 			}
 
-			if (std::abs(ship.position - self.position) > self.range)
+			if (std::abs(ship.position - self.position) > weaponRange)
 			{
 				continue;
 			}
@@ -104,7 +124,7 @@ namespace
 		return sideAlive(ships, empireA) && sideAlive(ships, empireB);
 	}
 
-	std::vector<CombatShip> expandClassCountsIntoCombatShips(
+	std::vector<CombatShip> expandFleetHullsIntoCombatShips(
 		const WorldData& world,
 		const std::vector<long long>& fleetIds,
 		long long sideAEmpire)
@@ -123,29 +143,33 @@ namespace
 				? 0.0f 
 				: CombatEngagementLength;
 
-			for (const auto& row : fleet->composition)
+			for (const auto& hull : fleet->hulls)
 			{
-				const ShipClass* shipClass = world.shipClassById(row.classId);
+				const ShipClass* shipClass = world.shipClassById(hull.classId);
 				if (shipClass == nullptr)
 				{
 					continue;
 				}
 
-				for (long long i = 0; i < row.count; ++i)
-				{
-					ships.push_back(CombatShip{
-						.id = nextId++,
-						.fleetId = fleet->id,
-						.empireId = fleet->empireId,
-						.classId = row.classId,
-						.position = position,
-						.range = shipClass->range,
-						.accuracy = shipClass->accuracy,
-						.laserDamage = shipClass->laserDamage,
-						.shields = shipClass->maxShields,
-						.hull = shipClass->maxHull,
-						.closeRate = shipClass->closeRate });
-				}
+				ships.push_back(CombatShip{
+					.id = nextId++,
+					.fleetId = fleet->id,
+					.empireId = fleet->empireId,
+					.classId = hull.classId,
+					.hullId = hull.id,
+					.position = position,
+					.range = shipClass->range,
+					.missileRange = shipClass->missileRange,
+					.accuracy = shipClass->accuracy,
+					.laserDamage = shipClass->laserDamage,
+					.missileDamage = shipClass->missileDamage,
+					.missileTubes = shipClass->missileTubes,
+					.missileReloadInnerTicks = shipClass->missileReloadInnerTicks,
+					.missileAmmo = hull.missileAmmo,
+					.missileSpeed = shipClass->missileSpeed,
+					.shields = shipClass->maxShields,
+					.hull = shipClass->maxHull,
+					.closeRate = shipClass->closeRate });
 			}
 		}
 
@@ -215,7 +239,7 @@ namespace
 				continue;
 			}
 
-			const CombatShip* targetRef = lowestLivingEnemyInRange(ships, *shooter);
+			const CombatShip* targetRef = lowestLivingEnemyInWeaponRange(ships, *shooter, shooter->range);
 			if (targetRef == nullptr)
 			{
 				continue;
@@ -243,40 +267,162 @@ namespace
 		}
 	}
 
-	void simulateCombatTicks(std::vector<CombatShip>& ships, std::uint64_t& rng, long long empireA, long long empireB)
+	CombatShip* combatShipById(std::vector<CombatShip>& ships, long long id)
 	{
-		for (int inner = 0; inner < CombatMaxInnerTicks; ++inner)
+		for (auto& ship : ships)
 		{
-			if (!twoSidesAlive(ships, empireA, empireB))
+			if (ship.id == id)
 			{
-				return;
+				return &ship;
 			}
-
-			closeShipsTowardNearestEnemy(ships);
-			fireLasersAtLowestEnemyInRange(ships, rng);
 		}
+
+		return nullptr;
 	}
 
-	std::vector<ClassCount> countSurvivingShipsByClass(const std::vector<CombatShip>& ships, long long fleetId)
+	void launchMissilesAtLowestEnemyInRange(
+		std::vector<CombatShip>& ships,
+		std::vector<CombatMissile>& missiles)
 	{
-		std::map<long long, long long> counts;
+		std::vector<long long> order;
+		order.reserve(ships.size());
 		for (const auto& ship : ships)
 		{
-			if (ship.fleetId != fleetId || !living(ship))
+			order.push_back(ship.id);
+		}
+
+		std::sort(order.begin(), order.end());
+		for (const long long id : order)
+		{
+			CombatShip* shooter = combatShipById(ships, id);
+			if (shooter == nullptr || !living(*shooter))
 			{
 				continue;
 			}
 
-			counts[ship.classId] += 1;
-		}
+			if (shooter->missileReloadRemaining > 0)
+			{
+				--shooter->missileReloadRemaining;
+			}
 
-		std::vector<ClassCount> composition;
-		for (const auto& [classId, count] : counts)
+			if (shooter->missileReloadRemaining > 0 || shooter->missileAmmo <= 0 ||
+				shooter->missileTubes <= 0 || shooter->missileSpeed <= 0.0f)
+			{
+				continue;
+			}
+
+			const CombatShip* targetRef =
+				lowestLivingEnemyInWeaponRange(ships, *shooter, shooter->missileRange);
+			if (targetRef == nullptr)
+			{
+				continue;
+			}
+
+			const long long rounds = std::min(shooter->missileTubes, shooter->missileAmmo);
+			for (long long round = 0; round < rounds; ++round)
+			{
+				--shooter->missileAmmo;
+				missiles.push_back(CombatMissile{
+					.position = shooter->position,
+					.speed = shooter->missileSpeed,
+					.accuracy = shooter->accuracy,
+					.damage = shooter->missileDamage,
+					.targetId = targetRef->id });
+			}
+
+			shooter->missileReloadRemaining = shooter->missileReloadInnerTicks;
+		}
+	}
+
+	void flyMissilesTowardTargets(
+		std::vector<CombatShip>& ships,
+		std::vector<CombatMissile>& missiles,
+		std::uint64_t& rng)
+	{
+		std::vector<CombatMissile> stillFlying;
+		stillFlying.reserve(missiles.size());
+		for (auto& missile : missiles)
 		{
-			composition.push_back(ClassCount{ .classId = classId, .count = count });
+			CombatShip* target = combatShipById(ships, missile.targetId);
+			if (target == nullptr)
+			{
+				continue;
+			}
+
+			const float delta = target->position - missile.position;
+			const float dist = std::abs(delta);
+			if (dist > missile.speed)
+			{
+				missile.position += (delta > 0.0f ? missile.speed : -missile.speed);
+				stillFlying.push_back(missile);
+				continue;
+			}
+
+			if (!living(*target))
+			{
+				continue;
+			}
+
+			if (hl::splitMix64Unit(rng) < missile.accuracy)
+			{
+				applyLaserDamage(target->shields, target->hull, missile.damage);
+			}
 		}
 
-		return composition;
+		missiles = std::move(stillFlying);
+	}
+
+	void simulateCombatTicks(std::vector<CombatShip>& ships, std::uint64_t& rng, long long empireA, long long empireB)
+	{
+		std::vector<CombatMissile> missiles;
+		for (int inner = 0; inner < CombatMaxInnerTicks; ++inner)
+		{
+			closeShipsTowardNearestEnemy(ships);
+			if (twoSidesAlive(ships, empireA, empireB))
+			{
+				fireLasersAtLowestEnemyInRange(ships, rng);
+			}
+
+			flyMissilesTowardTargets(ships, missiles, rng);
+			if (twoSidesAlive(ships, empireA, empireB))
+			{
+				launchMissilesAtLowestEnemyInRange(ships, missiles);
+			}
+
+			if (!twoSidesAlive(ships, empireA, empireB) && missiles.empty())
+			{
+				return;
+			}
+		}
+	}
+
+	void writeCombatHullsBackToFleet(Fleet& fleet, const std::vector<CombatShip>& ships)
+	{
+		std::vector<FleetHull> livingHulls;
+		for (const auto& hull : fleet.hulls)
+		{
+			const CombatShip* combatShip = nullptr;
+			for (const auto& ship : ships)
+			{
+				if (ship.fleetId == fleet.id && ship.hullId == hull.id)
+				{
+					combatShip = &ship;
+					break;
+				}
+			}
+
+			if (combatShip == nullptr || !living(*combatShip))
+			{
+				continue;
+			}
+
+			FleetHull updated = hull;
+			updated.missileAmmo = combatShip->missileAmmo;
+			livingHulls.push_back(updated);
+		}
+
+		fleet.hulls = std::move(livingHulls);
+		syncFleetCompositionFromHulls(fleet);
 	}
 
 	void resolveSystemBattle(WorldData& world, long long systemId, std::vector<long long> fleetIds)
@@ -315,7 +461,7 @@ namespace
 		const long long empireA = *empires.begin();
 		const long long empireB = *std::next(empires.begin());
 		const long long battleId = static_cast<long long>(world.battleReports.size()) + 1;
-		std::vector<CombatShip> ships = expandClassCountsIntoCombatShips(world, fleetIds, empireA);
+		std::vector<CombatShip> ships = expandFleetHullsIntoCombatShips(world, fleetIds, empireA);
 		if (ships.empty())
 		{
 			return;
@@ -336,7 +482,8 @@ namespace
 			report.sides.push_back(BattleSideReport{
 				.fleetId = fleet->id,
 				.empireId = fleet->empireId,
-				.before = fleet->composition });
+				.before = fleet->composition,
+				.missilesBefore = fleetMissileAmmo(*fleet) });
 		}
 
 		std::uint64_t rng = hl::splitMix64Seed({
@@ -353,8 +500,9 @@ namespace
 				continue;
 			}
 
-			fleet->composition = countSurvivingShipsByClass(ships, fleet->id);
+			writeCombatHullsBackToFleet(*fleet, ships);
 			side.after = fleet->composition;
+			side.missilesAfter = fleetMissileAmmo(*fleet);
 		}
 
 		world.battleReports.push_back(std::move(report));

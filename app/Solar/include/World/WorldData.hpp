@@ -173,12 +173,25 @@ namespace slr
 		bool isMilitary{ false };
 		long long steelCost{ 0 };
 		long long buildTicks{ 0 };
+		long long missileTubes{ 0 };
+		long long missileReloadInnerTicks{ 0 };
+		long long magazineSize{ 0 };
+		long long missileDamage{ 0 };
+		float missileRange{ 0.0f };
+		float missileSpeed{ 0.0f };
 	};
 
 	struct ClassCount
 	{
 		long long classId{ 0 };
 		long long count{ 0 };
+	};
+
+	struct FleetHull
+	{
+		long long id{ 0 };
+		long long classId{ 0 };
+		long long missileAmmo{ 0 };
 	};
 
 	struct Fleet
@@ -188,6 +201,7 @@ namespace slr
 		std::string name;
 		long long systemId{ 0 };
 		std::vector<ClassCount> composition;
+		std::vector<FleetHull> hulls;
 		LaneMotion motion;
 		long long policyId{ 0 };
 		long long escortConvoyId{ 0 };
@@ -199,6 +213,8 @@ namespace slr
 		long long empireId{ 0 };
 		std::vector<ClassCount> before;
 		std::vector<ClassCount> after;
+		long long missilesBefore{ 0 };
+		long long missilesAfter{ 0 };
 	};
 
 	struct BattleReport
@@ -339,6 +355,12 @@ namespace slr
 	long long fleetShipCount(const Fleet& fleet);
 	bool fleetIsParked(const Fleet& fleet);
 	long long classCountFor(const std::vector<ClassCount>& composition, long long classId);
+	long long nextFleetHullId(const WorldData& world);
+	long long fleetMissileAmmo(const Fleet& fleet);
+	long long fleetMissileAmmoForClass(const Fleet& fleet, long long classId);
+	long long fleetMagazineMaxForClass(const WorldData& world, const Fleet& fleet, long long classId);
+	void syncFleetCompositionFromHulls(Fleet& fleet);
+	void appendFullMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count);
 	long long systemOwnershipScore(const WorldData& world, long long systemId);
 	SystemOwnershipType systemOwnershipType(const WorldData& world, long long systemId);
 	const char* systemOwnershipTypeName(SystemOwnershipType type);

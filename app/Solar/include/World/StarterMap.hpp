@@ -5,8 +5,8 @@
 namespace slr
 {
 
-	constexpr long long StarterCivilianTruckCount = 16;
-	constexpr long long StarterMilitaryTruckCount = 2;
+	constexpr long long StarterCivilianTruckCount = 32;
+	constexpr long long StarterMilitaryTruckCount = 8;
 	constexpr long long HelionCivilianTruckClassId = 5;
 	constexpr long long HelionMilitaryTruckClassId = 6;
 	constexpr long long AshreachCivilianTruckClassId = 7;

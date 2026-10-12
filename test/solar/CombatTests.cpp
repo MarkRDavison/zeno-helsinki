@@ -85,8 +85,8 @@ namespace CombatTests
 			.empireId = empireId,
 			.name = "F" + std::to_string(id),
 			.systemId = systemId,
-			.composition = { ClassCount{ .classId = classId, .count = count } },
 			.motion = { .progress = progress, .speed = 50.0f } });
+		appendFullMagazineHulls(world, world.fleets.back(), classId, count);
 	}
 
 TEST_CASE("starter map has two empires and rival classes at Ashreach", "[slr][Combat]")
@@ -109,6 +109,12 @@ TEST_CASE("starter map has two empires and rival classes at Ashreach", "[slr][Co
 	REQUIRE(lance->empireId == AshreachEmpireId);
 	REQUIRE(nike->id != lance->id);
 	REQUIRE(lance->range > nike->range);
+	REQUIRE(nike->missileRange > nike->range);
+	REQUIRE(lance->missileRange > lance->range);
+	REQUIRE(home->hulls.size() == 20);
+	const ShipClass* destroyer = classNamed(world, "Destroyer");
+	REQUIRE(destroyer != nullptr);
+	REQUIRE(fleetMissileAmmo(*home) == 8 * nike->magazineSize + 12 * destroyer->magazineSize);
 }
 
 TEST_CASE("hostile parked fleets fight once in one galaxy tick", "[slr][Combat]")
@@ -403,6 +409,164 @@ TEST_CASE("rival marker is mirrored and both fleets pick at Ashreach", "[slr][Co
 	REQUIRE(*homeMarker != *rivalMarker);
 	REQUIRE(pickFleet(world, *homeMarker, GalaxyFleetSize * 0.5f) == home->id);
 	REQUIRE(pickFleet(world, *rivalMarker, GalaxyFleetSize * 0.5f) == rival->id);
+}
+
+TEST_CASE("a missile salvo spends tubes and ammo stays down on the next fight", "[slr][Combat]")
+{
+	WorldData world = combatFixture(1, 2, 10);
+	addClass(world, ShipClass{
+		.id = 1,
+		.empireId = 1,
+		.name = "Tubes",
+		.range = 0.0f,
+		.accuracy = 1.0f,
+		.laserDamage = 0,
+		.maxShields = 0,
+		.maxHull = 100,
+		.closeRate = 0.0f,
+		.missileTubes = 2,
+		.missileReloadInnerTicks = 10000,
+		.magazineSize = 8,
+		.missileDamage = 0,
+		.missileRange = 200.0f,
+		.missileSpeed = 25.0f });
+	addClass(world, ShipClass{
+		.id = 2,
+		.empireId = 2,
+		.name = "TubesB",
+		.range = 0.0f,
+		.accuracy = 1.0f,
+		.laserDamage = 0,
+		.maxShields = 0,
+		.maxHull = 100,
+		.closeRate = 0.0f,
+		.missileTubes = 2,
+		.missileReloadInnerTicks = 10000,
+		.magazineSize = 8,
+		.missileDamage = 0,
+		.missileRange = 200.0f,
+		.missileSpeed = 25.0f });
+	addFleet(world, 1, 1, 10, 1, 1, 0.0f);
+	addFleet(world, 2, 2, 10, 2, 1, 0.0f);
+	REQUIRE(fleetMissileAmmo(world.fleets[0]) == 8);
+	stepGalaxy(world);
+	REQUIRE(fleetMissileAmmo(world.fleets[0]) == 6);
+	REQUIRE(world.battleReports.front().sides[0].missilesBefore == 8);
+	REQUIRE(world.battleReports.front().sides[0].missilesAfter == 6);
+	REQUIRE(classCountFor(world.fleets[0].composition, 1) == 1);
+	stepGalaxy(world);
+	REQUIRE(fleetMissileAmmo(world.fleets[0]) == 4);
+}
+
+TEST_CASE("a dry hull still fires lasers", "[slr][Combat]")
+{
+	WorldData world = combatFixture(1, 2, 10);
+	addClass(world, ShipClass{
+		.id = 1,
+		.empireId = 1,
+		.name = "Gun",
+		.range = 200.0f,
+		.accuracy = 1.0f,
+		.laserDamage = 50,
+		.maxShields = 0,
+		.maxHull = 20,
+		.closeRate = 0.0f,
+		.missileTubes = 2,
+		.missileReloadInnerTicks = 3,
+		.magazineSize = 8,
+		.missileDamage = 50,
+		.missileRange = 400.0f });
+	addClass(world, ShipClass{
+		.id = 2,
+		.empireId = 2,
+		.name = "Target",
+		.range = 200.0f,
+		.accuracy = 0.0f,
+		.laserDamage = 5,
+		.maxShields = 0,
+		.maxHull = 8,
+		.closeRate = 0.0f });
+	addFleet(world, 1, 1, 10, 1, 1, 0.0f);
+	addFleet(world, 2, 2, 10, 2, 1, 0.0f);
+	world.fleets[0].hulls.front().missileAmmo = 0;
+	stepGalaxy(world);
+	REQUIRE(classCountFor(world.fleets[1].composition, 2) == 0);
+	REQUIRE(classCountFor(world.fleets[0].composition, 1) == 1);
+	REQUIRE(fleetMissileAmmo(world.fleets[0]) == 0);
+}
+
+TEST_CASE("missiles reach farther than lasers", "[slr][Combat]")
+{
+	WorldData world = combatFixture(1, 2, 10);
+	addClass(world, ShipClass{
+		.id = 1,
+		.empireId = 1,
+		.name = "MissileBoat",
+		.range = 10.0f,
+		.accuracy = 1.0f,
+		.laserDamage = 0,
+		.maxShields = 0,
+		.maxHull = 10,
+		.closeRate = 0.0f,
+		.missileTubes = 1,
+		.missileReloadInnerTicks = 1,
+		.magazineSize = 4,
+		.missileDamage = 50,
+		.missileRange = 200.0f,
+		.missileSpeed = 50.0f });
+	addClass(world, ShipClass{
+		.id = 2,
+		.empireId = 2,
+		.name = "LaserOnly",
+		.range = 10.0f,
+		.accuracy = 1.0f,
+		.laserDamage = 50,
+		.maxShields = 0,
+		.maxHull = 10,
+		.closeRate = 0.0f });
+	addFleet(world, 1, 1, 10, 1, 1, 0.0f);
+	addFleet(world, 2, 2, 10, 2, 1, 0.0f);
+	stepGalaxy(world);
+	REQUIRE(classCountFor(world.fleets[0].composition, 1) == 1);
+	REQUIRE(classCountFor(world.fleets[1].composition, 2) == 0);
+	REQUIRE(fleetMissileAmmo(world.fleets[0]) < 4);
+}
+
+TEST_CASE("slow missiles spend ammo before they arrive", "[slr][Combat]")
+{
+	WorldData world = combatFixture(1, 2, 10);
+	addClass(world, ShipClass{
+		.id = 1,
+		.empireId = 1,
+		.name = "Slow",
+		.range = 0.0f,
+		.accuracy = 1.0f,
+		.laserDamage = 0,
+		.maxShields = 0,
+		.maxHull = 10,
+		.closeRate = 0.0f,
+		.missileTubes = 1,
+		.missileReloadInnerTicks = 10000,
+		.magazineSize = 4,
+		.missileDamage = 50,
+		.missileRange = 200.0f,
+		.missileSpeed = 0.001f });
+	addClass(world, ShipClass{
+		.id = 2,
+		.empireId = 2,
+		.name = "Still",
+		.range = 0.0f,
+		.accuracy = 0.0f,
+		.laserDamage = 0,
+		.maxShields = 0,
+		.maxHull = 10,
+		.closeRate = 0.0f });
+	addFleet(world, 1, 1, 10, 1, 1, 0.0f);
+	addFleet(world, 2, 2, 10, 2, 1, 0.0f);
+	stepGalaxy(world);
+	REQUIRE(classCountFor(world.fleets[0].composition, 1) == 1);
+	REQUIRE(classCountFor(world.fleets[1].composition, 2) == 1);
+	REQUIRE(fleetMissileAmmo(world.fleets[0]) == 3);
 }
 
 }

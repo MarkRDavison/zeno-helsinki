@@ -493,8 +493,15 @@ namespace
 						continue;
 					}
 
-					ImGui::TextUnformatted(
-						(shipClass->name + " " + std::to_string(row.count)).c_str());
+					std::string line = shipClass->name + " " + std::to_string(row.count);
+					if (shipClass->magazineSize > 0)
+					{
+						line += " missiles " +
+							std::to_string(fleetMissileAmmoForClass(*fleet, row.classId)) + "/" +
+							std::to_string(fleetMagazineMaxForClass(*_world, *fleet, row.classId));
+					}
+
+					ImGui::TextUnformatted(line.c_str());
 				}
 
 				const EngagementPolicy* active = activeEngagementPolicy(*_world, *fleet);
@@ -1031,6 +1038,11 @@ namespace
 					ImGui::TextUnformatted(
 						(name + " " + std::to_string(before) + " -> " + std::to_string(after)).c_str());
 				}
+
+				ImGui::TextUnformatted(
+					("missiles " + std::to_string(side.missilesBefore) + " -> " +
+					 std::to_string(side.missilesAfter))
+						.c_str());
 			}
 		}
 
