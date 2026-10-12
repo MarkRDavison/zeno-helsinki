@@ -38,14 +38,14 @@ namespace
 		WorldData world;
 
 		world.systems = {
-			StarSystem{ .id = 1, .name = "Helion", .position = { 120.0f, 280.0f } },
-			StarSystem{ .id = 2, .name = "Kestrel", .position = { 340.0f, 180.0f } },
-			StarSystem{ .id = 3, .name = "Junction", .position = { 520.0f, 320.0f } },
-			StarSystem{ .id = 4, .name = "Ashreach", .position = { 480.0f, 520.0f } },
-			StarSystem{ .id = 5, .name = "Rimward", .position = { 760.0f, 140.0f } },
+			StarSystem{ .id = 1, .name = "Helion", .position = { 120.0f, 280.0f }, .empireId = HelionEmpireId },
+			StarSystem{ .id = 2, .name = "Kestrel", .position = { 340.0f, 180.0f }, .empireId = AshreachEmpireId },
+			StarSystem{ .id = 3, .name = "Junction", .position = { 520.0f, 320.0f }, .empireId = HelionEmpireId },
+			StarSystem{ .id = 4, .name = "Ashreach", .position = { 480.0f, 520.0f }, .empireId = AshreachEmpireId },
+			StarSystem{ .id = 5, .name = "Rimward", .position = { 760.0f, 140.0f }, .empireId = HelionEmpireId },
 			StarSystem{ .id = 6, .name = "Caldera", .position = { 820.0f, 380.0f } },
 			StarSystem{ .id = 7, .name = "Nadir", .position = { 980.0f, 260.0f } },
-			StarSystem{ .id = 8, .name = "Vesper", .position = { 700.0f, 560.0f } },
+			StarSystem{ .id = 8, .name = "Vesper", .position = { 700.0f, 560.0f }, .empireId = AshreachEmpireId },
 		};
 
 		addLane(world, 1, 2);
@@ -67,6 +67,10 @@ namespace
 
 		StarSystem* helion = world.systemById(1);
 		helion->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
+
+		StarSystem* vesper = world.systemById(8);
+		vesper->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .goodAmount = 0, .need = 0 });
+		vesper->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
 
 		world.mines.push_back(Mine{
 			.systemId = 5,
@@ -92,9 +96,25 @@ namespace
 				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationConsumePerTick_Steel } },
 			.populationReservedPiles = {
 				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } } });
+		world.mines.push_back(Mine{
+			.systemId = 8,
+			.outputsPerTick = {
+				MineOutput{
+					.goodId = IronOreGoodId,
+					.amountPerTick = 100,
+					.maxStockpile = MineMaxStockpile_IronOre } } });
+		world.yards.push_back(Yard{
+			.systemId = 8,
+			.empireId = AshreachEmpireId,
+			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } },
+			.populationConsumePerTick = {
+				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationConsumePerTick_Steel } },
+			.populationReservedPiles = {
+				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } } });
 		postNeedsFromConsumerShortfalls(world, *helion);
 		postNeedsFromConsumerShortfalls(world, *junction);
 		postNeedsFromConsumerShortfalls(world, *rimward);
+		postNeedsFromConsumerShortfalls(world, *vesper);
 
 		for (long long truckId = 1; truckId < StarterCivilianTruckCount; ++truckId)
 		{
@@ -221,7 +241,7 @@ namespace
 			.id = 2,
 			.empireId = AshreachEmpireId,
 			.name = "Kestrel Squadron",
-			.systemId = 2,
+			.systemId = 4,
 			.composition = {
 				ClassCount{ .classId = lanceId, .count = 6 },
 				ClassCount{ .classId = cutterId, .count = 10 },

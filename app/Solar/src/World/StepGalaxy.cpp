@@ -256,8 +256,12 @@ namespace
 				continue;
 			}
 
-			const std::vector<long long> path =
-				shortestLanePath(world, convoy.loadSystemId, job->destinationSystemId);
+			const std::vector<long long> path = civilianLanePath(
+				world,
+				convoy.loadSystemId,
+				job->destinationSystemId,
+				convoy.empireId,
+				convoyIsStanding(convoy));
 			if (path.size() < 2)
 			{
 				continue;
@@ -290,6 +294,8 @@ namespace
 			convoy.motion.hop = 0;
 			convoy.motion.progress = 0.0f;
 			convoy.motion.direction = 1;
+			convoy.motion.speed = slowestMemberSpeed(world, convoy.id);
+			convoy.expectedArrivalTick = world.tick + laneMotionRemainingTicks(world, convoy.motion);
 			copyConvoyMotionOntoMembers(world, convoy);
 			copyConvoyMotionOntoEscortFleet(world, convoy);
 		}
@@ -546,6 +552,8 @@ namespace
 			convoy.motion.hop = 0;
 			convoy.motion.progress = 0.0f;
 			convoy.motion.direction = 1;
+			convoy.motion.speed = slowestMemberSpeed(world, convoy.id);
+			convoy.expectedArrivalTick = world.tick + laneMotionRemainingTicks(world, convoy.motion);
 			copyConvoyMotionOntoMembers(world, convoy);
 			copyConvoyMotionOntoEscortFleet(world, convoy);
 		}
@@ -705,8 +713,13 @@ namespace
 					continue;
 				}
 
-				const long long loadSystemId =
-					nearestSupplySystemId(world, rally, job.goodId, job.destinationSystemId);
+				const long long loadSystemId = nearestSupplySystemId(
+					world,
+					rally,
+					job.goodId,
+					job.destinationSystemId,
+					convoy.empireId,
+					true);
 				if (loadSystemId == 0)
 				{
 					continue;
@@ -775,7 +788,12 @@ namespace
 					continue;
 				}
 
-				if (nearestSupplySystemId(world, here, job.goodId, job.destinationSystemId) == 0)
+				if (nearestSupplySystemId(
+						world,
+						here,
+						job.goodId,
+						job.destinationSystemId,
+						truck.empireId) == 0)
 				{
 					continue;
 				}

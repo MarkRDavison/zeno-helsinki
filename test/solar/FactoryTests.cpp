@@ -12,7 +12,7 @@ namespace FactoryTests
 TEST_CASE("starter Rimward mines ore; Junction mill wants ore; Helion wants steel", "[slr][Factory]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.mines.size() == 1);
+	REQUIRE(world.mines.size() == 2);
 	REQUIRE(mineOutputPerTick(world.mines[0], IronOreGoodId) == 100);
 	REQUIRE(mineOutputPerTick(world.mines[0], SteelGoodId) == 0);
 	REQUIRE(world.factories.size() == 1);

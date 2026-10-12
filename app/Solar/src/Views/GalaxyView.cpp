@@ -621,6 +621,13 @@ namespace
 		{
 			ImGui::TextUnformatted(system->name.c_str());
 			ImGui::TextUnformatted(("id " + std::to_string(system->id)).c_str());
+			const Empire* owner = _world->empireById(system->empireId);
+			ImGui::TextUnformatted(owner != nullptr ? owner->name.c_str() : "unowned");
+			ImGui::TextUnformatted(systemOwnershipTypeName(systemOwnershipType(*_world, system->id)));
+			ImGui::TextUnformatted(
+				("score " + std::to_string(systemOwnershipScore(*_world, system->id))).c_str());
+			ImGui::TextUnformatted(
+				("presence " + std::to_string(systemPresenceScore(*_world, system->id))).c_str());
 			ImGui::TextUnformatted(
 				("trucks " + std::to_string(countTrucksAtSystem(*_world, system->id))).c_str());
 			std::vector<GoodQuantity> haulJobRows;

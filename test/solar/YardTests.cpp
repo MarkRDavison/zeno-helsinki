@@ -10,7 +10,7 @@ namespace YardTests
 TEST_CASE("Helion yard wants a steel buffer; Rimward mine does not", "[slr][Yard]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.yards.size() == 1);
+	REQUIRE(world.yards.size() == 2);
 	REQUIRE(world.yards.front().systemId == 1);
 	REQUIRE(quantityForGood(world.yards.front().desiredPiles, SteelGoodId) == 1000);
 	REQUIRE(consumerDesiredPile(world, 1, SteelGoodId) == 1200);

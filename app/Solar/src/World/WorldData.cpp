@@ -521,6 +521,11 @@ namespace slr
 		return count;
 	}
 
+	bool fleetIsParked(const Fleet& fleet)
+	{
+		return !(fleet.motion.progress > 0.0f);
+	}
+
 	long long classCountFor(const std::vector<ClassCount>& composition, long long classId)
 	{
 		for (const auto& row : composition)
@@ -671,12 +676,14 @@ namespace slr
 		const WorldData& world,
 		long long fromSystemId,
 		long long goodId,
-		long long destinationSystemId)
+		long long destinationSystemId,
+		long long viewerEmpireId,
+		bool seesEscort)
 	{
 		auto pick = [&](bool allowDestination) -> long long
 		{
 			long long bestId = 0;
-			long long bestHops = 0;
+			long long bestCost = 0;
 			bool found = false;
 			for (const auto& system : world.systems)
 			{
@@ -690,17 +697,33 @@ namespace slr
 					continue;
 				}
 
-				const std::vector<long long> path = shortestLanePath(world, fromSystemId, system.id);
-				if (path.empty())
+				const long long toSupply = civilianLanePathCost(
+					world,
+					fromSystemId,
+					system.id,
+					viewerEmpireId,
+					seesEscort);
+				if (toSupply < 0)
 				{
 					continue;
 				}
 
-				const long long hops = static_cast<long long>(path.size()) - 1;
-				if (!found || hops < bestHops || (hops == bestHops && system.id < bestId))
+				const long long toDest = civilianLanePathCost(
+					world,
+					system.id,
+					destinationSystemId,
+					viewerEmpireId,
+					seesEscort);
+				if (toDest < 0)
+				{
+					continue;
+				}
+
+				const long long cost = toSupply + toDest;
+				if (!found || cost < bestCost || (cost == bestCost && system.id < bestId))
 				{
 					found = true;
-					bestHops = hops;
+					bestCost = cost;
 					bestId = system.id;
 				}
 			}
@@ -877,35 +900,43 @@ namespace slr
 		return convoy.loadSystemId;
 	}
 
-	void pathTruckToSystem(WorldData& world, Truck& truck, long long systemId)
+	bool pathTruckToSystem(WorldData& world, Truck& truck, long long systemId)
 	{
 		const long long here = truckSystemId(truck);
 		if (here == 0 || world.systemById(systemId) == nullptr)
 		{
-			return;
+			return false;
 		}
 
 		if (here == systemId)
 		{
 			parkTruckAt(truck, systemId);
-			return;
+			return true;
 		}
 
 		if (!truck.motion.route.empty() && truck.motion.route.back() == systemId)
 		{
-			return;
+			return true;
 		}
 
-		const std::vector<long long> path = shortestLanePath(world, here, systemId);
+		bool seesEscort = false;
+		if (const Convoy* convoy = world.convoyById(truck.convoyId))
+		{
+			seesEscort = convoyIsStanding(*convoy);
+		}
+
+		const std::vector<long long> path =
+			civilianLanePath(world, here, systemId, truck.empireId, seesEscort);
 		if (path.size() < 2)
 		{
-			return;
+			return false;
 		}
 
 		truck.motion.route = path;
 		truck.motion.hop = 0;
 		truck.motion.progress = 0.0f;
 		truck.motion.direction = 1;
+		return true;
 	}
 
 	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId)
@@ -1044,6 +1075,290 @@ namespace slr
 				world.convoys.end(),
 				[convoyId](const Convoy& convoy) { return convoy.id == convoyId; }),
 			world.convoys.end());
+	}
+
+	long long systemOwnershipScore(const WorldData& world, long long systemId)
+	{
+		long long score = 0;
+		for (const auto& mine : world.mines)
+		{
+			if (mine.systemId == systemId)
+			{
+				++score;
+			}
+		}
+
+		for (const auto& factory : world.factories)
+		{
+			if (factory.systemId == systemId)
+			{
+				++score;
+			}
+		}
+
+		bool population = false;
+		for (const auto& yard : world.yards)
+		{
+			if (yard.systemId != systemId)
+			{
+				continue;
+			}
+
+			++score;
+			if (!yard.populationConsumePerTick.empty())
+			{
+				population = true;
+			}
+		}
+
+		if (population)
+		{
+			++score;
+		}
+
+		return score;
+	}
+
+	SystemOwnershipType systemOwnershipType(const WorldData& world, long long systemId)
+	{
+		for (const auto& yard : world.yards)
+		{
+			if (yard.systemId == systemId && !yard.populationConsumePerTick.empty())
+			{
+				return SystemOwnershipType::Populated;
+			}
+		}
+
+		for (const auto& factory : world.factories)
+		{
+			if (factory.systemId == systemId)
+			{
+				return SystemOwnershipType::Industrial;
+			}
+		}
+
+		for (const auto& yard : world.yards)
+		{
+			if (yard.systemId == systemId)
+			{
+				return SystemOwnershipType::Industrial;
+			}
+		}
+
+		for (const auto& mine : world.mines)
+		{
+			if (mine.systemId == systemId)
+			{
+				return SystemOwnershipType::Extraction;
+			}
+		}
+
+		return SystemOwnershipType::Empty;
+	}
+
+	const char* systemOwnershipTypeName(SystemOwnershipType type)
+	{
+		switch (type)
+		{
+		case SystemOwnershipType::Populated:
+			return "populated";
+		case SystemOwnershipType::Industrial:
+			return "industrial";
+		case SystemOwnershipType::Extraction:
+			return "extraction";
+		case SystemOwnershipType::Empty:
+			return "empty";
+		}
+
+		return "unknown";
+	}
+
+	long long systemPresenceScore(const WorldData& world, long long systemId)
+	{
+		long long score = 0;
+		for (const auto& fleet : world.fleets)
+		{
+			if (fleet.systemId == systemId && fleetIsParked(fleet) && fleetShipCount(fleet) > 0)
+			{
+				++score;
+			}
+		}
+
+		return score;
+	}
+
+	bool systemHasParkedHostileFleet(const WorldData& world, long long systemId, long long viewerEmpireId)
+	{
+		for (const auto& fleet : world.fleets)
+		{
+			if (fleet.systemId != systemId || fleet.empireId == viewerEmpireId)
+			{
+				continue;
+			}
+
+			if (fleetIsParked(fleet) && fleetShipCount(fleet) > 0)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool systemIsAdjacentToParkedHostileFleet(
+		const WorldData& world,
+		long long systemId,
+		long long viewerEmpireId)
+	{
+		for (const auto& lane : world.hyperlanes)
+		{
+			if (lane.a == systemId && systemHasParkedHostileFleet(world, lane.b, viewerEmpireId))
+			{
+				return true;
+			}
+
+			if (lane.b == systemId && systemHasParkedHostileFleet(world, lane.a, viewerEmpireId))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool hazardEventIsHot(long long eventTick, long long worldTick)
+	{
+		return worldTick - eventTick < CivilianHazardFadeTicks;
+	}
+
+	bool systemHasHazardHeat(const WorldData& world, long long systemId, long long viewerEmpireId)
+	{
+		for (const auto& report : world.battleReports)
+		{
+			if (report.systemId == systemId && hazardEventIsHot(report.tick, world.tick))
+			{
+				return true;
+			}
+		}
+
+		for (const auto& loss : world.civilianLosses)
+		{
+			if (loss.systemId == systemId && loss.victimEmpireId == viewerEmpireId &&
+				hazardEventIsHot(loss.tick, world.tick))
+			{
+				return true;
+			}
+		}
+
+		for (const auto& convoy : world.convoys)
+		{
+			if (convoy.empireId != viewerEmpireId || !convoyIsUnderway(convoy))
+			{
+				continue;
+			}
+
+			if (convoy.expectedArrivalTick <= 0 || world.tick <= convoy.expectedArrivalTick)
+			{
+				continue;
+			}
+
+			if (convoy.motion.hop < 0)
+			{
+				continue;
+			}
+
+			for (int i = convoy.motion.hop; i < static_cast<int>(convoy.motion.route.size()); ++i)
+			{
+				if (convoy.motion.route[static_cast<size_t>(i)] == systemId)
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	bool systemIsAdjacentToHazardHeat(
+		const WorldData& world,
+		long long systemId,
+		long long viewerEmpireId)
+	{
+		for (const auto& lane : world.hyperlanes)
+		{
+			if (lane.a == systemId && systemHasHazardHeat(world, lane.b, viewerEmpireId))
+			{
+				return true;
+			}
+
+			if (lane.b == systemId && systemHasHazardHeat(world, lane.a, viewerEmpireId))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool empiresAreAtWar(const WorldData& world, long long empireA, long long empireB)
+	{
+		if (empireA == 0 || empireB == 0 || empireA == empireB)
+		{
+			return false;
+		}
+
+		if (empireA > empireB)
+		{
+			std::swap(empireA, empireB);
+		}
+
+		for (const auto& row : world.empireWars)
+		{
+			if (row.empireA == empireA && row.empireB == empireB)
+			{
+				return row.atWar;
+			}
+		}
+
+		return false;
+	}
+
+	void declareWarBetweenEmpires(WorldData& world, long long empireA, long long empireB)
+	{
+		if (empireA == 0 || empireB == 0 || empireA == empireB)
+		{
+			return;
+		}
+
+		if (empireA > empireB)
+		{
+			std::swap(empireA, empireB);
+		}
+
+		for (auto& row : world.empireWars)
+		{
+			if (row.empireA == empireA && row.empireB == empireB)
+			{
+				row.atWar = true;
+				return;
+			}
+		}
+
+		world.empireWars.push_back(EmpireWar{ .empireA = empireA, .empireB = empireB, .atWar = true });
+	}
+
+	bool systemClaimBlocksCivilian(
+		const WorldData& world,
+		long long systemId,
+		long long viewerEmpireId)
+	{
+		const StarSystem* system = world.systemById(systemId);
+		if (system == nullptr || system->empireId == 0 || system->empireId == viewerEmpireId)
+		{
+			return false;
+		}
+
+		return empiresAreAtWar(world, viewerEmpireId, system->empireId);
 	}
 
 }

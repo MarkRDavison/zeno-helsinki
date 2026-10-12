@@ -11,7 +11,7 @@ namespace ExtractionTests
 TEST_CASE("starter map has one Rimward iron ore mine with empty stockpile", "[slr][Extraction]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.mines.size() == 1);
+	REQUIRE(world.mines.size() == 2);
 	REQUIRE(world.mines[0].systemId == 5);
 	REQUIRE(mineOutputPerTick(world.mines[0], IronOreGoodId) == 100);
 	REQUIRE(mineMaxStockpile(world.mines[0], IronOreGoodId) == MineMaxStockpile_IronOre);

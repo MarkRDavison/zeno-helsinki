@@ -11,7 +11,7 @@ namespace CivilianConsumptionTests
 TEST_CASE("Helion yard population eats 10 steel and reserves 200", "[slr][CivilianConsumption]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.yards.size() == 1);
+	REQUIRE(world.yards.size() == 2);
 	REQUIRE(quantityForGood(world.yards.front().populationConsumePerTick, SteelGoodId) ==
 			YardPopulationConsumePerTick_Steel);
 	REQUIRE(quantityForGood(world.yards.front().populationReservedPiles, SteelGoodId) ==

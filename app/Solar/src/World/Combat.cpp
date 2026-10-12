@@ -302,6 +302,16 @@ namespace
 			return;
 		}
 
+		for (auto a = empires.begin(); a != empires.end(); ++a)
+		{
+			auto b = a;
+			++b;
+			for (; b != empires.end(); ++b)
+			{
+				declareWarBetweenEmpires(world, *a, *b);
+			}
+		}
+
 		const long long empireA = *empires.begin();
 		const long long empireB = *std::next(empires.begin());
 		const long long battleId = static_cast<long long>(world.battleReports.size()) + 1;
@@ -393,6 +403,7 @@ namespace
 					continue;
 				}
 
+				declareWarBetweenEmpires(world, fleet.empireId, truck.empireId);
 				truckIdsToDestroy.push_back(truck.id);
 			}
 		}

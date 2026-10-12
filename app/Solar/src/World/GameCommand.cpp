@@ -101,7 +101,8 @@ namespace
 				world,
 				here,
 				job->goodId,
-				job->destinationSystemId);
+				job->destinationSystemId,
+				truck->empireId);
 		}
 
 		if (loadSystemId == 0)
@@ -124,9 +125,19 @@ namespace
 			convoy = &world.convoys.back();
 		}
 
+		if (civilianLanePathCost(
+				world,
+				loadSystemId,
+				job->destinationSystemId,
+				truck->empireId) < 0)
+		{
+			return false;
+		}
+
 		if (here != convoy->loadSystemId)
 		{
-			const std::vector<long long> path = shortestLanePath(world, here, convoy->loadSystemId);
+			const std::vector<long long> path =
+				civilianLanePath(world, here, convoy->loadSystemId, truck->empireId);
 			if (path.size() < 2)
 			{
 				return false;
@@ -363,8 +374,13 @@ namespace
 			return false;
 		}
 
-		pathTruckToSystem(world, *truck, rally);
 		truck->convoyId = convoy->id;
+		if (!pathTruckToSystem(world, *truck, rally))
+		{
+			truck->convoyId = 0;
+			return false;
+		}
+
 		return true;
 	}
 
@@ -437,7 +453,13 @@ namespace
 
 		const long long rally = fleetRallySystemId(*fleet);
 		const long long loadSystemId =
-			nearestSupplySystemId(world, rally, job->goodId, job->destinationSystemId);
+			nearestSupplySystemId(
+				world,
+				rally,
+				job->goodId,
+				job->destinationSystemId,
+				convoy->empireId,
+				true);
 		if (loadSystemId == 0)
 		{
 			return false;

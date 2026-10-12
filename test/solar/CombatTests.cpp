@@ -89,7 +89,7 @@ namespace CombatTests
 			.motion = { .progress = progress, .speed = 50.0f } });
 	}
 
-TEST_CASE("starter map has two empires and rival classes at Kestrel", "[slr][Combat]")
+TEST_CASE("starter map has two empires and rival classes at Ashreach", "[slr][Combat]")
 {
 	const WorldData world = makeStarterMap();
 	REQUIRE(world.empireById(HelionEmpireId) != nullptr);
@@ -100,7 +100,7 @@ TEST_CASE("starter map has two empires and rival classes at Kestrel", "[slr][Com
 	REQUIRE(rival != nullptr);
 	REQUIRE(home->empireId == HelionEmpireId);
 	REQUIRE(rival->empireId == AshreachEmpireId);
-	REQUIRE(rival->systemId == 2);
+	REQUIRE(rival->systemId == 4);
 	const ShipClass* nike = classNamed(world, "Nike");
 	const ShipClass* lance = classNamed(world, "Lance");
 	REQUIRE(nike != nullptr);
@@ -299,7 +299,7 @@ TEST_CASE("same seed twice matches folded counts", "[slr][Combat]")
 		WorldData world = makeStarterMap();
 		Fleet* home = world.fleetById(1);
 		REQUIRE(home != nullptr);
-		home->systemId = 2;
+		home->systemId = 4;
 		home->motion.route.clear();
 		home->motion.progress = 0.0f;
 		REQUIRE(execute(
@@ -388,12 +388,12 @@ TEST_CASE("Home Fleet arriving at Kestrel does not fight under hold fire", "[slr
 	REQUIRE(world.battleReports.empty());
 }
 
-TEST_CASE("rival marker is mirrored and both fleets pick at Kestrel", "[slr][Combat]")
+TEST_CASE("rival marker is mirrored and both fleets pick at Ashreach", "[slr][Combat]")
 {
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 2;
+	home->systemId = 4;
 	const Fleet* rival = world.fleetById(2);
 	REQUIRE(rival != nullptr);
 	const auto homeMarker = fleetMarkerPosition(world, *home);

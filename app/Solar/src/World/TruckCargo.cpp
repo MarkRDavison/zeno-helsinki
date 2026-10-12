@@ -80,6 +80,15 @@ namespace
 				}
 			}
 
+			const long long lostAt = truckSystemId(*it);
+			if (lostAt != 0)
+			{
+				world.civilianLosses.push_back(CivilianLoss{
+					.systemId = lostAt,
+					.tick = world.tick,
+					.victimEmpireId = it->empireId });
+			}
+
 			const long long convoyId = it->convoyId;
 			world.trucks.erase(it);
 			removeConvoyIfNoMembers(world, convoyId);

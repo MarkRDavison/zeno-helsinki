@@ -21,6 +21,14 @@ namespace slr
 		FireIfEnemySeen
 	};
 
+	enum class SystemOwnershipType
+	{
+		Empty,
+		Extraction,
+		Industrial,
+		Populated
+	};
+
 	struct EngagementPolicy
 	{
 		long long id{ 0 };
@@ -34,6 +42,13 @@ namespace slr
 		long long id{ 0 };
 		std::string name;
 		long long defaultPolicyId{ 0 };
+	};
+
+	struct EmpireWar
+	{
+		long long empireA{ 0 };
+		long long empireB{ 0 };
+		bool atWar{ false };
 	};
 
 	struct GoodStock
@@ -52,6 +67,7 @@ namespace slr
 		std::string name;
 		glm::vec2 position{ 0.0f };
 		std::vector<GoodStock> stocks;
+		long long empireId{ 0 };
 	};
 
 	struct Hyperlane
@@ -167,6 +183,13 @@ namespace slr
 		std::vector<BattleSideReport> sides;
 	};
 
+	struct CivilianLoss
+	{
+		long long systemId{ 0 };
+		long long tick{ 0 };
+		long long victimEmpireId{ 0 };
+	};
+
 	struct HaulJob
 	{
 		long long id{ 0 };
@@ -185,6 +208,7 @@ namespace slr
 		LaneMotion motion;
 		long long escortFleetId{ 0 };
 		long long desiredTruckCount{ 0 };
+		long long expectedArrivalTick{ 0 };
 	};
 
 	struct WorldData
@@ -204,6 +228,8 @@ namespace slr
 		std::vector<Fleet> fleets;
 		std::vector<EngagementPolicy> engagementPolicies;
 		std::vector<BattleReport> battleReports;
+		std::vector<CivilianLoss> civilianLosses;
+		std::vector<EmpireWar> empireWars;
 
 		const Empire* empireById(long long id) const;
 		Empire* empireById(long long id);
@@ -249,7 +275,9 @@ namespace slr
 		const WorldData& world,
 		long long fromSystemId,
 		long long goodId,
-		long long destinationSystemId);
+		long long destinationSystemId,
+		long long viewerEmpireId,
+		bool seesEscort = false);
 	void parkTruckAt(Truck& truck, long long systemId);
 	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId);
 	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId);
@@ -258,7 +286,7 @@ namespace slr
 	long long nextConvoyId(const WorldData& world);
 	long long fleetRallySystemId(const Fleet& fleet);
 	long long standingRallySystemId(const WorldData& world, const Convoy& convoy);
-	void pathTruckToSystem(WorldData& world, Truck& truck, long long systemId);
+	bool pathTruckToSystem(WorldData& world, Truck& truck, long long systemId);
 	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId);
 	long long countTrucksInConvoy(const WorldData& world, long long convoyId);
 	long long countTrucksInConvoyPresent(const WorldData& world, const Convoy& convoy);
@@ -274,6 +302,28 @@ namespace slr
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
 	bool hasHyperlane(const WorldData& world, long long a, long long b);
 	long long fleetShipCount(const Fleet& fleet);
+	bool fleetIsParked(const Fleet& fleet);
 	long long classCountFor(const std::vector<ClassCount>& composition, long long classId);
+	long long systemOwnershipScore(const WorldData& world, long long systemId);
+	SystemOwnershipType systemOwnershipType(const WorldData& world, long long systemId);
+	const char* systemOwnershipTypeName(SystemOwnershipType type);
+	long long systemPresenceScore(const WorldData& world, long long systemId);
+	bool systemHasParkedHostileFleet(const WorldData& world, long long systemId, long long viewerEmpireId);
+	bool systemIsAdjacentToParkedHostileFleet(
+		const WorldData& world,
+		long long systemId,
+		long long viewerEmpireId);
+	bool hazardEventIsHot(long long eventTick, long long worldTick);
+	bool systemHasHazardHeat(const WorldData& world, long long systemId, long long viewerEmpireId);
+	bool systemIsAdjacentToHazardHeat(
+		const WorldData& world,
+		long long systemId,
+		long long viewerEmpireId);
+	bool empiresAreAtWar(const WorldData& world, long long empireA, long long empireB);
+	void declareWarBetweenEmpires(WorldData& world, long long empireA, long long empireB);
+	bool systemClaimBlocksCivilian(
+		const WorldData& world,
+		long long systemId,
+		long long viewerEmpireId);
 
 }

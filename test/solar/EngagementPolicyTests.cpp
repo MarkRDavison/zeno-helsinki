@@ -31,7 +31,7 @@ TEST_CASE("two hold-fire fleets sharing a system do not fight", "[slr][Engagemen
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 2;
+	home->systemId = 4;
 	home->motion.route.clear();
 	home->motion.progress = 0.0f;
 	stepGalaxy(world);
@@ -43,7 +43,7 @@ TEST_CASE("fleet override weapons-free starts a fight against hold fire", "[slr]
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 2;
+	home->systemId = 4;
 	home->motion.route.clear();
 	home->motion.progress = 0.0f;
 	REQUIRE(execute(
@@ -112,12 +112,12 @@ TEST_CASE("starter seeds weapons-free policies without using them as default", "
 	REQUIRE(world.empireById(HelionEmpireId)->defaultPolicyId == HelionHoldFirePolicyId);
 }
 
-TEST_CASE("setting Helion default to weapons free starts a fight at Kestrel", "[slr][EngagementPolicy]")
+TEST_CASE("setting Helion default to weapons free starts a fight at Ashreach", "[slr][EngagementPolicy]")
 {
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 2;
+	home->systemId = 4;
 	home->motion.route.clear();
 	home->motion.progress = 0.0f;
 	REQUIRE(execute(
