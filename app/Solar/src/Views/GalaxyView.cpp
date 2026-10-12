@@ -375,32 +375,48 @@ namespace
 			ImGui::TextUnformatted(("id " + std::to_string(system->id)).c_str());
 			ImGui::TextUnformatted(
 				("trucks " + std::to_string(countTrucksAtSystem(*_world, system->id))).c_str());
-			if (!system->stocks.empty() &&
-				ImGui::BeginTable("system_goods", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			std::vector<GoodQuantity> haulJobRows;
+			for (const auto& job : _world->haulJobs)
 			{
-				ImGui::TableSetupColumn("good");
-				ImGui::TableSetupColumn("stockpile");
-				ImGui::TableSetupColumn("inbound");
-				ImGui::TableSetupColumn("need");
-				ImGui::TableSetupColumn("desired");
-				ImGui::TableHeadersRow();
-				for (const auto& stock : system->stocks)
+				if (job.destinationSystemId == system->id)
 				{
-					ImGui::TableNextRow();
-					ImGui::TableSetColumnIndex(0);
-					ImGui::TextUnformatted(goodName(stock.goodId));
-					ImGui::TableSetColumnIndex(1);
-					ImGui::TextUnformatted(std::to_string(stock.goodAmount).c_str());
-					ImGui::TableSetColumnIndex(2);
-					ImGui::TextUnformatted(std::to_string(stock.inbound).c_str());
-					ImGui::TableSetColumnIndex(3);
-					ImGui::TextUnformatted(std::to_string(stock.need).c_str());
-					ImGui::TableSetColumnIndex(4);
-					ImGui::TextUnformatted(
-						std::to_string(consumerDesiredPile(*_world, system->id, stock.goodId)).c_str());
+					haulJobRows.push_back(GoodQuantity{ .goodId = job.goodId, .amount = job.amount });
 				}
+			}
+			if (!haulJobRows.empty())
+			{
+				ImGui::TextUnformatted("Haul jobs");
+				drawGoodQuantityTable("haul_jobs", "amount", haulJobRows);
+			}
+			if (!system->stocks.empty())
+			{
+				ImGui::TextUnformatted("Stockpile");
+				if (ImGui::BeginTable("system_goods", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					ImGui::TableSetupColumn("good");
+					ImGui::TableSetupColumn("stockpile");
+					ImGui::TableSetupColumn("inbound");
+					ImGui::TableSetupColumn("need");
+					ImGui::TableSetupColumn("desired");
+					ImGui::TableHeadersRow();
+					for (const auto& stock : system->stocks)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextUnformatted(goodName(stock.goodId));
+						ImGui::TableSetColumnIndex(1);
+						ImGui::TextUnformatted(std::to_string(stock.goodAmount).c_str());
+						ImGui::TableSetColumnIndex(2);
+						ImGui::TextUnformatted(std::to_string(stock.inbound).c_str());
+						ImGui::TableSetColumnIndex(3);
+						ImGui::TextUnformatted(std::to_string(stock.need).c_str());
+						ImGui::TableSetColumnIndex(4);
+						ImGui::TextUnformatted(
+							std::to_string(consumerDesiredPile(*_world, system->id, stock.goodId)).c_str());
+					}
 
-				ImGui::EndTable();
+					ImGui::EndTable();
+				}
 			}
 
 			int mineIndex = 0;

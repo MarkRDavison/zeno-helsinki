@@ -1,5 +1,6 @@
 #include <World/WorldData.hpp>
 #include <World/Goods.hpp>
+#include <algorithm>
 #include <utility>
 
 namespace slr
@@ -75,6 +76,24 @@ namespace slr
 	Fleet* WorldData::fleetById(long long id)
 	{
 		return const_cast<Fleet*>(static_cast<const WorldData*>(this)->fleetById(id));
+	}
+
+	const HaulJob* WorldData::haulJobById(long long id) const
+	{
+		for (const auto& job : haulJobs)
+		{
+			if (job.id == id)
+			{
+				return &job;
+			}
+		}
+
+		return nullptr;
+	}
+
+	HaulJob* WorldData::haulJobById(long long id)
+	{
+		return const_cast<HaulJob*>(static_cast<const WorldData*>(this)->haulJobById(id));
 	}
 
 	long long getStockpileAmount(const StarSystem& system, long long goodId)
@@ -341,6 +360,104 @@ namespace slr
 		}
 
 		return false;
+	}
+
+	const HaulJob* haulJobFor(const WorldData& world, long long destinationSystemId, long long goodId)
+	{
+		for (const auto& job : world.haulJobs)
+		{
+			if (job.destinationSystemId == destinationSystemId && job.goodId == goodId)
+			{
+				return &job;
+			}
+		}
+
+		return nullptr;
+	}
+
+	void syncHaulJobsFromUncoveredNeed(WorldData& world)
+	{
+		long long nextId = 1;
+		for (const auto& job : world.haulJobs)
+		{
+			if (job.id >= nextId)
+			{
+				nextId = job.id + 1;
+			}
+		}
+
+		for (const auto& system : world.systems)
+		{
+			for (const auto& stock : system.stocks)
+			{
+				const long long uncovered = uncoveredNeed(system, stock.goodId);
+				if (uncovered < truckloadForGood(stock.goodId))
+				{
+					continue;
+				}
+
+				HaulJob* existing = nullptr;
+				for (auto& job : world.haulJobs)
+				{
+					if (job.destinationSystemId == system.id && job.goodId == stock.goodId)
+					{
+						existing = &job;
+						break;
+					}
+				}
+
+				if (existing != nullptr)
+				{
+					existing->amount = uncovered;
+				}
+				else
+				{
+					world.haulJobs.push_back(HaulJob{
+						.id = nextId,
+						.destinationSystemId = system.id,
+						.goodId = stock.goodId,
+						.amount = uncovered });
+					++nextId;
+				}
+			}
+		}
+
+		world.haulJobs.erase(
+			std::remove_if(
+				world.haulJobs.begin(),
+				world.haulJobs.end(),
+				[&world](const HaulJob& job)
+				{
+					const StarSystem* system = world.systemById(job.destinationSystemId);
+					if (system == nullptr)
+					{
+						return true;
+					}
+
+					return uncoveredNeed(*system, job.goodId) < truckloadForGood(job.goodId);
+				}),
+			world.haulJobs.end());
+	}
+
+	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId)
+	{
+		if (amount <= 0)
+		{
+			return 0;
+		}
+
+		const long long truckload = truckloadForGood(goodId);
+		return (amount + truckload - 1) / truckload;
+	}
+
+	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId)
+	{
+		if (truckCount <= 0 || amount <= 0)
+		{
+			return false;
+		}
+
+		return truckCount * truckloadForGood(goodId) >= amount;
 	}
 
 }

@@ -210,6 +210,7 @@ namespace
 		applyDeferredNeedPosts(world);
 		applyExtraction(world);
 		moveTrucks(world);
+		syncHaulJobsFromUncoveredNeed(world);
 		moveFleets(world);
 		resolveBattles(world);
 		++world.tick;

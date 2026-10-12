@@ -97,6 +97,7 @@ namespace
 			.cargoGoodId = SteelGoodId,
 			.cargoAmount = TruckCapacity_Steel });
 		raiseInboundOnLoad(*helion, SteelGoodId, TruckCapacity_Steel);
+		syncHaulJobsFromUncoveredNeed(world);
 
 		world.empires = {
 			Empire{ .id = HelionEmpireId, .name = "Helion" },

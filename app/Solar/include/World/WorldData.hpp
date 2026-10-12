@@ -128,6 +128,14 @@ namespace slr
 		std::vector<BattleSideReport> sides;
 	};
 
+	struct HaulJob
+	{
+		long long id{ 0 };
+		long long destinationSystemId{ 0 };
+		long long goodId{ 0 };
+		long long amount{ 0 };
+	};
+
 	struct WorldData
 	{
 		long long tick{ 0 };
@@ -138,6 +146,7 @@ namespace slr
 		std::vector<Mine> mines;
 		std::vector<Yard> yards;
 		std::vector<Truck> trucks;
+		std::vector<HaulJob> haulJobs;
 		std::vector<ShipClass> shipClasses;
 		std::vector<Fleet> fleets;
 		std::vector<BattleReport> battleReports;
@@ -150,6 +159,8 @@ namespace slr
 		ShipClass* shipClassById(long long id);
 		const Fleet* fleetById(long long id) const;
 		Fleet* fleetById(long long id);
+		const HaulJob* haulJobById(long long id) const;
+		HaulJob* haulJobById(long long id);
 	};
 
 	long long getStockpileAmount(const StarSystem& system, long long goodId);
@@ -164,6 +175,10 @@ namespace slr
 	void postNeedsFromConsumerShortfalls(WorldData& world, StarSystem& system);
 	bool useFromStockpile(WorldData& world, long long systemId, long long goodId, long long amount);
 	void applyDeferredNeedPosts(WorldData& world);
+	void syncHaulJobsFromUncoveredNeed(WorldData& world);
+	const HaulJob* haulJobFor(const WorldData& world, long long destinationSystemId, long long goodId);
+	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId);
+	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
 	bool hasHyperlane(const WorldData& world, long long a, long long b);
