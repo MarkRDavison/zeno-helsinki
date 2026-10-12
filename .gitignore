@@ -40,5 +40,9 @@ out/
 UserInterfaceConfig.hpp
 /app/Hurricane/HurricaneConfig.hpp
 /app/TowerDefense/TowerDefenseConfig.hpp
-/lib/renderer/include/helsinki/Renderer/RendererShaderRoot.hpp
 /app/Solar/SolarConfig.hpp
+/app/Pong/PongConfig.hpp
+/app/Driller/DrillerConfig.hpp
+/app/Physics/PhysicsConfig.hpp
+/app/Skeleton/SkeletonConfig.hpp
+/lib/renderer/include/helsinki/Renderer/RendererShaderRoot.hpp
