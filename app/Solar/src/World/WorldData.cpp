@@ -1361,4 +1361,60 @@ namespace slr
 		return empiresAreAtWar(world, viewerEmpireId, system->empireId);
 	}
 
+	bool civilianHaulIsForbidden(
+		const WorldData& world,
+		long long empireId,
+		long long forbiddenEmpireId)
+	{
+		if (empireId == 0 || forbiddenEmpireId == 0 || empireId == forbiddenEmpireId)
+		{
+			return false;
+		}
+
+		for (const auto& row : world.civilianHaulForbids)
+		{
+			if (row.empireId == empireId && row.forbiddenEmpireId == forbiddenEmpireId)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void setCivilianHaulForbidden(
+		WorldData& world,
+		long long empireId,
+		long long forbiddenEmpireId,
+		bool forbidden)
+	{
+		if (empireId == 0 || forbiddenEmpireId == 0 || empireId == forbiddenEmpireId)
+		{
+			return;
+		}
+
+		if (!forbidden)
+		{
+			world.civilianHaulForbids.erase(
+				std::remove_if(
+					world.civilianHaulForbids.begin(),
+					world.civilianHaulForbids.end(),
+					[empireId, forbiddenEmpireId](const CivilianHaulForbid& row)
+					{
+						return row.empireId == empireId && row.forbiddenEmpireId == forbiddenEmpireId;
+					}),
+				world.civilianHaulForbids.end());
+			return;
+		}
+
+		if (civilianHaulIsForbidden(world, empireId, forbiddenEmpireId))
+		{
+			return;
+		}
+
+		world.civilianHaulForbids.push_back(CivilianHaulForbid{
+			.empireId = empireId,
+			.forbiddenEmpireId = forbiddenEmpireId });
+	}
+
 }

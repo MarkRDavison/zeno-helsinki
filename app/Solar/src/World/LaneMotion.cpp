@@ -175,6 +175,16 @@ namespace slr
 			return -1;
 		}
 
+		if (!seesEscort)
+		{
+			const StarSystem* system = world.systemById(systemId);
+			if (system != nullptr && system->empireId != 0 &&
+				civilianHaulIsForbidden(world, viewerEmpireId, system->empireId))
+			{
+				return -1;
+			}
+		}
+
 		const bool extra =
 			systemHasHazardHeat(world, systemId, viewerEmpireId) ||
 			systemIsAdjacentToParkedHostileFleet(world, systemId, viewerEmpireId) ||

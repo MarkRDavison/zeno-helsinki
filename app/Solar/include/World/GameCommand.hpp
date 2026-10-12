@@ -63,6 +63,13 @@ namespace slr
 		long long jobId{ 0 };
 	};
 
+	struct SetCivilianHaulForbidden
+	{
+		long long empireId{ 0 };
+		long long forbiddenEmpireId{ 0 };
+		bool forbidden{ false };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
@@ -74,7 +81,8 @@ namespace slr
 			SetFleetPolicyOverride,
 			SetFleetEscort,
 			JoinStandingConvoy,
-			AcceptStandingConvoyHaulJob>
+			AcceptStandingConvoyHaulJob,
+			SetCivilianHaulForbidden>
 			payload;
 
 		static GameCommand moveFleetToSystem(
@@ -110,6 +118,11 @@ namespace slr
 		static GameCommand acceptStandingConvoyHaulJob(
 			long long convoyId,
 			long long jobId,
+			CommandSource source);
+		static GameCommand setCivilianHaulForbidden(
+			long long empireId,
+			long long forbiddenEmpireId,
+			bool forbidden,
 			CommandSource source);
 	};
 

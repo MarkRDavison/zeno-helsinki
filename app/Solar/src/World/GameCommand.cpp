@@ -75,6 +75,13 @@ namespace
 			return false;
 		}
 
+		const StarSystem* destination = world.systemById(job->destinationSystemId);
+		if (destination != nullptr && destination->empireId != 0 &&
+			civilianHaulIsForbidden(world, truck->empireId, destination->empireId))
+		{
+			return false;
+		}
+
 		const long long truckload = truckloadForGood(job->goodId);
 		if (job->amount < truckload)
 		{
@@ -487,6 +494,19 @@ namespace
 		return true;
 	}
 
+	bool applySetCivilianHaulForbidden(WorldData& world, const SetCivilianHaulForbidden& order)
+	{
+		if (world.empireById(order.empireId) == nullptr ||
+			world.empireById(order.forbiddenEmpireId) == nullptr ||
+			order.empireId == order.forbiddenEmpireId)
+		{
+			return false;
+		}
+
+		setCivilianHaulForbidden(world, order.empireId, order.forbiddenEmpireId, order.forbidden);
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -583,6 +603,21 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::setCivilianHaulForbidden(
+		long long empireId,
+		long long forbiddenEmpireId,
+		bool forbidden,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = SetCivilianHaulForbidden{
+			.empireId = empireId,
+			.forbiddenEmpireId = forbiddenEmpireId,
+			.forbidden = forbidden };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -620,6 +655,10 @@ namespace
 				else if constexpr (std::is_same_v<Payload, AcceptStandingConvoyHaulJob>)
 				{
 					return applyAcceptStandingConvoyHaulJob(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, SetCivilianHaulForbidden>)
+				{
+					return applySetCivilianHaulForbidden(world, payload);
 				}
 				else
 				{

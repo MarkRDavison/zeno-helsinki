@@ -51,6 +51,12 @@ namespace slr
 		bool atWar{ false };
 	};
 
+	struct CivilianHaulForbid
+	{
+		long long empireId{ 0 };
+		long long forbiddenEmpireId{ 0 };
+	};
+
 	struct GoodStock
 	{
 		long long goodId{ 0 };
@@ -230,6 +236,7 @@ namespace slr
 		std::vector<BattleReport> battleReports;
 		std::vector<CivilianLoss> civilianLosses;
 		std::vector<EmpireWar> empireWars;
+		std::vector<CivilianHaulForbid> civilianHaulForbids;
 
 		const Empire* empireById(long long id) const;
 		Empire* empireById(long long id);
@@ -325,5 +332,14 @@ namespace slr
 		const WorldData& world,
 		long long systemId,
 		long long viewerEmpireId);
+	bool civilianHaulIsForbidden(
+		const WorldData& world,
+		long long empireId,
+		long long forbiddenEmpireId);
+	void setCivilianHaulForbidden(
+		WorldData& world,
+		long long empireId,
+		long long forbiddenEmpireId,
+		bool forbidden);
 
 }

@@ -84,6 +84,27 @@ namespace
 			ImGui::EndTable();
 		}
 
+		ImGui::Separator();
+		ImGui::TextUnformatted("Civilians");
+		for (const auto& empire : world.empires)
+		{
+			if (empire.id == empireId)
+			{
+				continue;
+			}
+
+			bool forbidden = civilianHaulIsForbidden(world, empireId, empire.id);
+			const std::string label = "Forbid civilians on " + empire.name + " claims";
+			if (ImGui::Checkbox(label.c_str(), &forbidden))
+			{
+				pendingCommands.push_back(GameCommand::setCivilianHaulForbidden(
+					empireId,
+					empire.id,
+					forbidden,
+					CommandSource::Player));
+			}
+		}
+
 		if (ImGui::Button("New policy"))
 		{
 			pendingCommands.push_back(GameCommand::upsertEngagementPolicy(

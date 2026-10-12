@@ -783,6 +783,13 @@ namespace
 					continue;
 				}
 
+				const StarSystem* destination = world.systemById(job.destinationSystemId);
+				if (destination != nullptr && destination->empireId != 0 &&
+					civilianHaulIsForbidden(world, truck.empireId, destination->empireId))
+				{
+					continue;
+				}
+
 				if (job.amount < truckloadForGood(job.goodId))
 				{
 					continue;
