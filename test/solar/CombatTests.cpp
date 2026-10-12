@@ -226,8 +226,15 @@ TEST_CASE("trucks in the system do not fight or die", "[slr][Combat]")
 		.closeRate = 0.0f });
 	addFleet(world, 1, 1, 10, 1, 1, 0.0f);
 	addFleet(world, 2, 2, 10, 2, 1, 0.0f);
+	world.engagementPolicies.push_back(EngagementPolicy{
+		.id = 3,
+		.empireId = 2,
+		.name = "Hold fire",
+		.ruleOfEngagement = RuleOfEngagement::DoNotFireUnlessFiredUpon });
+	world.empires[1].defaultPolicyId = 3;
 	world.trucks.push_back(Truck{
 		.id = 9,
+		.empireId = 1,
 		.motion = { .route = { 10 }, .hop = 0, .progress = 0.0f, .speed = 25.0f },
 		.cargoGoodId = 1,
 		.cargoAmount = 40 });
@@ -297,25 +304,10 @@ TEST_CASE("same seed twice matches folded counts", "[slr][Combat]")
 		home->motion.progress = 0.0f;
 		REQUIRE(execute(
 			world,
-			GameCommand::upsertEngagementPolicy(
-				0,
-				HelionEmpireId,
-				"Weapons free",
-				RuleOfEngagement::FireIfEnemySeen,
+			GameCommand::setFleetPolicyOverride(
+				1,
+				HelionWeaponsFreePolicyId,
 				CommandSource::Player)));
-		long long freeId = 0;
-		for (const auto& policy : world.engagementPolicies)
-		{
-			if (policy.empireId == HelionEmpireId && policy.name == "Weapons free")
-			{
-				freeId = policy.id;
-			}
-		}
-
-		REQUIRE(freeId != 0);
-		REQUIRE(execute(
-			world,
-			GameCommand::setFleetPolicyOverride(1, freeId, CommandSource::Player)));
 		return world;
 	};
 

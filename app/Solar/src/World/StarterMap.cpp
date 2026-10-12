@@ -136,19 +136,29 @@ namespace
 
 		world.engagementPolicies = {
 			EngagementPolicy{
-				.id = 1,
+				.id = HelionHoldFirePolicyId,
 				.empireId = HelionEmpireId,
 				.name = "Hold fire",
 				.ruleOfEngagement = RuleOfEngagement::DoNotFireUnlessFiredUpon },
 			EngagementPolicy{
-				.id = 2,
+				.id = AshreachHoldFirePolicyId,
 				.empireId = AshreachEmpireId,
 				.name = "Hold fire",
 				.ruleOfEngagement = RuleOfEngagement::DoNotFireUnlessFiredUpon },
+			EngagementPolicy{
+				.id = HelionWeaponsFreePolicyId,
+				.empireId = HelionEmpireId,
+				.name = "Weapons free",
+				.ruleOfEngagement = RuleOfEngagement::FireIfEnemySeen },
+			EngagementPolicy{
+				.id = AshreachWeaponsFreePolicyId,
+				.empireId = AshreachEmpireId,
+				.name = "Weapons free",
+				.ruleOfEngagement = RuleOfEngagement::FireIfEnemySeen },
 		};
 		world.empires = {
-			Empire{ .id = HelionEmpireId, .name = "Helion", .defaultPolicyId = 1 },
-			Empire{ .id = AshreachEmpireId, .name = "Ashreach", .defaultPolicyId = 2 },
+			Empire{ .id = HelionEmpireId, .name = "Helion", .defaultPolicyId = HelionHoldFirePolicyId },
+			Empire{ .id = AshreachEmpireId, .name = "Ashreach", .defaultPolicyId = AshreachHoldFirePolicyId },
 		};
 
 		const long long nikeId = 1;

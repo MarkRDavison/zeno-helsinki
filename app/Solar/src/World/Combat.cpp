@@ -1,4 +1,5 @@
 #include <World/Combat.hpp>
+#include <World/TruckCargo.hpp>
 #include <helsinki/System/Utils/SplitMix64.hpp>
 #include <algorithm>
 #include <cmath>
@@ -369,8 +370,47 @@ namespace
 		hull = std::max(0LL, hull - damage);
 	}
 
+	void destroyEnemyTrucksAtWeaponsFreeFleets(WorldData& world)
+	{
+		std::vector<long long> truckIdsToDestroy;
+		for (const auto& fleet : world.fleets)
+		{
+			if (!isParked(fleet) || fleetShipCount(fleet) == 0)
+			{
+				continue;
+			}
+
+			const EngagementPolicy* policy = activeEngagementPolicy(world, fleet);
+			if (policy == nullptr || !ruleOfEngagementOpensFire(policy->ruleOfEngagement))
+			{
+				continue;
+			}
+
+			for (const auto& truck : world.trucks)
+			{
+				if (truck.empireId == fleet.empireId || !isTruckAtSystem(truck, fleet.systemId))
+				{
+					continue;
+				}
+
+				truckIdsToDestroy.push_back(truck.id);
+			}
+		}
+
+		std::sort(truckIdsToDestroy.begin(), truckIdsToDestroy.end());
+		truckIdsToDestroy.erase(
+			std::unique(truckIdsToDestroy.begin(), truckIdsToDestroy.end()),
+			truckIdsToDestroy.end());
+		for (const long long truckId : truckIdsToDestroy)
+		{
+			destroyTruckAndReduceInbound(world, truckId);
+		}
+	}
+
 	void resolveBattles(WorldData& world)
 	{
+		destroyEnemyTrucksAtWeaponsFreeFleets(world);
+
 		std::map<long long, std::vector<long long>> parkedBySystem;
 		for (const auto& fleet : world.fleets)
 		{

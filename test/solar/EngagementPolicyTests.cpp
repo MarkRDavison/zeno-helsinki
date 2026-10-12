@@ -1,4 +1,5 @@
 #include <World/GameCommand.hpp>
+#include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -47,25 +48,10 @@ TEST_CASE("fleet override weapons-free starts a fight against hold fire", "[slr]
 	home->motion.progress = 0.0f;
 	REQUIRE(execute(
 		world,
-		GameCommand::upsertEngagementPolicy(
-			0,
-			HelionEmpireId,
-			"Weapons free",
-			RuleOfEngagement::FireIfEnemySeen,
+		GameCommand::setFleetPolicyOverride(
+			1,
+			HelionWeaponsFreePolicyId,
 			CommandSource::Player)));
-	long long freeId = 0;
-	for (const auto& policy : world.engagementPolicies)
-	{
-		if (policy.empireId == HelionEmpireId && policy.name == "Weapons free")
-		{
-			freeId = policy.id;
-		}
-	}
-
-	REQUIRE(freeId != 0);
-	REQUIRE(execute(
-		world,
-		GameCommand::setFleetPolicyOverride(1, freeId, CommandSource::Player)));
 	stepGalaxy(world);
 	REQUIRE(world.battleReports.size() == 1);
 }
@@ -110,8 +96,97 @@ TEST_CASE("cannot override a fleet with another empire's policy", "[slr][Engagem
 	WorldData world = makeStarterMap();
 	REQUIRE_FALSE(execute(
 		world,
-		GameCommand::setFleetPolicyOverride(1, 2, CommandSource::Player)));
+		GameCommand::setFleetPolicyOverride(1, AshreachHoldFirePolicyId, CommandSource::Player)));
 	REQUIRE(world.fleetById(1)->policyId == 0);
+}
+
+TEST_CASE("starter seeds weapons-free policies without using them as default", "[slr][EngagementPolicy]")
+{
+	const WorldData world = makeStarterMap();
+	const EngagementPolicy* helionFree = world.engagementPolicyById(HelionWeaponsFreePolicyId);
+	const EngagementPolicy* ashreachFree = world.engagementPolicyById(AshreachWeaponsFreePolicyId);
+	REQUIRE(helionFree != nullptr);
+	REQUIRE(ashreachFree != nullptr);
+	REQUIRE(helionFree->ruleOfEngagement == RuleOfEngagement::FireIfEnemySeen);
+	REQUIRE(ashreachFree->ruleOfEngagement == RuleOfEngagement::FireIfEnemySeen);
+	REQUIRE(world.empireById(HelionEmpireId)->defaultPolicyId == HelionHoldFirePolicyId);
+}
+
+TEST_CASE("setting Helion default to weapons free starts a fight at Kestrel", "[slr][EngagementPolicy]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	REQUIRE(home != nullptr);
+	home->systemId = 2;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	REQUIRE(execute(
+		world,
+		GameCommand::setEmpireDefaultPolicy(
+			HelionEmpireId,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	REQUIRE(home->policyId == 0);
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.size() == 1);
+}
+
+TEST_CASE("hold-fire fleet leaves an enemy truck at the system", "[slr][EngagementPolicy]")
+{
+	WorldData world = makeStarterMap();
+	world.trucks.push_back(Truck{
+		.id = 99,
+		.empireId = AshreachEmpireId,
+		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .speed = 25.0f },
+		.cargoGoodId = SteelGoodId,
+		.cargoAmount = 40 });
+	stepGalaxy(world);
+	REQUIRE(world.truckById(99) != nullptr);
+	REQUIRE(world.battleReports.empty());
+}
+
+TEST_CASE("weapons-free fleet destroys an enemy truck and lowers inbound", "[slr][EngagementPolicy]")
+{
+	WorldData world = makeStarterMap();
+	StarSystem* caldera = world.systemById(6);
+	REQUIRE(caldera != nullptr);
+	world.haulJobs.push_back(HaulJob{
+		.id = 99,
+		.destinationSystemId = 6,
+		.empireId = AshreachEmpireId,
+		.goodId = IronOreGoodId,
+		.amount = 40 });
+	world.trucks.push_back(Truck{
+		.id = 99,
+		.empireId = AshreachEmpireId,
+		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .speed = 25.0f },
+		.cargoGoodId = IronOreGoodId,
+		.cargoAmount = 40,
+		.haulJobId = 99 });
+	caldera->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .inbound = 40 });
+	REQUIRE(execute(
+		world,
+		GameCommand::setEmpireDefaultPolicy(
+			HelionEmpireId,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.truckById(99) == nullptr);
+	REQUIRE(getInbound(*caldera, IronOreGoodId) == 0);
+	REQUIRE(world.battleReports.empty());
+}
+
+TEST_CASE("trucks alone do not start a battle", "[slr][EngagementPolicy]")
+{
+	WorldData world = makeStarterMap();
+	world.fleets.clear();
+	world.trucks.push_back(Truck{
+		.id = 99,
+		.empireId = AshreachEmpireId,
+		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .speed = 25.0f } });
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.empty());
+	REQUIRE(world.truckById(99) != nullptr);
 }
 
 }

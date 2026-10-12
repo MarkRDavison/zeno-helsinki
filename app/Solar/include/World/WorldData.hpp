@@ -10,6 +10,10 @@ namespace slr
 
 	constexpr long long HelionEmpireId = 1;
 	constexpr long long AshreachEmpireId = 2;
+	constexpr long long HelionHoldFirePolicyId = 1;
+	constexpr long long AshreachHoldFirePolicyId = 2;
+	constexpr long long HelionWeaponsFreePolicyId = 3;
+	constexpr long long AshreachWeaponsFreePolicyId = 4;
 
 	enum class RuleOfEngagement
 	{
