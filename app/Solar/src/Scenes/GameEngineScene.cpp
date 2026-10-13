@@ -63,12 +63,17 @@ namespace slr
 				{
 					_engagementPolicyChrome.setOpen(true);
 				}
+				if (hud.openDesignEditor)
+				{
+					_designChrome.toggleOpen();
+				}
 				_engagementPolicyChrome.draw(_world, _pendingCommands);
 				_galaxy.drawBattleReport();
 				if (!_galaxy.drawInspector(_pendingCommands))
 				{
 					_galaxy.setSelectedSystemId(std::nullopt);
 				}
+				_designChrome.draw(_world, _pendingCommands);
 			});
 	}
 

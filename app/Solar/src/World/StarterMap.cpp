@@ -1,6 +1,7 @@
 #include <World/StarterMap.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
+#include <World/ShipDesign.hpp>
 #include <World/TruckCargo.hpp>
 #include <helsinki/System/Utils/SplitMix64.hpp>
 #include <utility>
@@ -256,42 +257,30 @@ namespace
 		const long long destroyerId = 2;
 		const long long lanceId = 3;
 		const long long cutterId = 4;
-		world.shipClasses.push_back(ShipClass{
-			.id = nikeId,
-			.empireId = HelionEmpireId,
-			.name = "Nike",
-			.range = 55.0f,
-			.accuracy = 0.75f,
-			.laserDamage = 8,
-			.maxShields = 20,
-			.maxHull = 28,
-			.closeRate = 4.0f,
-			.hullRoles = hullRoleBit(HullRole::Warship),
-			.hullSize = HullSize::Small,
-			.missileTubes = 4,
-			.missileReloadInnerTicks = 3,
-			.magazineSize = 24,
-			.missileDamage = 10,
-			.missileRange = 90.0f,
-			.missileSpeed = 25.0f });
-		world.shipClasses.push_back(ShipClass{
-			.id = destroyerId,
-			.empireId = HelionEmpireId,
-			.name = "Destroyer",
-			.range = 35.0f,
-			.accuracy = 0.80f,
-			.laserDamage = 4,
-			.maxShields = 8,
-			.maxHull = 12,
-			.closeRate = 6.0f,
-			.hullRoles = hullRoleBit(HullRole::Warship),
-			.hullSize = HullSize::Small,
-			.missileTubes = 2,
-			.missileReloadInnerTicks = 3,
-			.magazineSize = 16,
-			.missileDamage = 5,
-			.missileRange = 60.0f,
-			.missileSpeed = 22.0f });
+		world.shipClasses.push_back(makeWarshipClassFromDraft(
+			nikeId,
+			HelionEmpireId,
+			ShipClassDraft{
+				.name = "Nike",
+				.hullSize = HullSize::Small,
+				.parts = {
+					.reactorCount = 1,
+					.engineCount = 1,
+					.laserCount = 2,
+					.missileTubeCount = 2,
+					.cargoCount = 2 } }));
+		world.shipClasses.push_back(makeWarshipClassFromDraft(
+			destroyerId,
+			HelionEmpireId,
+			ShipClassDraft{
+				.name = "Destroyer",
+				.hullSize = HullSize::Small,
+				.parts = {
+					.reactorCount = 1,
+					.engineCount = 2,
+					.laserCount = 1,
+					.missileTubeCount = 2,
+					.cargoCount = 2 } }));
 		world.shipClasses.push_back(ShipClass{
 			.id = lanceId,
 			.empireId = AshreachEmpireId,

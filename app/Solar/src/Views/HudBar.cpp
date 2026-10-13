@@ -14,6 +14,7 @@ namespace slr
 		const float gap = 6.0f;
 		const float rowHeight = 24.0f;
 		const float policiesWidth = 88.0f;
+		const float designWidth = 88.0f;
 		const float timeWidth = ImGui::CalcTextSize(date.c_str()).x + gap +
 			TimeChrome::SpeedButtonWidth * 4.0f + gap * 3.0f;
 
@@ -34,7 +35,8 @@ namespace slr
 		ImGui::SetCursorPosX(padding);
 		ImGui::SetCursorPosY(8.0f);
 		const float situationWidth =
-			ImGui::GetWindowSize().x - padding * 2.0f - gap * 2.0f - policiesWidth - timeWidth;
+			ImGui::GetWindowSize().x - padding * 2.0f - gap * 3.0f - policiesWidth - designWidth -
+			timeWidth;
 		ImGui::BeginChild(
 			"SituationChrome",
 			ImVec2(situationWidth, rowHeight),
@@ -47,6 +49,12 @@ namespace slr
 		if (ImGui::Button("Policies", ImVec2(policiesWidth, rowHeight)))
 		{
 			hud.openPolicyEditor = true;
+		}
+
+		ImGui::SameLine(0.0f, gap);
+		if (ImGui::Button("Design", ImVec2(designWidth, rowHeight)))
+		{
+			hud.openDesignEditor = true;
 		}
 
 		ImGui::SameLine(0.0f, gap);

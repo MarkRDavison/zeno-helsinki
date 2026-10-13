@@ -232,6 +232,11 @@ namespace slr
 		long long missileDamage{ 0 };
 		float missileRange{ 0.0f };
 		float missileSpeed{ 0.0f };
+		long long reactorCount{ 0 };
+		long long engineCount{ 0 };
+		long long laserCount{ 0 };
+		long long missileTubeCount{ 0 };
+		long long cargoCount{ 0 };
 	};
 
 	struct ClassCount

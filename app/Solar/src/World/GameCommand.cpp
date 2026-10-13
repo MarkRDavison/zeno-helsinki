@@ -1,6 +1,7 @@
 #include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
+#include <World/ShipDesign.hpp>
 #include <algorithm>
 #include <type_traits>
 #include <utility>
@@ -720,6 +721,25 @@ namespace
 		return true;
 	}
 
+	bool applyCreateShipClass(WorldData& world, const CreateShipClass& order)
+	{
+		if (world.empireById(order.empireId) == nullptr)
+		{
+			return false;
+		}
+
+		if (validateShipClassDraft(order.draft) != ShipClassDraftFault::None)
+		{
+			return false;
+		}
+
+		world.shipClasses.push_back(makeWarshipClassFromDraft(
+			nextShipClassId(world),
+			order.empireId,
+			order.draft));
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -870,6 +890,17 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::createShipClass(
+		long long empireId,
+		ShipClassDraft draft,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = CreateShipClass{ .empireId = empireId, .draft = std::move(draft) };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -923,6 +954,10 @@ namespace
 				else if constexpr (std::is_same_v<Payload, StartYardRefit>)
 				{
 					return applyStartYardRefit(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, CreateShipClass>)
+				{
+					return applyCreateShipClass(world, payload);
 				}
 				else
 				{

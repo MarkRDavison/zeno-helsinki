@@ -1,5 +1,6 @@
 #pragma once
 
+#include <World/ShipDesign.hpp>
 #include <World/WorldData.hpp>
 #include <string>
 #include <variant>
@@ -91,6 +92,12 @@ namespace slr
 		long long toClassId{ 0 };
 	};
 
+	struct CreateShipClass
+	{
+		long long empireId{ 0 };
+		ShipClassDraft draft;
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
@@ -106,7 +113,8 @@ namespace slr
 			SetCivilianHaulForbidden,
 			StartYardSlip,
 			StartYardBuild,
-			StartYardRefit>
+			StartYardRefit,
+			CreateShipClass>
 			payload;
 
 		static GameCommand moveFleetToSystem(
@@ -157,6 +165,10 @@ namespace slr
 			long long systemId,
 			long long fromClassId,
 			long long toClassId,
+			CommandSource source);
+		static GameCommand createShipClass(
+			long long empireId,
+			ShipClassDraft draft,
 			CommandSource source);
 	};
 

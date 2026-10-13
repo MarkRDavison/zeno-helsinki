@@ -176,6 +176,8 @@ TEST_CASE("a fleet that leaves mid-refit does not take the finished hull", "[slr
 		stepGalaxy(world);
 	}
 
+	home = world.fleetById(HomeFleetId);
+	REQUIRE(home != nullptr);
 	REQUIRE(home->systemId == KestrelSystemId);
 	REQUIRE(fleetIsParked(*home));
 	REQUIRE(hullById(*home, hullId) == nullptr);
