@@ -30,6 +30,7 @@
 *.out
 *.app
 
+cmake-build-debug/
 build/
 out/
 .vs/
@@ -40,6 +41,7 @@ out/
 UserInterfaceConfig.hpp
 /app/Hurricane/HurricaneConfig.hpp
 /app/TowerDefense/TowerDefenseConfig.hpp
+/app/TwoDimensional/TwoDimensionalConfig.hpp
 /app/Solar/SolarConfig.hpp
 /app/Pong/PongConfig.hpp
 /app/Driller/DrillerConfig.hpp

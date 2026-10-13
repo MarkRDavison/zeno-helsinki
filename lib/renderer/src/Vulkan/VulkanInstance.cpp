@@ -42,9 +42,12 @@ namespace hl
 {
 	void VulkanInstance::create(const char* title, const std::vector<const char*>& windowExtensions)
 	{
-        if (enableValidationLayers && !checkValidationLayerSupport())
+        validationLayersActive() = enableValidationLayers && checkValidationLayerSupport();
+        if (enableValidationLayers && !validationLayersActive())
         {
-            throw std::runtime_error("validation layers requested, but not available!");
+            std::cerr
+                << "Vulkan validation layers requested but VK_LAYER_KHRONOS_validation is not available.\n"
+                << "Continuing without validation layers.\n";
         }
 
         VkApplicationInfo appInfo{};
@@ -64,7 +67,7 @@ namespace hl
         createInfo.ppEnabledExtensionNames = extensions.data();
 
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-        if (enableValidationLayers)
+        if (validationLayersActive())
         {
             createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -90,7 +93,7 @@ namespace hl
     {
         glslang::FinalizeProcess();
 
-        if (enableValidationLayers)
+        if (validationLayersActive())
         {
             DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
         }
@@ -132,7 +135,7 @@ namespace hl
     {
         std::vector<const char*> extensions(windowExtensions);
 
-        if (enableValidationLayers)
+        if (validationLayersActive())
         {
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
@@ -151,7 +154,7 @@ namespace hl
 
     void VulkanInstance::setupDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT& debugMessenger)
     {
-        if (!enableValidationLayers)
+        if (!validationLayersActive())
         {
             return;
         }

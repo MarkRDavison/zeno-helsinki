@@ -248,7 +248,7 @@ namespace pong
             auto ec = entity->AddComponent<EntityComponent>();
             ec->Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
             ec->VertexBufferResourceName = "paddle";
-            ec->ControlledState = ControlledState::PLAYER;
+            ec->State = ControlledState::PLAYER;
         }
         {
             auto entity = _scene.addEntity("Paddle2");
@@ -258,8 +258,8 @@ namespace pong
             auto ec = entity->AddComponent<EntityComponent>();
             ec->Color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
             ec->VertexBufferResourceName = "paddle";
-            ec->ControlledState = ControlledState::COMPUTER;
-            ec->BrainType = BrainType::LAZY;
+            ec->State = ControlledState::COMPUTER;
+            ec->Brain = BrainType::LAZY;
         }
         {
             auto entity = _scene.addEntity("WallTop");

@@ -6,7 +6,7 @@ namespace td
 	class TwoDimensionalConfig
 	{
 	public:
-		static constexpr const char RootPath[] = "F:/Workspace/Github/zeno-helsinki/app/TwoDimensional";		
+		static constexpr const char RootPath[] = "/home/markdavison/Workspace/zeno-helsinki/app/TwoDimensional";		
 	};
 
 }

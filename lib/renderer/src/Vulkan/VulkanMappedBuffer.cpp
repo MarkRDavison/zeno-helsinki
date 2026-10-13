@@ -1,5 +1,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanMappedBuffer.hpp>
+
 #include <cassert>
+#include <cstring>
 
 namespace hl
 {

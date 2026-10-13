@@ -18,10 +18,17 @@ constexpr int MAX_MATERIAL_TEXTURES = 64; // TODO: KEEP IN SYNC WITH material_pb
 constexpr int MAX_PARTICLES = 4096; // TODO: KEEP IN SYNC WITH particle_sim.comp / particle.vert
 
 #ifdef HELSINKI_DEBUG
-const bool enableValidationLayers = true;
+constexpr bool enableValidationLayers = true;
 #else
-const bool enableValidationLayers = false;
+constexpr bool enableValidationLayers = false;
 #endif
+
+// Set in VulkanInstance::create() from enableValidationLayers and layer availability.
+inline bool& validationLayersActive()
+{
+	static bool active = false;
+	return active;
+}
 
 const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"

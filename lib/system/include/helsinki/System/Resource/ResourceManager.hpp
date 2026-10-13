@@ -22,87 +22,13 @@ namespace hl
         template<typename Loader>
         ResourceHandle<LogicalResource> LoadLogical(
             const ResourceDefinition& definition,
-            Loader&& loader)
-        {
-            auto& typeResources = resources[std::type_index(typeid(LogicalResource))];
-            auto it = typeResources.find(definition.name);
-
-            if (it != typeResources.end())
-            {
-                refCounts[definition.name]++;
-                return ResourceHandle<LogicalResource>(definition.name, this);
-            }
-
-            auto resource = std::make_shared<LogicalResource>(
-                definition,
-                *this,
-                std::forward<Loader>(loader));
-
-            if (!resource->Load())
-            {
-                return ResourceHandle<LogicalResource>();
-            }
-
-            typeResources[definition.name] = resource;
-            refCounts[definition.name] = 1;
-
-            return ResourceHandle<LogicalResource>(definition.name, this);
-        }
+            Loader&& loader);
 
         template<typename T, typename... Args>
-        ResourceHandle<T> Load(const std::string& resourceId, Args&&... args)
-        {
-            static_assert(std::is_base_of<Resource, T>::value, "T must derive from Resource");
+        ResourceHandle<T> Load(const std::string& resourceId, Args&&... args);
 
-            auto& typeResources = resources[std::type_index(typeid(T))];
-            auto it = typeResources.find(resourceId);
-
-            if (it != typeResources.end())
-            {
-                refCounts[resourceId]++;
-                return ResourceHandle<T>(resourceId, this);
-            }
-
-            auto resource = std::make_shared<T>(resourceId, std::forward<Args>(args)...);
-
-            if (!resource->Load())
-            {
-                return ResourceHandle<T>();
-            }
-
-            typeResources[resourceId] = resource;
-            refCounts[resourceId] = 1;
-
-            return ResourceHandle<T>(resourceId, this);
-        }
         template<typename T, typename TBase, typename... Args>
-        ResourceHandle<TBase> LoadAs(const std::string& resourceId, Args&&... args)
-        {
-            static_assert(std::is_base_of<Resource, T>::value, "T must derive from Resource");
-            static_assert(std::is_base_of<Resource, TBase>::value, "TBase must derive from Resource");
-            static_assert(std::is_base_of<TBase, T>::value, "TBase must derive from T");
-
-            auto& typeResources = resources[std::type_index(typeid(TBase))];
-            auto it = typeResources.find(resourceId);
-
-            if (it != typeResources.end())
-            {
-                refCounts[resourceId]++;
-                return ResourceHandle<TBase>(resourceId, this);
-            }
-
-            auto resource = std::make_shared<T>(resourceId, std::forward<Args>(args)...);
-
-            if (!resource->Load())
-            {
-                return ResourceHandle<TBase>();
-            }
-
-            typeResources[resourceId] = resource;
-            refCounts[resourceId] = 1;
-
-            return ResourceHandle<TBase>(resourceId, this);
-        }
+        ResourceHandle<TBase> LoadAs(const std::string& resourceId, Args&&... args);
 
         template<typename T>
         T* GetResource(const std::string& resourceId)
@@ -188,4 +114,142 @@ namespace hl
         std::unordered_map<std::type_index, std::unordered_map<std::string, std::shared_ptr<Resource>>> resources;
         std::unordered_map<std::string, int> refCounts;
     };
+}
+
+#include <helsinki/System/Resource/ResourceHandle.hpp>
+
+namespace hl
+{
+    template<typename T>
+    ResourceHandle<T>::ResourceHandle()
+        : resourceManager(nullptr)
+    {
+    }
+
+    template<typename T>
+    ResourceHandle<T>::ResourceHandle(const std::string& id, ResourceManager* manager)
+        : resourceId(id)
+        , resourceManager(manager)
+    {
+    }
+
+    template<typename T>
+    T* ResourceHandle<T>::Get() const
+    {
+        if (!resourceManager)
+        {
+            return nullptr;
+        }
+        return resourceManager->GetResource<T>(resourceId);
+    }
+
+    template<typename T>
+    bool ResourceHandle<T>::IsValid() const
+    {
+        return resourceManager && resourceManager->HasResource<T>(resourceId);
+    }
+
+    template<typename T>
+    T* ResourceHandle<T>::operator->() const
+    {
+        return Get();
+    }
+
+    template<typename T>
+    T& ResourceHandle<T>::operator*() const
+    {
+        return *Get();
+    }
+
+    template<typename T>
+    ResourceHandle<T>::operator bool() const
+    {
+        return IsValid();
+    }
+
+    template<typename Loader>
+    ResourceHandle<LogicalResource> ResourceManager::LoadLogical(
+        const ResourceDefinition& definition,
+        Loader&& loader)
+    {
+        auto& typeResources = resources[std::type_index(typeid(LogicalResource))];
+        auto it = typeResources.find(definition.name);
+
+        if (it != typeResources.end())
+        {
+            refCounts[definition.name]++;
+            return ResourceHandle<LogicalResource>(definition.name, this);
+        }
+
+        auto resource = std::make_shared<LogicalResource>(
+            definition,
+            *this,
+            std::forward<Loader>(loader));
+
+        if (!resource->Load())
+        {
+            return ResourceHandle<LogicalResource>();
+        }
+
+        typeResources[definition.name] = resource;
+        refCounts[definition.name] = 1;
+
+        return ResourceHandle<LogicalResource>(definition.name, this);
+    }
+
+    template<typename T, typename... Args>
+    ResourceHandle<T> ResourceManager::Load(const std::string& resourceId, Args&&... args)
+    {
+        static_assert(std::is_base_of<Resource, T>::value, "T must derive from Resource");
+
+        auto& typeResources = resources[std::type_index(typeid(T))];
+        auto it = typeResources.find(resourceId);
+
+        if (it != typeResources.end())
+        {
+            refCounts[resourceId]++;
+            return ResourceHandle<T>(resourceId, this);
+        }
+
+        auto resource = std::make_shared<T>(resourceId, std::forward<Args>(args)...);
+
+        if (!resource->Load())
+        {
+            return ResourceHandle<T>();
+        }
+
+        typeResources[resourceId] = resource;
+        refCounts[resourceId] = 1;
+
+        return ResourceHandle<T>(resourceId, this);
+    }
+
+    template<typename T, typename TBase, typename... Args>
+    ResourceHandle<TBase> ResourceManager::LoadAs(const std::string& resourceId, Args&&... args)
+    {
+        static_assert(std::is_base_of<Resource, T>::value, "T must derive from Resource");
+        static_assert(std::is_base_of<Resource, TBase>::value, "TBase must derive from Resource");
+        static_assert(std::is_base_of<TBase, T>::value, "TBase must derive from T");
+
+        auto& typeResources = resources[std::type_index(typeid(TBase))];
+        auto it = typeResources.find(resourceId);
+
+        if (it != typeResources.end())
+        {
+            refCounts[resourceId]++;
+            return ResourceHandle<TBase>(resourceId, this);
+        }
+
+        auto resource = std::make_shared<T>(resourceId, std::forward<Args>(args)...);
+
+        if (!resource->Load())
+        {
+            return ResourceHandle<TBase>();
+        }
+
+        typeResources[resourceId] = resource;
+        refCounts[resourceId] = 1;
+
+        return ResourceHandle<TBase>(resourceId, this);
+    }
 }

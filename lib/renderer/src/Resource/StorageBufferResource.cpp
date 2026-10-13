@@ -1,5 +1,7 @@
 #include <helsinki/Renderer/Resource/StorageBufferResource.hpp>
 
+#include <cstring>
+
 namespace hl
 {
 
