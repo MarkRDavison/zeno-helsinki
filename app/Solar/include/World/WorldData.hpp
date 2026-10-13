@@ -400,5 +400,6 @@ namespace slr
 	long long hullSteelPerTick(const ShipClass& shipClass);
 	long long nextTruckId(const WorldData& world);
 	void applyYardHullConstruction(WorldData& world);
+	void applyYardMagazineRestock(WorldData& world);
 
 }

@@ -15,6 +15,11 @@ namespace slr
 			return "iron ore";
 		}
 
+		if (goodId == MissileGoodId)
+		{
+			return "missiles";
+		}
+
 		return "unknown";
 	}
 
@@ -26,6 +31,8 @@ namespace slr
 			return TruckCapacity_IronOre;
 		case SteelGoodId:
 			return TruckCapacity_Steel;
+		case MissileGoodId:
+			return TruckCapacity_Missiles;
 		default:
 			return TruckCapacity_Steel;
 		}

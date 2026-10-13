@@ -903,6 +903,7 @@ namespace
 		applyCivilianConsumption(world);
 		applyYardSlipConstruction(world);
 		applyYardHullConstruction(world);
+		applyYardMagazineRestock(world);
 		applyStandingConvoyJoins(world);
 		applyHaulJobAccepts(world);
 		applyStandingConvoyHaulAccepts(world);

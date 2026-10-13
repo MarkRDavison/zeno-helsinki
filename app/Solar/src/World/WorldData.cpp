@@ -1835,6 +1835,80 @@ namespace slr
 		}
 	}
 
+	void applyYardMagazineRestock(WorldData& world)
+	{
+		struct ParkedHullRef
+		{
+			long long fleetId{ 0 };
+			long long hullId{ 0 };
+		};
+
+		for (const auto& yard : world.yards)
+		{
+			std::vector<ParkedHullRef> hulls;
+			for (const auto& fleet : world.fleets)
+			{
+				if (fleet.empireId != yard.empireId || fleet.systemId != yard.systemId ||
+					!fleetIsParked(fleet))
+				{
+					continue;
+				}
+
+				for (const auto& hull : fleet.hulls)
+				{
+					hulls.push_back(ParkedHullRef{ .fleetId = fleet.id, .hullId = hull.id });
+				}
+			}
+
+			std::sort(hulls.begin(), hulls.end(), [](const ParkedHullRef& a, const ParkedHullRef& b) {
+				return a.hullId < b.hullId;
+			});
+
+			for (const auto& ref : hulls)
+			{
+				Fleet* fleet = world.fleetById(ref.fleetId);
+				if (fleet == nullptr)
+				{
+					continue;
+				}
+
+				FleetHull* hull = nullptr;
+				for (auto& candidate : fleet->hulls)
+				{
+					if (candidate.id == ref.hullId)
+					{
+						hull = &candidate;
+						break;
+					}
+				}
+
+				if (hull == nullptr)
+				{
+					continue;
+				}
+
+				const ShipClass* shipClass = world.shipClassById(hull->classId);
+				if (shipClass == nullptr || shipClass->magazineSize <= 0 ||
+					hull->missileAmmo >= shipClass->magazineSize)
+				{
+					continue;
+				}
+
+				if (stockpileAvailableForYardConsume(world, yard.systemId, MissileGoodId) < 1)
+				{
+					continue;
+				}
+
+				if (!useFromStockpile(world, yard.systemId, MissileGoodId, 1))
+				{
+					continue;
+				}
+
+				hull->missileAmmo += 1;
+			}
+		}
+	}
+
 	void applyYardSlipConstruction(WorldData& world)
 	{
 		for (auto& yard : world.yards)

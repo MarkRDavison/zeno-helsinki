@@ -5,8 +5,10 @@ namespace slr
 
 	constexpr long long SteelGoodId = 1;
 	constexpr long long IronOreGoodId = 2;
+	constexpr long long MissileGoodId = 3;
 	constexpr long long TruckCapacity_Steel = 50;
 	constexpr long long TruckCapacity_IronOre = 50;
+	constexpr long long TruckCapacity_Missiles = 50;
 	constexpr long long MineMaxStockpile_Steel = 4000;
 	constexpr long long MineMaxStockpile_IronOre = 4000;
 	constexpr long long FactoryMaxStockpile_Steel = 4000;
@@ -19,6 +21,7 @@ namespace slr
 	constexpr long long TruckHullSteelCost = 1000;
 	constexpr long long TruckHullBuildTicks = 10; // per-tick steel is TruckHullSteelCost / TruckHullBuildTicks
 	constexpr long long CivilianHazardFadeTicks = 8;
+	constexpr long long YardStarterMissileStockpile = 2000;
 
 	const char* goodName(long long goodId);
 	long long truckloadForGood(long long goodId);
