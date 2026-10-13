@@ -62,6 +62,7 @@ TEST_CASE("starter map seeds Nike and Destroyer classes and Home Fleet at Helion
 	REQUIRE(kestrelFleet->systemId == 2);
 	REQUIRE(compositionCount(*kestrelFleet, nike->id) == 4);
 	REQUIRE(compositionCount(*kestrelFleet, destroyer->id) == 4);
+	REQUIRE(fleetMissileAmmo(*kestrelFleet) == 0);
 	REQUIRE(nike->empireId == HelionEmpireId);
 	REQUIRE(destroyer->empireId == HelionEmpireId);
 }

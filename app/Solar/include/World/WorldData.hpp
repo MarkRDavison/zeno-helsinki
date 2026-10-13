@@ -375,10 +375,12 @@ namespace slr
 	long long classCountFor(const std::vector<ClassCount>& composition, long long classId);
 	long long nextFleetHullId(const WorldData& world);
 	long long fleetMissileAmmo(const Fleet& fleet);
+	bool fleetHasJoinedMissileAmmo(const Fleet& fleet);
 	long long fleetMissileAmmoForClass(const Fleet& fleet, long long classId);
 	long long fleetMagazineMaxForClass(const WorldData& world, const Fleet& fleet, long long classId);
 	void syncFleetCompositionFromHulls(Fleet& fleet);
 	void appendFullMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count);
+	void appendEmptyMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count);
 	long long systemOwnershipScore(const WorldData& world, long long systemId);
 	SystemOwnershipType systemOwnershipType(const WorldData& world, long long systemId);
 	const char* systemOwnershipTypeName(SystemOwnershipType type);

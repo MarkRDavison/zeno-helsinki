@@ -348,8 +348,8 @@ namespace
 			.name = "Kestrel Fleet",
 			.systemId = 2,
 			.motion = { .speed = homeFleetSpeed } });
-		appendFullMagazineHulls(world, world.fleets.back(), nikeId, 4);
-		appendFullMagazineHulls(world, world.fleets.back(), destroyerId, 4);
+		appendEmptyMagazineHulls(world, world.fleets.back(), nikeId, 4);
+		appendEmptyMagazineHulls(world, world.fleets.back(), destroyerId, 4);
 		world.fleets.push_back(Fleet{
 			.id = 2,
 			.empireId = AshreachEmpireId,

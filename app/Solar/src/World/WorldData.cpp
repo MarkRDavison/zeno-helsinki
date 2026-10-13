@@ -230,7 +230,8 @@ namespace slr
 			}
 
 			const EngagementPolicy* policy = activeEngagementPolicy(world, *fleet);
-			if (policy != nullptr && ruleOfEngagementOpensFire(policy->ruleOfEngagement))
+			if (policy != nullptr && ruleOfEngagementOpensFire(policy->ruleOfEngagement) &&
+				fleetHasJoinedMissileAmmo(*fleet))
 			{
 				return true;
 			}
@@ -591,6 +592,11 @@ namespace slr
 		return ammo;
 	}
 
+	bool fleetHasJoinedMissileAmmo(const Fleet& fleet)
+	{
+		return fleetMissileAmmo(fleet) > 0;
+	}
+
 	long long fleetMissileAmmoForClass(const Fleet& fleet, long long classId)
 	{
 		long long ammo = 0;
@@ -640,7 +646,12 @@ namespace slr
 		}
 	}
 
-	void appendFullMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count)
+	void appendMagazineHulls(
+		WorldData& world,
+		Fleet& fleet,
+		long long classId,
+		long long count,
+		long long missileAmmo)
 	{
 		const ShipClass* shipClass = world.shipClassById(classId);
 		if (shipClass == nullptr || count <= 0)
@@ -653,10 +664,26 @@ namespace slr
 			fleet.hulls.push_back(FleetHull{
 				.id = nextFleetHullId(world),
 				.classId = shipClass->id,
-				.missileAmmo = shipClass->magazineSize });
+				.missileAmmo = missileAmmo });
 		}
 
 		syncFleetCompositionFromHulls(fleet);
+	}
+
+	void appendFullMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count)
+	{
+		const ShipClass* shipClass = world.shipClassById(classId);
+		if (shipClass == nullptr)
+		{
+			return;
+		}
+
+		appendMagazineHulls(world, fleet, classId, count, shipClass->magazineSize);
+	}
+
+	void appendEmptyMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count)
+	{
+		appendMagazineHulls(world, fleet, classId, count, 0);
 	}
 
 	bool hasHyperlane(const WorldData& world, long long a, long long b)

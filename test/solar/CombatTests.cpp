@@ -66,9 +66,22 @@ namespace CombatTests
 		return world;
 	}
 
-	void addClass(WorldData& world, const ShipClass& shipClass)
+	void addClass(WorldData& world, ShipClass shipClass)
 	{
+		if (shipClass.magazineSize <= 0)
+		{
+			shipClass.magazineSize = 1;
+		}
+
 		world.shipClasses.push_back(shipClass);
+	}
+
+	void emptyFleetMissileAmmo(Fleet& fleet)
+	{
+		for (auto& hull : fleet.hulls)
+		{
+			hull.missileAmmo = 0;
+		}
 	}
 
 	void addFleet(
@@ -567,6 +580,117 @@ TEST_CASE("slow missiles spend ammo before they arrive", "[slr][Combat]")
 	REQUIRE(classCountFor(world.fleets[0].composition, 1) == 1);
 	REQUIRE(classCountFor(world.fleets[1].composition, 2) == 1);
 	REQUIRE(fleetMissileAmmo(world.fleets[0]) == 3);
+}
+
+TEST_CASE("two dry weapons-free fleets sit and do not fight", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	home->systemId = 4;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	emptyFleetMissileAmmo(*home);
+	emptyFleetMissileAmmo(*rival);
+	const long long homeShips = fleetShipCount(*home);
+	const long long rivalShips = fleetShipCount(*rival);
+	REQUIRE(execute(
+		world,
+		GameCommand::setEmpireDefaultPolicy(
+			HelionEmpireId,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setEmpireDefaultPolicy(
+			AshreachEmpireId,
+			AshreachWeaponsFreePolicyId,
+			CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.empty());
+	REQUIRE(home->systemId == 4);
+	REQUIRE(rival->systemId == 4);
+	REQUIRE(fleetShipCount(*home) == homeShips);
+	REQUIRE(fleetShipCount(*rival) == rivalShips);
+}
+
+TEST_CASE("dry weapons-free does not open fire on a loaded hold-fire fleet", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	home->systemId = 4;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	emptyFleetMissileAmmo(*home);
+	REQUIRE(fleetHasJoinedMissileAmmo(*rival));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(
+			1,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.empty());
+	REQUIRE(home->systemId == 4);
+	REQUIRE(rival->systemId == 4);
+}
+
+TEST_CASE("loaded weapons-free still fights a dry fleet in the same system", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	home->systemId = 4;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	emptyFleetMissileAmmo(*home);
+	const long long rivalAmmoBefore = fleetMissileAmmo(*rival);
+	REQUIRE(rivalAmmoBefore > 0);
+	REQUIRE(execute(
+		world,
+		GameCommand::setEmpireDefaultPolicy(
+			HelionEmpireId,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setEmpireDefaultPolicy(
+			AshreachEmpireId,
+			AshreachWeaponsFreePolicyId,
+			CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.size() == 1);
+	REQUIRE(home->systemId == 4);
+	REQUIRE(rival->systemId == 4);
+	REQUIRE(fleetMissileAmmo(*rival) < rivalAmmoBefore);
+}
+
+TEST_CASE("one remaining missile is enough to open fire", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	REQUIRE(home != nullptr);
+	home->systemId = 4;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	emptyFleetMissileAmmo(*home);
+	REQUIRE(!home->hulls.empty());
+	home->hulls.front().missileAmmo = 1;
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(
+			1,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.size() == 1);
 }
 
 }
