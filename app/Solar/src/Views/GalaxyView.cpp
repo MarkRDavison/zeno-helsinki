@@ -571,6 +571,11 @@ namespace
 					: (active != nullptr ? active->name : "none");
 				ImGui::TextUnformatted(("ROE " + activeLabel).c_str());
 				ImGui::TextUnformatted(activeRule);
+				if (active != nullptr)
+				{
+					ImGui::TextUnformatted(
+						(std::string("Approach ") + fleetApproachName(active->approach)).c_str());
+				}
 
 				if (isPlayerFleet(*_world, *fleet))
 				{

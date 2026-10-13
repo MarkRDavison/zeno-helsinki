@@ -18,6 +18,7 @@ namespace slr
 		long long _draftId{ 0 };
 		char _draftName[64]{};
 		int _draftRuleIndex{ 0 };
+		int _draftApproachIndex{ 0 };
 	};
 
 }

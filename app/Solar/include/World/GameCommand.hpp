@@ -32,6 +32,7 @@ namespace slr
 		long long empireId{ 0 };
 		std::string name;
 		RuleOfEngagement ruleOfEngagement{ RuleOfEngagement::DoNotFireUnlessFiredUpon };
+		FleetApproach approach{ FleetApproach::CloseToLaserRange };
 	};
 
 	struct SetEmpireDefaultPolicy
@@ -130,7 +131,8 @@ namespace slr
 			long long empireId,
 			std::string name,
 			RuleOfEngagement ruleOfEngagement,
-			CommandSource source);
+			CommandSource source,
+			FleetApproach approach = FleetApproach::CloseToLaserRange);
 		static GameCommand setEmpireDefaultPolicy(
 			long long empireId,
 			long long policyId,

@@ -15,11 +15,19 @@ namespace slr
 	constexpr long long AshreachHoldFirePolicyId = 2;
 	constexpr long long HelionWeaponsFreePolicyId = 3;
 	constexpr long long AshreachWeaponsFreePolicyId = 4;
+	constexpr long long HelionHoldRangePolicyId = 5;
+	constexpr long long AshreachHoldRangePolicyId = 6;
 
 	enum class RuleOfEngagement
 	{
 		DoNotFireUnlessFiredUpon,
 		FireIfEnemySeen
+	};
+
+	enum class FleetApproach
+	{
+		CloseToLaserRange,
+		HoldMissileRange
 	};
 
 	enum class SystemOwnershipType
@@ -56,6 +64,7 @@ namespace slr
 		long long empireId{ 0 };
 		std::string name;
 		RuleOfEngagement ruleOfEngagement{ RuleOfEngagement::DoNotFireUnlessFiredUpon };
+		FleetApproach approach{ FleetApproach::CloseToLaserRange };
 	};
 
 	struct Empire
@@ -358,6 +367,7 @@ namespace slr
 	bool truckUsesMilitaryHaulPath(const WorldData& world, const Truck& truck);
 	bool ruleOfEngagementOpensFire(RuleOfEngagement rule);
 	const char* ruleOfEngagementName(RuleOfEngagement rule);
+	const char* fleetApproachName(FleetApproach approach);
 	const EngagementPolicy* activeEngagementPolicy(const WorldData& world, const Fleet& fleet);
 	bool anyFleetOpensFire(const WorldData& world, const std::vector<long long>& fleetIds);
 

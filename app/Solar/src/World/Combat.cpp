@@ -36,6 +36,7 @@ namespace
 		long long shields{ 0 };
 		long long hull{ 0 };
 		float closeRate{ 0.0f };
+		FleetApproach approach{ FleetApproach::CloseToLaserRange };
 	};
 
 	struct CombatMissile
@@ -142,6 +143,12 @@ namespace
 			const float position = fleet->empireId == sideAEmpire 
 				? 0.0f 
 				: CombatEngagementLength;
+			FleetApproach approach = FleetApproach::CloseToLaserRange;
+			const EngagementPolicy* policy = activeEngagementPolicy(world, *fleet);
+			if (policy != nullptr)
+			{
+				approach = policy->approach;
+			}
 
 			for (const auto& hull : fleet->hulls)
 			{
@@ -169,7 +176,8 @@ namespace
 					.missileSpeed = shipClass->missileSpeed,
 					.shields = shipClass->maxShields,
 					.hull = shipClass->maxHull,
-					.closeRate = shipClass->closeRate });
+					.closeRate = shipClass->closeRate,
+					.approach = approach });
 			}
 		}
 
@@ -196,6 +204,13 @@ namespace
 
 			const float delta = enemy->position - ship.position;
 			const float dist = std::abs(delta);
+			const float stopRange =
+				ship.missileRange > 0.0f ? ship.missileRange : ship.range;
+			if (ship.approach == FleetApproach::HoldMissileRange && dist <= stopRange)
+			{
+				continue;
+			}
+
 			if (dist <= ship.closeRate)
 			{
 				newPositions[i] = enemy->position;

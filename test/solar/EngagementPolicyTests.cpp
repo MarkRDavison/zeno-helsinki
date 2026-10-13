@@ -89,6 +89,7 @@ TEST_CASE("upsert creates then edits a policy", "[slr][EngagementPolicy]")
 	REQUIRE(picket != nullptr);
 	REQUIRE(picket->name == "Picket hold");
 	REQUIRE(picket->ruleOfEngagement == RuleOfEngagement::DoNotFireUnlessFiredUpon);
+	REQUIRE(picket->approach == FleetApproach::CloseToLaserRange);
 }
 
 TEST_CASE("cannot override a fleet with another empire's policy", "[slr][EngagementPolicy]")

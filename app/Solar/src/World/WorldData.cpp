@@ -194,6 +194,19 @@ namespace slr
 		return "unknown";
 	}
 
+	const char* fleetApproachName(FleetApproach approach)
+	{
+		switch (approach)
+		{
+		case FleetApproach::HoldMissileRange:
+			return "hold missile range";
+		case FleetApproach::CloseToLaserRange:
+			return "close to lasers";
+		}
+
+		return "unknown";
+	}
+
 	const EngagementPolicy* activeEngagementPolicy(const WorldData& world, const Fleet& fleet)
 	{
 		if (fleet.policyId != 0)

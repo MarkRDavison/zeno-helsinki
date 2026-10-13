@@ -247,6 +247,18 @@ namespace
 				.empireId = AshreachEmpireId,
 				.name = "Weapons free",
 				.ruleOfEngagement = RuleOfEngagement::FireIfEnemySeen },
+			EngagementPolicy{
+				.id = HelionHoldRangePolicyId,
+				.empireId = HelionEmpireId,
+				.name = "Hold range",
+				.ruleOfEngagement = RuleOfEngagement::FireIfEnemySeen,
+				.approach = FleetApproach::HoldMissileRange },
+			EngagementPolicy{
+				.id = AshreachHoldRangePolicyId,
+				.empireId = AshreachEmpireId,
+				.name = "Hold range",
+				.ruleOfEngagement = RuleOfEngagement::FireIfEnemySeen,
+				.approach = FleetApproach::HoldMissileRange },
 		};
 		world.empires = {
 			Empire{ .id = HelionEmpireId, .name = "Helion", .defaultPolicyId = HelionHoldFirePolicyId },
