@@ -1,4 +1,6 @@
 #include <helsinki/Renderer/Vulkan/VulkanBuffer.hpp>
+
+#include <cstring>
 #include <stdexcept>
 #include <iostream>
 

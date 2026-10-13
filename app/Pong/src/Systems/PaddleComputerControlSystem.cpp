@@ -40,21 +40,21 @@ namespace pong
 				auto tc = e->GetComponent<hl::TransformComponent>();
 				auto ec = e->GetComponent<EntityComponent>();
 
-				if (ec->ControlledState == ControlledState::COMPUTER)
+				if (ec->State == ControlledState::COMPUTER)
 				{
 					const auto& pos = tc->GetPosition();
 
 					auto newPos = glm::vec3(pos);
 
-					if (ec->BrainType == BrainType::FOLLOW)
+					if (ec->Brain == BrainType::FOLLOW)
 					{
 						newPos = handleFollowBrain(pos, ballPosition, delta);
 					}
-					else if (ec->BrainType == BrainType::SHORT_SIGHTED_CENTER)
+					else if (ec->Brain == BrainType::SHORT_SIGHTED_CENTER)
 					{
 						newPos = handleShortSightedCenterBrain(pos, ballPosition, delta);
 					}
-					else if (ec->BrainType == BrainType::LAZY)
+					else if (ec->Brain == BrainType::LAZY)
 					{
 						newPos = handleLazyBrain(pos, ballPosition, ballVelocity, delta);
 					}

@@ -242,15 +242,8 @@ namespace hl
         createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-        if (enableValidationLayers)
-        {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-            createInfo.ppEnabledLayerNames = validationLayers.data();
-        }
-        else
-        {
-            createInfo.enabledLayerCount = 0;
-        }
+        // Instance layers only; device layers are deprecated (Vulkan 1.0+).
+        createInfo.enabledLayerCount = 0;
 
         CHECK_VK_RESULT(vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device));
 

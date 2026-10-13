@@ -9,12 +9,12 @@ namespace hl
 		const std::vector<hl::Vertex2>& verticies
 	) :
 		Resource(id),
+		_vertexBuffer(*context.device),
+		_indexBuffer(*context.device),
 		_device(*context.device),
 		_commandPool(*context.pool),
 		_rootPath(context.rootPath),
-		_verticies(verticies),
-		_vertexBuffer(*context.device),
-		_indexBuffer(*context.device)
+		_verticies(verticies)
 	{
 
 	}

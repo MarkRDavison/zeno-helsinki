@@ -94,6 +94,13 @@ namespace hl::ui
 			break;
 		case TextKey::Enter:
 			break;
+		case TextKey::Tab:
+		case TextKey::ShiftTab:
+		case TextKey::Space:
+		case TextKey::Up:
+		case TextKey::Down:
+		case TextKey::Escape:
+			return EventResult::Ignore;
 		}
 
 		return EventResult::Consume;

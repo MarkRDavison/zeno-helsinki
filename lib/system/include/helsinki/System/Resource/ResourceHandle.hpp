@@ -1,9 +1,11 @@
 #pragma once
 
-#include <helsinki/System/Resource/ResourceManager.hpp>
+#include <string>
 
 namespace hl
 {
+    class ResourceManager;
+
     template<typename T>
     class ResourceHandle
     {
@@ -12,31 +14,19 @@ namespace hl
         ResourceManager* resourceManager;
 
     public:
-        ResourceHandle() : resourceManager(nullptr) {}
+        ResourceHandle();
+        ResourceHandle(const std::string& id, ResourceManager* manager);
 
-        ResourceHandle(const std::string& id, ResourceManager* manager)
-            : resourceId(id), resourceManager(manager)
-        {
-        }
-
-        T* Get() const
-        {
-            if (!resourceManager) return nullptr;
-            return resourceManager->GetResource<T>(resourceId);
-        }
-
-        bool IsValid() const
-        {
-            return resourceManager && resourceManager->HasResource<T>(resourceId);
-        }
+        T* Get() const;
+        bool IsValid() const;
 
         const std::string& GetId() const
         {
             return resourceId;
         }
 
-        T* operator->() const { return Get(); }
-        T& operator*() const { return *Get(); }
-        operator bool() const { return IsValid(); }
+        T* operator->() const;
+        T& operator*() const;
+        operator bool() const;
     };
 }

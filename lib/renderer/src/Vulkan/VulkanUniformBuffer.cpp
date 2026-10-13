@@ -1,5 +1,7 @@
 #include <helsinki/Renderer/Vulkan/VulkanUniformBuffer.hpp>
 
+#include <cstring>
+
 namespace hl
 {
 	VulkanUniformBuffer::VulkanUniformBuffer(

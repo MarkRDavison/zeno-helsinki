@@ -40,7 +40,7 @@ namespace pong
 					auto tc = e->GetComponent<hl::TransformComponent>();
 					auto ec = e->GetComponent<EntityComponent>();
 
-					if (ec->ControlledState == ControlledState::PLAYER)
+					if (ec->State == ControlledState::PLAYER)
 					{
 						const auto& pos = tc->GetPosition();
 

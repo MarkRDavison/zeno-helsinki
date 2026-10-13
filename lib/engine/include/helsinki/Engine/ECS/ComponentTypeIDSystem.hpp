@@ -2,6 +2,8 @@
 
 #include <helsinki/Engine/Export.hpp>
 
+#include <cstddef>
+
 namespace hl
 {
     class HELSINKI_ENGINE_EXPORT ComponentTypeIDSystem
