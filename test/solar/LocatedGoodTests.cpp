@@ -28,7 +28,8 @@ TEST_CASE("loading ore moves it from Rimward onto the truck without changing the
 	world.trucks.push_back(Truck{
 		.id = 1,
 		.empireId = HelionEmpireId,
-		.motion = { .route = { 5 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f } });
+		.motion = { .route = { 5 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
+		.classId = HelionCivilianTruckClassId });
 
 	const long long locatedBefore = locatedGoodAmount(world, IronOreGoodId);
 	REQUIRE(locatedBefore == TruckCapacity_IronOre);

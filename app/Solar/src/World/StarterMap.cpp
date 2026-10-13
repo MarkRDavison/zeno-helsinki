@@ -39,7 +39,7 @@ namespace
 
 		world.systems = {
 			StarSystem{ .id = 1, .name = "Helion", .position = { 120.0f, 280.0f }, .empireId = HelionEmpireId },
-			StarSystem{ .id = 2, .name = "Kestrel", .position = { 340.0f, 180.0f }, .empireId = AshreachEmpireId },
+			StarSystem{ .id = 2, .name = "Kestrel", .position = { 340.0f, 180.0f }, .empireId = HelionEmpireId },
 			StarSystem{ .id = 3, .name = "Junction", .position = { 520.0f, 320.0f }, .empireId = HelionEmpireId },
 			StarSystem{ .id = 4, .name = "Ashreach", .position = { 480.0f, 520.0f }, .empireId = AshreachEmpireId },
 			StarSystem{ .id = 5, .name = "Rimward", .position = { 760.0f, 140.0f }, .empireId = HelionEmpireId },
@@ -172,8 +172,23 @@ namespace
 					.progress = 0.0f,
 					.direction = 1,
 					.speed = starterTruckSpeed(world, truckId) },
-				.classId = HelionMilitaryTruckClassId,
-				.isMilitary = true });
+				.classId = HelionMilitaryTruckClassId });
+		}
+
+		for (long long i = 0; i < StarterTenderCount; ++i)
+		{
+			const long long truckId =
+				StarterCivilianTruckCount + StarterMilitaryTruckCount + 1 + i;
+			world.trucks.push_back(Truck{
+				.id = truckId,
+				.empireId = HelionEmpireId,
+				.motion = {
+					.route = { 1 },
+					.hop = 0,
+					.progress = 0.0f,
+					.direction = 1,
+					.speed = starterTruckSpeed(world, truckId) },
+				.classId = HelionTenderClassId });
 		}
 
 		world.engagementPolicies = {
@@ -217,6 +232,7 @@ namespace
 			.maxShields = 20,
 			.maxHull = 28,
 			.closeRate = 4.0f,
+			.hullRoles = hullRoleBit(HullRole::Warship),
 			.missileTubes = 4,
 			.missileReloadInnerTicks = 3,
 			.magazineSize = 24,
@@ -233,6 +249,7 @@ namespace
 			.maxShields = 8,
 			.maxHull = 12,
 			.closeRate = 6.0f,
+			.hullRoles = hullRoleBit(HullRole::Warship),
 			.missileTubes = 2,
 			.missileReloadInnerTicks = 3,
 			.magazineSize = 16,
@@ -249,6 +266,7 @@ namespace
 			.maxShields = 18,
 			.maxHull = 24,
 			.closeRate = 3.0f,
+			.hullRoles = hullRoleBit(HullRole::Warship),
 			.missileTubes = 3,
 			.missileReloadInnerTicks = 4,
 			.magazineSize = 20,
@@ -265,6 +283,7 @@ namespace
 			.maxShields = 6,
 			.maxHull = 10,
 			.closeRate = 7.0f,
+			.hullRoles = hullRoleBit(HullRole::Warship),
 			.missileTubes = 1,
 			.missileReloadInnerTicks = 2,
 			.magazineSize = 12,
@@ -275,30 +294,42 @@ namespace
 			.id = HelionCivilianTruckClassId,
 			.empireId = HelionEmpireId,
 			.name = "Civilian truck",
-			.isTruck = true,
+			.hullRoles = hullRoleBit(HullRole::CivilianCargo),
 			.steelCost = TruckHullSteelCost,
 			.buildTicks = TruckHullBuildTicks });
 		world.shipClasses.push_back(ShipClass{
 			.id = HelionMilitaryTruckClassId,
 			.empireId = HelionEmpireId,
 			.name = "Military truck",
-			.isTruck = true,
-			.isMilitary = true,
+			.hullRoles = hullRoleBit(HullRole::MilitaryCargo),
 			.steelCost = TruckHullSteelCost,
 			.buildTicks = TruckHullBuildTicks });
 		world.shipClasses.push_back(ShipClass{
 			.id = AshreachCivilianTruckClassId,
 			.empireId = AshreachEmpireId,
 			.name = "Civilian truck",
-			.isTruck = true,
+			.hullRoles = hullRoleBit(HullRole::CivilianCargo),
 			.steelCost = TruckHullSteelCost,
 			.buildTicks = TruckHullBuildTicks });
 		world.shipClasses.push_back(ShipClass{
 			.id = AshreachMilitaryTruckClassId,
 			.empireId = AshreachEmpireId,
 			.name = "Military truck",
-			.isTruck = true,
-			.isMilitary = true,
+			.hullRoles = hullRoleBit(HullRole::MilitaryCargo),
+			.steelCost = TruckHullSteelCost,
+			.buildTicks = TruckHullBuildTicks });
+		world.shipClasses.push_back(ShipClass{
+			.id = HelionTenderClassId,
+			.empireId = HelionEmpireId,
+			.name = "Tender",
+			.hullRoles = hullRoleBit(HullRole::Tender),
+			.steelCost = TruckHullSteelCost,
+			.buildTicks = TruckHullBuildTicks });
+		world.shipClasses.push_back(ShipClass{
+			.id = AshreachTenderClassId,
+			.empireId = AshreachEmpireId,
+			.name = "Tender",
+			.hullRoles = hullRoleBit(HullRole::Tender),
 			.steelCost = TruckHullSteelCost,
 			.buildTicks = TruckHullBuildTicks });
 
@@ -311,6 +342,14 @@ namespace
 			.motion = { .speed = homeFleetSpeed } });
 		appendFullMagazineHulls(world, world.fleets.back(), nikeId, 8);
 		appendFullMagazineHulls(world, world.fleets.back(), destroyerId, 12);
+		world.fleets.push_back(Fleet{
+			.id = 3,
+			.empireId = HelionEmpireId,
+			.name = "Kestrel Fleet",
+			.systemId = 2,
+			.motion = { .speed = homeFleetSpeed } });
+		appendFullMagazineHulls(world, world.fleets.back(), nikeId, 4);
+		appendFullMagazineHulls(world, world.fleets.back(), destroyerId, 4);
 		world.fleets.push_back(Fleet{
 			.id = 2,
 			.empireId = AshreachEmpireId,

@@ -29,6 +29,19 @@ namespace slr
 		Populated
 	};
 
+	enum class HullRole : unsigned
+	{
+		Warship = 1u << 0,
+		CivilianCargo = 1u << 1,
+		MilitaryCargo = 1u << 2,
+		Tender = 1u << 3
+	};
+
+	constexpr unsigned hullRoleBit(HullRole role)
+	{
+		return static_cast<unsigned>(role);
+	}
+
 	struct EngagementPolicy
 	{
 		long long id{ 0 };
@@ -155,7 +168,6 @@ namespace slr
 		long long haulJobId{ 0 };
 		long long convoyId{ 0 };
 		long long classId{ 0 };
-		bool isMilitary{ false };
 	};
 
 	struct ShipClass
@@ -169,8 +181,7 @@ namespace slr
 		long long maxShields{ 0 };
 		long long maxHull{ 0 };
 		float closeRate{ 0.0f };
-		bool isTruck{ false };
-		bool isMilitary{ false };
+		unsigned hullRoles{ 0 };
 		long long steelCost{ 0 };
 		long long buildTicks{ 0 };
 		long long missileTubes{ 0 };
@@ -251,6 +262,7 @@ namespace slr
 		long long escortFleetId{ 0 };
 		long long desiredCivilianTruckCount{ 0 };
 		long long desiredMilitaryTruckCount{ 0 };
+		long long desiredTenderCount{ 0 };
 		long long expectedArrivalTick{ 0 };
 	};
 
@@ -293,6 +305,10 @@ namespace slr
 		EngagementPolicy* engagementPolicyById(long long id);
 	};
 
+	bool shipClassHasRole(const ShipClass& shipClass, HullRole role);
+	bool truckHasRole(const WorldData& world, const Truck& truck, HullRole role);
+	bool truckHasCargoHaulRole(const WorldData& world, const Truck& truck);
+	bool truckUsesMilitaryHaulPath(const WorldData& world, const Truck& truck);
 	bool ruleOfEngagementOpensFire(RuleOfEngagement rule);
 	const char* ruleOfEngagementName(RuleOfEngagement rule);
 	const EngagementPolicy* activeEngagementPolicy(const WorldData& world, const Fleet& fleet);
@@ -334,6 +350,8 @@ namespace slr
 	long long standingDesiredTruckCount(const Convoy& convoy);
 	long long countMilitaryTrucksInConvoy(const WorldData& world, long long convoyId);
 	long long countCivilianTrucksInConvoy(const WorldData& world, long long convoyId);
+	long long countTendersInConvoy(const WorldData& world, long long convoyId);
+	long long countCargoHaulTrucksInConvoy(const WorldData& world, long long convoyId);
 	bool standingConvoyHasJoinSlotForTruck(const WorldData& world, const Convoy& convoy, const Truck& truck);
 	long long nextConvoyId(const WorldData& world);
 	long long fleetRallySystemId(const Fleet& fleet);
@@ -401,5 +419,7 @@ namespace slr
 	long long nextTruckId(const WorldData& world);
 	void applyYardHullConstruction(WorldData& world);
 	void applyYardMagazineRestock(WorldData& world);
+	void applyTenderLoadFromYard(WorldData& world);
+	void applyTenderUnloadIntoMagazines(WorldData& world);
 
 }

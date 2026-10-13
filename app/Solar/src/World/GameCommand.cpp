@@ -76,7 +76,13 @@ namespace
 		}
 
 		const StarSystem* destination = world.systemById(job->destinationSystemId);
-		if (!truck->isMilitary && destination != nullptr && destination->empireId != 0 &&
+		if (!truckHasCargoHaulRole(world, *truck))
+		{
+			return false;
+		}
+
+		if (!truckUsesMilitaryHaulPath(world, *truck) && destination != nullptr &&
+			destination->empireId != 0 &&
 			civilianHaulIsForbidden(world, truck->empireId, destination->empireId))
 		{
 			return false;
@@ -94,7 +100,8 @@ namespace
 			return false;
 		}
 
-		Convoy* convoy = openConvoyForHaulJob(world, job->id, truck->isMilitary);
+		const bool militaryPath = truckUsesMilitaryHaulPath(world, *truck);
+		Convoy* convoy = openConvoyForHaulJob(world, job->id, militaryPath);
 		long long loadSystemId = 0;
 		long long assemblingConvoyId = 0;
 		if (convoy != nullptr)
@@ -111,7 +118,7 @@ namespace
 				job->destinationSystemId,
 				truck->empireId,
 				false,
-				truck->isMilitary);
+				militaryPath);
 		}
 
 		if (loadSystemId == 0)
@@ -140,7 +147,7 @@ namespace
 				job->destinationSystemId,
 				truck->empireId,
 				false,
-				truck->isMilitary) < 0)
+				militaryPath) < 0)
 		{
 			return false;
 		}
@@ -153,7 +160,7 @@ namespace
 				convoy->loadSystemId,
 				truck->empireId,
 				false,
-				truck->isMilitary);
+				militaryPath);
 			if (path.size() < 2)
 			{
 				return false;
@@ -268,19 +275,28 @@ namespace
 			world.convoys.end());
 	}
 
+	long long countStandingKind(const WorldData& world, long long convoyId, HullRole role)
+	{
+		if (role == HullRole::MilitaryCargo)
+		{
+			return countMilitaryTrucksInConvoy(world, convoyId);
+		}
+
+		if (role == HullRole::Tender)
+		{
+			return countTendersInConvoy(world, convoyId);
+		}
+
+		return countCivilianTrucksInConvoy(world, convoyId);
+	}
+
 	bool dropEmptyStandingTrucksOfKind(
 		WorldData& world,
 		long long convoyId,
-		bool isMilitary,
+		HullRole role,
 		long long keep)
 	{
-		auto countKind = [&world, convoyId, isMilitary]()
-		{
-			return isMilitary ? countMilitaryTrucksInConvoy(world, convoyId)
-							  : countCivilianTrucksInConvoy(world, convoyId);
-		};
-
-		while (countKind() > keep)
+		while (countStandingKind(world, convoyId, role) > keep)
 		{
 			Truck* extra = nullptr;
 			for (auto& truck : world.trucks)
@@ -290,7 +306,7 @@ namespace
 					continue;
 				}
 
-				if (truck.isMilitary != isMilitary)
+				if (!truckHasRole(world, truck, role))
 				{
 					continue;
 				}
@@ -316,12 +332,12 @@ namespace
 	{
 		Fleet* fleet = world.fleetById(order.fleetId);
 		if (fleet == nullptr || order.desiredCivilianTruckCount < 0 ||
-			order.desiredMilitaryTruckCount < 0)
+			order.desiredMilitaryTruckCount < 0 || order.desiredTenderCount < 0)
 		{
 			return false;
 		}
 
-		if (order.desiredCivilianTruckCount == 0 && order.desiredMilitaryTruckCount == 0)
+		if (!order.escorting)
 		{
 			if (fleet->escortConvoyId == 0)
 			{
@@ -346,6 +362,7 @@ namespace
 				convoy->escortFleetId = 0;
 				convoy->desiredCivilianTruckCount = 0;
 				convoy->desiredMilitaryTruckCount = 0;
+				convoy->desiredTenderCount = 0;
 			}
 
 			return true;
@@ -363,7 +380,7 @@ namespace
 				!dropEmptyStandingTrucksOfKind(
 					world,
 					convoy->id,
-					false,
+					HullRole::CivilianCargo,
 					order.desiredCivilianTruckCount))
 			{
 				return false;
@@ -373,14 +390,25 @@ namespace
 				!dropEmptyStandingTrucksOfKind(
 					world,
 					convoy->id,
-					true,
+					HullRole::MilitaryCargo,
 					order.desiredMilitaryTruckCount))
+			{
+				return false;
+			}
+
+			if (order.desiredTenderCount < convoy->desiredTenderCount &&
+				!dropEmptyStandingTrucksOfKind(
+					world,
+					convoy->id,
+					HullRole::Tender,
+					order.desiredTenderCount))
 			{
 				return false;
 			}
 
 			convoy->desiredCivilianTruckCount = order.desiredCivilianTruckCount;
 			convoy->desiredMilitaryTruckCount = order.desiredMilitaryTruckCount;
+			convoy->desiredTenderCount = order.desiredTenderCount;
 			return true;
 		}
 
@@ -390,7 +418,8 @@ namespace
 			.loadSystemId = fleetRallySystemId(*fleet),
 			.escortFleetId = fleet->id,
 			.desiredCivilianTruckCount = order.desiredCivilianTruckCount,
-			.desiredMilitaryTruckCount = order.desiredMilitaryTruckCount });
+			.desiredMilitaryTruckCount = order.desiredMilitaryTruckCount,
+			.desiredTenderCount = order.desiredTenderCount });
 		fleet->escortConvoyId = world.convoys.back().id;
 		return true;
 	}
@@ -449,7 +478,7 @@ namespace
 			return false;
 		}
 
-		if (countTrucksInConvoy(world, convoy.id) != standingDesiredTruckCount(convoy))
+		if (countCargoHaulTrucksInConvoy(world, convoy.id) != standingDesiredTruckCount(convoy))
 		{
 			return false;
 		}
@@ -463,7 +492,7 @@ namespace
 		const long long rally = fleetRallySystemId(*fleet);
 		for (const auto& truck : world.trucks)
 		{
-			if (truck.convoyId != convoy.id)
+			if (truck.convoyId != convoy.id || !truckHasCargoHaulRole(world, truck))
 			{
 				continue;
 			}
@@ -535,7 +564,7 @@ namespace
 		convoy->loadSystemId = loadSystemId;
 		for (auto& truck : world.trucks)
 		{
-			if (truck.convoyId != convoy->id)
+			if (truck.convoyId != convoy->id || !truckHasCargoHaulRole(world, truck))
 			{
 				continue;
 			}
@@ -671,16 +700,20 @@ namespace
 
 	GameCommand GameCommand::setFleetEscort(
 		long long fleetId,
+		bool escorting,
 		long long desiredCivilianTruckCount,
 		long long desiredMilitaryTruckCount,
+		long long desiredTenderCount,
 		CommandSource source)
 	{
 		GameCommand command;
 		command.source = source;
 		command.payload = SetFleetEscort{
 			.fleetId = fleetId,
+			.escorting = escorting,
 			.desiredCivilianTruckCount = desiredCivilianTruckCount,
-			.desiredMilitaryTruckCount = desiredMilitaryTruckCount };
+			.desiredMilitaryTruckCount = desiredMilitaryTruckCount,
+			.desiredTenderCount = desiredTenderCount };
 		return command;
 	}
 

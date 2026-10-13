@@ -38,18 +38,23 @@ TEST_CASE("Junction is Helion-owned industrial", "[slr][Ownership]")
 	REQUIRE(systemOwnershipScore(world, 3) == 1);
 }
 
-TEST_CASE("Kestrel and Ashreach are Ashreach-claimed empty with score 0", "[slr][Ownership]")
+TEST_CASE("Kestrel is Helion-claimed empty with score 0", "[slr][Ownership]")
 {
 	const WorldData world = makeStarterMap();
 	const StarSystem* kestrel = world.systemById(2);
-	const StarSystem* ashreach = world.systemById(4);
 	REQUIRE(kestrel != nullptr);
-	REQUIRE(ashreach != nullptr);
-	REQUIRE(kestrel->empireId == AshreachEmpireId);
-	REQUIRE(ashreach->empireId == AshreachEmpireId);
+	REQUIRE(kestrel->empireId == HelionEmpireId);
 	REQUIRE(systemOwnershipType(world, 2) == SystemOwnershipType::Empty);
-	REQUIRE(systemOwnershipType(world, 4) == SystemOwnershipType::Empty);
 	REQUIRE(systemOwnershipScore(world, 2) == 0);
+}
+
+TEST_CASE("Ashreach is Ashreach-claimed empty with score 0", "[slr][Ownership]")
+{
+	const WorldData world = makeStarterMap();
+	const StarSystem* ashreach = world.systemById(4);
+	REQUIRE(ashreach != nullptr);
+	REQUIRE(ashreach->empireId == AshreachEmpireId);
+	REQUIRE(systemOwnershipType(world, 4) == SystemOwnershipType::Empty);
 	REQUIRE(systemOwnershipScore(world, 4) == 0);
 }
 
@@ -80,6 +85,7 @@ TEST_CASE("parked fleet adds presence not ownership score", "[slr][Ownership]")
 {
 	WorldData world = makeStarterMap();
 	REQUIRE(systemPresenceScore(world, 1) == 1);
+	REQUIRE(systemPresenceScore(world, 2) == 1);
 	REQUIRE(systemPresenceScore(world, 4) == 1);
 	REQUIRE(systemPresenceScore(world, 6) == 0);
 	REQUIRE_FALSE(world.fleets.empty());

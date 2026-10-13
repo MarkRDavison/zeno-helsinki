@@ -19,14 +19,34 @@ namespace slr
 		return motion;
 	}
 
+	bool truckSharesStandingEscortFleetHop(
+		const WorldData& world,
+		const Truck& truck,
+		const LaneMotion& motion)
+	{
+		const Convoy* convoy = world.convoyById(truck.convoyId);
+		if (convoy == nullptr || !convoyIsStanding(*convoy))
+		{
+			return false;
+		}
+
+		if (convoyIsUnderway(*convoy))
+		{
+			return true;
+		}
+
+		const Fleet* fleet = world.fleetById(convoy->escortFleetId);
+		return fleet != nullptr && fleet->motion.route.size() >= 2 &&
+			motion.route == fleet->motion.route && motion.hop == fleet->motion.hop;
+	}
+
 	std::optional<glm::vec2> truckMarkerPosition(const WorldData& world, const Truck& truck)
 	{
 		const LaneMotion motion = truckMotionForMarker(world, truck);
 		const auto onLane = laneWorldPosition(world, motion);
 		if (onLane.has_value())
 		{
-			const Convoy* convoy = world.convoyById(truck.convoyId);
-			if (convoy != nullptr && convoyIsStanding(*convoy) && convoyIsUnderway(*convoy) &&
+			if (truckSharesStandingEscortFleetHop(world, truck, motion) &&
 				motion.progress > 0.0f && motion.progress < 1.0f)
 			{
 				long long fromId = 0;

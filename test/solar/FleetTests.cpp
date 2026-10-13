@@ -47,7 +47,7 @@ TEST_CASE("starter map seeds Nike and Destroyer classes and Home Fleet at Helion
 	REQUIRE(destroyer->id != 0);
 	REQUIRE(nike->id != destroyer->id);
 
-	REQUIRE(world.fleets.size() == 2);
+	REQUIRE(world.fleets.size() == 3);
 	const Fleet* fleet = world.fleetById(1);
 	REQUIRE(fleet != nullptr);
 	REQUIRE(fleet->name == "Home Fleet");
@@ -55,6 +55,13 @@ TEST_CASE("starter map seeds Nike and Destroyer classes and Home Fleet at Helion
 	REQUIRE(fleet->systemId == 1);
 	REQUIRE(compositionCount(*fleet, nike->id) == 8);
 	REQUIRE(compositionCount(*fleet, destroyer->id) == 12);
+	const Fleet* kestrelFleet = world.fleetById(3);
+	REQUIRE(kestrelFleet != nullptr);
+	REQUIRE(kestrelFleet->name == "Kestrel Fleet");
+	REQUIRE(kestrelFleet->empireId == HelionEmpireId);
+	REQUIRE(kestrelFleet->systemId == 2);
+	REQUIRE(compositionCount(*kestrelFleet, nike->id) == 4);
+	REQUIRE(compositionCount(*kestrelFleet, destroyer->id) == 4);
 	REQUIRE(nike->empireId == HelionEmpireId);
 	REQUIRE(destroyer->empireId == HelionEmpireId);
 }

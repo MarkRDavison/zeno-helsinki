@@ -8,6 +8,29 @@
 namespace slr
 {
 
+	bool shipClassHasRole(const ShipClass& shipClass, HullRole role)
+	{
+		return (shipClass.hullRoles & hullRoleBit(role)) != 0;
+	}
+
+	bool truckHasRole(const WorldData& world, const Truck& truck, HullRole role)
+	{
+		const ShipClass* shipClass = world.shipClassById(truck.classId);
+		return shipClass != nullptr && shipClassHasRole(*shipClass, role);
+	}
+
+	bool truckHasCargoHaulRole(const WorldData& world, const Truck& truck)
+	{
+		return truckHasRole(world, truck, HullRole::CivilianCargo) ||
+			truckHasRole(world, truck, HullRole::MilitaryCargo);
+	}
+
+	bool truckUsesMilitaryHaulPath(const WorldData& world, const Truck& truck)
+	{
+		return truckHasRole(world, truck, HullRole::MilitaryCargo) ||
+			truckHasRole(world, truck, HullRole::Tender);
+	}
+
 	const Empire* WorldData::empireById(long long id) const
 	{
 		for (const auto& empire : empires)
@@ -968,7 +991,7 @@ namespace slr
 	bool standingConvoyUsesMilitaryHaulPath(const Convoy& convoy)
 	{
 		return convoyIsStanding(convoy) && convoy.desiredCivilianTruckCount == 0 &&
-			convoy.desiredMilitaryTruckCount > 0;
+			(convoy.desiredMilitaryTruckCount > 0 || convoy.desiredTenderCount > 0);
 	}
 
 	long long standingDesiredTruckCount(const Convoy& convoy)
@@ -1038,7 +1061,10 @@ namespace slr
 			standingMilitaryPath = standingConvoyUsesMilitaryHaulPath(*convoy);
 		}
 
-		const bool isMilitary = truck.isMilitary && (!seesEscort || standingMilitaryPath);
+		const bool isMilitary =
+			truckUsesMilitaryHaulPath(world, truck) &&
+			(!seesEscort || standingMilitaryPath ||
+				truckHasRole(world, truck, HullRole::Tender));
 		const std::vector<long long> path =
 			haulLanePath(world, here, systemId, truck.empireId, seesEscort, isMilitary);
 		if (path.size() < 2)
@@ -1068,7 +1094,7 @@ namespace slr
 				continue;
 			}
 
-			if (!truck.isMilitary)
+			if (!truckUsesMilitaryHaulPath(world, truck))
 			{
 				return false;
 			}
@@ -1128,7 +1154,7 @@ namespace slr
 		long long count = 0;
 		for (const auto& truck : world.trucks)
 		{
-			if (truck.convoyId == convoyId && truck.isMilitary)
+			if (truck.convoyId == convoyId && truckHasRole(world, truck, HullRole::MilitaryCargo))
 			{
 				++count;
 			}
@@ -1139,7 +1165,44 @@ namespace slr
 
 	long long countCivilianTrucksInConvoy(const WorldData& world, long long convoyId)
 	{
-		return countTrucksInConvoy(world, convoyId) - countMilitaryTrucksInConvoy(world, convoyId);
+		long long count = 0;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoyId && truckHasRole(world, truck, HullRole::CivilianCargo))
+			{
+				++count;
+			}
+		}
+
+		return count;
+	}
+
+	long long countTendersInConvoy(const WorldData& world, long long convoyId)
+	{
+		long long count = 0;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoyId && truckHasRole(world, truck, HullRole::Tender))
+			{
+				++count;
+			}
+		}
+
+		return count;
+	}
+
+	long long countCargoHaulTrucksInConvoy(const WorldData& world, long long convoyId)
+	{
+		long long count = 0;
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoyId && truckHasCargoHaulRole(world, truck))
+			{
+				++count;
+			}
+		}
+
+		return count;
 	}
 
 	bool standingConvoyHasJoinSlotForTruck(
@@ -1152,12 +1215,25 @@ namespace slr
 			return false;
 		}
 
-		if (truck.isMilitary)
+		if (truckHasRole(world, truck, HullRole::Tender) &&
+			countTendersInConvoy(world, convoy.id) < convoy.desiredTenderCount)
 		{
-			return countMilitaryTrucksInConvoy(world, convoy.id) < convoy.desiredMilitaryTruckCount;
+			return true;
 		}
 
-		return countCivilianTrucksInConvoy(world, convoy.id) < convoy.desiredCivilianTruckCount;
+		if (truckHasRole(world, truck, HullRole::MilitaryCargo) &&
+			countMilitaryTrucksInConvoy(world, convoy.id) < convoy.desiredMilitaryTruckCount)
+		{
+			return true;
+		}
+
+		if (truckHasRole(world, truck, HullRole::CivilianCargo) &&
+			countCivilianTrucksInConvoy(world, convoy.id) < convoy.desiredCivilianTruckCount)
+		{
+			return true;
+		}
+
+		return false;
 	}
 
 	long long countTrucksInConvoyPresent(const WorldData& world, const Convoy& convoy)
@@ -1675,7 +1751,9 @@ namespace slr
 
 	bool shipClassIsTruckOfEmpire(const ShipClass& shipClass, long long empireId)
 	{
-		return shipClass.isTruck && shipClass.empireId == empireId;
+		return shipClass.empireId == empireId &&
+			(shipClassHasRole(shipClass, HullRole::CivilianCargo) ||
+				shipClassHasRole(shipClass, HullRole::MilitaryCargo));
 	}
 
 	long long hullSteelPerTick(const ShipClass& shipClass)
@@ -1759,7 +1837,6 @@ namespace slr
 		truck.id = nextTruckId(world);
 		truck.empireId = yard.empireId;
 		truck.classId = shipClass.id;
-		truck.isMilitary = shipClass.isMilitary;
 		truck.motion.speed = 25.0f;
 		parkTruckAt(truck, yard.systemId);
 		world.trucks.push_back(truck);
@@ -1905,6 +1982,176 @@ namespace slr
 				}
 
 				hull->missileAmmo += 1;
+			}
+		}
+	}
+
+	bool tenderIsParkedAtSameEmpireYard(const WorldData& world, const Truck& truck)
+	{
+		if (!truckHasRole(world, truck, HullRole::Tender) || truck.motion.progress > 0.0f)
+		{
+			return false;
+		}
+
+		const long long systemId = truckSystemId(truck);
+		const Yard* yard = yardAtSystem(world, systemId);
+		return yard != nullptr && yard->empireId == truck.empireId && isTruckAtSystem(truck, systemId);
+	}
+
+	void applyTenderLoadFromYard(WorldData& world)
+	{
+		std::vector<long long> tenderIds;
+		for (const auto& truck : world.trucks)
+		{
+			if (!tenderIsParkedAtSameEmpireYard(world, truck))
+			{
+				continue;
+			}
+
+			const Convoy* convoy = world.convoyById(truck.convoyId);
+			if (convoy == nullptr || !convoyIsStanding(*convoy))
+			{
+				continue;
+			}
+
+			if (truck.cargoAmount >= TruckCapacity_Missiles)
+			{
+				continue;
+			}
+
+			tenderIds.push_back(truck.id);
+		}
+
+		std::sort(tenderIds.begin(), tenderIds.end());
+		for (const long long tenderId : tenderIds)
+		{
+			Truck* tender = world.truckById(tenderId);
+			if (tender == nullptr)
+			{
+				continue;
+			}
+
+			const long long systemId = truckSystemId(*tender);
+			if (stockpileAvailableForYardConsume(world, systemId, MissileGoodId) < 1)
+			{
+				continue;
+			}
+
+			if (!useFromStockpile(world, systemId, MissileGoodId, 1))
+			{
+				continue;
+			}
+
+			tender->cargoGoodId = MissileGoodId;
+			tender->cargoAmount += 1;
+		}
+	}
+
+	void applyTenderUnloadIntoMagazines(WorldData& world)
+	{
+		struct MagazineHullRef
+		{
+			long long fleetId{ 0 };
+			long long hullId{ 0 };
+			long long empireId{ 0 };
+			long long systemId{ 0 };
+		};
+
+		std::vector<MagazineHullRef> hulls;
+		for (const auto& fleet : world.fleets)
+		{
+			if (!fleetIsParked(fleet))
+			{
+				continue;
+			}
+
+			for (const auto& hull : fleet.hulls)
+			{
+				const ShipClass* shipClass = world.shipClassById(hull.classId);
+				if (shipClass == nullptr || !shipClassHasRole(*shipClass, HullRole::Warship) ||
+					shipClass->magazineSize <= 0 || hull.missileAmmo >= shipClass->magazineSize)
+				{
+					continue;
+				}
+
+				hulls.push_back(MagazineHullRef{
+					.fleetId = fleet.id,
+					.hullId = hull.id,
+					.empireId = fleet.empireId,
+					.systemId = fleet.systemId });
+			}
+		}
+
+		std::sort(hulls.begin(), hulls.end(), [](const MagazineHullRef& a, const MagazineHullRef& b) {
+			return a.hullId < b.hullId;
+		});
+
+		for (const auto& ref : hulls)
+		{
+			Truck* donor = nullptr;
+			for (auto& truck : world.trucks)
+			{
+				if (!truckHasRole(world, truck, HullRole::Tender) || truck.motion.progress > 0.0f ||
+					truck.cargoAmount <= 0 || truck.cargoGoodId != MissileGoodId ||
+					truck.empireId != ref.empireId)
+				{
+					continue;
+				}
+
+				if (tenderIsParkedAtSameEmpireYard(world, truck))
+				{
+					continue;
+				}
+
+				const Convoy* convoy = world.convoyById(truck.convoyId);
+				if (convoy == nullptr || !convoyIsStanding(*convoy))
+				{
+					continue;
+				}
+
+				const Fleet* escort = world.fleetById(convoy->escortFleetId);
+				if (escort == nullptr || !fleetIsParked(*escort) || escort->systemId != ref.systemId)
+				{
+					continue;
+				}
+
+				if (!isTruckAtSystem(truck, ref.systemId))
+				{
+					continue;
+				}
+
+				if (donor == nullptr || truck.id < donor->id)
+				{
+					donor = &truck;
+				}
+			}
+
+			if (donor == nullptr)
+			{
+				continue;
+			}
+
+			Fleet* fleet = world.fleetById(ref.fleetId);
+			if (fleet == nullptr)
+			{
+				continue;
+			}
+
+			for (auto& hull : fleet->hulls)
+			{
+				if (hull.id != ref.hullId)
+				{
+					continue;
+				}
+
+				hull.missileAmmo += 1;
+				donor->cargoAmount -= 1;
+				if (donor->cargoAmount == 0)
+				{
+					donor->cargoGoodId = 0;
+				}
+
+				break;
 			}
 		}
 	}

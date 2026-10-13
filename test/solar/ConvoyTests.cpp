@@ -15,7 +15,9 @@ namespace ConvoyTests
 TEST_CASE("starter in-flight truck is a size-1 departed convoy", "[slr][Convoy]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.trucks.size() == StarterCivilianTruckCount + StarterMilitaryTruckCount);
+	REQUIRE(
+		world.trucks.size() ==
+		StarterCivilianTruckCount + StarterMilitaryTruckCount + StarterTenderCount);
 	const Truck* flying = world.truckById(StarterCivilianTruckCount);
 	REQUIRE(flying != nullptr);
 	REQUIRE(flying->convoyId != 0);

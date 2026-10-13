@@ -45,7 +45,8 @@ TEST_CASE("civilians will not enter a system with a parked enemy fleet", "[slr][
 	world.trucks.push_back(Truck{
 		.id = 10,
 		.empireId = HelionEmpireId,
-		.motion = { .route = { 5 }, .speed = 25.0f } });
+		.motion = { .route = { 5 }, .speed = 25.0f },
+		.classId = HelionCivilianTruckClassId });
 	const HaulJob* ore = haulJobFor(world, 3, IronOreGoodId);
 	REQUIRE(ore != nullptr);
 	REQUIRE_FALSE(execute(world, GameCommand::acceptHaulJob(10, ore->id, CommandSource::Ai)));
@@ -197,14 +198,15 @@ TEST_CASE("at war civilians will not enter rival-claimed systems", "[slr][Percei
 	WorldData world = makeStarterMap();
 	declareWarBetweenEmpires(world, HelionEmpireId, AshreachEmpireId);
 	REQUIRE(empiresAreAtWar(world, AshreachEmpireId, HelionEmpireId));
-	REQUIRE(systemClaimBlocksCivilian(world, 2, HelionEmpireId));
+	REQUIRE_FALSE(systemClaimBlocksCivilian(world, 2, HelionEmpireId));
 	REQUIRE(systemClaimBlocksCivilian(world, 4, HelionEmpireId));
 	REQUIRE(systemClaimBlocksCivilian(world, 8, HelionEmpireId));
 	REQUIRE_FALSE(systemClaimBlocksCivilian(world, 3, HelionEmpireId));
 	REQUIRE_FALSE(systemClaimBlocksCivilian(world, 6, HelionEmpireId));
-	REQUIRE(civilianLanePath(world, 5, 1, HelionEmpireId).empty());
+	REQUIRE(civilianLanePath(world, 5, 1, HelionEmpireId) == shortestLanePath(world, 5, 1));
 	REQUIRE(civilianLanePath(world, 5, 3, HelionEmpireId) == shortestLanePath(world, 5, 3));
-	REQUIRE(civilianLanePath(world, 5, 1, HelionEmpireId, true).empty());
+	REQUIRE(civilianLanePath(world, 3, 8, HelionEmpireId).empty());
+	REQUIRE(civilianLanePath(world, 3, 8, HelionEmpireId, true).empty());
 }
 
 TEST_CASE("a fleet fight sets the empire pair at war", "[slr][PerceivedSafety]")

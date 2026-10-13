@@ -92,11 +92,13 @@ TEST_CASE("second accept drops when remaining room is one truckload", "[slr][Job
 	world.trucks.push_back(Truck{
 		.id = 10,
 		.empireId = HelionEmpireId,
-		.motion = { .route = { 5 }, .speed = 25.0f } });
+		.motion = { .route = { 5 }, .speed = 25.0f },
+		.classId = HelionCivilianTruckClassId });
 	world.trucks.push_back(Truck{
 		.id = 11,
 		.empireId = HelionEmpireId,
-		.motion = { .route = { 5 }, .speed = 25.0f } });
+		.motion = { .route = { 5 }, .speed = 25.0f },
+		.classId = HelionCivilianTruckClassId });
 
 	REQUIRE(execute(
 		world,
@@ -123,7 +125,8 @@ TEST_CASE("Helion truck does not accept an Ashreach haul job", "[slr][Job]")
 	world.trucks.push_back(Truck{
 		.id = 1,
 		.empireId = HelionEmpireId,
-		.motion = { .route = { 5 }, .speed = 25.0f } });
+		.motion = { .route = { 5 }, .speed = 25.0f },
+		.classId = HelionCivilianTruckClassId });
 
 	REQUIRE_FALSE(execute(
 		world,

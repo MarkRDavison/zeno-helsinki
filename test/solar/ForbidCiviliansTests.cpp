@@ -10,7 +10,7 @@ namespace slr
 namespace ForbidCiviliansTests
 {
 
-TEST_CASE("forbidding Ashreach blocks unescorted Kestrel but not Junction ore", "[slr][ForbidCivilians]")
+TEST_CASE("forbidding Ashreach blocks unescorted Ashreach dest but not Helion steel", "[slr][ForbidCivilians]")
 {
 	WorldData world = makeStarterMap();
 	REQUIRE(execute(
@@ -22,8 +22,8 @@ TEST_CASE("forbidding Ashreach blocks unescorted Kestrel but not Junction ore", 
 			CommandSource::Player)));
 	REQUIRE(civilianHaulIsForbidden(world, HelionEmpireId, AshreachEmpireId));
 	REQUIRE(civilianLanePath(world, 5, 3, HelionEmpireId) == shortestLanePath(world, 5, 3));
-	REQUIRE(civilianLanePath(world, 5, 1, HelionEmpireId).empty());
-	REQUIRE(civilianLanePath(world, 5, 1, HelionEmpireId, true) == shortestLanePath(world, 5, 1));
+	REQUIRE(civilianLanePath(world, 5, 1, HelionEmpireId) == shortestLanePath(world, 5, 1));
+	REQUIRE(civilianLanePath(world, 3, 4, HelionEmpireId).empty());
 
 	StarSystem* rimward = world.systemById(5);
 	REQUIRE(rimward != nullptr);
@@ -87,7 +87,7 @@ TEST_CASE("standing escort still takes Helion steel when Ashreach claims are for
 			AshreachEmpireId,
 			true,
 			CommandSource::Player)));
-	REQUIRE(execute(world, GameCommand::setFleetEscort(1, 1, 0, CommandSource::Player)));
+	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 1, 0, 0, CommandSource::Player)));
 	stepGalaxy(world);
 
 	const Convoy* standing = world.convoyById(home->escortConvoyId);

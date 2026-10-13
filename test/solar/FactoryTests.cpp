@@ -91,7 +91,8 @@ TEST_CASE("empty truck at Junction with mill steel takes Helion job along Juncti
 	world.trucks.push_back(Truck{
 		.id = 1,
 		.empireId = HelionEmpireId,
-		.motion = { .route = { 3 }, .speed = 25.0f } });
+		.motion = { .route = { 3 }, .speed = 25.0f },
+		.classId = HelionCivilianTruckClassId });
 
 	stepGalaxy(world);
 

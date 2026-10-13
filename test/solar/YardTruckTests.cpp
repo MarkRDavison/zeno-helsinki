@@ -255,7 +255,7 @@ TEST_CASE("a starved hull waits until steel covers a tick then finishes", "[slr]
 	const Truck* built = lastTruck(world);
 	REQUIRE(built != nullptr);
 	REQUIRE(built->classId == HelionCivilianTruckClassId);
-	REQUIRE_FALSE(built->isMilitary);
+	REQUIRE_FALSE(truckHasRole(world, *built, HullRole::MilitaryCargo));
 	REQUIRE(truckSystemId(*built) == 1);
 	REQUIRE(built->cargoAmount == 0);
 }
@@ -280,7 +280,7 @@ TEST_CASE("finished military truck copies class id and isMilitary", "[slr][YardT
 	REQUIRE(countTrucksOfClass(world, HelionMilitaryTruckClassId) == 1);
 	const Truck* built = lastTruck(world);
 	REQUIRE(built != nullptr);
-	REQUIRE(built->isMilitary);
+	REQUIRE(truckHasRole(world, *built, HullRole::MilitaryCargo));
 	REQUIRE(built->classId == HelionMilitaryTruckClassId);
 	REQUIRE(fleetHullCount(world) == hullsBefore);
 }

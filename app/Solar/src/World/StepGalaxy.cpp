@@ -173,6 +173,11 @@ namespace
 				continue;
 			}
 
+			if (convoyIsStanding(convoy) && !truckHasCargoHaulRole(world, truck))
+			{
+				continue;
+			}
+
 			anyMember = true;
 			if (!isTruckAtSystem(truck, convoy.loadSystemId))
 			{
@@ -199,10 +204,21 @@ namespace
 			}
 
 			return anyMember && allLoaded &&
-				countTrucksInConvoy(world, convoy.id) == standingDesiredTruckCount(convoy);
+				countCargoHaulTrucksInConvoy(world, convoy.id) == standingDesiredTruckCount(convoy);
 		}
 
 		return anyMember && anyLoadedAtRally;
+	}
+
+	bool truckIsWithStandingEscortFleet(const Fleet& fleet, const Truck& truck)
+	{
+		if (isTruckAtSystem(truck, fleet.systemId))
+		{
+			return true;
+		}
+
+		return fleet.motion.route.size() >= 2 && truck.motion.route == fleet.motion.route &&
+			truck.motion.hop == fleet.motion.hop;
 	}
 
 	float slowestMemberSpeed(const WorldData& world, long long convoyId)
@@ -223,7 +239,113 @@ namespace
 			}
 		}
 
+		const Convoy* convoy = world.convoyById(convoyId);
+		if (convoy != nullptr && convoyIsStanding(*convoy))
+		{
+			const Fleet* fleet = world.fleetById(convoy->escortFleetId);
+			if (fleet != nullptr && fleet->motion.speed > 0.0f)
+			{
+				if (!any || fleet->motion.speed < slowest)
+				{
+					slowest = fleet->motion.speed;
+				}
+			}
+		}
+
 		return slowest;
+	}
+
+	bool standingEscortHasInGroupMembers(const WorldData& world, const Convoy& convoy, const Fleet& fleet)
+	{
+		for (const auto& truck : world.trucks)
+		{
+			if (truck.convoyId == convoy.id && truckIsWithStandingEscortFleet(fleet, truck))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void applyStandingEscortFollow(WorldData& world)
+	{
+		for (auto& convoy : world.convoys)
+		{
+			if (!convoyIsStanding(convoy) || convoy.haulJobId != 0)
+			{
+				continue;
+			}
+
+			Fleet* fleet = world.fleetById(convoy.escortFleetId);
+			if (fleet == nullptr || fleet->motion.route.size() < 2)
+			{
+				continue;
+			}
+
+			std::vector<long long> inGroupIds;
+			float slowest = fleet->motion.speed;
+			for (const auto& truck : world.trucks)
+			{
+				if (truck.convoyId != convoy.id || !truckIsWithStandingEscortFleet(*fleet, truck))
+				{
+					continue;
+				}
+
+				inGroupIds.push_back(truck.id);
+				if (truck.motion.speed < slowest)
+				{
+					slowest = truck.motion.speed;
+				}
+			}
+
+			if (inGroupIds.empty())
+			{
+				continue;
+			}
+
+			LaneMotion group = fleet->motion;
+			group.speed = slowest;
+			const bool hopDone = advanceAlongLane(world, group);
+			const float fleetSpeed = fleet->motion.speed;
+			fleet->motion.route = group.route;
+			fleet->motion.hop = group.hop;
+			fleet->motion.progress = group.progress;
+			fleet->motion.direction = group.direction;
+			fleet->motion.speed = fleetSpeed;
+			if (hopDone && group.hop >= 0 &&
+				group.hop < static_cast<int>(group.route.size()))
+			{
+				fleet->systemId = group.route[static_cast<size_t>(group.hop)];
+				if (group.hop == static_cast<int>(group.route.size()) - 1)
+				{
+					fleet->motion.route.clear();
+					fleet->motion.hop = 0;
+				}
+			}
+
+			for (const long long truckId : inGroupIds)
+			{
+				Truck* truck = world.truckById(truckId);
+				if (truck == nullptr)
+				{
+					continue;
+				}
+
+				if (fleet->motion.route.size() < 2)
+				{
+					parkTruckAt(*truck, fleet->systemId);
+					continue;
+				}
+
+				const float truckSpeed = truck->motion.speed;
+				truck->motion.route = fleet->motion.route;
+				truck->motion.hop = fleet->motion.hop;
+				truck->motion.progress = fleet->motion.progress;
+				truck->motion.direction = fleet->motion.direction;
+				truck->motion.speed = truckSpeed;
+			}
+		}
 	}
 
 	void departReadyConvoys(WorldData& world)
@@ -529,7 +651,7 @@ namespace
 			bool anyoneAway = fleet->systemId != convoy.loadSystemId || fleet->motion.route.size() >= 2;
 			for (const auto& truck : world.trucks)
 			{
-				if (truck.convoyId != convoy.id)
+				if (truck.convoyId != convoy.id || !truckHasCargoHaulRole(world, truck))
 				{
 					continue;
 				}
@@ -580,6 +702,7 @@ namespace
 		}
 
 		finishStandingRunsAfterDump(world);
+		applyStandingEscortFollow(world);
 
 		for (auto& truck : world.trucks)
 		{
@@ -587,6 +710,16 @@ namespace
 			if (convoy != nullptr && convoyIsUnderway(*convoy))
 			{
 				continue;
+			}
+
+			if (convoy != nullptr && convoyIsStanding(*convoy) && convoy->haulJobId == 0)
+			{
+				const Fleet* fleet = world.fleetById(convoy->escortFleetId);
+				if (fleet != nullptr && fleet->motion.route.size() >= 2 &&
+					truckIsWithStandingEscortFleet(*fleet, truck))
+				{
+					continue;
+				}
 			}
 
 			advanceAlongLane(world, truck.motion);
@@ -610,7 +743,7 @@ namespace
 	{
 		for (auto& truck : world.trucks)
 		{
-			if (truck.haulJobId != 0 || truck.cargoAmount != 0)
+			if (truck.haulJobId != 0)
 			{
 				continue;
 			}
@@ -690,7 +823,7 @@ namespace
 				continue;
 			}
 
-			if (countTrucksInConvoy(world, convoy.id) != standingDesiredTruckCount(convoy))
+			if (countCargoHaulTrucksInConvoy(world, convoy.id) != standingDesiredTruckCount(convoy))
 			{
 				continue;
 			}
@@ -780,8 +913,14 @@ namespace
 				continue;
 			}
 
+			if (!truckHasCargoHaulRole(world, truck))
+			{
+				continue;
+			}
+
 			long long bestJobId = 0;
 			long long bestRisk = -1;
+			const bool militaryPath = truckUsesMilitaryHaulPath(world, truck);
 			for (const auto& job : world.haulJobs)
 			{
 				if (job.empireId != truck.empireId)
@@ -790,7 +929,7 @@ namespace
 				}
 
 				const StarSystem* destination = world.systemById(job.destinationSystemId);
-				if (!truck.isMilitary && destination != nullptr && destination->empireId != 0 &&
+				if (!militaryPath && destination != nullptr && destination->empireId != 0 &&
 					civilianHaulIsForbidden(world, truck.empireId, destination->empireId))
 				{
 					continue;
@@ -808,7 +947,7 @@ namespace
 						job.destinationSystemId,
 						truck.empireId,
 						false,
-						truck.isMilitary) == 0)
+						militaryPath) == 0)
 				{
 					continue;
 				}
@@ -822,7 +961,7 @@ namespace
 				const bool destForbidden = destination != nullptr && destination->empireId != 0 &&
 					civilianHaulIsForbidden(world, truck.empireId, destination->empireId);
 				const long long risk = (civilianSupply == 0 || destForbidden) ? 1 : 0;
-				if (truck.isMilitary)
+				if (militaryPath)
 				{
 					if (bestJobId == 0 || risk > bestRisk || (risk == bestRisk && job.id < bestJobId))
 					{
@@ -888,6 +1027,13 @@ namespace
 				continue;
 			}
 
+			if (escort != nullptr && convoyIsStanding(*escort) && escort->haulJobId == 0 &&
+				fleet.motion.route.size() >= 2 &&
+				standingEscortHasInGroupMembers(world, *escort, fleet))
+			{
+				continue;
+			}
+
 			advanceFleet(world, fleet);
 		}
 	}
@@ -904,6 +1050,8 @@ namespace
 		applyYardSlipConstruction(world);
 		applyYardHullConstruction(world);
 		applyYardMagazineRestock(world);
+		applyTenderLoadFromYard(world);
+		applyTenderUnloadIntoMagazines(world);
 		applyStandingConvoyJoins(world);
 		applyHaulJobAccepts(world);
 		applyStandingConvoyHaulAccepts(world);
