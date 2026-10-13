@@ -70,7 +70,7 @@ namespace MagazineRestockTests
 		return second;
 	}
 
-	void setMissilePile(StarSystem& system, long long amount)
+	void setMissilePile(StarSystem& system, GoodAmount amount)
 	{
 		for (auto& stock : system.stocks)
 		{

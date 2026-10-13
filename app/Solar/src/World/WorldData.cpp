@@ -2,6 +2,7 @@
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <utility>
 
@@ -240,7 +241,7 @@ namespace slr
 		return false;
 	}
 
-	long long getStockpileAmount(const StarSystem& system, long long goodId)
+	GoodAmount getStockpileAmount(const StarSystem& system, long long goodId)
 	{
 		for (const auto& stock : system.stocks)
 		{
@@ -250,12 +251,12 @@ namespace slr
 			}
 		}
 
-		return 0;
+		return 0.f;
 	}
 
-	long long locatedGoodAmount(const WorldData& world, long long goodId)
+	GoodAmount locatedGoodAmount(const WorldData& world, long long goodId)
 	{
-		long long total = 0;
+		GoodAmount total = 0.f;
 		for (const auto& system : world.systems)
 		{
 			total += getStockpileAmount(system, goodId);
@@ -272,7 +273,7 @@ namespace slr
 		return total;
 	}
 
-	long long getInbound(const StarSystem& system, long long goodId)
+	GoodAmount getInbound(const StarSystem& system, long long goodId)
 	{
 		for (const auto& stock : system.stocks)
 		{
@@ -285,7 +286,7 @@ namespace slr
 		return 0;
 	}
 
-	long long getNeed(const StarSystem& system, long long goodId)
+	GoodAmount getNeed(const StarSystem& system, long long goodId)
 	{
 		for (const auto& stock : system.stocks)
 		{
@@ -298,21 +299,21 @@ namespace slr
 		return 0;
 	}
 
-	long long uncoveredNeed(const StarSystem& system, long long goodId)
+	GoodAmount uncoveredNeed(const StarSystem& system, long long goodId)
 	{
-		const long long inbound = getInbound(system, goodId);
-		const long long need = getNeed(system, goodId);
+		const GoodAmount inbound = getInbound(system, goodId);
+		const GoodAmount need = getNeed(system, goodId);
 		if (need <= inbound)
 		{
-			return 0;
+			return 0.f;
 		}
 
 		return need - inbound;
 	}
 
-	long long quantityForGood(const std::vector<GoodQuantity>& rows, long long goodId)
+	GoodAmount quantityForGood(const std::vector<GoodQuantity>& rows, long long goodId)
 	{
-		long long total = 0;
+		GoodAmount total = 0.f;
 		for (const auto& row : rows)
 		{
 			if (row.goodId == goodId)
@@ -324,9 +325,9 @@ namespace slr
 		return total;
 	}
 
-	long long mineOutputPerTick(const Mine& mine, long long goodId)
+	GoodAmount mineOutputPerTick(const Mine& mine, long long goodId)
 	{
-		long long total = 0;
+		GoodAmount total = 0.f;
 		for (const auto& output : mine.outputsPerTick)
 		{
 			if (output.goodId == goodId)
@@ -338,9 +339,9 @@ namespace slr
 		return total;
 	}
 
-	long long mineMaxStockpile(const Mine& mine, long long goodId)
+	GoodAmount mineMaxStockpile(const Mine& mine, long long goodId)
 	{
-		long long total = 0;
+		GoodAmount total = 0.f;
 		for (const auto& output : mine.outputsPerTick)
 		{
 			if (output.goodId == goodId)
@@ -350,6 +351,75 @@ namespace slr
 		}
 
 		return total;
+	}
+
+	const FactoryRecipe* factoryRecipeById(long long recipeId)
+	{
+		static const FactoryRecipe missileEngineMk1{
+			.recipeId = FactoryRecipeId_MissileEngineMk1,
+			.inputsPerTick = { GoodQuantity{ .goodId = SteelGoodId, .amount = FactoryAvonEngineSteelPerTick } },
+			.outputGoodId = MissileEngineMk1GoodId,
+			.outputAmountPerTick = FactoryAvonComponentOutputPerTick,
+			.outputMaxStockpile = AvonComponentMaxStockpile };
+		static const FactoryRecipe missileWarheadMk1{
+			.recipeId = FactoryRecipeId_MissileWarheadMk1,
+			.inputsPerTick = { GoodQuantity{ .goodId = SteelGoodId, .amount = FactoryAvonWarheadSteelPerTick } },
+			.outputGoodId = MissileWarheadMk1GoodId,
+			.outputAmountPerTick = FactoryAvonComponentOutputPerTick,
+			.outputMaxStockpile = AvonComponentMaxStockpile };
+		static const FactoryRecipe missileSeekerMk1{
+			.recipeId = FactoryRecipeId_MissileSeekerMk1,
+			.inputsPerTick = { GoodQuantity{ .goodId = SteelGoodId, .amount = FactoryAvonSeekerSteelPerTick } },
+			.outputGoodId = MissileSeekerMk1GoodId,
+			.outputAmountPerTick = FactoryAvonComponentOutputPerTick,
+			.outputMaxStockpile = AvonComponentMaxStockpile };
+		static const FactoryRecipe prototypeMissileMk1{
+			.recipeId = FactoryRecipeId_PrototypeMissileMk1,
+			.inputsPerTick = {
+				GoodQuantity{
+					.goodId = MissileEngineMk1GoodId,
+					.amount = FactoryAvonAssemblerComponentInputPerTick },
+				GoodQuantity{
+					.goodId = MissileWarheadMk1GoodId,
+					.amount = FactoryAvonAssemblerComponentInputPerTick },
+				GoodQuantity{
+					.goodId = MissileSeekerMk1GoodId,
+					.amount = FactoryAvonAssemblerComponentInputPerTick } },
+			.outputGoodId = PrototypeMissileMk1GoodId,
+			.outputAmountPerTick = FactoryAvonAssemblerOutputPerTick,
+			.outputMaxStockpile = AvonPrototypeMissileMaxStockpile,
+			.ticksPerOutput = FactoryAvonAssemblerTicksPerOutput };
+
+		switch (recipeId)
+		{
+		case FactoryRecipeId_MissileEngineMk1:
+			return &missileEngineMk1;
+		case FactoryRecipeId_MissileWarheadMk1:
+			return &missileWarheadMk1;
+		case FactoryRecipeId_MissileSeekerMk1:
+			return &missileSeekerMk1;
+		case FactoryRecipeId_PrototypeMissileMk1:
+			return &prototypeMissileMk1;
+		default:
+			return nullptr;
+		}
+	}
+
+	Factory makeFactoryFromRecipe(
+		long long systemId,
+		long long empireId,
+		const FactoryRecipe& recipe,
+		std::vector<GoodQuantity> desiredPiles)
+	{
+		return Factory{
+			.systemId = systemId,
+			.empireId = empireId,
+			.desiredPiles = std::move(desiredPiles),
+			.inputsPerTick = recipe.inputsPerTick,
+			.outputGoodId = recipe.outputGoodId,
+			.outputAmountPerTick = recipe.outputAmountPerTick,
+			.outputMaxStockpile = recipe.outputMaxStockpile,
+			.ticksPerOutput = recipe.ticksPerOutput };
 	}
 
 	const ProductRampSpec* productRampSpecForGood(long long goodId)
@@ -367,22 +437,23 @@ namespace slr
 		return nullptr;
 	}
 
-	long long factoryEffectiveAmount(long long ratedAmount, long long efficiencyPerThousand)
+	GoodAmount factoryEffectiveAmount(GoodAmount ratedAmount, long long efficiencyPerThousand)
 	{
-		if (ratedAmount <= 0 || efficiencyPerThousand <= 0)
+		if (ratedAmount <= 0.f || efficiencyPerThousand <= 0)
 		{
-			return 0;
+			return 0.f;
 		}
 
-		return ratedAmount * efficiencyPerThousand / FactoryFullEfficiencyPerThousand;
+		return ratedAmount * static_cast<float>(efficiencyPerThousand) /
+			static_cast<float>(FactoryFullEfficiencyPerThousand);
 	}
 
 	void advanceProductRampAfterProduction(
 		Factory& factory,
 		const ProductRampSpec& spec,
-		long long outputAdded)
+		GoodAmount outputAdded)
 	{
-		if (outputAdded <= 0)
+		if (outputAdded <= 0.f)
 		{
 			return;
 		}
@@ -398,9 +469,9 @@ namespace slr
 		}
 	}
 
-	long long consumerDesiredPile(const WorldData& world, long long systemId, long long goodId)
+	GoodAmount consumerDesiredPile(const WorldData& world, long long systemId, long long goodId)
 	{
-		long long desired = 0;
+		GoodAmount desired = 0.f;
 		for (const auto& yard : world.yards)
 		{
 			if (yard.systemId == systemId)
@@ -421,9 +492,9 @@ namespace slr
 		return desired;
 	}
 
-	long long stockpileAvailableForYardConsume(const WorldData& world, long long systemId, long long goodId)
+	GoodAmount stockpileAvailableForYardConsume(const WorldData& world, long long systemId, long long goodId)
 	{
-		long long reserved = 0;
+		GoodAmount reserved = 0.f;
 		for (const auto& yard : world.yards)
 		{
 			if (yard.systemId == systemId)
@@ -438,20 +509,20 @@ namespace slr
 			return 0;
 		}
 
-		return std::max(0LL, getStockpileAmount(*system, goodId) - reserved);
+		return std::max(0.f, getStockpileAmount(*system, goodId) - reserved);
 	}
 
 	void postNeedFromConsumerShortfall(WorldData& world, StarSystem& system, long long goodId)
 	{
-		const long long desired = consumerDesiredPile(world, system.id, goodId);
-		const long long stockpile = getStockpileAmount(system, goodId);
-		long long shortfall = desired - stockpile;
-		if (shortfall < 0)
+		const GoodAmount desired = consumerDesiredPile(world, system.id, goodId);
+		const GoodAmount stockpile = getStockpileAmount(system, goodId);
+		GoodAmount shortfall = desired - stockpile;
+		if (shortfall < 0.f)
 		{
-			shortfall = 0;
+			shortfall = 0.f;
 		}
 
-		const long long posted = (shortfall >= truckloadForGood(goodId)) ? shortfall : 0;
+		const GoodAmount posted = (shortfall >= truckloadForGood(goodId)) ? shortfall : 0.f;
 		for (auto& stock : system.stocks)
 		{
 			if (stock.goodId == goodId)
@@ -461,7 +532,7 @@ namespace slr
 			}
 		}
 
-		if (posted == 0)
+		if (posted == 0.f)
 		{
 			return;
 		}
@@ -508,9 +579,9 @@ namespace slr
 		}
 	}
 
-	bool useFromStockpile(WorldData& world, long long systemId, long long goodId, long long amount)
+	bool useFromStockpile(WorldData& world, long long systemId, long long goodId, GoodAmount amount)
 	{
-		if (amount <= 0)
+		if (amount <= 0.f)
 		{
 			return false;
 		}
@@ -873,13 +944,13 @@ namespace slr
 			return 0;
 		}
 
-		long long emptyAssignedOnJob(const WorldData& world, long long jobId, long long goodId)
+		GoodAmount emptyAssignedOnJob(const WorldData& world, long long jobId, long long goodId)
 		{
-			const long long truckload = truckloadForGood(goodId);
-			long long reserved = 0;
+			const GoodAmount truckload = truckloadForGood(goodId);
+			GoodAmount reserved = 0.f;
 			for (const auto& truck : world.trucks)
 			{
-				if (truck.haulJobId == jobId && truck.cargoAmount == 0)
+				if (truck.haulJobId == jobId && truck.cargoAmount <= 0.f)
 				{
 					reserved += truckload;
 				}
@@ -888,13 +959,13 @@ namespace slr
 			return reserved;
 		}
 
-		long long remainingAcceptRoom(const WorldData& world, const StarSystem& destination, const HaulJob& job)
+		GoodAmount remainingAcceptRoom(const WorldData& world, const StarSystem& destination, const HaulJob& job)
 		{
-			const long long uncovered = uncoveredNeed(destination, job.goodId);
-			const long long reserved = emptyAssignedOnJob(world, job.id, job.goodId);
+			const GoodAmount uncovered = uncoveredNeed(destination, job.goodId);
+			const GoodAmount reserved = emptyAssignedOnJob(world, job.id, job.goodId);
 			if (uncovered <= reserved)
 			{
-				return 0;
+				return 0.f;
 			}
 
 			return uncovered - reserved;
@@ -1019,8 +1090,8 @@ namespace slr
 					}
 				}
 
-				const long long truckload = truckloadForGood(stock.goodId);
-				long long remaining = 0;
+				const GoodAmount truckload = truckloadForGood(stock.goodId);
+				GoodAmount remaining = 0.f;
 				if (existing != nullptr)
 				{
 					remaining = remainingAcceptRoom(world, system, *existing);
@@ -1080,20 +1151,20 @@ namespace slr
 			world.haulJobs.end());
 	}
 
-	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId)
+	long long truckCountToCarryAmountInOneGo(GoodAmount amount, long long goodId)
 	{
-		if (amount <= 0)
+		if (amount <= 0.f)
 		{
 			return 0;
 		}
 
-		const long long truckload = truckloadForGood(goodId);
-		return (amount + truckload - 1) / truckload;
+		const GoodAmount truckload = truckloadForGood(goodId);
+		return static_cast<long long>(std::ceil(amount / truckload));
 	}
 
-	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId)
+	bool convoyCarriesAmountInOneGo(long long truckCount, GoodAmount amount, long long goodId)
 	{
-		if (truckCount <= 0 || amount <= 0)
+		if (truckCount <= 0 || amount <= 0.f)
 		{
 			return false;
 		}
@@ -1435,9 +1506,9 @@ namespace slr
 		return getStockpileAmount(*supply, goodId) >= reserved + truckload;
 	}
 
-	long long convoyCargoOrReservedAmount(const WorldData& world, const Convoy& convoy)
+	GoodAmount convoyCargoOrReservedAmount(const WorldData& world, const Convoy& convoy)
 	{
-		long long amount = 0;
+		GoodAmount amount = 0.f;
 		for (const auto& truck : world.trucks)
 		{
 			if (truck.convoyId != convoy.id)
@@ -1884,24 +1955,24 @@ namespace slr
 		return shipClass.empireId == empireId && shipClassHasRole(shipClass, HullRole::Warship);
 	}
 
-	long long hullSteelPerTick(const ShipClass& shipClass)
+	GoodAmount hullSteelPerTick(const ShipClass& shipClass)
 	{
 		if (shipClass.buildTicks <= 0)
 		{
-			return 0;
+			return 0.f;
 		}
 
-		return shipClass.steelCost / shipClass.buildTicks;
+		return shipClass.steelCost / static_cast<float>(shipClass.buildTicks);
 	}
 
-	long long refitSteelPerTick()
+	GoodAmount refitSteelPerTick()
 	{
 		if (RefitHullBuildTicks <= 0)
 		{
-			return 0;
+			return 0.f;
 		}
 
-		return RefitHullSteelCost / RefitHullBuildTicks;
+		return RefitHullSteelCost / static_cast<float>(RefitHullBuildTicks);
 	}
 
 	long long nextTruckId(const WorldData& world)

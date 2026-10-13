@@ -41,9 +41,9 @@ namespace
 
 }
 
-	void raiseInboundOnLoad(StarSystem& destination, long long goodId, long long amount)
+	void raiseInboundOnLoad(StarSystem& destination, long long goodId, GoodAmount amount)
 	{
-		if (amount <= 0)
+		if (amount <= 0.f)
 		{
 			return;
 		}
@@ -51,15 +51,15 @@ namespace
 		stockRow(destination, goodId).inbound += amount;
 	}
 
-	void reduceInboundOnArrival(StarSystem& destination, long long goodId, long long amount)
+	void reduceInboundOnArrival(StarSystem& destination, long long goodId, GoodAmount amount)
 	{
-		if (amount <= 0)
+		if (amount <= 0.f)
 		{
 			return;
 		}
 
 		GoodStock& stock = stockRow(destination, goodId);
-		stock.inbound = std::max(0LL, stock.inbound - amount);
+		stock.inbound = std::max(0.f, stock.inbound - amount);
 	}
 
 	bool destroyTruckAndReduceInbound(WorldData& world, long long truckId)

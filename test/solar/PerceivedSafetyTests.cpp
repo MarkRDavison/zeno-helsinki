@@ -12,6 +12,20 @@ namespace slr
 namespace PerceivedSafetyTests
 {
 
+void clearAvonSteel(WorldData& world)
+{
+	StarSystem* avon = world.systemById(AvonSystemId);
+	REQUIRE(avon != nullptr);
+	for (auto& stock : avon->stocks)
+	{
+		if (stock.goodId == SteelGoodId)
+		{
+			stock.goodAmount = 0.f;
+			return;
+		}
+	}
+}
+
 TEST_CASE("Junction is adjacent to Ashreach hostile presence for Helion", "[slr][PerceivedSafety]")
 {
 	const WorldData world = makeStarterMap();
@@ -24,6 +38,7 @@ TEST_CASE("Junction is adjacent to Ashreach hostile presence for Helion", "[slr]
 TEST_CASE("Helion trucks still haul Rimward to Junction while the rival parks at Ashreach", "[slr][PerceivedSafety]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	const HaulJob* job = haulJobFor(world, 3, IronOreGoodId);
 	REQUIRE(job != nullptr);
 	const long long jobId = job->id;

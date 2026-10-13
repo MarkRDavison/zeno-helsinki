@@ -8,16 +8,31 @@ namespace slr
 namespace LocatedGoodTests
 {
 
+void clearAvonSteel(WorldData& world)
+{
+	StarSystem* avon = world.systemById(AvonSystemId);
+	REQUIRE(avon != nullptr);
+	for (auto& stock : avon->stocks)
+	{
+		if (stock.goodId == SteelGoodId)
+		{
+			stock.goodAmount = 0.f;
+			return;
+		}
+	}
+}
+
 TEST_CASE("starter located steel is the flying truckload; ore is 0", "[slr][LocatedGood]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(locatedGoodAmount(world, SteelGoodId) == TruckCapacity_Steel);
+	REQUIRE(locatedGoodAmount(world, SteelGoodId) == TruckCapacity_Steel + AvonStarterSteelStockpile);
 	REQUIRE(locatedGoodAmount(world, IronOreGoodId) == 0);
 }
 
 TEST_CASE("loading ore moves it from Rimward onto the truck without changing the located total", "[slr][LocatedGood]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	world.mines.clear();
 	world.trucks.clear();
 	world.convoys.clear();
@@ -46,6 +61,7 @@ TEST_CASE("dumping steel moves it from the truck into Helion without changing th
 	WorldData world = makeStarterMap();
 	world.trucks.clear();
 	world.mines.clear();
+	world.factories.clear();
 	const HaulJob* job = haulJobFor(world, 1, SteelGoodId);
 	REQUIRE(job != nullptr);
 	world.trucks.push_back(Truck{
@@ -56,8 +72,8 @@ TEST_CASE("dumping steel moves it from the truck into Helion without changing th
 		.cargoAmount = TruckCapacity_Steel,
 		.haulJobId = job->id });
 
-	const long long locatedBefore = locatedGoodAmount(world, SteelGoodId);
-	REQUIRE(locatedBefore == TruckCapacity_Steel);
+	const GoodAmount locatedBefore = locatedGoodAmount(world, SteelGoodId);
+	REQUIRE(locatedBefore == TruckCapacity_Steel + AvonStarterSteelStockpile);
 
 	stepGalaxy(world);
 
@@ -77,6 +93,16 @@ TEST_CASE("civilian consumption lowers located steel", "[slr][LocatedGood]")
 	REQUIRE(helion != nullptr);
 	helion->stocks.front().goodAmount = 100;
 	helion->stocks.front().inbound = 0;
+	StarSystem* avon = world.systemById(AvonSystemId);
+	REQUIRE(avon != nullptr);
+	for (auto& stock : avon->stocks)
+	{
+		if (stock.goodId == SteelGoodId)
+		{
+			stock.goodAmount = 0.f;
+			break;
+		}
+	}
 
 	REQUIRE(locatedGoodAmount(world, SteelGoodId) == 100);
 

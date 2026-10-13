@@ -81,10 +81,10 @@ namespace slr
 	struct GoodStock
 	{
 		long long goodId{ 0 };
-		long long goodAmount{ 0 };
-		long long inbound{ 0 };
-		long long need{ 0 };
-		long long deferredNeed{ 0 };
+		GoodAmount goodAmount{ 0.f };
+		GoodAmount inbound{ 0.f };
+		GoodAmount need{ 0.f };
+		GoodAmount deferredNeed{ 0.f };
 		bool deferredNeedHeldOneTick{ false };
 	};
 
@@ -106,14 +106,14 @@ namespace slr
 	struct GoodQuantity
 	{
 		long long goodId{ 0 };
-		long long amount{ 0 };
+		GoodAmount amount{ 0.f };
 	};
 
 	struct MineOutput
 	{
 		long long goodId{ 0 };
-		long long amountPerTick{ 0 };
-		long long maxStockpile{ 0 };
+		GoodAmount amountPerTick{ 0.f };
+		GoodAmount maxStockpile{ 0.f };
 	};
 
 	struct Mine
@@ -161,18 +161,29 @@ namespace slr
 		long long maxEfficiencyPerThousand{ FactoryFullEfficiencyPerThousand };
 	};
 
+	struct FactoryRecipe
+	{
+		long long recipeId{ 0 };
+		std::vector<GoodQuantity> inputsPerTick;
+		long long outputGoodId{ 0 };
+		GoodAmount outputAmountPerTick{ 0.f };
+		GoodAmount outputMaxStockpile{ 0.f };
+		long long ticksPerOutput{ 1 };
+	};
+
 	struct Factory
 	{
 		long long systemId{ 0 };
 		long long empireId{ 0 };
 		std::vector<GoodQuantity> desiredPiles;
-		long long inputGoodId{ 0 };
-		long long inputAmountPerTick{ 0 };
+		std::vector<GoodQuantity> inputsPerTick;
 		long long outputGoodId{ 0 };
-		long long outputAmountPerTick{ 0 };
-		long long outputMaxStockpile{ 0 };
+		GoodAmount outputAmountPerTick{ 0.f };
+		GoodAmount outputMaxStockpile{ 0.f };
 		long long productEfficiencyPerThousand{ FactoryFullEfficiencyPerThousand };
-		long long productRampUnitsProduced{ 0 };
+		GoodAmount productRampUnitsProduced{ 0.f };
+		long long ticksPerOutput{ 1 };
+		long long remainingOutputTicks{ 0 };
 	};
 
 	struct LaneMotion
@@ -193,7 +204,7 @@ namespace slr
 		// TODO: eventually trucks can transport more than 1 thing at a time
 		// i.e. have room for X standard containers
 		// and resources can fit Y resource in 1 standard container
-		long long cargoAmount{ 0 }; 
+		GoodAmount cargoAmount{ 0.f };
 		long long haulJobId{ 0 };
 		long long convoyId{ 0 };
 		long long classId{ 0 };
@@ -212,7 +223,7 @@ namespace slr
 		float closeRate{ 0.0f };
 		unsigned hullRoles{ 0 };
 		HullSize hullSize{ HullSize::Small };
-		long long steelCost{ 0 };
+		GoodAmount steelCost{ 0.f };
 		long long buildTicks{ 0 };
 		long long missileTubes{ 0 };
 		long long missileReloadInnerTicks{ 0 };
@@ -279,7 +290,7 @@ namespace slr
 		long long destinationSystemId{ 0 };
 		long long empireId{ 0 };
 		long long goodId{ 0 };
-		long long amount{ 0 };
+		GoodAmount amount{ 0.f };
 	};
 
 	struct Convoy
@@ -344,25 +355,31 @@ namespace slr
 	const EngagementPolicy* activeEngagementPolicy(const WorldData& world, const Fleet& fleet);
 	bool anyFleetOpensFire(const WorldData& world, const std::vector<long long>& fleetIds);
 
-	long long getStockpileAmount(const StarSystem& system, long long goodId);
-	long long locatedGoodAmount(const WorldData& world, long long goodId);
-	long long getInbound(const StarSystem& system, long long goodId);
-	long long getNeed(const StarSystem& system, long long goodId);
-	long long uncoveredNeed(const StarSystem& system, long long goodId);
-	long long quantityForGood(const std::vector<GoodQuantity>& rows, long long goodId);
-	long long mineOutputPerTick(const Mine& mine, long long goodId);
-	long long mineMaxStockpile(const Mine& mine, long long goodId);
+	GoodAmount getStockpileAmount(const StarSystem& system, long long goodId);
+	GoodAmount locatedGoodAmount(const WorldData& world, long long goodId);
+	GoodAmount getInbound(const StarSystem& system, long long goodId);
+	GoodAmount getNeed(const StarSystem& system, long long goodId);
+	GoodAmount uncoveredNeed(const StarSystem& system, long long goodId);
+	GoodAmount quantityForGood(const std::vector<GoodQuantity>& rows, long long goodId);
+	GoodAmount mineOutputPerTick(const Mine& mine, long long goodId);
+	GoodAmount mineMaxStockpile(const Mine& mine, long long goodId);
 	const ProductRampSpec* productRampSpecForGood(long long goodId);
-	long long factoryEffectiveAmount(long long ratedAmount, long long efficiencyPerThousand);
+	const FactoryRecipe* factoryRecipeById(long long recipeId);
+	Factory makeFactoryFromRecipe(
+		long long systemId,
+		long long empireId,
+		const FactoryRecipe& recipe,
+		std::vector<GoodQuantity> desiredPiles = {});
+	GoodAmount factoryEffectiveAmount(GoodAmount ratedAmount, long long efficiencyPerThousand);
 	void advanceProductRampAfterProduction(
 		Factory& factory,
 		const ProductRampSpec& spec,
-		long long outputAdded);
-	long long consumerDesiredPile(const WorldData& world, long long systemId, long long goodId);
-	long long stockpileAvailableForYardConsume(const WorldData& world, long long systemId, long long goodId);
+		GoodAmount outputAdded);
+	GoodAmount consumerDesiredPile(const WorldData& world, long long systemId, long long goodId);
+	GoodAmount stockpileAvailableForYardConsume(const WorldData& world, long long systemId, long long goodId);
 	void postNeedFromConsumerShortfall(WorldData& world, StarSystem& system, long long goodId);
 	void postNeedsFromConsumerShortfalls(WorldData& world, StarSystem& system);
-	bool useFromStockpile(WorldData& world, long long systemId, long long goodId, long long amount);
+	bool useFromStockpile(WorldData& world, long long systemId, long long goodId, GoodAmount amount);
 	void applyDeferredNeedPosts(WorldData& world);
 	void syncHaulJobsFromUncoveredNeed(WorldData& world);
 	const HaulJob* haulJobFor(const WorldData& world, long long destinationSystemId, long long goodId);
@@ -377,8 +394,8 @@ namespace slr
 		bool isMilitary = false);
 	Convoy* openConvoyForHaulJob(WorldData& world, long long haulJobId, bool isMilitary);
 	void parkTruckAt(Truck& truck, long long systemId);
-	long long truckCountToCarryAmountInOneGo(long long amount, long long goodId);
-	bool convoyCarriesAmountInOneGo(long long truckCount, long long amount, long long goodId);
+	long long truckCountToCarryAmountInOneGo(GoodAmount amount, long long goodId);
+	bool convoyCarriesAmountInOneGo(long long truckCount, GoodAmount amount, long long goodId);
 	bool convoyIsUnderway(const Convoy& convoy);
 	bool convoyIsStanding(const Convoy& convoy);
 	bool convoyJobGroupIsMilitary(const WorldData& world, const Convoy& convoy);
@@ -401,7 +418,7 @@ namespace slr
 		long long loadSystemId,
 		long long goodId,
 		long long assemblingConvoyId);
-	long long convoyCargoOrReservedAmount(const WorldData& world, const Convoy& convoy);
+	GoodAmount convoyCargoOrReservedAmount(const WorldData& world, const Convoy& convoy);
 	void removeConvoyIfNoMembers(WorldData& world, long long convoyId);
 	bool isTruckAtSystem(const Truck& truck, long long systemId);
 	long long countTrucksAtSystem(const WorldData& world, long long systemId);
@@ -456,8 +473,8 @@ namespace slr
 	void applyYardSlipConstruction(WorldData& world);
 	bool shipClassIsTruckOfEmpire(const ShipClass& shipClass, long long empireId);
 	bool shipClassIsWarshipOfEmpire(const ShipClass& shipClass, long long empireId);
-	long long hullSteelPerTick(const ShipClass& shipClass);
-	long long refitSteelPerTick();
+	GoodAmount hullSteelPerTick(const ShipClass& shipClass);
+	GoodAmount refitSteelPerTick();
 	long long nextTruckId(const WorldData& world);
 	void applyYardHullConstruction(WorldData& world);
 	void applyYardMagazineRestock(WorldData& world);

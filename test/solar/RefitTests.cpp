@@ -16,7 +16,7 @@ namespace RefitTests
 	constexpr long long LanceClassId = 3;
 	constexpr long long HomeFleetId = 1;
 
-	void setSteelPile(StarSystem& system, long long amount)
+	void setSteelPile(StarSystem& system, GoodAmount amount)
 	{
 		for (auto& stock : system.stocks)
 		{

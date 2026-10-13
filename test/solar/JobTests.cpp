@@ -10,6 +10,20 @@ namespace slr
 namespace JobTests
 {
 
+void clearAvonSteel(WorldData& world)
+{
+	StarSystem* avon = world.systemById(AvonSystemId);
+	REQUIRE(avon != nullptr);
+	for (auto& stock : avon->stocks)
+	{
+		if (stock.goodId == SteelGoodId)
+		{
+			stock.goodAmount = 0.f;
+			return;
+		}
+	}
+}
+
 TEST_CASE("starter Helion haul job is uncovered steel amount, not a truck", "[slr][Job]")
 {
 	const WorldData world = makeStarterMap();
@@ -58,6 +72,7 @@ TEST_CASE("150 steel needs three trucks in one go", "[slr][Job]")
 TEST_CASE("two empty trucks accept the Junction ore job and pathfind Rimward to Junction", "[slr][Job]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	const HaulJob* jobBefore = haulJobFor(world, 3, IronOreGoodId);
 	REQUIRE(jobBefore != nullptr);
 	const long long jobId = jobBefore->id;

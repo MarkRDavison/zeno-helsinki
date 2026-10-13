@@ -46,9 +46,11 @@ namespace
 			StarSystem{ .id = 6, .name = "Caldera", .position = { 820.0f, 380.0f } },
 			StarSystem{ .id = 7, .name = "Nadir", .position = { 980.0f, 260.0f } },
 			StarSystem{ .id = 8, .name = "Vesper", .position = { 700.0f, 560.0f }, .empireId = AshreachEmpireId },
+			StarSystem{ .id = AvonSystemId, .name = "Avon", .position = { 340.0f, 90.0f }, .empireId = HelionEmpireId },
 		};
 
 		addLane(world, 1, 2);
+		addLane(world, 2, AvonSystemId);
 		addLane(world, 2, 3);
 		addLane(world, 3, 4);
 		addLane(world, 3, 5);
@@ -78,19 +80,25 @@ namespace
 		vesper->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
 		vesper->stocks.push_back(GoodStock{ .goodId = MissileGoodId, .goodAmount = YardStarterMissileStockpile });
 
+		StarSystem* avon = world.systemById(AvonSystemId);
+		avon->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = AvonStarterSteelStockpile });
+		avon->stocks.push_back(GoodStock{ .goodId = MissileEngineMk1GoodId, .goodAmount = 0 });
+		avon->stocks.push_back(GoodStock{ .goodId = MissileWarheadMk1GoodId, .goodAmount = 0 });
+		avon->stocks.push_back(GoodStock{ .goodId = MissileSeekerMk1GoodId, .goodAmount = 0 });
+		avon->stocks.push_back(GoodStock{ .goodId = PrototypeMissileMk1GoodId, .goodAmount = 0 });
+
 		world.mines.push_back(Mine{
 			.systemId = 5,
 			.outputsPerTick = {
 				MineOutput{
 					.goodId = IronOreGoodId,
-					.amountPerTick = 100,
+					.amountPerTick = 100.f,
 					.maxStockpile = MineMaxStockpile_IronOre } } });
 		world.factories.push_back(Factory{
 			.systemId = 3,
 			.empireId = HelionEmpireId,
-			.desiredPiles = { GoodQuantity{ .goodId = IronOreGoodId, .amount = 1000 } },
-			.inputGoodId = IronOreGoodId,
-			.inputAmountPerTick = FactoryInputOrePerTick,
+			.desiredPiles = { GoodQuantity{ .goodId = IronOreGoodId, .amount = 1000.f } },
+			.inputsPerTick = { GoodQuantity{ .goodId = IronOreGoodId, .amount = FactoryInputOrePerTick } },
 			.outputGoodId = SteelGoodId,
 			.outputAmountPerTick = FactoryOutputSteelPerTick,
 			.outputMaxStockpile = FactoryMaxStockpile_Steel });
@@ -98,16 +106,23 @@ namespace
 			.systemId = 2,
 			.empireId = HelionEmpireId,
 			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = FactoryMissileSteelDesiredPile } },
-			.inputGoodId = SteelGoodId,
-			.inputAmountPerTick = FactoryMissileInputSteelPerTick,
+			.inputsPerTick = { GoodQuantity{ .goodId = SteelGoodId, .amount = FactoryMissileInputSteelPerTick } },
 			.outputGoodId = MissileGoodId,
 			.outputAmountPerTick = FactoryMissileOutputPerTick,
 			.outputMaxStockpile = FactoryMaxStockpile_Missiles,
 			.productEfficiencyPerThousand = FactoryStartEfficiencyPerThousand });
+		world.factories.push_back(
+			makeFactoryFromRecipe(AvonSystemId, HelionEmpireId, *factoryRecipeById(FactoryRecipeId_MissileEngineMk1)));
+		world.factories.push_back(
+			makeFactoryFromRecipe(AvonSystemId, HelionEmpireId, *factoryRecipeById(FactoryRecipeId_MissileWarheadMk1)));
+		world.factories.push_back(
+			makeFactoryFromRecipe(AvonSystemId, HelionEmpireId, *factoryRecipeById(FactoryRecipeId_MissileSeekerMk1)));
+		world.factories.push_back(
+			makeFactoryFromRecipe(AvonSystemId, HelionEmpireId, *factoryRecipeById(FactoryRecipeId_PrototypeMissileMk1)));
 		world.yards.push_back(Yard{
 			.systemId = 1,
 			.empireId = HelionEmpireId,
-			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } },
+			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000.f } },
 			.populationConsumePerTick = {
 				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationConsumePerTick_Steel } },
 			.populationReservedPiles = {
@@ -118,12 +133,12 @@ namespace
 			.outputsPerTick = {
 				MineOutput{
 					.goodId = IronOreGoodId,
-					.amountPerTick = 100,
+					.amountPerTick = 100.f,
 					.maxStockpile = MineMaxStockpile_IronOre } } });
 		world.yards.push_back(Yard{
 			.systemId = 8,
 			.empireId = AshreachEmpireId,
-			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000 } },
+			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = 1000.f } },
 			.populationConsumePerTick = {
 				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationConsumePerTick_Steel } },
 			.populationReservedPiles = {

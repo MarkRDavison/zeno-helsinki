@@ -12,7 +12,7 @@ namespace slr
 namespace
 {
 
-	void addToStockpile(StarSystem& system, long long goodId, long long amount)
+	void addToStockpile(StarSystem& system, long long goodId, GoodAmount amount)
 	{
 		for (auto& stock : system.stocks)
 		{
@@ -26,7 +26,7 @@ namespace
 		system.stocks.push_back(GoodStock{ .goodId = goodId, .goodAmount = amount });
 	}
 
-	bool takeFromStockpile(StarSystem& system, long long goodId, long long amount)
+	bool takeFromStockpile(StarSystem& system, long long goodId, GoodAmount amount)
 	{
 		for (auto& stock : system.stocks)
 		{
@@ -40,13 +40,13 @@ namespace
 		return false;
 	}
 
-	void reduceNeed(StarSystem& system, long long goodId, long long amount)
+	void reduceNeed(StarSystem& system, long long goodId, GoodAmount amount)
 	{
 		for (auto& stock : system.stocks)
 		{
 			if (stock.goodId == goodId)
 			{
-				stock.need = std::max(0LL, stock.need - amount);
+				stock.need = std::max(0.f, stock.need - amount);
 				return;
 			}
 		}
@@ -63,54 +63,6 @@ namespace
 		}
 	}
 
-	void applyFactoryProduction(WorldData& world)
-	{
-		for (auto& factory : world.factories)
-		{
-			StarSystem* system = world.systemById(factory.systemId);
-			if (system == nullptr)
-			{
-				continue;
-			}
-
-			if (factory.inputAmountPerTick <= 0 || factory.outputAmountPerTick <= 0)
-			{
-				continue;
-			}
-
-			const ProductRampSpec* rampSpec = productRampSpecForGood(factory.outputGoodId);
-			const long long efficiencyPerThousand = rampSpec != nullptr
-				? factory.productEfficiencyPerThousand
-				: FactoryFullEfficiencyPerThousand;
-			const long long effectiveOutput =
-				factoryEffectiveAmount(factory.outputAmountPerTick, efficiencyPerThousand);
-			const long long effectiveInput =
-				factoryEffectiveAmount(factory.inputAmountPerTick, efficiencyPerThousand);
-			if (effectiveOutput <= 0 || effectiveInput <= 0)
-			{
-				continue;
-			}
-
-			const long long outputRoom =
-				factory.outputMaxStockpile - getStockpileAmount(*system, factory.outputGoodId);
-			if (outputRoom < effectiveOutput)
-			{
-				continue;
-			}
-
-			if (!useFromStockpile(world, factory.systemId, factory.inputGoodId, effectiveInput))
-			{
-				continue;
-			}
-
-			addToStockpile(*system, factory.outputGoodId, effectiveOutput);
-			if (rampSpec != nullptr)
-			{
-				advanceProductRampAfterProduction(factory, *rampSpec, effectiveOutput);
-			}
-		}
-	}
-
 	void applyExtraction(WorldData& world)
 	{
 		for (const auto& mine : world.mines)
@@ -123,8 +75,8 @@ namespace
 
 			for (const auto& output : mine.outputsPerTick)
 			{
-				const long long room = output.maxStockpile - getStockpileAmount(*system, output.goodId);
-				if (room <= 0 || output.amountPerTick <= 0)
+				const GoodAmount room = output.maxStockpile - getStockpileAmount(*system, output.goodId);
+				if (room <= 0.f || output.amountPerTick <= 0.f)
 				{
 					continue;
 				}
@@ -1056,6 +1008,103 @@ namespace
 	}
 
 }
+
+	void applyFactoryProduction(WorldData& world)
+	{
+		for (auto& factory : world.factories)
+		{
+			StarSystem* system = world.systemById(factory.systemId);
+			if (system == nullptr)
+			{
+				continue;
+			}
+
+			const ProductRampSpec* rampSpec = productRampSpecForGood(factory.outputGoodId);
+			const long long efficiencyPerThousand = rampSpec != nullptr
+				? factory.productEfficiencyPerThousand
+				: FactoryFullEfficiencyPerThousand;
+
+			if (factory.remainingOutputTicks == 0)
+			{
+				if (factory.inputsPerTick.empty() || factory.outputAmountPerTick <= 0.f)
+				{
+					continue;
+				}
+
+				const GoodAmount effectiveOutput =
+					factoryEffectiveAmount(factory.outputAmountPerTick, efficiencyPerThousand);
+				if (effectiveOutput <= 0.f)
+				{
+					continue;
+				}
+
+				const GoodAmount outputRoom =
+					factory.outputMaxStockpile - getStockpileAmount(*system, factory.outputGoodId);
+				if (outputRoom < effectiveOutput)
+				{
+					continue;
+				}
+
+				std::vector<GoodQuantity> effectiveInputs;
+				effectiveInputs.reserve(factory.inputsPerTick.size());
+				for (const auto& input : factory.inputsPerTick)
+				{
+					const GoodAmount effectiveInput =
+						factoryEffectiveAmount(input.amount, efficiencyPerThousand);
+					if (effectiveInput <= 0.f)
+					{
+						effectiveInputs.clear();
+						break;
+					}
+
+					if (getStockpileAmount(*system, input.goodId) < effectiveInput)
+					{
+						effectiveInputs.clear();
+						break;
+					}
+
+					effectiveInputs.push_back(GoodQuantity{ .goodId = input.goodId, .amount = effectiveInput });
+				}
+
+				if (effectiveInputs.size() != factory.inputsPerTick.size())
+				{
+					continue;
+				}
+
+				bool inputsConsumed = true;
+				for (const auto& input : effectiveInputs)
+				{
+					if (!useFromStockpile(world, factory.systemId, input.goodId, input.amount))
+					{
+						inputsConsumed = false;
+						break;
+					}
+				}
+
+				if (!inputsConsumed)
+				{
+					continue;
+				}
+
+				factory.remainingOutputTicks =
+					factory.ticksPerOutput > 0 ? factory.ticksPerOutput : 1;
+			}
+
+			factory.remainingOutputTicks -= 1;
+			if (factory.remainingOutputTicks != 0)
+			{
+				continue;
+			}
+
+			const GoodAmount effectiveOutput =
+				factoryEffectiveAmount(factory.outputAmountPerTick, efficiencyPerThousand);
+			addToStockpile(*system, factory.outputGoodId, effectiveOutput);
+			if (rampSpec != nullptr)
+			{
+				advanceProductRampAfterProduction(factory, *rampSpec, effectiveOutput);
+			}
+		}
+	}
 
 	void stepGalaxy(WorldData& world)
 	{

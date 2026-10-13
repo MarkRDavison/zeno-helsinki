@@ -10,7 +10,7 @@ namespace slr
 namespace MilitaryLiftTests
 {
 
-	void setStockpile(StarSystem& system, long long goodId, long long amount)
+	void setStockpile(StarSystem& system, long long goodId, GoodAmount amount)
 	{
 		for (auto& stock : system.stocks)
 		{

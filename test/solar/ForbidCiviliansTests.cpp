@@ -10,9 +10,24 @@ namespace slr
 namespace ForbidCiviliansTests
 {
 
+void clearAvonSteel(WorldData& world)
+{
+	StarSystem* avon = world.systemById(AvonSystemId);
+	REQUIRE(avon != nullptr);
+	for (auto& stock : avon->stocks)
+	{
+		if (stock.goodId == SteelGoodId)
+		{
+			stock.goodAmount = 0.f;
+			return;
+		}
+	}
+}
+
 TEST_CASE("forbidding Ashreach blocks unescorted Ashreach dest but not Helion steel", "[slr][ForbidCivilians]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	REQUIRE(execute(
 		world,
 		GameCommand::setCivilianHaulForbidden(

@@ -12,6 +12,20 @@ namespace slr
 namespace TruckTests
 {
 
+void clearAvonSteel(WorldData& world)
+{
+	StarSystem* avon = world.systemById(AvonSystemId);
+	REQUIRE(avon != nullptr);
+	for (auto& stock : avon->stocks)
+	{
+		if (stock.goodId == SteelGoodId)
+		{
+			stock.goodAmount = 0.f;
+			return;
+		}
+	}
+}
+
 TEST_CASE("starter empty trucks park at Rimward; one loaded truck is Helion-bound", "[slr][Truck]")
 {
 	const WorldData world = makeStarterMap();
@@ -143,6 +157,7 @@ TEST_CASE("truck hop progress this tick is speed over lane length", "[slr][Truck
 TEST_CASE("truck loads ore at Rimward for the Junction mill job", "[slr][Truck]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	world.trucks.clear();
 	world.trucks.push_back(Truck{
 		.id = 1,
@@ -197,6 +212,7 @@ TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
 TEST_CASE("empty truck at Rimward does not load when mill and yard needs are 0", "[slr][Truck]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	world.trucks.clear();
 	StarSystem* helion = world.systemById(1);
 	StarSystem* junction = world.systemById(3);

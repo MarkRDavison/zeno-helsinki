@@ -23,7 +23,7 @@ namespace YardSlipTests
 		return count;
 	}
 
-	void setSteelPile(StarSystem& system, long long amount)
+	void setSteelPile(StarSystem& system, GoodAmount amount)
 	{
 		for (auto& stock : system.stocks)
 		{

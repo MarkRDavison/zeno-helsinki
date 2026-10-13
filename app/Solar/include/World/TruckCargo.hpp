@@ -5,8 +5,8 @@
 namespace slr
 {
 
-	void raiseInboundOnLoad(StarSystem& destination, long long goodId, long long amount);
-	void reduceInboundOnArrival(StarSystem& destination, long long goodId, long long amount);
+	void raiseInboundOnLoad(StarSystem& destination, long long goodId, GoodAmount amount);
+	void reduceInboundOnArrival(StarSystem& destination, long long goodId, GoodAmount amount);
 	bool destroyTruckAndReduceInbound(WorldData& world, long long truckId);
 
 }

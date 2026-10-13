@@ -1163,13 +1163,51 @@ namespace
 					ImGui::TableHeadersRow();
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
-					ImGui::TextUnformatted(goodName(factory.inputGoodId));
+					{
+						std::string inputNames;
+						for (const auto& input : factory.inputsPerTick)
+						{
+							if (!inputNames.empty())
+							{
+								inputNames += "\n";
+							}
+
+							inputNames += goodName(input.goodId);
+						}
+
+						ImGui::TextUnformatted(inputNames.c_str());
+					}
 					ImGui::TableSetColumnIndex(1);
-					ImGui::TextUnformatted(std::to_string(factory.inputAmountPerTick).c_str());
+					{
+						std::string inputRates;
+						for (const auto& input : factory.inputsPerTick)
+						{
+							if (!inputRates.empty())
+							{
+								inputRates += "\n";
+							}
+
+							inputRates += std::to_string(input.amount);
+						}
+
+						ImGui::TextUnformatted(inputRates.c_str());
+					}
 					ImGui::TableSetColumnIndex(2);
 					ImGui::TextUnformatted(goodName(factory.outputGoodId));
 					ImGui::TableSetColumnIndex(3);
-					ImGui::TextUnformatted(std::to_string(factory.outputAmountPerTick).c_str());
+					{
+						std::string outRate = std::to_string(factory.outputAmountPerTick);
+						if (factory.ticksPerOutput > 1)
+						{
+							outRate += " / " + std::to_string(factory.ticksPerOutput) + " ticks";
+							if (factory.remainingOutputTicks > 0)
+							{
+								outRate += " (" + std::to_string(factory.remainingOutputTicks) + " left)";
+							}
+						}
+
+						ImGui::TextUnformatted(outRate.c_str());
+					}
 					ImGui::TableSetColumnIndex(4);
 					ImGui::TextUnformatted(std::to_string(factory.outputMaxStockpile).c_str());
 					if (rampSpec != nullptr)

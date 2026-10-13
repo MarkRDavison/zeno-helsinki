@@ -5,6 +5,7 @@
 namespace slr
 {
 
+	void applyFactoryProduction(WorldData& world);
 	void stepGalaxy(WorldData& world);
 
 }

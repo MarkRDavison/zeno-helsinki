@@ -11,7 +11,7 @@ namespace StarterMapTests
 TEST_CASE("starter map has systems and hyperlanes", "[slr][StarterMap]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.systems.size() >= 8);
+	REQUIRE(world.systems.size() >= 9);
 	REQUIRE_FALSE(world.hyperlanes.empty());
 }
 

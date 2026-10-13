@@ -12,6 +12,20 @@ namespace slr
 namespace ConvoyTests
 {
 
+void clearAvonSteel(WorldData& world)
+{
+	StarSystem* avon = world.systemById(AvonSystemId);
+	REQUIRE(avon != nullptr);
+	for (auto& stock : avon->stocks)
+	{
+		if (stock.goodId == SteelGoodId)
+		{
+			stock.goodAmount = 0.f;
+			return;
+		}
+	}
+}
+
 TEST_CASE("starter in-flight truck is a size-1 departed convoy", "[slr][Convoy]")
 {
 	const WorldData world = makeStarterMap();
@@ -33,6 +47,7 @@ TEST_CASE("starter in-flight truck is a size-1 departed convoy", "[slr][Convoy]"
 TEST_CASE("two Rimward empties join one new convoy; size 1 still exists", "[slr][Convoy]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	const long long flyingConvoyId = world.truckById(StarterCivilianTruckCount)->convoyId;
 
 	stepGalaxy(world);
@@ -49,6 +64,7 @@ TEST_CASE("two Rimward empties join one new convoy; size 1 still exists", "[slr]
 TEST_CASE("loaded truck waits at supply for a straggler on the same convoy", "[slr][Convoy]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	world.trucks.erase(world.trucks.begin() + 2, world.trucks.end());
 	world.convoys.clear();
 	world.trucks[1].motion.route = { 3 };
@@ -82,6 +98,7 @@ TEST_CASE("loaded truck waits at supply for a straggler on the same convoy", "[s
 TEST_CASE("assembled convoy hops at the slowest member speed", "[slr][Convoy]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	world.trucks.erase(world.trucks.begin() + 2, world.trucks.end());
 	world.convoys.clear();
 	world.trucks[0].motion.speed = 20.0f;
@@ -111,6 +128,7 @@ TEST_CASE("assembled convoy hops at the slowest member speed", "[slr][Convoy]")
 TEST_CASE("destroy a waiting empty lets the loaded truck depart", "[slr][Convoy]")
 {
 	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
 	world.trucks.erase(world.trucks.begin() + 2, world.trucks.end());
 	world.convoys.clear();
 	world.trucks[1].motion.route = { 3 };
