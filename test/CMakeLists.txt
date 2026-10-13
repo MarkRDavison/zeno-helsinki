@@ -1,7 +1,7 @@
 function(testsubmodule MODULE_NAME MODULE_LIBS)
 	SET(TestMain "${MODULE_NAME}-test")
 
-	FILE(GLOB_RECURSE LIB_TEST_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+	FILE(GLOB_RECURSE LIB_TEST_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
 	ADD_EXECUTABLE(${TestMain} ${LIB_TEST_FILES})
 	helsinki_apply_target_options(${TestMain})
