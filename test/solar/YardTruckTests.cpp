@@ -45,6 +45,15 @@ namespace YardTruckTests
 	{
 		world.trucks.clear();
 		world.convoys.clear();
+		world.haulJobs.clear();
+		for (auto& system : world.systems)
+		{
+			for (auto& stock : system.stocks)
+			{
+				stock.need = 0;
+			}
+		}
+
 		Yard* helionYard = yardAtSystem(world, 1);
 		REQUIRE(helionYard != nullptr);
 		helionYard->populationConsumePerTick.clear();

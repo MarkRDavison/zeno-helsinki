@@ -15,7 +15,7 @@ TEST_CASE("starter Rimward mines ore; Junction mill wants ore; Helion wants stee
 	REQUIRE(world.mines.size() == 2);
 	REQUIRE(mineOutputPerTick(world.mines[0], IronOreGoodId) == 100);
 	REQUIRE(mineOutputPerTick(world.mines[0], SteelGoodId) == 0);
-	REQUIRE(world.factories.size() == 1);
+	REQUIRE(world.factories.size() == 2);
 	REQUIRE(world.factories[0].systemId == 3);
 	REQUIRE(quantityForGood(world.factories[0].desiredPiles, IronOreGoodId) == 1000);
 	REQUIRE(consumerDesiredPile(world, 3, IronOreGoodId) == 1000);

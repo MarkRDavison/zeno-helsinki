@@ -1,5 +1,6 @@
 #pragma once
 
+#include <World/Goods.hpp>
 #include <helsinki/System/glm.hpp>
 #include <cstdint>
 #include <string>
@@ -153,6 +154,13 @@ namespace slr
 		std::vector<YardRefitJob> hullRefitQueue;
 	};
 
+	struct ProductRampSpec
+	{
+		long long goodId{ 0 };
+		long long startEfficiencyPerThousand{ 0 };
+		long long maxEfficiencyPerThousand{ FactoryFullEfficiencyPerThousand };
+	};
+
 	struct Factory
 	{
 		long long systemId{ 0 };
@@ -163,6 +171,8 @@ namespace slr
 		long long outputGoodId{ 0 };
 		long long outputAmountPerTick{ 0 };
 		long long outputMaxStockpile{ 0 };
+		long long productEfficiencyPerThousand{ FactoryFullEfficiencyPerThousand };
+		long long productRampUnitsProduced{ 0 };
 	};
 
 	struct LaneMotion
@@ -342,6 +352,12 @@ namespace slr
 	long long quantityForGood(const std::vector<GoodQuantity>& rows, long long goodId);
 	long long mineOutputPerTick(const Mine& mine, long long goodId);
 	long long mineMaxStockpile(const Mine& mine, long long goodId);
+	const ProductRampSpec* productRampSpecForGood(long long goodId);
+	long long factoryEffectiveAmount(long long ratedAmount, long long efficiencyPerThousand);
+	void advanceProductRampAfterProduction(
+		Factory& factory,
+		const ProductRampSpec& spec,
+		long long outputAdded);
 	long long consumerDesiredPile(const WorldData& world, long long systemId, long long goodId);
 	long long stockpileAvailableForYardConsume(const WorldData& world, long long systemId, long long goodId);
 	void postNeedFromConsumerShortfall(WorldData& world, StarSystem& system, long long goodId);

@@ -38,14 +38,14 @@ TEST_CASE("Junction is Helion-owned industrial", "[slr][Ownership]")
 	REQUIRE(systemOwnershipScore(world, 3) == 1);
 }
 
-TEST_CASE("Kestrel is Helion-claimed empty with score 0", "[slr][Ownership]")
+TEST_CASE("Kestrel is Helion-claimed industrial with score 1", "[slr][Ownership]")
 {
 	const WorldData world = makeStarterMap();
 	const StarSystem* kestrel = world.systemById(2);
 	REQUIRE(kestrel != nullptr);
 	REQUIRE(kestrel->empireId == HelionEmpireId);
-	REQUIRE(systemOwnershipType(world, 2) == SystemOwnershipType::Empty);
-	REQUIRE(systemOwnershipScore(world, 2) == 0);
+	REQUIRE(systemOwnershipType(world, 2) == SystemOwnershipType::Industrial);
+	REQUIRE(systemOwnershipScore(world, 2) == 1);
 }
 
 TEST_CASE("Ashreach is Ashreach-claimed empty with score 0", "[slr][Ownership]")

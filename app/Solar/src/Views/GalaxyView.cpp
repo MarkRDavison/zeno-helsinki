@@ -1144,9 +1144,11 @@ namespace
 
 				ImGui::TextUnformatted("Factory");
 				const std::string factoryTableId = "factory_" + std::to_string(factoryIndex++);
+				const ProductRampSpec* rampSpec = productRampSpecForGood(factory.outputGoodId);
+				const int factoryColumnCount = rampSpec != nullptr ? 6 : 5;
 				if (ImGui::BeginTable(
 						factoryTableId.c_str(),
-						5,
+						factoryColumnCount,
 						ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 				{
 					ImGui::TableSetupColumn("input");
@@ -1154,6 +1156,10 @@ namespace
 					ImGui::TableSetupColumn("output");
 					ImGui::TableSetupColumn("out/tick");
 					ImGui::TableSetupColumn("max");
+					if (rampSpec != nullptr)
+					{
+						ImGui::TableSetupColumn("efficiency");
+					}
 					ImGui::TableHeadersRow();
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
@@ -1166,6 +1172,12 @@ namespace
 					ImGui::TextUnformatted(std::to_string(factory.outputAmountPerTick).c_str());
 					ImGui::TableSetColumnIndex(4);
 					ImGui::TextUnformatted(std::to_string(factory.outputMaxStockpile).c_str());
+					if (rampSpec != nullptr)
+					{
+						ImGui::TableSetColumnIndex(5);
+						ImGui::TextUnformatted(
+							(std::to_string(factory.productEfficiencyPerThousand / 10) + "%").c_str());
+					}
 					ImGui::EndTable();
 				}
 			}

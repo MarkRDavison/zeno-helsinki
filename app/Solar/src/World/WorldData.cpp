@@ -352,6 +352,52 @@ namespace slr
 		return total;
 	}
 
+	const ProductRampSpec* productRampSpecForGood(long long goodId)
+	{
+		static const ProductRampSpec missileRamp{
+			.goodId = MissileGoodId,
+			.startEfficiencyPerThousand = FactoryStartEfficiencyPerThousand,
+			.maxEfficiencyPerThousand = FactoryFullEfficiencyPerThousand };
+
+		if (goodId == missileRamp.goodId)
+		{
+			return &missileRamp;
+		}
+
+		return nullptr;
+	}
+
+	long long factoryEffectiveAmount(long long ratedAmount, long long efficiencyPerThousand)
+	{
+		if (ratedAmount <= 0 || efficiencyPerThousand <= 0)
+		{
+			return 0;
+		}
+
+		return ratedAmount * efficiencyPerThousand / FactoryFullEfficiencyPerThousand;
+	}
+
+	void advanceProductRampAfterProduction(
+		Factory& factory,
+		const ProductRampSpec& spec,
+		long long outputAdded)
+	{
+		if (outputAdded <= 0)
+		{
+			return;
+		}
+
+		factory.productRampUnitsProduced += outputAdded;
+		while (factory.productRampUnitsProduced >= FactoryRampUnitsPerEfficiencyStep &&
+			factory.productEfficiencyPerThousand < spec.maxEfficiencyPerThousand)
+		{
+			factory.productRampUnitsProduced -= FactoryRampUnitsPerEfficiencyStep;
+			const long long next = factory.productEfficiencyPerThousand + FactoryRampEfficiencyStepPerThousand;
+			factory.productEfficiencyPerThousand =
+				next < spec.maxEfficiencyPerThousand ? next : spec.maxEfficiencyPerThousand;
+		}
+	}
+
 	long long consumerDesiredPile(const WorldData& world, long long systemId, long long goodId)
 	{
 		long long desired = 0;

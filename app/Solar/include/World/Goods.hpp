@@ -12,8 +12,16 @@ namespace slr
 	constexpr long long MineMaxStockpile_Steel = 4000;
 	constexpr long long MineMaxStockpile_IronOre = 4000;
 	constexpr long long FactoryMaxStockpile_Steel = 4000;
+	constexpr long long FactoryMaxStockpile_Missiles = 4000;
 	constexpr long long FactoryInputOrePerTick = 50;
 	constexpr long long FactoryOutputSteelPerTick = 50;
+	constexpr long long FactoryMissileInputSteelPerTick = 10;
+	constexpr long long FactoryMissileOutputPerTick = 10;
+	constexpr long long FactoryFullEfficiencyPerThousand = 1000;
+	constexpr long long FactoryStartEfficiencyPerThousand = 100;
+	constexpr long long FactoryRampUnitsPerEfficiencyStep = 10;
+	constexpr long long FactoryRampEfficiencyStepPerThousand = 10;
+	constexpr long long FactoryMissileSteelDesiredPile = 500;
 	constexpr long long YardPopulationConsumePerTick_Steel = 10;
 	constexpr long long YardPopulationReserved_Steel = 200;
 	constexpr long long YardSlipSteelCost = 200; // StartYardSlip spends this immediately from available steel

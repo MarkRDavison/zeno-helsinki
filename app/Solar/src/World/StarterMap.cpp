@@ -65,6 +65,10 @@ namespace
 		junction->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .goodAmount = 0 });
 		junction->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
 
+		StarSystem* kestrel = world.systemById(2);
+		kestrel->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
+		kestrel->stocks.push_back(GoodStock{ .goodId = MissileGoodId, .goodAmount = 0 });
+
 		StarSystem* helion = world.systemById(1);
 		helion->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
 		helion->stocks.push_back(GoodStock{ .goodId = MissileGoodId, .goodAmount = YardStarterMissileStockpile });
@@ -90,6 +94,16 @@ namespace
 			.outputGoodId = SteelGoodId,
 			.outputAmountPerTick = FactoryOutputSteelPerTick,
 			.outputMaxStockpile = FactoryMaxStockpile_Steel });
+		world.factories.push_back(Factory{
+			.systemId = 2,
+			.empireId = HelionEmpireId,
+			.desiredPiles = { GoodQuantity{ .goodId = SteelGoodId, .amount = FactoryMissileSteelDesiredPile } },
+			.inputGoodId = SteelGoodId,
+			.inputAmountPerTick = FactoryMissileInputSteelPerTick,
+			.outputGoodId = MissileGoodId,
+			.outputAmountPerTick = FactoryMissileOutputPerTick,
+			.outputMaxStockpile = FactoryMaxStockpile_Missiles,
+			.productEfficiencyPerThousand = FactoryStartEfficiencyPerThousand });
 		world.yards.push_back(Yard{
 			.systemId = 1,
 			.empireId = HelionEmpireId,
@@ -116,6 +130,7 @@ namespace
 				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } },
 			.slips = { YardSlip{ .id = 2, .remainingBuildTicks = 0 } } });
 		postNeedsFromConsumerShortfalls(world, *helion);
+		postNeedsFromConsumerShortfalls(world, *kestrel);
 		postNeedsFromConsumerShortfalls(world, *junction);
 		postNeedsFromConsumerShortfalls(world, *rimward);
 		postNeedsFromConsumerShortfalls(world, *vesper);

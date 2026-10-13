@@ -65,7 +65,7 @@ namespace
 
 	void applyFactoryProduction(WorldData& world)
 	{
-		for (const auto& factory : world.factories)
+		for (auto& factory : world.factories)
 		{
 			StarSystem* system = world.systemById(factory.systemId);
 			if (system == nullptr)
@@ -78,19 +78,36 @@ namespace
 				continue;
 			}
 
+			const ProductRampSpec* rampSpec = productRampSpecForGood(factory.outputGoodId);
+			const long long efficiencyPerThousand = rampSpec != nullptr
+				? factory.productEfficiencyPerThousand
+				: FactoryFullEfficiencyPerThousand;
+			const long long effectiveOutput =
+				factoryEffectiveAmount(factory.outputAmountPerTick, efficiencyPerThousand);
+			const long long effectiveInput =
+				factoryEffectiveAmount(factory.inputAmountPerTick, efficiencyPerThousand);
+			if (effectiveOutput <= 0 || effectiveInput <= 0)
+			{
+				continue;
+			}
+
 			const long long outputRoom =
 				factory.outputMaxStockpile - getStockpileAmount(*system, factory.outputGoodId);
-			if (outputRoom < factory.outputAmountPerTick)
+			if (outputRoom < effectiveOutput)
 			{
 				continue;
 			}
 
-			if (!useFromStockpile(world, factory.systemId, factory.inputGoodId, factory.inputAmountPerTick))
+			if (!useFromStockpile(world, factory.systemId, factory.inputGoodId, effectiveInput))
 			{
 				continue;
 			}
 
-			addToStockpile(*system, factory.outputGoodId, factory.outputAmountPerTick);
+			addToStockpile(*system, factory.outputGoodId, effectiveOutput);
+			if (rampSpec != nullptr)
+			{
+				advanceProductRampAfterProduction(factory, *rampSpec, effectiveOutput);
+			}
 		}
 	}
 
