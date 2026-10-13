@@ -13,6 +13,7 @@ namespace slr
 		TimeChromeResult time;
 		bool openPolicyEditor{ false };
 		bool openDesignEditor{ false };
+		bool openResearchEditor{ false };
 	};
 
 	class HudBar

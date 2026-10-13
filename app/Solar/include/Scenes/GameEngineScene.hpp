@@ -2,6 +2,7 @@
 
 #include <Views/DesignChrome.hpp>
 #include <Views/EngagementPolicyChrome.hpp>
+#include <Views/ResearchChrome.hpp>
 #include <Views/GalaxyCamera.hpp>
 #include <Views/GalaxyView.hpp>
 #include <Views/HudBar.hpp>
@@ -46,6 +47,7 @@ namespace slr
 		HudBar _hudBar;
 		EngagementPolicyChrome _engagementPolicyChrome;
 		DesignChrome _designChrome;
+		ResearchChrome _researchChrome;
 		GalaxyView _galaxy;
 		GalaxyCamera* _galaxyCamera{ nullptr };
 		bool _panning{ false };

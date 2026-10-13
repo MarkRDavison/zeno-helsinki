@@ -1,5 +1,6 @@
 #include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
+#include <World/Research.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/ShipDesign.hpp>
 #include <algorithm>
@@ -779,6 +780,58 @@ namespace
 		return false;
 	}
 
+	bool applyStartResearchProject(WorldData& world, const StartResearchProject& order)
+	{
+		if (world.empireById(order.empireId) == nullptr)
+		{
+			return false;
+		}
+
+		if (researchProjectById(order.projectId) == nullptr)
+		{
+			return false;
+		}
+
+		ResearchProgress* existing =
+			world.researchProgressByEmpireAndProject(order.empireId, order.projectId);
+		if (existing != nullptr && (existing->completed || existing->active))
+		{
+			return false;
+		}
+
+		if (countActiveResearchProjects(world, order.empireId) >= MaxActiveResearchProjects)
+		{
+			return false;
+		}
+
+		if (existing == nullptr)
+		{
+			world.researchProgress.push_back(ResearchProgress{
+				.empireId = order.empireId,
+				.projectId = order.projectId,
+				.progress = 0.f,
+				.active = true,
+				.completed = false });
+			return true;
+		}
+
+		existing->active = true;
+		return true;
+	}
+
+	bool applyStopResearchProject(WorldData& world, const StopResearchProject& order)
+	{
+		ResearchProgress* existing =
+			world.researchProgressByEmpireAndProject(order.empireId, order.projectId);
+		if (existing == nullptr || !existing->active || existing->completed)
+		{
+			return false;
+		}
+
+		existing->active = false;
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -959,6 +1012,28 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::startResearchProject(
+		long long empireId,
+		long long projectId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = StartResearchProject{ .empireId = empireId, .projectId = projectId };
+		return command;
+	}
+
+	GameCommand GameCommand::stopResearchProject(
+		long long empireId,
+		long long projectId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = StopResearchProject{ .empireId = empireId, .projectId = projectId };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -1020,6 +1095,14 @@ namespace
 				else if constexpr (std::is_same_v<Payload, SetDesiredCargo>)
 				{
 					return applySetDesiredCargo(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, StartResearchProject>)
+				{
+					return applyStartResearchProject(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, StopResearchProject>)
+				{
+					return applyStopResearchProject(world, payload);
 				}
 				else
 				{

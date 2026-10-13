@@ -107,6 +107,18 @@ namespace slr
 		long long classId{ 0 };
 	};
 
+	struct StartResearchProject
+	{
+		long long empireId{ 0 };
+		long long projectId{ 0 };
+	};
+
+	struct StopResearchProject
+	{
+		long long empireId{ 0 };
+		long long projectId{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
@@ -124,7 +136,9 @@ namespace slr
 			StartYardBuild,
 			StartYardRefit,
 			CreateShipClass,
-			SetDesiredCargo>
+			SetDesiredCargo,
+			StartResearchProject,
+			StopResearchProject>
 			payload;
 
 		static GameCommand moveFleetToSystem(
@@ -187,6 +201,14 @@ namespace slr
 			DesiredCargoTargetType targetType,
 			CommandSource source,
 			long long classId = 0);
+		static GameCommand startResearchProject(
+			long long empireId,
+			long long projectId,
+			CommandSource source);
+		static GameCommand stopResearchProject(
+			long long empireId,
+			long long projectId,
+			CommandSource source);
 	};
 
 	bool execute(WorldData& world, const GameCommand& command);

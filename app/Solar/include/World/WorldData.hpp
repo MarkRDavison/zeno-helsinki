@@ -2,6 +2,7 @@
 
 #include <World/DesiredCargo.hpp>
 #include <World/Goods.hpp>
+#include <World/Research.hpp>
 #include <helsinki/System/glm.hpp>
 #include <cstdint>
 #include <string>
@@ -345,6 +346,7 @@ namespace slr
 		std::vector<CivilianLoss> civilianLosses;
 		std::vector<EmpireWar> empireWars;
 		std::vector<CivilianHaulForbid> civilianHaulForbids;
+		std::vector<ResearchProgress> researchProgress;
 
 		const Empire* empireById(long long id) const;
 		Empire* empireById(long long id);
@@ -362,6 +364,10 @@ namespace slr
 		Truck* truckById(long long id);
 		const EngagementPolicy* engagementPolicyById(long long id) const;
 		EngagementPolicy* engagementPolicyById(long long id);
+		const ResearchProgress* researchProgressByEmpireAndProject(
+			long long empireId,
+			long long projectId) const;
+		ResearchProgress* researchProgressByEmpireAndProject(long long empireId, long long projectId);
 	};
 
 	bool shipClassHasRole(const ShipClass& shipClass, HullRole role);

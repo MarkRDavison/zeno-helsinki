@@ -176,6 +176,27 @@ namespace slr
 		return const_cast<EngagementPolicy*>(static_cast<const WorldData*>(this)->engagementPolicyById(id));
 	}
 
+	const ResearchProgress* WorldData::researchProgressByEmpireAndProject(
+		long long empireId,
+		long long projectId) const
+	{
+		for (const auto& row : researchProgress)
+		{
+			if (row.empireId == empireId && row.projectId == projectId)
+			{
+				return &row;
+			}
+		}
+
+		return nullptr;
+	}
+
+	ResearchProgress* WorldData::researchProgressByEmpireAndProject(long long empireId, long long projectId)
+	{
+		return const_cast<ResearchProgress*>(
+			static_cast<const WorldData*>(this)->researchProgressByEmpireAndProject(empireId, projectId));
+	}
+
 	bool ruleOfEngagementOpensFire(RuleOfEngagement rule)
 	{
 		return rule == RuleOfEngagement::FireIfEnemySeen;

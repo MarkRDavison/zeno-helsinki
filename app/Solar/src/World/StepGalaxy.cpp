@@ -1,4 +1,5 @@
 #include <World/StepGalaxy.hpp>
+#include <World/Research.hpp>
 #include <World/Combat.hpp>
 #include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
@@ -1127,6 +1128,7 @@ namespace
 		syncHaulJobsFromUncoveredNeed(world);
 		moveFleets(world);
 		resolveBattles(world);
+		applyResearch(world);
 		++world.tick;
 	}
 

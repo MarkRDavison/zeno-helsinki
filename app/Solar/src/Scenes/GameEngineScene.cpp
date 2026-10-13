@@ -67,6 +67,10 @@ namespace slr
 				{
 					_designChrome.toggleOpen();
 				}
+				if (hud.openResearchEditor)
+				{
+					_researchChrome.toggleOpen();
+				}
 				_engagementPolicyChrome.draw(_world, _pendingCommands);
 				_galaxy.drawBattleReport();
 				if (!_galaxy.drawInspector(_pendingCommands))
@@ -74,6 +78,7 @@ namespace slr
 					_galaxy.setSelectedSystemId(std::nullopt);
 				}
 				_designChrome.draw(_world, _pendingCommands);
+				_researchChrome.draw(_world, _pendingCommands);
 			});
 	}
 
