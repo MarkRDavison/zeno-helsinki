@@ -1,7 +1,6 @@
 #include <helsinki/Renderer/Resource/FontResource.hpp>
 #include <iostream>
 #include <format>
-#define _CRT_SECURE_NO_WARNINGS
 #include <stb_image.h>
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
