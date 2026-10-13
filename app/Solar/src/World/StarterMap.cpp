@@ -75,11 +75,17 @@ namespace
 		StarSystem* helion = world.systemById(1);
 		helion->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
 		helion->stocks.push_back(GoodStock{ .goodId = MissileGoodId, .goodAmount = YardStarterMissileStockpile });
+		helion->stocks.push_back(GoodStock{
+			.goodId = MissileLongRangeGoodId,
+			.goodAmount = YardStarterLongRangeMissileStockpile });
 
 		StarSystem* vesper = world.systemById(8);
 		vesper->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .goodAmount = 0, .need = 0 });
 		vesper->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = 0 });
 		vesper->stocks.push_back(GoodStock{ .goodId = MissileGoodId, .goodAmount = YardStarterMissileStockpile });
+		vesper->stocks.push_back(GoodStock{
+			.goodId = MissileLongRangeGoodId,
+			.goodAmount = YardStarterLongRangeMissileStockpile });
 
 		StarSystem* avon = world.systemById(AvonSystemId);
 		avon->stocks.push_back(GoodStock{ .goodId = SteelGoodId, .goodAmount = AvonStarterSteelStockpile });

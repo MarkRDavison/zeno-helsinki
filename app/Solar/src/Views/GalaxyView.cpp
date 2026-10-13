@@ -1,5 +1,6 @@
 #include <Views/GalaxyView.hpp>
 #include <GalaxyPushConstantObject.hpp>
+#include <Views/DesiredCargoChrome.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
 #include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
@@ -562,6 +563,83 @@ namespace
 					ImGui::TextUnformatted(line.c_str());
 				}
 
+				{
+					std::vector<GoodQuantity> magazineByGood;
+					for (const auto& hull : fleet->hulls)
+					{
+						for (const auto& row : hull.magazine)
+						{
+							addMagazineGood(magazineByGood, row.goodId, row.amount);
+						}
+					}
+
+					ImGui::TextUnformatted("Magazine");
+					if (magazineByGood.empty())
+					{
+						ImGui::TextUnformatted("empty");
+					}
+
+					for (const auto& row : magazineByGood)
+					{
+						ImGui::TextUnformatted(
+							(std::string(goodName(row.goodId)) + " " +
+								std::to_string(static_cast<long long>(row.amount)))
+								.c_str());
+					}
+				}
+
+				if (isPlayerFleet(*_world, *fleet))
+				{
+					for (const auto& row : fleet->composition)
+					{
+						const ShipClass* shipClass = _world->shipClassById(row.classId);
+						if (shipClass == nullptr || !shipClassHasRole(*shipClass, HullRole::Warship) ||
+							shipClass->magazineSize <= 0)
+						{
+							continue;
+						}
+
+						GoodAmount magazineUsedOnHull = 0.f;
+						const FleetHull* lowestHull = nullptr;
+						for (const auto& hull : fleet->hulls)
+						{
+							if (hull.classId != row.classId)
+							{
+								continue;
+							}
+
+							if (lowestHull == nullptr || hull.id < lowestHull->id)
+							{
+								lowestHull = &hull;
+							}
+						}
+
+						if (lowestHull != nullptr)
+						{
+							magazineUsedOnHull = magazineUsed(lowestHull->magazine);
+						}
+
+						DesiredCargo magazineDraft = desiredCargoForFleetClass(*fleet, row.classId);
+						ImGui::TextUnformatted((shipClass->name + " desired cargo").c_str());
+						ImGui::PushID(static_cast<int>(row.classId));
+						DesiredCargoChrome magazineChrome;
+						if (magazineChrome.draw(
+								magazineDraft,
+								magazineUsedOnHull,
+								static_cast<GoodAmount>(shipClass->magazineSize)))
+						{
+							pendingCommands.push_back(GameCommand::setDesiredCargo(
+								magazineDraft,
+								fleet->id,
+								DesiredCargoTargetType::FleetMagazine,
+								CommandSource::Player,
+								row.classId));
+						}
+
+						ImGui::PopID();
+					}
+				}
+
 				const EngagementPolicy* active = activeEngagementPolicy(*_world, *fleet);
 				const char* activeRule = active != nullptr
 					? ruleOfEngagementName(active->ruleOfEngagement)
@@ -715,6 +793,36 @@ namespace
 								"/" +
 								std::to_string(escortConvoy->desiredTenderCount))
 								.c_str());
+
+						GoodAmount tenderHoldUsed = 0.f;
+						for (const auto& truck : _world->trucks)
+						{
+							if (truck.convoyId != escortConvoy->id)
+							{
+								continue;
+							}
+
+							tenderHoldUsed = truck.cargoAmount;
+							break;
+						}
+
+						ImGui::TextUnformatted("Tender cargo");
+						ImGui::PushID("tenderHoldCargo");
+						DesiredCargo holdDraft = escortConvoy->holdCargo;
+						DesiredCargoChrome holdChrome;
+						if (holdChrome.draw(
+								holdDraft,
+								tenderHoldUsed,
+								TruckCapacity_Missiles))
+						{
+							pendingCommands.push_back(GameCommand::setDesiredCargo(
+								holdDraft,
+								escortConvoy->id,
+								DesiredCargoTargetType::StandingConvoyHold,
+								CommandSource::Player));
+						}
+
+						ImGui::PopID();
 					}
 				}
 			}

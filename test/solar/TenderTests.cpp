@@ -388,14 +388,14 @@ namespace TenderTests
 		home->motion.route.clear();
 		home->motion.progress = 0.0f;
 		FleetHull* hull = hullByLowestId(*home);
-		hull->missileAmmo = 0;
+		hull->magazine.clear();
 
 		const StarSystem* helion = world.systemById(1);
 		REQUIRE(helion != nullptr);
 		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
 
 		applyTenderUnloadIntoMagazines(world);
-		REQUIRE(hull->missileAmmo == 1);
+		REQUIRE(magazineUsed(hull->magazine) == 1.f);
 		REQUIRE(tender->cargoAmount == 4);
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
 	}
@@ -417,10 +417,10 @@ namespace TenderTests
 		Fleet* home = world.fleetById(1);
 		REQUIRE(home != nullptr);
 		FleetHull* hull = hullByLowestId(*home);
-		hull->missileAmmo = 0;
+		hull->magazine.clear();
 
 		applyTenderUnloadIntoMagazines(world);
-		REQUIRE(hull->missileAmmo == 0);
+		REQUIRE(magazineUsed(hull->magazine) == 0.f);
 		REQUIRE(tender->cargoAmount == 5);
 	}
 
@@ -449,10 +449,10 @@ namespace TenderTests
 		kestrel->motion.progress = 0.0f;
 		kestrel->motion.route.clear();
 		FleetHull* rivalHull = hullByLowestId(*kestrel);
-		rivalHull->missileAmmo = 0;
+		rivalHull->magazine.clear();
 
 		applyTenderUnloadIntoMagazines(world);
-		REQUIRE(rivalHull->missileAmmo == 0);
+		REQUIRE(magazineUsed(rivalHull->magazine) == 0.f);
 		REQUIRE(tender->cargoAmount == 5);
 	}
 

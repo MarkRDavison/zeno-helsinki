@@ -150,7 +150,7 @@ TEST_CASE("a Destroyer becomes a Nike after 50 ticks with empty magazines", "[sl
 	const FleetHull* hull = hullById(*home, hullId);
 	REQUIRE(hull != nullptr);
 	REQUIRE(hull->classId == NikeClassId);
-	REQUIRE(hull->missileAmmo == 0);
+	REQUIRE(magazineUsed(hull->magazine) == 0.f);
 	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == YardPopulationReserved_Steel);
 	REQUIRE(yardAtSystem(world, HelionSystemId)->hullRefitQueue.empty());
 	REQUIRE(slipById(*yardAtSystem(world, HelionSystemId), 1)->hullClassId == 0);

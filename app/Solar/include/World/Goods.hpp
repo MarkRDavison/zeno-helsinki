@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 namespace slr
 {
 
@@ -14,6 +16,13 @@ namespace slr
 	constexpr long long PrototypeMissileMk1GoodId = 7;
 	constexpr long long MissileEngineMk2GoodId = 8;
 	constexpr long long PrototypeMissileMk2GoodId = 9;
+	constexpr long long MissileLongRangeGoodId = 10;
+
+	struct GoodQuantity
+	{
+		long long goodId{ 0 };
+		GoodAmount amount{ 0.f };
+	};
 
 	constexpr long long HelionSystemId = 1;
 	constexpr long long KestrelSystemId = 2;
@@ -63,10 +72,20 @@ namespace slr
 	constexpr long long RefitHullBuildTicks = 50; // per-tick steel is RefitHullSteelCost / RefitHullBuildTicks
 	constexpr long long CivilianHazardFadeTicks = 8;
 	constexpr GoodAmount YardStarterMissileStockpile = 2000.f;
+	constexpr GoodAmount YardStarterLongRangeMissileStockpile = 500.f;
+	constexpr float CombatMissileRangeScale_Standard = 1.0f;
+	constexpr float CombatMissileRangeScale_LongRange = 1.2f;
 
 	const char* goodName(long long goodId);
 	GoodAmount truckloadForGood(long long goodId);
 	long long variantOfGoodId(long long goodId);
 	bool goodsAreDeclaredVariants(long long a, long long b);
+	bool isCombatMissileGood(long long goodId);
+	float combatMissileRangeScale(long long goodId);
+	GoodAmount magazineUsed(const std::vector<GoodQuantity>& magazine);
+	GoodAmount magazineCount(const std::vector<GoodQuantity>& magazine, long long goodId);
+	void addMagazineGood(std::vector<GoodQuantity>& magazine, long long goodId, GoodAmount amount);
+	bool spendMagazineGood(std::vector<GoodQuantity>& magazine, long long goodId, GoodAmount amount);
+	long long highestRangeLoadedCombatMissileGoodId(const std::vector<GoodQuantity>& magazine);
 
 }

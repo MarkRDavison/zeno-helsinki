@@ -112,7 +112,7 @@ namespace MagazineRestockTests
 		const ShipClass* shipClass = world.shipClassById(hull->classId);
 		REQUIRE(shipClass != nullptr);
 		REQUIRE(shipClass->magazineSize > 1);
-		hull->missileAmmo = 0;
+		hull->magazine.clear();
 
 		const StarSystem* helion = world.systemById(1);
 		REQUIRE(helion != nullptr);
@@ -120,7 +120,7 @@ namespace MagazineRestockTests
 
 		stepGalaxy(world);
 
-		REQUIRE(hull->missileAmmo == 1);
+		REQUIRE(magazineUsed(hull->magazine) == 1.f);
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore - 1);
 	}
 
@@ -134,7 +134,7 @@ namespace MagazineRestockTests
 		const ShipClass* shipClass = world.shipClassById(hull->classId);
 		REQUIRE(shipClass != nullptr);
 		REQUIRE(shipClass->magazineSize > 0);
-		hull->missileAmmo = 0;
+		hull->magazine.clear();
 
 		StarSystem* helion = world.systemById(1);
 		REQUIRE(helion != nullptr);
@@ -145,11 +145,11 @@ namespace MagazineRestockTests
 			stepGalaxy(world);
 		}
 
-		REQUIRE(hull->missileAmmo == shipClass->magazineSize);
+		REQUIRE(magazineUsed(hull->magazine) == static_cast<GoodAmount>(shipClass->magazineSize));
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore - shipClass->magazineSize);
 
 		stepGalaxy(world);
-		REQUIRE(hull->missileAmmo == shipClass->magazineSize);
+		REQUIRE(magazineUsed(hull->magazine) == static_cast<GoodAmount>(shipClass->magazineSize));
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore - shipClass->magazineSize);
 	}
 
@@ -161,16 +161,16 @@ namespace MagazineRestockTests
 		REQUIRE(home != nullptr);
 		FleetHull* first = hullByLowestId(*home);
 		FleetHull* second = hullBySecondLowestId(*home);
-		first->missileAmmo = 0;
-		second->missileAmmo = 0;
+		first->magazine.clear();
+		second->magazine.clear();
 
 		StarSystem* helion = world.systemById(1);
 		REQUIRE(helion != nullptr);
 		setMissilePile(*helion, 1);
 
 		stepGalaxy(world);
-		REQUIRE(first->missileAmmo == 1);
-		REQUIRE(second->missileAmmo == 0);
+		REQUIRE(magazineUsed(first->magazine) == 1.f);
+		REQUIRE(magazineUsed(second->magazine) == 0.f);
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == 0);
 	}
 
@@ -184,14 +184,14 @@ namespace MagazineRestockTests
 		home->motion.progress = 0.0f;
 		home->motion.route.clear();
 		FleetHull* hull = hullByLowestId(*home);
-		hull->missileAmmo = 0;
+		hull->magazine.clear();
 
 		StarSystem* helion = world.systemById(1);
 		REQUIRE(helion != nullptr);
 		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
 
 		stepGalaxy(world);
-		REQUIRE(hull->missileAmmo == 0);
+		REQUIRE(magazineUsed(hull->magazine) == 0.f);
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
 	}
 
@@ -204,14 +204,14 @@ namespace MagazineRestockTests
 		home->motion.progress = 0.4f;
 		home->motion.route = { 1, 2 };
 		FleetHull* hull = hullByLowestId(*home);
-		hull->missileAmmo = 0;
+		hull->magazine.clear();
 
 		StarSystem* helion = world.systemById(1);
 		REQUIRE(helion != nullptr);
 		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
 
 		stepGalaxy(world);
-		REQUIRE(hull->missileAmmo == 0);
+		REQUIRE(magazineUsed(hull->magazine) == 0.f);
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
 	}
 
@@ -234,14 +234,14 @@ namespace MagazineRestockTests
 		kestrel->motion.progress = 0.0f;
 		kestrel->motion.route.clear();
 		FleetHull* hull = hullByLowestId(*kestrel);
-		hull->missileAmmo = 0;
+		hull->magazine.clear();
 
 		StarSystem* helion = world.systemById(1);
 		REQUIRE(helion != nullptr);
 		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
 
 		applyYardMagazineRestock(world);
-		REQUIRE(hull->missileAmmo == 0);
+		REQUIRE(magazineUsed(hull->magazine) == 0.f);
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
 	}
 
@@ -262,7 +262,7 @@ namespace MagazineRestockTests
 		Fleet* home = world.fleetById(1);
 		REQUIRE(home != nullptr);
 		FleetHull* hull = hullByLowestId(*home);
-		hull->missileAmmo = 0;
+		hull->magazine.clear();
 
 		const long long steelBefore = getStockpileAmount(*helion, SteelGoodId);
 		const long long missilesBefore = getStockpileAmount(*helion, MissileGoodId);
@@ -270,7 +270,7 @@ namespace MagazineRestockTests
 
 		applyYardMagazineRestock(world);
 
-		REQUIRE(hull->missileAmmo == 1);
+		REQUIRE(magazineUsed(hull->magazine) == 1.f);
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == missilesBefore - 1);
 		REQUIRE(getStockpileAmount(*helion, SteelGoodId) == steelBefore);
 		REQUIRE(stockpileAvailableForYardConsume(world, 1, SteelGoodId) == 50);

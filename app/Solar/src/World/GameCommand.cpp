@@ -422,7 +422,8 @@ namespace
 			.escortFleetId = fleet->id,
 			.desiredCivilianTruckCount = order.desiredCivilianTruckCount,
 			.desiredMilitaryTruckCount = order.desiredMilitaryTruckCount,
-			.desiredTenderCount = order.desiredTenderCount });
+			.desiredTenderCount = order.desiredTenderCount,
+			.holdCargo = desiredCargoFillRemaining(MissileGoodId) });
 		fleet->escortConvoyId = world.convoys.back().id;
 		return true;
 	}
@@ -742,6 +743,42 @@ namespace
 		return true;
 	}
 
+	bool applySetDesiredCargo(WorldData& world, const SetDesiredCargo& order)
+	{
+		if (!desiredCargoIsValidForMunitionsSlice(order.desiredCargo))
+		{
+			return false;
+		}
+
+		if (order.targetType == DesiredCargoTargetType::FleetMagazine)
+		{
+			Fleet* fleet = world.fleetById(order.id);
+			const ShipClass* shipClass = world.shipClassById(order.classId);
+			if (fleet == nullptr || shipClass == nullptr ||
+				!shipClassHasRole(*shipClass, HullRole::Warship))
+			{
+				return false;
+			}
+
+			setFleetClassDesiredCargo(*fleet, order.classId, order.desiredCargo);
+			return true;
+		}
+
+		if (order.targetType == DesiredCargoTargetType::StandingConvoyHold)
+		{
+			Convoy* convoy = world.convoyById(order.id);
+			if (convoy == nullptr || !convoyIsStanding(*convoy))
+			{
+				return false;
+			}
+
+			convoy->holdCargo = order.desiredCargo;
+			return true;
+		}
+
+		return false;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -905,6 +942,23 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::setDesiredCargo(
+		DesiredCargo desiredCargo,
+		long long id,
+		DesiredCargoTargetType targetType,
+		CommandSource source,
+		long long classId)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = SetDesiredCargo{
+			.desiredCargo = std::move(desiredCargo),
+			.id = id,
+			.targetType = targetType,
+			.classId = classId };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -962,6 +1016,10 @@ namespace
 				else if constexpr (std::is_same_v<Payload, CreateShipClass>)
 				{
 					return applyCreateShipClass(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, SetDesiredCargo>)
+				{
+					return applySetDesiredCargo(world, payload);
 				}
 				else
 				{

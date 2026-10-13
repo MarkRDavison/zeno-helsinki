@@ -80,7 +80,7 @@ namespace CombatTests
 	{
 		for (auto& hull : fleet.hulls)
 		{
-			hull.missileAmmo = 0;
+			hull.magazine.clear();
 		}
 	}
 
@@ -501,7 +501,7 @@ TEST_CASE("a dry hull still fires lasers", "[slr][Combat]")
 		.closeRate = 0.0f });
 	addFleet(world, 1, 1, 10, 1, 1, 0.0f);
 	addFleet(world, 2, 2, 10, 2, 1, 0.0f);
-	world.fleets[0].hulls.front().missileAmmo = 0;
+	world.fleets[0].hulls.front().magazine.clear();
 	stepGalaxy(world);
 	REQUIRE(classCountFor(world.fleets[1].composition, 2) == 0);
 	REQUIRE(classCountFor(world.fleets[0].composition, 1) == 1);
@@ -682,7 +682,7 @@ TEST_CASE("one remaining missile is enough to open fire", "[slr][Combat]")
 	home->motion.progress = 0.0f;
 	emptyFleetMissileAmmo(*home);
 	REQUIRE(!home->hulls.empty());
-	home->hulls.front().missileAmmo = 1;
+	addMagazineGood(home->hulls.front().magazine, MissileGoodId, 1.f);
 	REQUIRE(execute(
 		world,
 		GameCommand::setFleetPolicyOverride(

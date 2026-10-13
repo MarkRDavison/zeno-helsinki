@@ -823,7 +823,7 @@ namespace slr
 		long long ammo = 0;
 		for (const auto& hull : fleet.hulls)
 		{
-			ammo += hull.missileAmmo;
+			ammo += static_cast<long long>(magazineUsed(hull.magazine));
 		}
 
 		return ammo;
@@ -841,7 +841,7 @@ namespace slr
 		{
 			if (hull.classId == classId)
 			{
-				ammo += hull.missileAmmo;
+				ammo += static_cast<long long>(magazineUsed(hull.magazine));
 			}
 		}
 
@@ -866,6 +866,97 @@ namespace slr
 		}
 
 		return hulls * shipClass->magazineSize;
+	}
+
+	long long fleetWarshipMagazineCapacity(const WorldData& world, const Fleet& fleet)
+	{
+		long long capacity = 0;
+		for (const auto& hull : fleet.hulls)
+		{
+			const ShipClass* shipClass = world.shipClassById(hull.classId);
+			if (shipClass == nullptr || !shipClassHasRole(*shipClass, HullRole::Warship))
+			{
+				continue;
+			}
+
+			if (shipClass->magazineSize > capacity)
+			{
+				capacity = shipClass->magazineSize;
+			}
+		}
+
+		return capacity > 0 ? capacity : 80;
+	}
+
+	DesiredCargo desiredCargoForFleetClass(const Fleet& fleet, long long classId)
+	{
+		for (const auto& row : fleet.magazineCargoByClass)
+		{
+			if (row.classId == classId)
+			{
+				return row.desired;
+			}
+		}
+
+		return desiredCargoFillRemaining(MissileGoodId);
+	}
+
+	void ensureFleetClassDesiredCargo(Fleet& fleet, long long classId)
+	{
+		for (const auto& row : fleet.magazineCargoByClass)
+		{
+			if (row.classId == classId)
+			{
+				return;
+			}
+		}
+
+		fleet.magazineCargoByClass.push_back(ClassDesiredCargo{
+			.classId = classId,
+			.desired = desiredCargoFillRemaining(MissileGoodId) });
+	}
+
+	void setFleetClassDesiredCargo(Fleet& fleet, long long classId, DesiredCargo desired)
+	{
+		for (auto& row : fleet.magazineCargoByClass)
+		{
+			if (row.classId == classId)
+			{
+				row.desired = std::move(desired);
+				return;
+			}
+		}
+
+		fleet.magazineCargoByClass.push_back(ClassDesiredCargo{
+			.classId = classId,
+			.desired = std::move(desired) });
+	}
+
+	std::vector<GoodQuantity> truckCargoAsQuantities(const Truck& truck)
+	{
+		if (truck.cargoGoodId == 0 || truck.cargoAmount <= 0.f)
+		{
+			return {};
+		}
+
+		return { GoodQuantity{ .goodId = truck.cargoGoodId, .amount = truck.cargoAmount } };
+	}
+
+	bool hullWantsCombatMissileGood(
+		const DesiredCargo& magazineCargo,
+		const FleetHull& hull,
+		GoodAmount magazineSize,
+		long long goodId)
+	{
+		if (!isCombatMissileGood(goodId) || magazineSize < 1.f)
+		{
+			return false;
+		}
+
+		const std::vector<GoodQuantity> available{
+			GoodQuantity{ .goodId = goodId, .amount = 1.f } };
+		return nextDesiredCargoGoodId(magazineCargo, hull.magazine, magazineSize, available) ==
+			goodId;
 	}
 
 	void syncFleetCompositionFromHulls(Fleet& fleet)
@@ -913,12 +1004,19 @@ namespace slr
 			return;
 		}
 
+		ensureFleetClassDesiredCargo(fleet, shipClass->id);
+
 		for (long long i = 0; i < count; ++i)
 		{
-			fleet.hulls.push_back(FleetHull{
+			FleetHull hull{
 				.id = nextFleetHullId(world),
-				.classId = shipClass->id,
-				.missileAmmo = missileAmmo });
+				.classId = shipClass->id };
+			if (missileAmmo > 0)
+			{
+				addMagazineGood(hull.magazine, MissileGoodId, static_cast<GoodAmount>(missileAmmo));
+			}
+
+			fleet.hulls.push_back(std::move(hull));
 		}
 
 		syncFleetCompositionFromHulls(fleet);
@@ -2275,10 +2373,10 @@ namespace slr
 				if (isRefit)
 				{
 					Fleet& fleet = fleetAtYardForCompletedRefit(world, yard, slip->preferredFleetId);
+					ensureFleetClassDesiredCargo(fleet, slip->hullClassId);
 					fleet.hulls.push_back(FleetHull{
 						.id = slip->refitHullId,
-						.classId = slip->hullClassId,
-						.missileAmmo = 0 });
+						.classId = slip->hullClassId });
 					syncFleetCompositionFromHulls(fleet);
 					clearYardSlipHullJob(*slip);
 					continue;
@@ -2344,22 +2442,35 @@ namespace slr
 
 				const ShipClass* shipClass = world.shipClassById(hull->classId);
 				if (shipClass == nullptr || shipClass->magazineSize <= 0 ||
-					hull->missileAmmo >= shipClass->magazineSize)
+					magazineUsed(hull->magazine) >= static_cast<GoodAmount>(shipClass->magazineSize))
 				{
 					continue;
 				}
 
-				if (stockpileAvailableForYardConsume(world, yard.systemId, MissileGoodId) < 1)
+				std::vector<GoodQuantity> available;
+				for (const long long goodId : { MissileGoodId, MissileLongRangeGoodId })
+				{
+					available.push_back(GoodQuantity{
+						.goodId = goodId,
+						.amount = stockpileAvailableForYardConsume(world, yard.systemId, goodId) });
+				}
+
+				const long long nextGood = nextDesiredCargoGoodId(
+					desiredCargoForFleetClass(*fleet, hull->classId),
+					hull->magazine,
+					static_cast<GoodAmount>(shipClass->magazineSize),
+					available);
+				if (nextGood == 0)
 				{
 					continue;
 				}
 
-				if (!useFromStockpile(world, yard.systemId, MissileGoodId, 1))
+				if (!useFromStockpile(world, yard.systemId, nextGood, 1))
 				{
 					continue;
 				}
 
-				hull->missileAmmo += 1;
+				addMagazineGood(hull->magazine, nextGood, 1.f);
 			}
 		}
 	}
@@ -2409,18 +2520,42 @@ namespace slr
 				continue;
 			}
 
+			const Convoy* convoy = world.convoyById(tender->convoyId);
+			if (convoy == nullptr)
+			{
+				continue;
+			}
+
 			const long long systemId = truckSystemId(*tender);
-			if (stockpileAvailableForYardConsume(world, systemId, MissileGoodId) < 1)
+			std::vector<GoodQuantity> available;
+			for (const long long goodId : { MissileGoodId, MissileLongRangeGoodId })
+			{
+				available.push_back(GoodQuantity{
+					.goodId = goodId,
+					.amount = stockpileAvailableForYardConsume(world, systemId, goodId) });
+			}
+
+			const long long nextGood = nextDesiredCargoGoodId(
+				convoy->holdCargo,
+				truckCargoAsQuantities(*tender),
+				TruckCapacity_Missiles,
+				available);
+			if (nextGood == 0)
 			{
 				continue;
 			}
 
-			if (!useFromStockpile(world, systemId, MissileGoodId, 1))
+			if (tender->cargoAmount > 0.f && tender->cargoGoodId != nextGood)
 			{
 				continue;
 			}
 
-			tender->cargoGoodId = MissileGoodId;
+			if (!useFromStockpile(world, systemId, nextGood, 1))
+			{
+				continue;
+			}
+
+			tender->cargoGoodId = nextGood;
 			tender->cargoAmount += 1;
 		}
 	}
@@ -2447,7 +2582,8 @@ namespace slr
 			{
 				const ShipClass* shipClass = world.shipClassById(hull.classId);
 				if (shipClass == nullptr || !shipClassHasRole(*shipClass, HullRole::Warship) ||
-					shipClass->magazineSize <= 0 || hull.missileAmmo >= shipClass->magazineSize)
+					shipClass->magazineSize <= 0 ||
+					magazineUsed(hull.magazine) >= static_cast<GoodAmount>(shipClass->magazineSize))
 				{
 					continue;
 				}
@@ -2470,7 +2606,7 @@ namespace slr
 			for (auto& truck : world.trucks)
 			{
 				if (!truckHasRole(world, truck, HullRole::Tender) || truck.motion.progress > 0.0f ||
-					truck.cargoAmount <= 0 || truck.cargoGoodId != MissileGoodId ||
+					truck.cargoAmount <= 0 || !isCombatMissileGood(truck.cargoGoodId) ||
 					truck.empireId != ref.empireId)
 				{
 					continue;
@@ -2522,7 +2658,18 @@ namespace slr
 					continue;
 				}
 
-				hull.missileAmmo += 1;
+				const ShipClass* shipClass = world.shipClassById(hull.classId);
+				if (shipClass == nullptr ||
+					!hullWantsCombatMissileGood(
+						desiredCargoForFleetClass(*fleet, hull.classId),
+						hull,
+						static_cast<GoodAmount>(shipClass->magazineSize),
+						donor->cargoGoodId))
+				{
+					continue;
+				}
+
+				addMagazineGood(hull.magazine, donor->cargoGoodId, 1.f);
 				donor->cargoAmount -= 1;
 				if (donor->cargoAmount == 0)
 				{

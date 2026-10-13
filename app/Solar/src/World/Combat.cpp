@@ -31,7 +31,7 @@ namespace
 		long long missileTubes{ 0 };
 		long long missileReloadInnerTicks{ 0 };
 		long long missileReloadRemaining{ 0 };
-		long long missileAmmo{ 0 };
+		std::vector<GoodQuantity> magazine;
 		float missileSpeed{ 0.0f };
 		long long shields{ 0 };
 		long long hull{ 0 };
@@ -172,7 +172,7 @@ namespace
 					.missileDamage = shipClass->missileDamage,
 					.missileTubes = shipClass->missileTubes,
 					.missileReloadInnerTicks = shipClass->missileReloadInnerTicks,
-					.missileAmmo = hull.missileAmmo,
+					.magazine = hull.magazine,
 					.missileSpeed = shipClass->missileSpeed,
 					.shields = shipClass->maxShields,
 					.hull = shipClass->maxHull,
@@ -320,29 +320,47 @@ namespace
 				--shooter->missileReloadRemaining;
 			}
 
-			if (shooter->missileReloadRemaining > 0 || shooter->missileAmmo <= 0 ||
+			if (shooter->missileReloadRemaining > 0 || magazineUsed(shooter->magazine) < 1.f ||
 				shooter->missileTubes <= 0 || shooter->missileSpeed <= 0.0f)
 			{
 				continue;
 			}
 
-			const CombatShip* targetRef =
-				lowestLivingEnemyInWeaponRange(ships, *shooter, shooter->missileRange);
-			if (targetRef == nullptr)
+			bool launched = false;
+			for (long long round = 0; round < shooter->missileTubes; ++round)
 			{
-				continue;
-			}
+				const long long goodId = highestRangeLoadedCombatMissileGoodId(shooter->magazine);
+				if (goodId == 0)
+				{
+					break;
+				}
 
-			const long long rounds = std::min(shooter->missileTubes, shooter->missileAmmo);
-			for (long long round = 0; round < rounds; ++round)
-			{
-				--shooter->missileAmmo;
+				const float fireRange =
+					shooter->missileRange * combatMissileRangeScale(goodId);
+				const CombatShip* targetRef =
+					lowestLivingEnemyInWeaponRange(ships, *shooter, fireRange);
+				if (targetRef == nullptr)
+				{
+					break;
+				}
+
+				if (!spendMagazineGood(shooter->magazine, goodId, 1.f))
+				{
+					break;
+				}
+
 				missiles.push_back(CombatMissile{
 					.position = shooter->position,
 					.speed = shooter->missileSpeed,
 					.accuracy = shooter->accuracy,
 					.damage = shooter->missileDamage,
 					.targetId = targetRef->id });
+				launched = true;
+			}
+
+			if (!launched)
+			{
+				continue;
 			}
 
 			shooter->missileReloadRemaining = shooter->missileReloadInnerTicks;
@@ -432,7 +450,7 @@ namespace
 			}
 
 			FleetHull updated = hull;
-			updated.missileAmmo = combatShip->missileAmmo;
+			updated.magazine = combatShip->magazine;
 			livingHulls.push_back(updated);
 		}
 

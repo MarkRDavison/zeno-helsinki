@@ -1,5 +1,6 @@
 #pragma once
 
+#include <World/DesiredCargo.hpp>
 #include <World/Goods.hpp>
 #include <helsinki/System/glm.hpp>
 #include <cstdint>
@@ -110,12 +111,6 @@ namespace slr
 	{
 		long long a{ 0 };
 		long long b{ 0 };
-	};
-
-	struct GoodQuantity
-	{
-		long long goodId{ 0 };
-		GoodAmount amount{ 0.f };
 	};
 
 	struct MineOutput
@@ -258,7 +253,13 @@ namespace slr
 	{
 		long long id{ 0 };
 		long long classId{ 0 };
-		long long missileAmmo{ 0 };
+		std::vector<GoodQuantity> magazine;
+	};
+
+	struct ClassDesiredCargo
+	{
+		long long classId{ 0 };
+		DesiredCargo desired;
 	};
 
 	struct Fleet
@@ -272,6 +273,7 @@ namespace slr
 		LaneMotion motion;
 		long long policyId{ 0 };
 		long long escortConvoyId{ 0 };
+		std::vector<ClassDesiredCargo> magazineCargoByClass;
 	};
 
 	struct BattleSideReport
@@ -320,6 +322,7 @@ namespace slr
 		long long desiredMilitaryTruckCount{ 0 };
 		long long desiredTenderCount{ 0 };
 		long long expectedArrivalTick{ 0 };
+		DesiredCargo holdCargo;
 	};
 
 	struct WorldData
@@ -449,6 +452,16 @@ namespace slr
 	bool fleetHasJoinedMissileAmmo(const Fleet& fleet);
 	long long fleetMissileAmmoForClass(const Fleet& fleet, long long classId);
 	long long fleetMagazineMaxForClass(const WorldData& world, const Fleet& fleet, long long classId);
+	long long fleetWarshipMagazineCapacity(const WorldData& world, const Fleet& fleet);
+	DesiredCargo desiredCargoForFleetClass(const Fleet& fleet, long long classId);
+	void ensureFleetClassDesiredCargo(Fleet& fleet, long long classId);
+	void setFleetClassDesiredCargo(Fleet& fleet, long long classId, DesiredCargo desired);
+	std::vector<GoodQuantity> truckCargoAsQuantities(const Truck& truck);
+	bool hullWantsCombatMissileGood(
+		const DesiredCargo& magazineCargo,
+		const FleetHull& hull,
+		GoodAmount magazineSize,
+		long long goodId);
 	void syncFleetCompositionFromHulls(Fleet& fleet);
 	bool removeFleetHull(Fleet& fleet, long long hullId);
 	long long nextFleetId(const WorldData& world);

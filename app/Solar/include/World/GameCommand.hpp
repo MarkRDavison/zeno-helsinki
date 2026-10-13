@@ -99,6 +99,14 @@ namespace slr
 		ShipClassDraft draft;
 	};
 
+	struct SetDesiredCargo
+	{
+		DesiredCargo desiredCargo;
+		long long id{ 0 };
+		DesiredCargoTargetType targetType{ DesiredCargoTargetType::FleetMagazine };
+		long long classId{ 0 };
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
@@ -115,7 +123,8 @@ namespace slr
 			StartYardSlip,
 			StartYardBuild,
 			StartYardRefit,
-			CreateShipClass>
+			CreateShipClass,
+			SetDesiredCargo>
 			payload;
 
 		static GameCommand moveFleetToSystem(
@@ -172,6 +181,12 @@ namespace slr
 			long long empireId,
 			ShipClassDraft draft,
 			CommandSource source);
+		static GameCommand setDesiredCargo(
+			DesiredCargo desiredCargo,
+			long long id,
+			DesiredCargoTargetType targetType,
+			CommandSource source,
+			long long classId = 0);
 	};
 
 	bool execute(WorldData& world, const GameCommand& command);
