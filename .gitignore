@@ -48,3 +48,4 @@ UserInterfaceConfig.hpp
 /app/Physics/PhysicsConfig.hpp
 /app/Skeleton/SkeletonConfig.hpp
 /lib/renderer/include/helsinki/Renderer/RendererShaderRoot.hpp
+/app/TwoDimensional/TwoDimensionalConfig.hpp
