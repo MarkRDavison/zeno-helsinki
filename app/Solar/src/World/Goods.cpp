@@ -40,6 +40,16 @@ namespace slr
 			return "prototype missile mk1";
 		}
 
+		if (goodId == MissileEngineMk2GoodId)
+		{
+			return "missile engine mk2";
+		}
+
+		if (goodId == PrototypeMissileMk2GoodId)
+		{
+			return "prototype missile mk2";
+		}
+
 		return "unknown";
 	}
 
@@ -57,10 +67,37 @@ namespace slr
 		case MissileWarheadMk1GoodId:
 		case MissileSeekerMk1GoodId:
 		case PrototypeMissileMk1GoodId:
+		case MissileEngineMk2GoodId:
+		case PrototypeMissileMk2GoodId:
 			return TruckCapacity_Steel;
 		default:
 			return TruckCapacity_Steel;
 		}
+	}
+
+	long long variantOfGoodId(long long goodId)
+	{
+		if (goodId == PrototypeMissileMk2GoodId)
+		{
+			return PrototypeMissileMk1GoodId;
+		}
+
+		if (goodId == MissileEngineMk2GoodId)
+		{
+			return MissileEngineMk1GoodId;
+		}
+
+		return 0;
+	}
+
+	bool goodsAreDeclaredVariants(long long a, long long b)
+	{
+		if (a == 0 || b == 0 || a == b)
+		{
+			return false;
+		}
+
+		return variantOfGoodId(a) == b || variantOfGoodId(b) == a;
 	}
 
 }

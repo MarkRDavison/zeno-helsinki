@@ -12,6 +12,8 @@ namespace slr
 	constexpr long long MissileWarheadMk1GoodId = 5;
 	constexpr long long MissileSeekerMk1GoodId = 6;
 	constexpr long long PrototypeMissileMk1GoodId = 7;
+	constexpr long long MissileEngineMk2GoodId = 8;
+	constexpr long long PrototypeMissileMk2GoodId = 9;
 
 	constexpr long long HelionSystemId = 1;
 	constexpr long long KestrelSystemId = 2;
@@ -32,6 +34,9 @@ namespace slr
 	constexpr long long FactoryRecipeId_MissileWarheadMk1 = 102;
 	constexpr long long FactoryRecipeId_MissileSeekerMk1 = 103;
 	constexpr long long FactoryRecipeId_PrototypeMissileMk1 = 104;
+	constexpr long long FactoryRecipeId_MissileEngineMk2 = 105;
+	constexpr long long FactoryRecipeId_PrototypeMissileMk2 = 106;
+	constexpr long long FactoryVariantKeepPerThousand = 800;
 	constexpr GoodAmount TruckCapacity_Steel = 50.f;
 	constexpr GoodAmount TruckCapacity_IronOre = 50.f;
 	constexpr GoodAmount TruckCapacity_Missiles = 50.f;
@@ -61,5 +66,7 @@ namespace slr
 
 	const char* goodName(long long goodId);
 	GoodAmount truckloadForGood(long long goodId);
+	long long variantOfGoodId(long long goodId);
+	bool goodsAreDeclaredVariants(long long a, long long b);
 
 }

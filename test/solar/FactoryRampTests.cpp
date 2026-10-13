@@ -49,7 +49,7 @@ TEST_CASE("missile output has a product ramp spec; steel output does not", "[slr
 TEST_CASE("starter Kestrel missile plant starts at 10% efficiency per thousand", "[slr][FactoryRamp]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.factories.size() == 6);
+	REQUIRE(world.factories.size() == 7);
 	const Factory* kestrelFactory = nullptr;
 	for (const auto& factory : world.factories)
 	{

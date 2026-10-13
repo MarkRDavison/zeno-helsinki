@@ -389,6 +389,28 @@ namespace slr
 			.outputAmountPerTick = FactoryAvonAssemblerOutputPerTick,
 			.outputMaxStockpile = AvonPrototypeMissileMaxStockpile,
 			.ticksPerOutput = FactoryAvonAssemblerTicksPerOutput };
+		static const FactoryRecipe missileEngineMk2{
+			.recipeId = FactoryRecipeId_MissileEngineMk2,
+			.inputsPerTick = { GoodQuantity{ .goodId = SteelGoodId, .amount = FactoryAvonEngineSteelPerTick } },
+			.outputGoodId = MissileEngineMk2GoodId,
+			.outputAmountPerTick = FactoryAvonComponentOutputPerTick,
+			.outputMaxStockpile = AvonComponentMaxStockpile };
+		static const FactoryRecipe prototypeMissileMk2{
+			.recipeId = FactoryRecipeId_PrototypeMissileMk2,
+			.inputsPerTick = {
+				GoodQuantity{
+					.goodId = MissileEngineMk2GoodId,
+					.amount = FactoryAvonAssemblerComponentInputPerTick },
+				GoodQuantity{
+					.goodId = MissileWarheadMk1GoodId,
+					.amount = FactoryAvonAssemblerComponentInputPerTick },
+				GoodQuantity{
+					.goodId = MissileSeekerMk1GoodId,
+					.amount = FactoryAvonAssemblerComponentInputPerTick } },
+			.outputGoodId = PrototypeMissileMk2GoodId,
+			.outputAmountPerTick = FactoryAvonAssemblerOutputPerTick,
+			.outputMaxStockpile = AvonPrototypeMissileMaxStockpile,
+			.ticksPerOutput = FactoryAvonAssemblerTicksPerOutput };
 
 		switch (recipeId)
 		{
@@ -400,9 +422,24 @@ namespace slr
 			return &missileSeekerMk1;
 		case FactoryRecipeId_PrototypeMissileMk1:
 			return &prototypeMissileMk1;
+		case FactoryRecipeId_MissileEngineMk2:
+			return &missileEngineMk2;
+		case FactoryRecipeId_PrototypeMissileMk2:
+			return &prototypeMissileMk2;
 		default:
 			return nullptr;
 		}
+	}
+
+	void applyFactoryRecipe(Factory& factory, const FactoryRecipe& recipe)
+	{
+		factory.inputsPerTick = recipe.inputsPerTick;
+		factory.outputGoodId = recipe.outputGoodId;
+		factory.outputAmountPerTick = recipe.outputAmountPerTick;
+		factory.outputMaxStockpile = recipe.outputMaxStockpile;
+		factory.ticksPerOutput = recipe.ticksPerOutput;
+		factory.remainingOutputTicks = 0;
+		factory.recipeId = recipe.recipeId;
 	}
 
 	Factory makeFactoryFromRecipe(
@@ -411,15 +448,43 @@ namespace slr
 		const FactoryRecipe& recipe,
 		std::vector<GoodQuantity> desiredPiles)
 	{
-		return Factory{
+		Factory factory{
 			.systemId = systemId,
 			.empireId = empireId,
-			.desiredPiles = std::move(desiredPiles),
-			.inputsPerTick = recipe.inputsPerTick,
-			.outputGoodId = recipe.outputGoodId,
-			.outputAmountPerTick = recipe.outputAmountPerTick,
-			.outputMaxStockpile = recipe.outputMaxStockpile,
-			.ticksPerOutput = recipe.ticksPerOutput };
+			.desiredPiles = std::move(desiredPiles) };
+		applyFactoryRecipe(factory, recipe);
+		if (const ProductRampSpec* rampSpec = productRampSpecForGood(recipe.outputGoodId))
+		{
+			factory.productEfficiencyPerThousand = rampSpec->startEfficiencyPerThousand;
+		}
+
+		return factory;
+	}
+
+	void retargetFactoryRecipe(Factory& factory, const FactoryRecipe& recipe)
+	{
+		if (factory.outputGoodId == recipe.outputGoodId)
+		{
+			return;
+		}
+
+		const ProductRampSpec* rampSpec = productRampSpecForGood(recipe.outputGoodId);
+		const long long startEfficiency = rampSpec != nullptr
+			? rampSpec->startEfficiencyPerThousand
+			: FactoryStartEfficiencyPerThousand;
+		if (goodsAreDeclaredVariants(factory.outputGoodId, recipe.outputGoodId))
+		{
+			const long long kept = factory.productEfficiencyPerThousand * FactoryVariantKeepPerThousand /
+				FactoryFullEfficiencyPerThousand;
+			factory.productEfficiencyPerThousand = kept > startEfficiency ? kept : startEfficiency;
+		}
+		else
+		{
+			factory.productEfficiencyPerThousand = startEfficiency;
+		}
+
+		factory.productRampUnitsProduced = 0.f;
+		applyFactoryRecipe(factory, recipe);
 	}
 
 	const ProductRampSpec* productRampSpecForGood(long long goodId)
@@ -428,10 +493,19 @@ namespace slr
 			.goodId = MissileGoodId,
 			.startEfficiencyPerThousand = FactoryStartEfficiencyPerThousand,
 			.maxEfficiencyPerThousand = FactoryFullEfficiencyPerThousand };
+		static const ProductRampSpec prototypeMissileRamp{
+			.goodId = PrototypeMissileMk1GoodId,
+			.startEfficiencyPerThousand = FactoryStartEfficiencyPerThousand,
+			.maxEfficiencyPerThousand = FactoryFullEfficiencyPerThousand };
 
 		if (goodId == missileRamp.goodId)
 		{
 			return &missileRamp;
+		}
+
+		if (goodId == PrototypeMissileMk1GoodId || goodId == PrototypeMissileMk2GoodId)
+		{
+			return &prototypeMissileRamp;
 		}
 
 		return nullptr;

@@ -86,6 +86,8 @@ namespace
 		avon->stocks.push_back(GoodStock{ .goodId = MissileWarheadMk1GoodId, .goodAmount = 0 });
 		avon->stocks.push_back(GoodStock{ .goodId = MissileSeekerMk1GoodId, .goodAmount = 0 });
 		avon->stocks.push_back(GoodStock{ .goodId = PrototypeMissileMk1GoodId, .goodAmount = 0 });
+		avon->stocks.push_back(GoodStock{ .goodId = MissileEngineMk2GoodId, .goodAmount = 0 });
+		avon->stocks.push_back(GoodStock{ .goodId = PrototypeMissileMk2GoodId, .goodAmount = 0 });
 
 		world.mines.push_back(Mine{
 			.systemId = 5,
@@ -119,6 +121,8 @@ namespace
 			makeFactoryFromRecipe(AvonSystemId, HelionEmpireId, *factoryRecipeById(FactoryRecipeId_MissileSeekerMk1)));
 		world.factories.push_back(
 			makeFactoryFromRecipe(AvonSystemId, HelionEmpireId, *factoryRecipeById(FactoryRecipeId_PrototypeMissileMk1)));
+		world.factories.push_back(
+			makeFactoryFromRecipe(AvonSystemId, HelionEmpireId, *factoryRecipeById(FactoryRecipeId_MissileEngineMk2)));
 		world.yards.push_back(Yard{
 			.systemId = 1,
 			.empireId = HelionEmpireId,

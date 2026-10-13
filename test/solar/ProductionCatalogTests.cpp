@@ -59,7 +59,7 @@ TEST_CASE("starter map adds Avon linked only to Kestrel", "[slr][ProductionCatal
 	REQUIRE(avon != nullptr);
 	REQUIRE(avon->name == "Avon");
 	REQUIRE(countLanesTouchingSystem(world, AvonSystemId) == 1);
-	REQUIRE(countAvonFactories(world) == 4);
+	REQUIRE(countAvonFactories(world) == 5);
 }
 
 TEST_CASE("starter Avon factories copy recipe inputs", "[slr][ProductionCatalog]")
@@ -72,6 +72,9 @@ TEST_CASE("starter Avon factories copy recipe inputs", "[slr][ProductionCatalog]
 	REQUIRE(world.factories[5].outputGoodId == PrototypeMissileMk1GoodId);
 	REQUIRE(world.factories[5].inputsPerTick.size() == 3);
 	REQUIRE(world.factories[5].ticksPerOutput == FactoryAvonAssemblerTicksPerOutput);
+	REQUIRE(world.factories[5].productEfficiencyPerThousand == FactoryStartEfficiencyPerThousand);
+	REQUIRE(world.factories[5].recipeId == FactoryRecipeId_PrototypeMissileMk1);
+	REQUIRE(world.factories[6].outputGoodId == MissileEngineMk2GoodId);
 }
 
 TEST_CASE("catalog recipes match Avon proving-ground costs and caps", "[slr][ProductionCatalog]")
@@ -96,6 +99,22 @@ TEST_CASE("catalog recipes match Avon proving-ground costs and caps", "[slr][Pro
 	REQUIRE(assembled->ticksPerOutput == FactoryAvonAssemblerTicksPerOutput);
 	REQUIRE(assembled->outputGoodId == PrototypeMissileMk1GoodId);
 	REQUIRE(assembled->outputMaxStockpile == AvonPrototypeMissileMaxStockpile);
+	const FactoryRecipe* engineMk2 = factoryRecipeById(FactoryRecipeId_MissileEngineMk2);
+	const FactoryRecipe* assembledMk2 = factoryRecipeById(FactoryRecipeId_PrototypeMissileMk2);
+	REQUIRE(engineMk2 != nullptr);
+	REQUIRE(assembledMk2 != nullptr);
+	REQUIRE(engineMk2->inputsPerTick.size() == 1);
+	REQUIRE(engineMk2->inputsPerTick[0].goodId == SteelGoodId);
+	REQUIRE(engineMk2->outputGoodId == MissileEngineMk2GoodId);
+	REQUIRE(assembledMk2->inputsPerTick.size() == 3);
+	REQUIRE(assembledMk2->inputsPerTick[0].goodId == MissileEngineMk2GoodId);
+	REQUIRE(assembledMk2->inputsPerTick[1].goodId == MissileWarheadMk1GoodId);
+	REQUIRE(assembledMk2->inputsPerTick[2].goodId == MissileSeekerMk1GoodId);
+	REQUIRE(assembledMk2->outputGoodId == PrototypeMissileMk2GoodId);
+	REQUIRE(assembledMk2->ticksPerOutput == FactoryAvonAssemblerTicksPerOutput);
+	REQUIRE(variantOfGoodId(PrototypeMissileMk2GoodId) == PrototypeMissileMk1GoodId);
+	REQUIRE(variantOfGoodId(MissileEngineMk2GoodId) == MissileEngineMk1GoodId);
+	REQUIRE(goodsAreDeclaredVariants(PrototypeMissileMk1GoodId, PrototypeMissileMk2GoodId));
 }
 
 TEST_CASE("steel recipe factories emit a component the same tick; assembler waits two", "[slr][ProductionCatalog]")
@@ -121,6 +140,7 @@ TEST_CASE("steel recipe factories emit a component the same tick; assembler wait
 	REQUIRE(world.factories[0].outputAmountPerTick == FactoryAvonComponentOutputPerTick);
 	REQUIRE(world.factories[0].ticksPerOutput == 1);
 	REQUIRE(world.factories[3].ticksPerOutput == FactoryAvonAssemblerTicksPerOutput);
+	world.factories[3].productEfficiencyPerThousand = FactoryFullEfficiencyPerThousand;
 
 	applyFactoryProduction(world);
 
@@ -145,6 +165,7 @@ TEST_CASE(
 	REQUIRE(assembler != nullptr);
 	REQUIRE(assembler->outputAmountPerTick == FactoryAvonAssemblerOutputPerTick);
 	REQUIRE(assembler->ticksPerOutput == FactoryAvonAssemblerTicksPerOutput);
+	assemblerAtAvon(world)->productEfficiencyPerThousand = FactoryFullEfficiencyPerThousand;
 	REQUIRE(getStockpileAmount(*avon, PrototypeMissileMk1GoodId) == Approx(0.f));
 
 	stepGalaxy(world);
@@ -189,6 +210,7 @@ TEST_CASE("assembler emits one prototype missile after two ticks", "[slr][Produc
 		makeFactoryFromRecipe(AvonSystemId, HelionEmpireId, *factoryRecipeById(FactoryRecipeId_PrototypeMissileMk1)));
 	REQUIRE(world.factories[0].outputAmountPerTick == FactoryAvonAssemblerOutputPerTick);
 	REQUIRE(world.factories[0].ticksPerOutput == FactoryAvonAssemblerTicksPerOutput);
+	world.factories[0].productEfficiencyPerThousand = FactoryFullEfficiencyPerThousand;
 
 	applyFactoryProduction(world);
 	REQUIRE(getStockpileAmount(world.systems[0], PrototypeMissileMk1GoodId) == Approx(0.f));

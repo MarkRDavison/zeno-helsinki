@@ -184,6 +184,7 @@ namespace slr
 		GoodAmount productRampUnitsProduced{ 0.f };
 		long long ticksPerOutput{ 1 };
 		long long remainingOutputTicks{ 0 };
+		long long recipeId{ 0 };
 	};
 
 	struct LaneMotion
@@ -370,6 +371,8 @@ namespace slr
 		long long empireId,
 		const FactoryRecipe& recipe,
 		std::vector<GoodQuantity> desiredPiles = {});
+	void applyFactoryRecipe(Factory& factory, const FactoryRecipe& recipe);
+	void retargetFactoryRecipe(Factory& factory, const FactoryRecipe& recipe);
 	GoodAmount factoryEffectiveAmount(GoodAmount ratedAmount, long long efficiencyPerThousand);
 	void advanceProductRampAfterProduction(
 		Factory& factory,
