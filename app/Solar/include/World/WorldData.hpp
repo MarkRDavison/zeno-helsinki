@@ -37,6 +37,13 @@ namespace slr
 		Tender = 1u << 3
 	};
 
+	enum class HullSize
+	{
+		Small,
+		Medium,
+		Large
+	};
+
 	constexpr unsigned hullRoleBit(HullRole role)
 	{
 		return static_cast<unsigned>(role);
@@ -120,6 +127,17 @@ namespace slr
 		long long remainingBuildTicks{ 0 };
 		long long hullClassId{ 0 };
 		long long remainingHullBuildTicks{ 0 };
+		long long refitHullId{ 0 };
+		long long refitFromClassId{ 0 };
+		long long preferredFleetId{ 0 };
+	};
+
+	struct YardRefitJob
+	{
+		long long hullId{ 0 };
+		long long fromClassId{ 0 };
+		long long toClassId{ 0 };
+		long long preferredFleetId{ 0 };
 	};
 
 	struct Yard
@@ -132,6 +150,7 @@ namespace slr
 		std::vector<YardSlip> slips;
 		long long nextSlipConstructionId{ 0 };
 		std::vector<long long> hullBuildQueue;
+		std::vector<YardRefitJob> hullRefitQueue;
 	};
 
 	struct Factory
@@ -182,6 +201,7 @@ namespace slr
 		long long maxHull{ 0 };
 		float closeRate{ 0.0f };
 		unsigned hullRoles{ 0 };
+		HullSize hullSize{ HullSize::Small };
 		long long steelCost{ 0 };
 		long long buildTicks{ 0 };
 		long long missileTubes{ 0 };
@@ -379,6 +399,8 @@ namespace slr
 	long long fleetMissileAmmoForClass(const Fleet& fleet, long long classId);
 	long long fleetMagazineMaxForClass(const WorldData& world, const Fleet& fleet, long long classId);
 	void syncFleetCompositionFromHulls(Fleet& fleet);
+	bool removeFleetHull(Fleet& fleet, long long hullId);
+	long long nextFleetId(const WorldData& world);
 	void appendFullMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count);
 	void appendEmptyMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count);
 	long long systemOwnershipScore(const WorldData& world, long long systemId);
@@ -417,7 +439,9 @@ namespace slr
 	long long countIdleYardSlips(const Yard& yard);
 	void applyYardSlipConstruction(WorldData& world);
 	bool shipClassIsTruckOfEmpire(const ShipClass& shipClass, long long empireId);
+	bool shipClassIsWarshipOfEmpire(const ShipClass& shipClass, long long empireId);
 	long long hullSteelPerTick(const ShipClass& shipClass);
+	long long refitSteelPerTick();
 	long long nextTruckId(const WorldData& world);
 	void applyYardHullConstruction(WorldData& world);
 	void applyYardMagazineRestock(WorldData& world);

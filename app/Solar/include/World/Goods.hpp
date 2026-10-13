@@ -20,6 +20,8 @@ namespace slr
 	constexpr long long YardSlipBuildTicks = 8; // remainingBuildTicks on a new slip; 0 is idle
 	constexpr long long TruckHullSteelCost = 1000;
 	constexpr long long TruckHullBuildTicks = 10; // per-tick steel is TruckHullSteelCost / TruckHullBuildTicks
+	constexpr long long RefitHullSteelCost = 1000;
+	constexpr long long RefitHullBuildTicks = 50; // per-tick steel is RefitHullSteelCost / RefitHullBuildTicks
 	constexpr long long CivilianHazardFadeTicks = 8;
 	constexpr long long YardStarterMissileStockpile = 2000;
 

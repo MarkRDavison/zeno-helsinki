@@ -635,6 +635,91 @@ namespace
 		return true;
 	}
 
+	bool applyStartYardRefit(WorldData& world, const StartYardRefit& order)
+	{
+		if (order.fromClassId == order.toClassId)
+		{
+			return false;
+		}
+
+		Yard* yard = yardAtSystem(world, order.systemId);
+		if (yard == nullptr)
+		{
+			return false;
+		}
+
+		const ShipClass* fromClass = world.shipClassById(order.fromClassId);
+		const ShipClass* toClass = world.shipClassById(order.toClassId);
+		if (fromClass == nullptr || toClass == nullptr)
+		{
+			return false;
+		}
+
+		if (!shipClassIsWarshipOfEmpire(*fromClass, yard->empireId) ||
+			!shipClassIsWarshipOfEmpire(*toClass, yard->empireId))
+		{
+			return false;
+		}
+
+		if (fromClass->hullSize != toClass->hullSize)
+		{
+			return false;
+		}
+
+		Fleet* sourceFleet = nullptr;
+		long long hullId = 0;
+		for (auto& fleet : world.fleets)
+		{
+			if (fleet.empireId != yard->empireId || fleet.systemId != yard->systemId ||
+				!fleetIsParked(fleet))
+			{
+				continue;
+			}
+
+			long long bestHullId = 0;
+			for (const auto& hull : fleet.hulls)
+			{
+				if (hull.classId != order.fromClassId)
+				{
+					continue;
+				}
+
+				if (bestHullId == 0 || hull.id < bestHullId)
+				{
+					bestHullId = hull.id;
+				}
+			}
+
+			if (bestHullId == 0)
+			{
+				continue;
+			}
+
+			if (sourceFleet == nullptr || fleet.id < sourceFleet->id)
+			{
+				sourceFleet = &fleet;
+				hullId = bestHullId;
+			}
+		}
+
+		if (sourceFleet == nullptr || hullId == 0)
+		{
+			return false;
+		}
+
+		if (!removeFleetHull(*sourceFleet, hullId))
+		{
+			return false;
+		}
+
+		yard->hullRefitQueue.push_back(YardRefitJob{
+			.hullId = hullId,
+			.fromClassId = order.fromClassId,
+			.toClassId = order.toClassId,
+			.preferredFleetId = sourceFleet->id });
+		return true;
+	}
+
 }
 
 	GameCommand GameCommand::moveFleetToSystem(
@@ -770,6 +855,21 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::startYardRefit(
+		long long systemId,
+		long long fromClassId,
+		long long toClassId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = StartYardRefit{
+			.systemId = systemId,
+			.fromClassId = fromClassId,
+			.toClassId = toClassId };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -819,6 +919,10 @@ namespace
 				else if constexpr (std::is_same_v<Payload, StartYardBuild>)
 				{
 					return applyStartYardBuild(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, StartYardRefit>)
+				{
+					return applyStartYardRefit(world, payload);
 				}
 				else
 				{

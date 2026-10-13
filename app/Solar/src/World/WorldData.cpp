@@ -578,6 +578,39 @@ namespace slr
 			}
 		}
 
+		for (const auto& yard : world.yards)
+		{
+			for (const auto& job : yard.hullRefitQueue)
+			{
+				if (job.hullId >= nextId)
+				{
+					nextId = job.hullId + 1;
+				}
+			}
+
+			for (const auto& slip : yard.slips)
+			{
+				if (slip.refitHullId >= nextId)
+				{
+					nextId = slip.refitHullId + 1;
+				}
+			}
+		}
+
+		return nextId;
+	}
+
+	long long nextFleetId(const WorldData& world)
+	{
+		long long nextId = 1;
+		for (const auto& fleet : world.fleets)
+		{
+			if (fleet.id >= nextId)
+			{
+				nextId = fleet.id + 1;
+			}
+		}
+
 		return nextId;
 	}
 
@@ -644,6 +677,23 @@ namespace slr
 		{
 			fleet.composition.push_back(ClassCount{ .classId = classId, .count = count });
 		}
+	}
+
+	bool removeFleetHull(Fleet& fleet, long long hullId)
+	{
+		for (auto hull = fleet.hulls.begin(); hull != fleet.hulls.end(); ++hull)
+		{
+			if (hull->id != hullId)
+			{
+				continue;
+			}
+
+			fleet.hulls.erase(hull);
+			syncFleetCompositionFromHulls(fleet);
+			return true;
+		}
+
+		return false;
 	}
 
 	void appendMagazineHulls(
@@ -1783,6 +1833,11 @@ namespace slr
 				shipClassHasRole(shipClass, HullRole::MilitaryCargo));
 	}
 
+	bool shipClassIsWarshipOfEmpire(const ShipClass& shipClass, long long empireId)
+	{
+		return shipClass.empireId == empireId && shipClassHasRole(shipClass, HullRole::Warship);
+	}
+
 	long long hullSteelPerTick(const ShipClass& shipClass)
 	{
 		if (shipClass.buildTicks <= 0)
@@ -1791,6 +1846,16 @@ namespace slr
 		}
 
 		return shipClass.steelCost / shipClass.buildTicks;
+	}
+
+	long long refitSteelPerTick()
+	{
+		if (RefitHullBuildTicks <= 0)
+		{
+			return 0;
+		}
+
+		return RefitHullSteelCost / RefitHullBuildTicks;
 	}
 
 	long long nextTruckId(const WorldData& world)
@@ -1812,6 +1877,77 @@ namespace slr
 		return slip.remainingBuildTicks == 0 && slip.hullClassId == 0;
 	}
 
+	void clearYardSlipHullJob(YardSlip& slip)
+	{
+		slip.hullClassId = 0;
+		slip.remainingHullBuildTicks = 0;
+		slip.refitHullId = 0;
+		slip.refitFromClassId = 0;
+		slip.preferredFleetId = 0;
+	}
+
+	YardSlip* yardSlipById(Yard& yard, long long slipId)
+	{
+		for (auto& slip : yard.slips)
+		{
+			if (slip.id == slipId)
+			{
+				return &slip;
+			}
+		}
+
+		return nullptr;
+	}
+
+	Fleet* parkedFleetAtYardForRefitReturn(
+		WorldData& world,
+		const Yard& yard,
+		long long preferredFleetId)
+	{
+		Fleet* preferred = world.fleetById(preferredFleetId);
+		if (preferred != nullptr && preferred->empireId == yard.empireId &&
+			preferred->systemId == yard.systemId && fleetIsParked(*preferred))
+		{
+			return preferred;
+		}
+
+		Fleet* best = nullptr;
+		for (auto& fleet : world.fleets)
+		{
+			if (fleet.empireId != yard.empireId || fleet.systemId != yard.systemId ||
+				!fleetIsParked(fleet))
+			{
+				continue;
+			}
+
+			if (best == nullptr || fleet.id < best->id)
+			{
+				best = &fleet;
+			}
+		}
+
+		return best;
+	}
+
+	Fleet& fleetAtYardForCompletedRefit(WorldData& world, Yard& yard, long long preferredFleetId)
+	{
+		Fleet* parked = parkedFleetAtYardForRefitReturn(world, yard, preferredFleetId);
+		if (parked != nullptr)
+		{
+			return *parked;
+		}
+
+		const StarSystem* system = world.systemById(yard.systemId);
+		const std::string systemName = system != nullptr ? system->name : "yard";
+		world.fleets.push_back(Fleet{
+			.id = nextFleetId(world),
+			.empireId = yard.empireId,
+			.name = systemName + " yard",
+			.systemId = yard.systemId,
+			.motion = { .speed = 50.0f } });
+		return world.fleets.back();
+	}
+
 	void assignYardHullJobsToAvailableSlips(WorldData& world, Yard& yard)
 	{
 		std::vector<long long> availableIds;
@@ -1826,6 +1962,24 @@ namespace slr
 		std::sort(availableIds.begin(), availableIds.end());
 		for (const long long slipId : availableIds)
 		{
+			YardSlip* slip = yardSlipById(yard, slipId);
+			if (slip == nullptr)
+			{
+				continue;
+			}
+
+			if (!yard.hullRefitQueue.empty())
+			{
+				const YardRefitJob job = yard.hullRefitQueue.front();
+				yard.hullRefitQueue.erase(yard.hullRefitQueue.begin());
+				slip->hullClassId = job.toClassId;
+				slip->remainingHullBuildTicks = RefitHullBuildTicks;
+				slip->refitHullId = job.hullId;
+				slip->refitFromClassId = job.fromClassId;
+				slip->preferredFleetId = job.preferredFleetId;
+				continue;
+			}
+
 			const ShipClass* shipClass = nullptr;
 			while (!yard.hullBuildQueue.empty() && shipClass == nullptr)
 			{
@@ -1843,18 +1997,9 @@ namespace slr
 				break;
 			}
 
-			for (auto& slip : yard.slips)
-			{
-				if (slip.id != slipId)
-				{
-					continue;
-				}
-
-				yard.hullBuildQueue.erase(yard.hullBuildQueue.begin());
-				slip.hullClassId = shipClass->id;
-				slip.remainingHullBuildTicks = shipClass->buildTicks;
-				break;
-			}
+			yard.hullBuildQueue.erase(yard.hullBuildQueue.begin());
+			slip->hullClassId = shipClass->id;
+			slip->remainingHullBuildTicks = shipClass->buildTicks;
 		}
 	}
 
@@ -1887,30 +2032,21 @@ namespace slr
 			std::sort(busyIds.begin(), busyIds.end());
 			for (const long long slipId : busyIds)
 			{
-				YardSlip* slip = nullptr;
-				for (auto& candidate : yard.slips)
-				{
-					if (candidate.id == slipId)
-					{
-						slip = &candidate;
-						break;
-					}
-				}
-
+				YardSlip* slip = yardSlipById(yard, slipId);
 				if (slip == nullptr)
 				{
 					continue;
 				}
 
+				const bool isRefit = slip->refitHullId != 0;
 				const ShipClass* shipClass = world.shipClassById(slip->hullClassId);
 				if (shipClass == nullptr)
 				{
-					slip->hullClassId = 0;
-					slip->remainingHullBuildTicks = 0;
+					clearYardSlipHullJob(*slip);
 					continue;
 				}
 
-				const long long slice = hullSteelPerTick(*shipClass);
+				const long long slice = isRefit ? refitSteelPerTick() : hullSteelPerTick(*shipClass);
 				if (slice <= 0)
 				{
 					continue;
@@ -1932,9 +2068,20 @@ namespace slr
 					continue;
 				}
 
+				if (isRefit)
+				{
+					Fleet& fleet = fleetAtYardForCompletedRefit(world, yard, slip->preferredFleetId);
+					fleet.hulls.push_back(FleetHull{
+						.id = slip->refitHullId,
+						.classId = slip->hullClassId,
+						.missileAmmo = 0 });
+					syncFleetCompositionFromHulls(fleet);
+					clearYardSlipHullJob(*slip);
+					continue;
+				}
+
 				spawnParkedTruckFromClass(world, yard, *shipClass);
-				slip->hullClassId = 0;
-				slip->remainingHullBuildTicks = 0;
+				clearYardSlipHullJob(*slip);
 			}
 		}
 	}

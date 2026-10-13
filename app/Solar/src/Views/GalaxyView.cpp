@@ -13,6 +13,7 @@
 #include <helsinki/System/Resource/ResourceManager.hpp>
 #include <helsinki/System/glm.hpp>
 #include <imgui.h>
+#include <algorithm>
 #include <cmath>
 #include <optional>
 #include <string>
@@ -901,9 +902,24 @@ namespace
 							const ShipClass* hullClass = _world->shipClassById(slip.hullClassId);
 							const std::string hullName =
 								hullClass != nullptr ? hullClass->name : ("class " + std::to_string(slip.hullClassId));
-							ImGui::TextUnformatted(
-								(hullName + " " + std::to_string(slip.remainingHullBuildTicks) + " ticks left")
-									.c_str());
+							if (slip.refitHullId != 0)
+							{
+								const ShipClass* fromClass = _world->shipClassById(slip.refitFromClassId);
+								const std::string fromName = fromClass != nullptr
+									? fromClass->name
+									: ("class " + std::to_string(slip.refitFromClassId));
+								ImGui::TextUnformatted((fromName + " -> " + hullName + " " +
+														std::to_string(slip.remainingHullBuildTicks) +
+														" ticks left")
+														   .c_str());
+							}
+							else
+							{
+								ImGui::TextUnformatted(
+									(hullName + " " + std::to_string(slip.remainingHullBuildTicks) +
+										" ticks left")
+										.c_str());
+							}
 						}
 						else
 						{
@@ -936,12 +952,53 @@ namespace
 					ImGui::EndTable();
 				}
 
+				ImGui::TextUnformatted("Refit queue");
+				const std::string refitQueueTableId = "yard_refit_queue_" + yardTableId;
+				if (ImGui::BeginTable(
+						refitQueueTableId.c_str(),
+						1,
+						ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					ImGui::TableSetupColumn("job");
+					ImGui::TableHeadersRow();
+					for (const auto& job : yard.hullRefitQueue)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						const ShipClass* fromClass = _world->shipClassById(job.fromClassId);
+						const ShipClass* toClass = _world->shipClassById(job.toClassId);
+						const std::string fromName =
+							fromClass != nullptr ? fromClass->name : ("class " + std::to_string(job.fromClassId));
+						const std::string toName =
+							toClass != nullptr ? toClass->name : ("class " + std::to_string(job.toClassId));
+						ImGui::TextUnformatted((fromName + " -> " + toName).c_str());
+					}
+
+					ImGui::EndTable();
+				}
+
 				ImGui::PushID(static_cast<int>(yard.systemId));
+				const long long usableSteel =
+					stockpileAvailableForYardConsume(*_world, system->id, SteelGoodId);
+				const bool canStartYardSlip = usableSteel >= YardSlipSteelCost;
+				if (!canStartYardSlip)
+				{
+					ImGui::BeginDisabled();
+				}
 				if (ImGui::Button("Add slip"))
 				{
 					pendingCommands.push_back(
 						GameCommand::startYardSlip(system->id, CommandSource::Player));
 				}
+				if (!canStartYardSlip)
+				{
+					ImGui::EndDisabled();
+				}
+				ImGui::SameLine();
+				ImGui::TextUnformatted(
+					("usable steel " + std::to_string(usableSteel) + " / " +
+						std::to_string(YardSlipSteelCost))
+						.c_str());
 
 				for (const auto& shipClass : _world->shipClasses)
 				{
@@ -957,6 +1014,64 @@ namespace
 							system->id,
 							shipClass.id,
 							CommandSource::Player));
+					}
+				}
+
+				std::vector<long long> parkedFromClassIds;
+				for (const auto& fleet : _world->fleets)
+				{
+					if (fleet.empireId != yard.empireId || fleet.systemId != system->id ||
+						!fleetIsParked(fleet))
+					{
+						continue;
+					}
+
+					for (const auto& hull : fleet.hulls)
+					{
+						const ShipClass* hullClass = _world->shipClassById(hull.classId);
+						if (hullClass == nullptr ||
+							!shipClassIsWarshipOfEmpire(*hullClass, yard.empireId))
+						{
+							continue;
+						}
+
+						if (std::find(
+								parkedFromClassIds.begin(),
+								parkedFromClassIds.end(),
+								hull.classId) == parkedFromClassIds.end())
+						{
+							parkedFromClassIds.push_back(hull.classId);
+						}
+					}
+				}
+
+				std::sort(parkedFromClassIds.begin(), parkedFromClassIds.end());
+				for (const long long fromClassId : parkedFromClassIds)
+				{
+					const ShipClass* fromClass = _world->shipClassById(fromClassId);
+					if (fromClass == nullptr)
+					{
+						continue;
+					}
+
+					for (const auto& toClass : _world->shipClasses)
+					{
+						if (!shipClassIsWarshipOfEmpire(toClass, yard.empireId) ||
+							toClass.id == fromClassId || toClass.hullSize != fromClass->hullSize)
+						{
+							continue;
+						}
+
+						const std::string buttonId = "Queue " + fromClass->name + " -> " + toClass.name +
+							"##" + std::to_string(fromClassId) + "_" + std::to_string(toClass.id);
+						if (ImGui::Button(buttonId.c_str()))
+						{
+							pendingCommands.push_back(GameCommand::startYardRefit(
+								system->id,
+								fromClassId,
+								toClass.id,
+								CommandSource::Player));
+						}
 					}
 				}
 				ImGui::PopID();
