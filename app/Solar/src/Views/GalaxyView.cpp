@@ -3,6 +3,7 @@
 #include <Views/DesiredCargoChrome.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
 #include <World/GameCommand.hpp>
+#include <World/Intel.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/PickFleet.hpp>
@@ -565,11 +566,38 @@ namespace
 					}
 
 				}
+				const long long playerEmpireId =
+					_world->empires.empty() ? 0 : _world->empires.front().id;
+				const bool playerFleet = isPlayerFleet(*_world, *fleet);
 				for (const auto& row : fleet->composition)
 				{
 					const ShipClass* shipClass = _world->shipClassById(row.classId);
 					if (shipClass == nullptr)
 					{
+						continue;
+					}
+
+					if (!playerFleet)
+					{
+						const EnemyClassIntelLine intelLine = formatEnemyClassIntelLine(
+							*_world,
+							playerEmpireId,
+							fleet->empireId,
+							row.classId,
+							row.count);
+						ImGui::TextUnformatted(intelLine.label.c_str());
+						if (intelLine.confidence == IntelConfidence::Known &&
+							shipClass->magazineSize > 0)
+						{
+							ImGui::TextUnformatted(
+								("missiles " +
+									std::to_string(fleetMissileAmmoForClass(*fleet, row.classId)) +
+									"/" +
+									std::to_string(
+										fleetMagazineMaxForClass(*_world, *fleet, row.classId)))
+									.c_str());
+						}
+
 						continue;
 					}
 
@@ -995,6 +1023,8 @@ namespace
 				ImGui::TextUnformatted(("at " + system->name).c_str());
 			}
 
+			const long long playerEmpireId =
+				_world->empires.empty() ? 0 : _world->empires.front().id;
 			for (const auto& side : report.sides)
 			{
 				const Fleet* fleet = _world->fleetById(side.fleetId);
@@ -1020,14 +1050,32 @@ namespace
 					}
 				}
 
+				const bool enemySideForPlayer = side.empireId != playerEmpireId;
 				for (const long long classId : classIds)
 				{
-					const ShipClass* shipClass = _world->shipClassById(classId);
-					const std::string name = shipClass != nullptr ? shipClass->name : ("class " + std::to_string(classId));
 					const long long before = classCountFor(side.before, classId);
 					const long long after = classCountFor(side.after, classId);
+					std::string name;
+					if (enemySideForPlayer)
+					{
+						name = formatEnemyClassIntelLine(
+								   *_world,
+								   playerEmpireId,
+								   side.empireId,
+								   classId,
+								   0)
+								   .label;
+					}
+					else
+					{
+						const ShipClass* shipClass = _world->shipClassById(classId);
+						name = shipClass != nullptr ? shipClass->name
+													: ("class " + std::to_string(classId));
+					}
+
 					ImGui::TextUnformatted(
-						(name + " " + std::to_string(before) + " -> " + std::to_string(after)).c_str());
+						(name + " " + std::to_string(before) + " -> " + std::to_string(after))
+							.c_str());
 				}
 
 				ImGui::TextUnformatted(
@@ -1038,7 +1086,6 @@ namespace
 
 			if (!_world->empires.empty())
 			{
-				const long long playerEmpireId = _world->empires.front().id;
 				for (const auto& gain : report.intelGainedThisBattle)
 				{
 					if (gain.observerEmpireId != playerEmpireId)
@@ -1046,12 +1093,8 @@ namespace
 						continue;
 					}
 
-					const ShipClass* shipClass = _world->shipClassById(gain.classId);
-					const std::string className =
-						shipClass != nullptr ? shipClass->name
-											 : ("class " + std::to_string(gain.classId));
 					ImGui::TextUnformatted(
-						("Survivors reported enemy class: " + className).c_str());
+						formatBattleIntelGainLine(*_world, playerEmpireId, gain).c_str());
 				}
 			}
 		}

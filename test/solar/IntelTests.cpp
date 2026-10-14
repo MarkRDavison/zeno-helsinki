@@ -284,5 +284,148 @@ TEST_CASE("first sighting of a class only the enemy fields", "[slr][Intel]")
 	REQUIRE(row->sightingCount == 1);
 }
 
+	void pushObservation(
+		WorldData& world,
+		long long observerEmpireId,
+		long long subjectEmpireId,
+		long long classId,
+		int sightingCount)
+	{
+		world.observedEnemyShipClasses.push_back(ObservedEnemyShipClass{
+			.observerEmpireId = observerEmpireId,
+			.subjectEmpireId = subjectEmpireId,
+			.classId = classId,
+			.firstObservedTick = world.tick,
+			.sightingCount = sightingCount });
+	}
+
+	ShipClass rivalMediumClass(long long id, const char* name, long long laserDamage)
+	{
+		return ShipClass{
+			.id = id,
+			.empireId = 2,
+			.name = name,
+			.range = 200.0f,
+			.accuracy = 0.5f,
+			.laserDamage = laserDamage,
+			.maxShields = 0,
+			.maxHull = 30,
+			.hullSize = HullSize::Medium,
+			.magazineSize = 0 };
+	}
+
+TEST_CASE("rival class intel unknown hides design name", "[slr][Intel]")
+{
+	WorldData world;
+	world.empires = { Empire{ .id = 1, .name = "Player" }, Empire{ .id = 2, .name = "Rival" } };
+	world.shipClasses.push_back(rivalMediumClass(10, "Lance", 100));
+	const EnemyClassIntelLine line =
+		formatEnemyClassIntelLine(world, 1, 2, 10, 3);
+	REQUIRE(line.confidence == IntelConfidence::Unknown);
+	REQUIRE(line.label.find("Unknown") != std::string::npos);
+	REQUIRE(line.label.find("Lance") == std::string::npos);
+	REQUIRE(line.label.find("3") != std::string::npos);
+}
+
+TEST_CASE("first enemy class sighting shows new hull line", "[slr][Intel]")
+{
+	WorldData world;
+	world.empires = { Empire{ .id = 1, .name = "Player" }, Empire{ .id = 2, .name = "Rival" } };
+	world.shipClasses.push_back(rivalMediumClass(10, "Lance", 100));
+	pushObservation(world, 1, 2, 10, 1);
+	const EnemyClassIntelLine line = formatEnemyClassIntelLine(world, 1, 2, 10, 1);
+	REQUIRE(line.confidence == IntelConfidence::Estimate);
+	REQUIRE(line.label.find("New medium hull detected") != std::string::npos);
+	REQUIRE(line.label.find("Lance") == std::string::npos);
+}
+
+TEST_CASE("repeated sightings reach known and show true name", "[slr][Intel]")
+{
+	WorldData world;
+	world.empires = { Empire{ .id = 1, .name = "Player" }, Empire{ .id = 2, .name = "Rival" } };
+	world.shipClasses.push_back(rivalMediumClass(10, "Lance", 100));
+	pushObservation(world, 1, 2, 10, IntelKnownClassSightingThreshold);
+	const EnemyClassIntelLine line = formatEnemyClassIntelLine(world, 1, 2, 10, 2);
+	REQUIRE(line.confidence == IntelConfidence::Known);
+	REQUIRE(line.label.find("Lance") != std::string::npos);
+	REQUIRE(line.label.find("estimate") == std::string::npos);
+}
+
+TEST_CASE("similar rival classes stay ambiguous at low sightings", "[slr][Intel]")
+{
+	WorldData world;
+	world.empires = { Empire{ .id = 1, .name = "Player" }, Empire{ .id = 2, .name = "Rival" } };
+	world.shipClasses.push_back(rivalMediumClass(10, "Lance", 100));
+	world.shipClasses.push_back(rivalMediumClass(11, "Spear", 95));
+	REQUIRE(shipClassesAreIntelSimilar(world.shipClasses[0], world.shipClasses[1]));
+	pushObservation(world, 1, 2, 10, 3);
+	pushObservation(world, 1, 2, 11, 2);
+	const EnemyClassIntelLine line = formatEnemyClassIntelLine(world, 1, 2, 11, 1);
+	REQUIRE(line.confidence == IntelConfidence::Estimate);
+	REQUIRE(line.label.find("Spear") == std::string::npos);
+	const bool ambiguousLabel =
+		line.label.find("variant") != std::string::npos ||
+		line.label.find("may match") != std::string::npos;
+	REQUIRE(ambiguousLabel);
+}
+
+TEST_CASE("more sightings than similar peer yields named estimate", "[slr][Intel]")
+{
+	WorldData world;
+	world.empires = { Empire{ .id = 1, .name = "Player" }, Empire{ .id = 2, .name = "Rival" } };
+	world.shipClasses.push_back(rivalMediumClass(10, "Lance", 100));
+	world.shipClasses.push_back(rivalMediumClass(11, "Spear", 95));
+	pushObservation(world, 1, 2, 10, 2);
+	pushObservation(world, 1, 2, 11, 3);
+	const EnemyClassIntelLine line = formatEnemyClassIntelLine(world, 1, 2, 11, 1);
+	REQUIRE(line.confidence == IntelConfidence::Estimate);
+	REQUIRE(line.label.find("Spear (estimate)") != std::string::npos);
+}
+
+TEST_CASE("evaluated intel is deterministic for the same facts", "[slr][Intel]")
+{
+	WorldData a;
+	WorldData b;
+	a.empires = { Empire{ .id = 1, .name = "Player" }, Empire{ .id = 2, .name = "Rival" } };
+	b.empires = a.empires;
+	a.shipClasses.push_back(rivalMediumClass(10, "Lance", 100));
+	b.shipClasses = a.shipClasses;
+	pushObservation(a, 1, 2, 10, 2);
+	pushObservation(b, 1, 2, 10, 2);
+	const EnemyClassIntelLine lineA = formatEnemyClassIntelLine(a, 1, 2, 10, 1);
+	const EnemyClassIntelLine lineB = formatEnemyClassIntelLine(b, 1, 2, 10, 1);
+	REQUIRE(lineA.label == lineB.label);
+	REQUIRE(lineA.confidence == lineB.confidence);
+}
+
+TEST_CASE("unknown evaluation leaves persisted class id unchanged", "[slr][Intel]")
+{
+	WorldData world;
+	world.empires = { Empire{ .id = 1, .name = "Player" }, Empire{ .id = 2, .name = "Rival" } };
+	world.shipClasses.push_back(rivalMediumClass(10, "Lance", 100));
+	pushObservation(world, 1, 2, 10, 1);
+	const EnemyClassIntelLine line = formatEnemyClassIntelLine(world, 1, 2, 99, 1);
+	REQUIRE(line.confidence == IntelConfidence::Unknown);
+	const ObservedEnemyShipClass* row = observedEnemyShipClass(world, 1, 2, 10);
+	REQUIRE(row != nullptr);
+	REQUIRE(row->classId == 10);
+	REQUIRE(row->sightingCount == 1);
+}
+
+TEST_CASE("battle intel gain line uses evaluated label not raw class name", "[slr][Intel]")
+{
+	WorldData world;
+	world.empires = { Empire{ .id = 1, .name = "Player" }, Empire{ .id = 2, .name = "Rival" } };
+	world.shipClasses.push_back(rivalMediumClass(10, "Lance", 100));
+	pushObservation(world, 1, 2, 10, 1);
+	const std::string gainLine = formatBattleIntelGainLine(
+		world,
+		1,
+		BattleIntelGain{ .observerEmpireId = 1, .subjectEmpireId = 2, .classId = 10 });
+	REQUIRE(gainLine.find("Survivors reported:") != std::string::npos);
+	REQUIRE(gainLine.find("New medium hull detected") != std::string::npos);
+	REQUIRE(gainLine.find("Lance") == std::string::npos);
+}
+
 }
 }
