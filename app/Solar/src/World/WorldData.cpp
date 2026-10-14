@@ -258,6 +258,21 @@ namespace slr
 		return "unknown";
 	}
 
+	const char* encounterStanceName(EncounterStance stance)
+	{
+		switch (stance)
+		{
+		case EncounterStance::HoldPosition:
+			return "hold position";
+		case EncounterStance::Flee:
+			return "flee";
+		case EncounterStance::Chase:
+			return "chase";
+		}
+
+		return "unknown";
+	}
+
 	const EngagementPolicy* activeEngagementPolicy(const WorldData& world, const Fleet& fleet)
 	{
 		if (fleet.policyId != 0)

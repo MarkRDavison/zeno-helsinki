@@ -29,6 +29,34 @@ namespace
 		return index == 1 ? FleetApproach::HoldMissileRange : FleetApproach::CloseToLaserRange;
 	}
 
+	int encounterStanceComboIndex(EncounterStance stance)
+	{
+		switch (stance)
+		{
+		case EncounterStance::HoldPosition:
+			return 0;
+		case EncounterStance::Flee:
+			return 1;
+		case EncounterStance::Chase:
+			return 2;
+		}
+
+		return 1;
+	}
+
+	EncounterStance encounterStanceFromComboIndex(int index)
+	{
+		switch (index)
+		{
+		case 0:
+			return EncounterStance::HoldPosition;
+		case 2:
+			return EncounterStance::Chase;
+		default:
+			return EncounterStance::Flee;
+		}
+	}
+
 }
 
 	void EngagementPolicyChrome::setOpen(bool open)
@@ -60,12 +88,13 @@ namespace
 		ImGui::TextUnformatted("Policies");
 		if (ImGui::BeginTable(
 				"engagement_policies",
-				3,
+				4,
 				ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 		{
 			ImGui::TableSetupColumn("name");
 			ImGui::TableSetupColumn("ROE");
 			ImGui::TableSetupColumn("approach");
+			ImGui::TableSetupColumn("encounter");
 			ImGui::TableHeadersRow();
 			for (const auto& policy : world.engagementPolicies)
 			{
@@ -87,12 +116,15 @@ namespace
 					std::snprintf(_draftName, sizeof(_draftName), "%s", policy.name.c_str());
 					_draftRuleIndex = ruleOfEngagementComboIndex(policy.ruleOfEngagement);
 					_draftApproachIndex = fleetApproachComboIndex(policy.approach);
+					_draftEncounterStanceIndex = encounterStanceComboIndex(policy.encounterStance);
 				}
 
 				ImGui::TableSetColumnIndex(1);
 				ImGui::TextUnformatted(ruleOfEngagementName(policy.ruleOfEngagement));
 				ImGui::TableSetColumnIndex(2);
 				ImGui::TextUnformatted(fleetApproachName(policy.approach));
+				ImGui::TableSetColumnIndex(3);
+				ImGui::TextUnformatted(encounterStanceName(policy.encounterStance));
 			}
 
 			ImGui::EndTable();
@@ -173,6 +205,34 @@ namespace
 				ImGui::EndCombo();
 			}
 
+			if (ImGui::BeginCombo(
+					"Encounter",
+					encounterStanceName(encounterStanceFromComboIndex(_draftEncounterStanceIndex))))
+			{
+				if (ImGui::Selectable(
+						encounterStanceName(EncounterStance::HoldPosition),
+						_draftEncounterStanceIndex == 0))
+				{
+					_draftEncounterStanceIndex = 0;
+				}
+
+				if (ImGui::Selectable(
+						encounterStanceName(EncounterStance::Flee),
+						_draftEncounterStanceIndex == 1))
+				{
+					_draftEncounterStanceIndex = 1;
+				}
+
+				if (ImGui::Selectable(
+						encounterStanceName(EncounterStance::Chase),
+						_draftEncounterStanceIndex == 2))
+				{
+					_draftEncounterStanceIndex = 2;
+				}
+
+				ImGui::EndCombo();
+			}
+
 			if (ImGui::Button("Save"))
 			{
 				pendingCommands.push_back(GameCommand::upsertEngagementPolicy(
@@ -181,7 +241,8 @@ namespace
 					_draftName,
 					ruleOfEngagementFromComboIndex(_draftRuleIndex),
 					CommandSource::Player,
-					fleetApproachFromComboIndex(_draftApproachIndex)));
+					fleetApproachFromComboIndex(_draftApproachIndex),
+					encounterStanceFromComboIndex(_draftEncounterStanceIndex)));
 			}
 
 			ImGui::SameLine();

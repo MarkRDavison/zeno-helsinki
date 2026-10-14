@@ -256,7 +256,8 @@ namespace
 				.empireId = order.empireId,
 				.name = order.name,
 				.ruleOfEngagement = order.ruleOfEngagement,
-				.approach = order.approach });
+				.approach = order.approach,
+				.encounterStance = order.encounterStance });
 			return true;
 		}
 
@@ -269,6 +270,7 @@ namespace
 		existing->name = order.name;
 		existing->ruleOfEngagement = order.ruleOfEngagement;
 		existing->approach = order.approach;
+		existing->encounterStance = order.encounterStance;
 		return true;
 	}
 
@@ -922,7 +924,8 @@ namespace
 		std::string name,
 		RuleOfEngagement ruleOfEngagement,
 		CommandSource source,
-		FleetApproach approach)
+		FleetApproach approach,
+		EncounterStance encounterStance)
 	{
 		GameCommand command;
 		command.source = source;
@@ -931,7 +934,8 @@ namespace
 			.empireId = empireId,
 			.name = std::move(name),
 			.ruleOfEngagement = ruleOfEngagement,
-			.approach = approach };
+			.approach = approach,
+			.encounterStance = encounterStance };
 		return command;
 	}
 

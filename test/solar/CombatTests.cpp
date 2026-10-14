@@ -652,15 +652,46 @@ TEST_CASE("loaded weapons-free still fights a dry fleet in the same system", "[s
 	REQUIRE(home != nullptr);
 	REQUIRE(rival != nullptr);
 	parkHomeAtAshreachWithRival(world);
+	declareWarBetweenEmpires(world, HelionEmpireId, AshreachEmpireId);
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			HelionHoldFirePolicyId,
+			HelionEmpireId,
+			"Hold fire",
+			RuleOfEngagement::DoNotFireUnlessFiredUpon,
+			CommandSource::Player,
+			FleetApproach::CloseToLaserRange,
+			EncounterStance::HoldPosition)));
 	emptyFleetMissileAmmo(*home);
 	const long long rivalAmmoBefore = fleetMissileAmmo(*rival);
 	REQUIRE(rivalAmmoBefore > 0);
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			HelionWeaponsFreePolicyId,
+			HelionEmpireId,
+			"Weapons free",
+			RuleOfEngagement::FireIfEnemySeen,
+			CommandSource::Player,
+			FleetApproach::CloseToLaserRange,
+			EncounterStance::HoldPosition)));
 	REQUIRE(execute(
 		world,
 		GameCommand::setEmpireDefaultPolicy(
 			HelionEmpireId,
 			HelionWeaponsFreePolicyId,
 			CommandSource::Player)));
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			AshreachWeaponsFreePolicyId,
+			AshreachEmpireId,
+			"Weapons free",
+			RuleOfEngagement::FireIfEnemySeen,
+			CommandSource::Player,
+			FleetApproach::CloseToLaserRange,
+			EncounterStance::HoldPosition)));
 	REQUIRE(execute(
 		world,
 		GameCommand::setEmpireDefaultPolicy(
@@ -755,6 +786,170 @@ TEST_CASE("weapons-free fleets at the Kestrel mill fight; a far jump picket surv
 	REQUIRE(world.battleReports.front().systemId == KestrelSystemId);
 	REQUIRE(fleetShipCount(*kestrel) == picketShips);
 	REQUIRE(kestrel->placeId == jumpPlaceForLaneNeighbor(world, KestrelSystemId, HelionSystemId)->id);
+}
+
+TEST_CASE("flee stance dry fleet backs off from loaded enemy at same place", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	declareWarBetweenEmpires(world, HelionEmpireId, AshreachEmpireId);
+	home->systemId = AshreachSystemId;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 1, VesperSystemId);
+	rival->systemId = AshreachSystemId;
+	rival->motion.route.clear();
+	rival->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 2, VesperSystemId);
+	emptyFleetMissileAmmo(*home);
+	REQUIRE(fleetHasJoinedMissileAmmo(*rival));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(
+			1,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(
+			2,
+			AshreachWeaponsFreePolicyId,
+			CommandSource::Player)));
+	const SystemPlace* junctionJump =
+		jumpPlaceForLaneNeighbor(world, AshreachSystemId, JunctionSystemId);
+	REQUIRE(junctionJump != nullptr);
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.empty());
+	REQUIRE(inSystemMotionIsCrawling(home->inSystem));
+	REQUIRE(home->inSystem.toPlaceId == junctionJump->id);
+}
+
+TEST_CASE("chase stance crawls toward distant hostile in the same system", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	declareWarBetweenEmpires(world, HelionEmpireId, AshreachEmpireId);
+	home->systemId = HelionSystemId;
+	home->placeId = HelionYardPlaceId;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	rival->systemId = HelionSystemId;
+	rival->motion.route.clear();
+	rival->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 2, KestrelSystemId);
+	const SystemPlace* kestrelJump = jumpPlaceForLaneNeighbor(world, HelionSystemId, KestrelSystemId);
+	REQUIRE(kestrelJump != nullptr);
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			HelionWeaponsFreePolicyId,
+			HelionEmpireId,
+			"Weapons free",
+			RuleOfEngagement::FireIfEnemySeen,
+			CommandSource::Player,
+			FleetApproach::CloseToLaserRange,
+			EncounterStance::Chase)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(
+			1,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.empty());
+	REQUIRE(inSystemMotionIsCrawling(home->inSystem));
+	REQUIRE(home->inSystem.toPlaceId == kestrelJump->id);
+}
+
+TEST_CASE("chase does not follow a hostile onto a hyperlane", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	declareWarBetweenEmpires(world, HelionEmpireId, AshreachEmpireId);
+	home->systemId = HelionSystemId;
+	home->placeId = HelionYardPlaceId;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	rival->systemId = HelionSystemId;
+	rival->motion.route.clear();
+	rival->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 2, KestrelSystemId);
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			HelionWeaponsFreePolicyId,
+			HelionEmpireId,
+			"Weapons free",
+			RuleOfEngagement::FireIfEnemySeen,
+			CommandSource::Player,
+			FleetApproach::CloseToLaserRange,
+			EncounterStance::Chase)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(
+			1,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(inSystemMotionIsCrawling(home->inSystem));
+	REQUIRE(execute(world, GameCommand::moveFleetToSystem(2, KestrelSystemId, CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(home->motion.route.empty());
+	REQUIRE(home->motion.progress == 0.0f);
+}
+
+TEST_CASE("chase at meeting range still resolves battle when roe allows", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	parkHomeAtAshreachWithRival(world);
+	declareWarBetweenEmpires(world, HelionEmpireId, AshreachEmpireId);
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			HelionWeaponsFreePolicyId,
+			HelionEmpireId,
+			"Weapons free",
+			RuleOfEngagement::FireIfEnemySeen,
+			CommandSource::Player,
+			FleetApproach::CloseToLaserRange,
+			EncounterStance::Chase)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(
+			1,
+			HelionWeaponsFreePolicyId,
+			CommandSource::Player)));
+	REQUIRE(execute(
+		world,
+		GameCommand::upsertEngagementPolicy(
+			AshreachWeaponsFreePolicyId,
+			AshreachEmpireId,
+			"Weapons free",
+			RuleOfEngagement::FireIfEnemySeen,
+			CommandSource::Player,
+			FleetApproach::CloseToLaserRange,
+			EncounterStance::HoldPosition)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(
+			2,
+			AshreachWeaponsFreePolicyId,
+			CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.size() == 1);
 }
 
 }

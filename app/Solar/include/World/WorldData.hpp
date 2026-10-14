@@ -33,6 +33,13 @@ namespace slr
 		HoldMissileRange
 	};
 
+	enum class EncounterStance
+	{
+		HoldPosition,
+		Flee,
+		Chase
+	};
+
 	enum class SystemOwnershipType
 	{
 		Empty,
@@ -68,6 +75,7 @@ namespace slr
 		std::string name;
 		RuleOfEngagement ruleOfEngagement{ RuleOfEngagement::DoNotFireUnlessFiredUpon };
 		FleetApproach approach{ FleetApproach::CloseToLaserRange };
+		EncounterStance encounterStance{ EncounterStance::Flee };
 	};
 
 	struct EmpireStats
@@ -372,6 +380,7 @@ namespace slr
 		std::vector<Fleet> fleets;
 		std::vector<EngagementPolicy> engagementPolicies;
 		std::vector<BattleReport> battleReports;
+		std::vector<long long> encounterStanceFleeMeetingExclusions;
 		std::vector<CivilianLoss> civilianLosses;
 		std::vector<EmpireWar> empireWars;
 		std::vector<CivilianHaulForbid> civilianHaulForbids;
@@ -409,6 +418,7 @@ namespace slr
 	bool ruleOfEngagementOpensFire(RuleOfEngagement rule);
 	const char* ruleOfEngagementName(RuleOfEngagement rule);
 	const char* fleetApproachName(FleetApproach approach);
+	const char* encounterStanceName(EncounterStance stance);
 	const EngagementPolicy* activeEngagementPolicy(const WorldData& world, const Fleet& fleet);
 	bool anyFleetOpensFire(const WorldData& world, const std::vector<long long>& fleetIds);
 

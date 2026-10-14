@@ -9,6 +9,7 @@ namespace slr
 	constexpr int CombatMaxInnerTicks = 10000;
 
 	void applyLaserDamage(long long& shields, long long& hull, long long damage);
+	void applyEncounterStance(WorldData& world);
 	void resolveBattles(WorldData& world);
 
 }

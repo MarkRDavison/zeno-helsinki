@@ -1695,6 +1695,7 @@ namespace
 		moveTrucks(world);
 		syncHaulJobsFromUncoveredNeed(world);
 		moveFleets(world);
+		applyEncounterStance(world);
 		resolveBattles(world);
 		applyResearch(world);
 		++world.tick;

@@ -674,6 +674,8 @@ namespace
 				{
 					ImGui::TextUnformatted(
 						(std::string("Approach ") + fleetApproachName(active->approach)).c_str());
+					ImGui::TextUnformatted(
+						(std::string("Encounter ") + encounterStanceName(active->encounterStance)).c_str());
 				}
 
 				if (isPlayerFleet(*_world, *fleet))

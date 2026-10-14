@@ -668,6 +668,254 @@ namespace
 		return clusters;
 	}
 
+	bool fleetHasWarshipHulls(const WorldData& world, const Fleet& fleet)
+	{
+		for (const auto& hull : fleet.hulls)
+		{
+			const ShipClass* shipClass = world.shipClassById(hull.classId);
+			if (shipClass != nullptr && shipClassHasRole(*shipClass, HullRole::Warship))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool fleetEligibleForEncounterStance(const Fleet& fleet)
+	{
+		return fleet.motion.progress <= 0.0f && fleetShipCount(fleet) > 0;
+	}
+
+	long long crawlFromPlaceId(const Fleet& fleet)
+	{
+		if (fleet.placeId != 0)
+		{
+			return fleet.placeId;
+		}
+
+		if (inSystemMotionIsCrawling(fleet.inSystem))
+		{
+			return fleet.inSystem.fromPlaceId;
+		}
+
+		return 0;
+	}
+
+	long long hostilePlaceIdForFleet(const Fleet& fleet)
+	{
+		if (inSystemMotionIsCrawling(fleet.inSystem))
+		{
+			return fleet.inSystem.toPlaceId;
+		}
+
+		return fleet.placeId;
+	}
+
+	long long meetingHostileEmpireForFleet(const WorldData& world, const Fleet& fleet)
+	{
+		long long chosenFleetId = 0;
+		long long hostileEmpire = 0;
+		for (const auto& other : world.fleets)
+		{
+			if (other.id == fleet.id || other.systemId != fleet.systemId)
+			{
+				continue;
+			}
+
+			if (other.empireId == fleet.empireId || !fleetHasWarshipHulls(world, other))
+			{
+				continue;
+			}
+
+			if (fleetShipCount(other) == 0)
+			{
+				continue;
+			}
+
+			if (!empiresAreAtWar(world, fleet.empireId, other.empireId))
+			{
+				continue;
+			}
+
+			if (!moversAreWithinSystemBattleMeetingRadius(
+					world,
+					fleet.systemId,
+					fleet.placeId,
+					fleet.inSystem,
+					other.placeId,
+					other.inSystem))
+			{
+				continue;
+			}
+
+			if (chosenFleetId == 0 || other.id < chosenFleetId)
+			{
+				chosenFleetId = other.id;
+				hostileEmpire = other.empireId;
+			}
+		}
+
+		return hostileEmpire;
+	}
+
+	const Fleet* pickChaseHostileFleet(const WorldData& world, const Fleet& fleet)
+	{
+		const auto selfPosition = inSystemMoverPosition(
+			world,
+			fleet.systemId,
+			fleet.placeId,
+			fleet.inSystem);
+		if (!selfPosition.has_value())
+		{
+			return nullptr;
+		}
+
+		const Fleet* best = nullptr;
+		float bestDist = std::numeric_limits<float>::max();
+		for (const auto& other : world.fleets)
+		{
+			if (other.id == fleet.id || other.systemId != fleet.systemId)
+			{
+				continue;
+			}
+
+			if (other.empireId == fleet.empireId || !fleetHasWarshipHulls(world, other))
+			{
+				continue;
+			}
+
+			if (fleetShipCount(other) == 0)
+			{
+				continue;
+			}
+
+			if (!empiresAreAtWar(world, fleet.empireId, other.empireId))
+			{
+				continue;
+			}
+
+			if (moversAreWithinSystemBattleMeetingRadius(
+					world,
+					fleet.systemId,
+					fleet.placeId,
+					fleet.inSystem,
+					other.placeId,
+					other.inSystem))
+			{
+				continue;
+			}
+
+			const auto otherPosition = inSystemMoverPosition(
+				world,
+				other.systemId,
+				other.placeId,
+				other.inSystem);
+			if (!otherPosition.has_value())
+			{
+				continue;
+			}
+
+			const float dist = glm::length(*selfPosition - *otherPosition);
+			if (best == nullptr || dist < bestDist || (dist == bestDist && other.id < best->id))
+			{
+				bestDist = dist;
+				best = world.fleetById(other.id);
+			}
+		}
+
+		return best;
+	}
+
+	long long pickNearestValidFleeJumpPlaceId(
+		const WorldData& world,
+		const Fleet& fleet,
+		long long hostileEmpireId)
+	{
+		const SystemLayout* layout = world.systemLayoutBySystemId(fleet.systemId);
+		if (layout == nullptr)
+		{
+			return 0;
+		}
+
+		const auto selfPosition = inSystemMoverPosition(
+			world,
+			fleet.systemId,
+			fleet.placeId,
+			fleet.inSystem);
+		if (!selfPosition.has_value())
+		{
+			return 0;
+		}
+
+		long long bestPlaceId = 0;
+		float bestDist = std::numeric_limits<float>::max();
+		for (const auto& place : layout->places)
+		{
+			if (place.kind != SystemPlaceKind::Jump)
+			{
+				continue;
+			}
+
+			const StarSystem* neighbor = world.systemById(place.neighborSystemId);
+			if (neighbor == nullptr || neighbor->empireId == hostileEmpireId)
+			{
+				continue;
+			}
+
+			const float dist = glm::length(place.position - *selfPosition);
+			if (bestPlaceId == 0 || dist < bestDist || (dist == bestDist && place.id < bestPlaceId))
+			{
+				bestDist = dist;
+				bestPlaceId = place.id;
+			}
+		}
+
+		return bestPlaceId;
+	}
+
+	bool fleetIsFleeingMeetingCluster(const WorldData& world, const Fleet& fleet)
+	{
+		const EngagementPolicy* policy = activeEngagementPolicy(world, fleet);
+		if (policy == nullptr || policy->encounterStance != EncounterStance::Flee)
+		{
+			return false;
+		}
+
+		if (meetingHostileEmpireForFleet(world, fleet) == 0)
+		{
+			return false;
+		}
+
+		if (!inSystemMotionIsCrawling(fleet.inSystem))
+		{
+			return false;
+		}
+
+		const SystemLayout* layout = world.systemLayoutBySystemId(fleet.systemId);
+		if (layout == nullptr)
+		{
+			return false;
+		}
+
+		const SystemPlace* to = placeById(*layout, fleet.inSystem.toPlaceId);
+		return to != nullptr && to->kind == SystemPlaceKind::Jump;
+	}
+
+	bool fleetExcludedFromEncounterMeeting(const WorldData& world, long long fleetId)
+	{
+		for (const long long id : world.encounterStanceFleeMeetingExclusions)
+		{
+			if (id == fleetId)
+			{
+				return true;
+			}
+		}
+
+		const Fleet* fleet = world.fleetById(fleetId);
+		return fleet != nullptr && fleetIsFleeingMeetingCluster(world, *fleet);
+	}
+
 	void destroyEnemyTrucksAtWeaponsFreeFleets(WorldData& world)
 	{
 		std::vector<long long> truckIdsToDestroy;
@@ -706,6 +954,115 @@ namespace
 		}
 	}
 
+	void applyEncounterStance(WorldData& world)
+	{
+		world.encounterStanceFleeMeetingExclusions.clear();
+		for (auto& fleet : world.fleets)
+		{
+			if (!fleetEligibleForEncounterStance(fleet) || !fleetHasWarshipHulls(world, fleet))
+			{
+				continue;
+			}
+
+			if (world.systemLayoutBySystemId(fleet.systemId) == nullptr)
+			{
+				continue;
+			}
+
+			const EngagementPolicy* policy = activeEngagementPolicy(world, fleet);
+			if (policy == nullptr)
+			{
+				continue;
+			}
+
+			if (policy->encounterStance == EncounterStance::Flee)
+			{
+				const long long hostileEmpire = meetingHostileEmpireForFleet(world, fleet);
+				if (hostileEmpire == 0)
+				{
+					continue;
+				}
+
+				const long long jumpPlaceId = pickNearestValidFleeJumpPlaceId(world, fleet, hostileEmpire);
+				if (jumpPlaceId == 0)
+				{
+					continue;
+				}
+
+				const long long fromPlaceId = crawlFromPlaceId(fleet);
+				if (fromPlaceId == 0)
+				{
+					continue;
+				}
+
+				if (fromPlaceId == jumpPlaceId && !inSystemMotionIsCrawling(fleet.inSystem))
+				{
+					world.encounterStanceFleeMeetingExclusions.push_back(fleet.id);
+					continue;
+				}
+
+				if (startInSystemCrawl(
+						world,
+						fleet.systemId,
+						fromPlaceId,
+						jumpPlaceId,
+						fleet.inSystem,
+						fleet.placeId))
+				{
+					world.encounterStanceFleeMeetingExclusions.push_back(fleet.id);
+				}
+
+				continue;
+			}
+
+			if (policy->encounterStance != EncounterStance::Chase)
+			{
+				continue;
+			}
+
+			const Fleet* target = pickChaseHostileFleet(world, fleet);
+			if (target == nullptr)
+			{
+				continue;
+			}
+
+			const long long targetPlaceId = hostilePlaceIdForFleet(*target);
+			if (targetPlaceId == 0)
+			{
+				continue;
+			}
+
+			const long long fromPlaceId = crawlFromPlaceId(fleet);
+			if (fromPlaceId == 0)
+			{
+				continue;
+			}
+
+			if (inSystemMotionIsCrawling(fleet.inSystem) && fleet.inSystem.fromPlaceId == fromPlaceId &&
+				fleet.inSystem.toPlaceId == targetPlaceId)
+			{
+				continue;
+			}
+
+			startInSystemCrawl(
+				world,
+				fleet.systemId,
+				fromPlaceId,
+				targetPlaceId,
+				fleet.inSystem,
+				fleet.placeId);
+		}
+
+		std::sort(
+			world.encounterStanceFleeMeetingExclusions.begin(),
+			world.encounterStanceFleeMeetingExclusions.end());
+		world.encounterStanceFleeMeetingExclusions.erase(
+			std::unique(
+				world.encounterStanceFleeMeetingExclusions.begin(),
+				world.encounterStanceFleeMeetingExclusions.end()),
+			world.encounterStanceFleeMeetingExclusions.end());
+	}
+
 	void resolveBattles(WorldData& world)
 	{
 		destroyEnemyTrucksAtWeaponsFreeFleets(world);
@@ -714,6 +1071,11 @@ namespace
 		for (const auto& fleet : world.fleets)
 		{
 			if (!isParked(fleet) || fleetShipCount(fleet) == 0)
+			{
+				continue;
+			}
+
+			if (fleetExcludedFromEncounterMeeting(world, fleet.id))
 			{
 				continue;
 			}

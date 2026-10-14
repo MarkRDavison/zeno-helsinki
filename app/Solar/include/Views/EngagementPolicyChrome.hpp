@@ -19,6 +19,7 @@ namespace slr
 		char _draftName[64]{};
 		int _draftRuleIndex{ 0 };
 		int _draftApproachIndex{ 0 };
+		int _draftEncounterStanceIndex{ 1 };
 	};
 
 }
