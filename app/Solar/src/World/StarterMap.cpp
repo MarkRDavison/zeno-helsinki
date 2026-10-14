@@ -398,7 +398,7 @@ namespace
 		world.fleets.push_back(Fleet{
 			.id = 2,
 			.empireId = AshreachEmpireId,
-			.name = "Kestrel Squadron",
+			.name = "Ashreach Fleet",
 			.systemId = 4,
 			.motion = { .speed = homeFleetSpeed } });
 		appendFullMagazineHulls(world, world.fleets.back(), lanceId, 6);

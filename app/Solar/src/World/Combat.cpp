@@ -158,6 +158,7 @@ namespace
 					continue;
 				}
 
+				const EmpireStats& stats = empireStats(world, fleet->empireId);
 				ships.push_back(CombatShip{
 					.id = nextId++,
 					.fleetId = fleet->id,
@@ -165,10 +166,11 @@ namespace
 					.classId = hull.classId,
 					.hullId = hull.id,
 					.position = position,
-					.range = shipClass->range,
+					.range = shipClass->range * stats.laserRangeMultiplier,
 					.missileRange = shipClass->missileRange,
 					.accuracy = shipClass->accuracy,
-					.laserDamage = shipClass->laserDamage,
+					.laserDamage = static_cast<long long>(
+						std::floor(static_cast<float>(shipClass->laserDamage) * stats.laserDamageMultiplier)),
 					.missileDamage = shipClass->missileDamage,
 					.missileTubes = shipClass->missileTubes,
 					.missileReloadInnerTicks = shipClass->missileReloadInnerTicks,

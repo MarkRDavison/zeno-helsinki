@@ -108,7 +108,7 @@ TEST_CASE("starter map has two empires and rival classes at Ashreach", "[slr][Co
 	REQUIRE(world.empireById(HelionEmpireId) != nullptr);
 	REQUIRE(world.empireById(AshreachEmpireId) != nullptr);
 	const Fleet* home = fleetNamed(world, "Home Fleet");
-	const Fleet* rival = fleetNamed(world, "Kestrel Squadron");
+	const Fleet* rival = fleetNamed(world, "Ashreach Fleet");
 	REQUIRE(home != nullptr);
 	REQUIRE(rival != nullptr);
 	REQUIRE(home->empireId == HelionEmpireId);

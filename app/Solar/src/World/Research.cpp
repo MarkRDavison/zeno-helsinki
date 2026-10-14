@@ -9,17 +9,33 @@ namespace slr
 	{
 		static const std::vector<ResearchProjectSpec> catalogue{
 			ResearchProjectSpec{
-				.id = ResearchProjectSensorsId,
-				.name = "Improved sensors",
-				.cost = ResearchProjectSensorsCost },
+				.id = ResearchProjectLaserDamage1Id,
+				.name = "Laser damage I",
+				.cost = ResearchProjectLevel1Cost },
 			ResearchProjectSpec{
-				.id = ResearchProjectArmourId,
-				.name = "Better armour",
-				.cost = ResearchProjectArmourCost },
+				.id = ResearchProjectLaserDamage2Id,
+				.name = "Laser damage II",
+				.cost = ResearchProjectLevel2Cost,
+				.requiresProjectId = ResearchProjectLaserDamage1Id },
 			ResearchProjectSpec{
-				.id = ResearchProjectDriveId,
-				.name = "Dummy drive",
-				.cost = ResearchProjectDriveCost },
+				.id = ResearchProjectLaserDamage3Id,
+				.name = "Laser damage III",
+				.cost = ResearchProjectLevel3Cost,
+				.requiresProjectId = ResearchProjectLaserDamage2Id },
+			ResearchProjectSpec{
+				.id = ResearchProjectLaserRange1Id,
+				.name = "Laser range I",
+				.cost = ResearchProjectLevel1Cost },
+			ResearchProjectSpec{
+				.id = ResearchProjectLaserRange2Id,
+				.name = "Laser range II",
+				.cost = ResearchProjectLevel2Cost,
+				.requiresProjectId = ResearchProjectLaserRange1Id },
+			ResearchProjectSpec{
+				.id = ResearchProjectLaserRange3Id,
+				.name = "Laser range III",
+				.cost = ResearchProjectLevel3Cost,
+				.requiresProjectId = ResearchProjectLaserRange2Id },
 		};
 		return catalogue;
 	}
@@ -85,6 +101,77 @@ namespace slr
 		return static_cast<long long>(std::floor(amount));
 	}
 
+	bool researchProjectPrerequisiteIsMet(
+		const WorldData& world,
+		long long empireId,
+		const ResearchProjectSpec& spec)
+	{
+		if (spec.requiresProjectId == 0)
+		{
+			return true;
+		}
+
+		const ResearchProgress* required =
+			world.researchProgressByEmpireAndProject(empireId, spec.requiresProjectId);
+		return required != nullptr && required->completed;
+	}
+
+	bool researchProjectIsAvailable(
+		const WorldData& world,
+		long long empireId,
+		const ResearchProjectSpec& spec)
+	{
+		const ResearchProgress* row = world.researchProgressByEmpireAndProject(empireId, spec.id);
+		if (row != nullptr && (row->active || row->completed))
+		{
+			return false;
+		}
+
+		return researchProjectPrerequisiteIsMet(world, empireId, spec);
+	}
+
+	void applyCompletedResearch(WorldData& world, long long empireId, long long projectId)
+	{
+		ResearchProgress* row = world.researchProgressByEmpireAndProject(empireId, projectId);
+		if (row == nullptr || !row->completed || row->unlockApplied)
+		{
+			return;
+		}
+
+		Empire* empire = world.empireById(empireId);
+		if (empire == nullptr)
+		{
+			return;
+		}
+
+		if (projectId == ResearchProjectLaserDamage1Id)
+		{
+			empire->stats.laserDamageMultiplier = LaserMultiplierLevel1;
+		}
+		else if (projectId == ResearchProjectLaserDamage2Id)
+		{
+			empire->stats.laserDamageMultiplier = LaserMultiplierLevel2;
+		}
+		else if (projectId == ResearchProjectLaserDamage3Id)
+		{
+			empire->stats.laserDamageMultiplier = LaserMultiplierLevel3;
+		}
+		else if (projectId == ResearchProjectLaserRange1Id)
+		{
+			empire->stats.laserRangeMultiplier = LaserMultiplierLevel1;
+		}
+		else if (projectId == ResearchProjectLaserRange2Id)
+		{
+			empire->stats.laserRangeMultiplier = LaserMultiplierLevel2;
+		}
+		else if (projectId == ResearchProjectLaserRange3Id)
+		{
+			empire->stats.laserRangeMultiplier = LaserMultiplierLevel3;
+		}
+
+		row->unlockApplied = true;
+	}
+
 	void applyResearch(WorldData& world)
 	{
 		for (const auto& empire : world.empires)
@@ -115,6 +202,7 @@ namespace slr
 					row.progress = spec->cost;
 					row.active = false;
 					row.completed = true;
+					applyCompletedResearch(world, empire.id, row.projectId);
 				}
 			}
 		}

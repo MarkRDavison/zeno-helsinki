@@ -787,7 +787,13 @@ namespace
 			return false;
 		}
 
-		if (researchProjectById(order.projectId) == nullptr)
+		const ResearchProjectSpec* spec = researchProjectById(order.projectId);
+		if (spec == nullptr)
+		{
+			return false;
+		}
+
+		if (!researchProjectPrerequisiteIsMet(world, order.empireId, *spec))
 		{
 			return false;
 		}

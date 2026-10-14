@@ -69,11 +69,18 @@ namespace slr
 		FleetApproach approach{ FleetApproach::CloseToLaserRange };
 	};
 
+	struct EmpireStats
+	{
+		float laserDamageMultiplier{ 1.f };
+		float laserRangeMultiplier{ 1.f };
+	};
+
 	struct Empire
 	{
 		long long id{ 0 };
 		std::string name;
 		long long defaultPolicyId{ 0 };
+		EmpireStats stats;
 	};
 
 	struct EmpireWar
@@ -370,6 +377,7 @@ namespace slr
 		ResearchProgress* researchProgressByEmpireAndProject(long long empireId, long long projectId);
 	};
 
+	const EmpireStats& empireStats(const WorldData& world, long long empireId);
 	bool shipClassHasRole(const ShipClass& shipClass, HullRole role);
 	bool truckHasRole(const WorldData& world, const Truck& truck, HullRole role);
 	bool truckHasCargoHaulRole(const WorldData& world, const Truck& truck);

@@ -32,6 +32,18 @@ namespace slr
 			truckHasRole(world, truck, HullRole::Tender);
 	}
 
+	const EmpireStats& empireStats(const WorldData& world, long long empireId)
+	{
+		static const EmpireStats defaults{};
+		const Empire* empire = world.empireById(empireId);
+		if (empire == nullptr)
+		{
+			return defaults;
+		}
+
+		return empire->stats;
+	}
+
 	const Empire* WorldData::empireById(long long id) const
 	{
 		for (const auto& empire : empires)

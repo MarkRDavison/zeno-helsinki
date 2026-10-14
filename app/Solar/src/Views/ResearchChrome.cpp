@@ -54,12 +54,13 @@ namespace slr
 					ImGui::TableHeadersRow();
 					for (const auto& spec : researchCatalogue())
 					{
-						const ResearchProgress* row =
-							world.researchProgressByEmpireAndProject(empireId, spec.id);
-						if (row != nullptr && (row->active || row->completed))
+						if (!researchProjectIsAvailable(world, empireId, spec))
 						{
 							continue;
 						}
+
+						const ResearchProgress* row =
+							world.researchProgressByEmpireAndProject(empireId, spec.id);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
