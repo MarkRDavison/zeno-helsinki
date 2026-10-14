@@ -257,6 +257,70 @@ namespace
 		return jumpPlaceForLaneNeighbor(*layout, neighborSystemId);
 	}
 
+	const SystemPlace* haulLoadPlaceForGood(
+		const WorldData& world,
+		long long systemId,
+		long long goodId)
+	{
+		if (world.systemLayoutBySystemId(systemId) == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (const auto& mine : world.mines)
+		{
+			if (mine.systemId != systemId)
+			{
+				continue;
+			}
+
+			for (const auto& output : mine.outputsPerTick)
+			{
+				if (output.goodId == goodId)
+				{
+					return minePlaceForSystem(world, systemId);
+				}
+			}
+		}
+
+		for (const auto& factory : world.factories)
+		{
+			if (factory.systemId == systemId && factory.outputGoodId == goodId)
+			{
+				return factoryPlaceForSystem(world, systemId);
+			}
+		}
+
+		return yardPlaceForSystem(world, systemId);
+	}
+
+	const SystemPlace* haulDumpPlaceForGood(
+		const WorldData& world,
+		long long systemId,
+		long long goodId)
+	{
+		if (world.systemLayoutBySystemId(systemId) == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (const auto& factory : world.factories)
+		{
+			if (factory.systemId != systemId)
+			{
+				continue;
+			}
+
+			if (quantityForGood(factory.inputsPerTick, goodId) > 0.f ||
+				quantityForGood(factory.desiredPiles, goodId) > 0.f)
+			{
+				return factoryPlaceForSystem(world, systemId);
+			}
+		}
+
+		return yardPlaceForSystem(world, systemId);
+	}
+
 	const SystemPlace* parkedPlaceInSystem(
 		const WorldData& world,
 		long long systemId,
@@ -522,20 +586,16 @@ namespace
 		}
 
 		inSystem.pendingGalaxyRoute = path;
-		if (motion.route.size() >= 2)
-		{
-			motion.route.clear();
-			motion.hop = 0;
-			motion.progress = 0.0f;
-		}
-
+		motion.route = { systemId };
+		motion.hop = 0;
+		motion.progress = 0.0f;
 		return true;
 	}
 
 	void applyPendingGalaxyRouteAfterCrawl(
 		InSystemMotion& inSystem,
 		LaneMotion& motion,
-		long long& placeId)
+		long long&)
 	{
 		if (inSystemMotionIsCrawling(inSystem) || inSystem.pendingGalaxyRoute.size() < 2)
 		{
@@ -546,7 +606,65 @@ namespace
 		motion.hop = 0;
 		motion.progress = 0.0f;
 		motion.direction = 1;
-		placeId = 0;
+		inSystem = InSystemMotion{};
+	}
+
+	void continueGalaxyPathAfterHop(
+		WorldData& world,
+		long long& parkedSystemId,
+		InSystemMotion& inSystem,
+		LaneMotion& motion,
+		long long& placeId,
+		bool clearRouteOnLastHop)
+	{
+		if (motion.hop < 0 || motion.hop >= static_cast<int>(motion.route.size()))
+		{
+			return;
+		}
+
+		parkedSystemId = motion.route[static_cast<size_t>(motion.hop)];
+		if (motion.hop >= 1)
+		{
+			setMoverPlaceToArrivalJump(
+				world,
+				parkedSystemId,
+				motion.route[static_cast<size_t>(motion.hop - 1)],
+				placeId);
+		}
+
+		if (motion.hop == static_cast<int>(motion.route.size()) - 1)
+		{
+			if (clearRouteOnLastHop)
+			{
+				motion.route.clear();
+			}
+			else
+			{
+				motion.route = { parkedSystemId };
+			}
+
+			motion.hop = 0;
+			motion.progress = 0.0f;
+			return;
+		}
+
+		const std::vector<long long> remaining(
+			motion.route.begin() + motion.hop,
+			motion.route.end());
+		if (beginGalaxyPathOrCrawlToOutboundJump(
+				world,
+				parkedSystemId,
+				inSystem,
+				motion,
+				placeId,
+				remaining))
+		{
+			return;
+		}
+
+		motion.route = { parkedSystemId };
+		motion.hop = 0;
+		motion.progress = 0.0f;
 		inSystem = InSystemMotion{};
 	}
 

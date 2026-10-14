@@ -334,6 +334,14 @@ namespace slr
 			}
 		}
 
+		for (const auto& credit : world.pendingStockpileCredits)
+		{
+			if (credit.goodId == goodId)
+			{
+				total += credit.amount;
+			}
+		}
+
 		return total;
 	}
 

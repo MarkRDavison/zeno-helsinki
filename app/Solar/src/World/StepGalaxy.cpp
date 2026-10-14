@@ -54,6 +54,23 @@ namespace
 		}
 	}
 
+	void applyPendingStockpileCredits(WorldData& world)
+	{
+		for (const auto& credit : world.pendingStockpileCredits)
+		{
+			StarSystem* system = world.systemById(credit.systemId);
+			if (system == nullptr)
+			{
+				continue;
+			}
+
+			addToStockpile(*system, credit.goodId, credit.amount);
+			reduceNeed(*system, credit.goodId, credit.amount);
+		}
+
+		world.pendingStockpileCredits.clear();
+	}
+
 	void applyCivilianConsumption(WorldData& world)
 	{
 		for (const auto& yard : world.yards)
@@ -177,6 +194,167 @@ namespace
 		}
 	}
 
+	float slowestMemberSpeed(const WorldData& world, long long convoyId);
+
+	void pauseConvoyAtIntermediateArrival(WorldData& world, Convoy& convoy)
+	{
+		if (convoy.motion.hop < 1 ||
+			convoy.motion.hop >= static_cast<int>(convoy.motion.route.size()))
+		{
+			return;
+		}
+
+		const long long arrivedSystemId = convoy.motion.route[static_cast<size_t>(convoy.motion.hop)];
+		const long long cameFromSystemId =
+			convoy.motion.route[static_cast<size_t>(convoy.motion.hop - 1)];
+		const std::vector<long long> remaining(
+			convoy.motion.route.begin() + convoy.motion.hop,
+			convoy.motion.route.end());
+		convoy.motion.route.clear();
+		convoy.motion.hop = 0;
+		convoy.motion.progress = 0.0f;
+
+		for (auto& truck : world.trucks)
+		{
+			if (truck.convoyId != convoy.id)
+			{
+				continue;
+			}
+
+			setMoverPlaceToArrivalJump(world, arrivedSystemId, cameFromSystemId, truck.placeId);
+			parkTruckAt(truck, arrivedSystemId);
+			beginGalaxyPathOrCrawlToOutboundJump(
+				world,
+				arrivedSystemId,
+				truck.inSystem,
+				truck.motion,
+				truck.placeId,
+				remaining);
+		}
+
+		if (!convoyIsStanding(convoy))
+		{
+			return;
+		}
+
+		Fleet* fleet = world.fleetById(convoy.escortFleetId);
+		if (fleet == nullptr)
+		{
+			return;
+		}
+
+		fleet->systemId = arrivedSystemId;
+		setMoverPlaceToArrivalJump(world, arrivedSystemId, cameFromSystemId, fleet->placeId);
+		fleet->motion.route.clear();
+		fleet->motion.hop = 0;
+		fleet->motion.progress = 0.0f;
+		beginGalaxyPathOrCrawlToOutboundJump(
+			world,
+			fleet->systemId,
+			fleet->inSystem,
+			fleet->motion,
+			fleet->placeId,
+			remaining);
+	}
+
+	void resumeConvoyGalaxyPathWhenMembersAtOutboundJump(WorldData& world)
+	{
+		for (auto& convoy : world.convoys)
+		{
+			if (convoyIsUnderway(convoy) || convoy.haulJobId == 0)
+			{
+				continue;
+			}
+
+			std::vector<long long> remaining;
+			bool any = false;
+			bool ready = true;
+			for (const auto& truck : world.trucks)
+			{
+				if (truck.convoyId != convoy.id)
+				{
+					continue;
+				}
+
+				if (convoyIsStanding(convoy) && !truckHasCargoHaulRole(world, truck))
+				{
+					continue;
+				}
+
+				if (truckHasCargoHaulRole(world, truck) && truck.cargoAmount == 0)
+				{
+					continue;
+				}
+
+				any = true;
+				if (inSystemMotionIsCrawling(truck.inSystem) || truck.motion.route.size() < 2)
+				{
+					ready = false;
+					break;
+				}
+
+				if (remaining.empty())
+				{
+					remaining = truck.motion.route;
+				}
+				else if (truck.motion.route != remaining)
+				{
+					ready = false;
+					break;
+				}
+
+				const long long here = truckSystemId(truck);
+				if (here != remaining.front())
+				{
+					ready = false;
+					break;
+				}
+
+				if (truck.placeId != 0 &&
+					!moverCanStartHyperlaneFromPlace(world, here, truck.placeId, remaining[1]))
+				{
+					ready = false;
+					break;
+				}
+			}
+
+			if (!any || !ready || remaining.size() < 2)
+			{
+				continue;
+			}
+
+			if (convoyIsStanding(convoy))
+			{
+				const Fleet* fleet = world.fleetById(convoy.escortFleetId);
+				if (fleet == nullptr || inSystemMotionIsCrawling(fleet->inSystem) ||
+					fleet->motion.route != remaining)
+				{
+					continue;
+				}
+
+				if (fleet->placeId != 0 &&
+					!moverCanStartHyperlaneFromPlace(
+						world,
+						fleet->systemId,
+						fleet->placeId,
+						remaining[1]))
+				{
+					continue;
+				}
+			}
+
+			convoy.motion.route = remaining;
+			convoy.motion.hop = 0;
+			convoy.motion.progress = 0.0f;
+			convoy.motion.direction = 1;
+			convoy.motion.speed = slowestMemberSpeed(world, convoy.id);
+			copyConvoyMotionOntoMembers(world, convoy);
+			copyConvoyMotionOntoEscortFleet(world, convoy);
+		}
+	}
+
+	bool truckIsParkedAtPlace(const Truck& truck, const SystemPlace* place);
+
 	bool convoyMembersReadyToSail(const WorldData& world, const Convoy& convoy)
 	{
 		bool anyLoadedAtRally = false;
@@ -207,6 +385,14 @@ namespace
 			else
 			{
 				allLoaded = false;
+				const HaulJob* job = world.haulJobById(convoy.haulJobId);
+				if (job != nullptr &&
+					!truckIsParkedAtPlace(
+						truck,
+						haulLoadPlaceForGood(world, convoy.loadSystemId, job->goodId)))
+				{
+					return false;
+				}
 			}
 		}
 
@@ -427,6 +613,11 @@ namespace
 					continue;
 				}
 
+				if (truckHasCargoHaulRole(world, truck) && truck.cargoAmount == 0)
+				{
+					continue;
+				}
+
 				if (!moverCanStartHyperlaneFromPlace(world, convoy.loadSystemId, truck.placeId, path[1]))
 				{
 					canDepart = false;
@@ -449,6 +640,11 @@ namespace
 				for (auto& truck : world.trucks)
 				{
 					if (truck.convoyId != convoy.id)
+					{
+						continue;
+					}
+
+					if (truckHasCargoHaulRole(world, truck) && truck.cargoAmount == 0)
 					{
 						continue;
 					}
@@ -532,6 +728,85 @@ namespace
 		}
 	}
 
+	bool truckIsParkedAtPlace(const Truck& truck, const SystemPlace* place)
+	{
+		if (inSystemMotionIsCrawling(truck.inSystem))
+		{
+			return false;
+		}
+
+		if (place == nullptr)
+		{
+			return true;
+		}
+
+		return truck.placeId == place->id;
+	}
+
+	void beginCrawlToHaulTransferPlace(WorldData& world, Truck& truck)
+	{
+		if (truck.motion.progress > 0.0f && truck.motion.route.size() >= 2)
+		{
+			return;
+		}
+
+		const long long here = truckSystemId(truck);
+		if (here == 0)
+		{
+			return;
+		}
+
+		const SystemPlace* destPlace = nullptr;
+		if (truck.cargoAmount > 0 && truck.haulJobId != 0)
+		{
+			const HaulJob* job = world.haulJobById(truck.haulJobId);
+			if (job != nullptr && here == job->destinationSystemId)
+			{
+				destPlace = haulDumpPlaceForGood(world, here, truck.cargoGoodId);
+			}
+		}
+		else if (truck.cargoAmount == 0 && truck.haulJobId != 0)
+		{
+			const Convoy* convoy = world.convoyById(truck.convoyId);
+			const HaulJob* job = world.haulJobById(truck.haulJobId);
+			if (convoy != nullptr && job != nullptr && here == convoy->loadSystemId)
+			{
+				destPlace = haulLoadPlaceForGood(world, here, job->goodId);
+			}
+		}
+
+		if (destPlace == nullptr)
+		{
+			return;
+		}
+
+		if (!inSystemMotionIsCrawling(truck.inSystem) && truck.placeId == destPlace->id)
+		{
+			return;
+		}
+
+		if (inSystemMotionIsCrawling(truck.inSystem) && truck.inSystem.toPlaceId == destPlace->id)
+		{
+			return;
+		}
+
+		const long long fromPlaceId =
+			truck.placeId != 0 ? truck.placeId : truck.inSystem.fromPlaceId;
+		if (fromPlaceId == 0)
+		{
+			return;
+		}
+
+		parkTruckAt(truck, here);
+		startInSystemCrawl(
+			world,
+			here,
+			fromPlaceId,
+			destPlace->id,
+			truck.inSystem,
+			truck.placeId);
+	}
+
 	void loadIfJoinedJob(WorldData& world, Truck& truck)
 	{
 		if (truck.haulJobId == 0 || truck.cargoAmount != 0)
@@ -548,6 +823,11 @@ namespace
 
 		const long long here = truckSystemId(truck);
 		if (here == 0 || here != convoy->loadSystemId)
+		{
+			return;
+		}
+
+		if (!truckIsParkedAtPlace(truck, haulLoadPlaceForGood(world, here, job->goodId)))
 		{
 			return;
 		}
@@ -588,6 +868,13 @@ namespace
 			return;
 		}
 
+		if (!truckIsParkedAtPlace(
+				truck,
+				haulDumpPlaceForGood(world, job->destinationSystemId, truck.cargoGoodId)))
+		{
+			return;
+		}
+
 		StarSystem* demand = world.systemById(job->destinationSystemId);
 		if (demand == nullptr)
 		{
@@ -595,8 +882,10 @@ namespace
 		}
 
 		reduceInboundOnArrival(*demand, truck.cargoGoodId, truck.cargoAmount);
-		addToStockpile(*demand, truck.cargoGoodId, truck.cargoAmount);
-		reduceNeed(*demand, truck.cargoGoodId, truck.cargoAmount);
+		world.pendingStockpileCredits.push_back(PendingStockpileCredit{
+			.systemId = job->destinationSystemId,
+			.goodId = truck.cargoGoodId,
+			.amount = truck.cargoAmount });
 		const long long convoyId = truck.convoyId;
 		const Convoy* convoy = world.convoyById(convoyId);
 		const bool standing = convoy != nullptr && convoyIsStanding(*convoy);
@@ -682,35 +971,55 @@ namespace
 			convoy.motion.progress == 0.0f;
 	}
 
-	void parkStandingGroupAtLoadIfEmptyTransitArrived(WorldData& world)
+	void parkConvoyWhenLastHopArrived(WorldData& world)
 	{
 		for (auto& convoy : world.convoys)
 		{
-			if (!convoyIsStanding(convoy) || convoy.haulJobId == 0 || !convoyIsUnderway(convoy))
+			if (!convoyIsUnderway(convoy) || !convoyArrivedAtRouteEnd(convoy))
 			{
 				continue;
 			}
 
-			if (!convoyArrivedAtRouteEnd(convoy) || convoy.motion.route.back() != convoy.loadSystemId)
-			{
-				continue;
-			}
-
+			const long long arrivedSystemId = convoy.motion.route.back();
+			const long long cameFromSystemId =
+				convoy.motion.hop >= 1
+					? convoy.motion.route[static_cast<size_t>(convoy.motion.hop - 1)]
+					: 0;
 			convoy.motion.route.clear();
 			convoy.motion.hop = 0;
 			convoy.motion.progress = 0.0f;
 			for (auto& truck : world.trucks)
 			{
-				if (truck.convoyId == convoy.id)
+				if (truck.convoyId != convoy.id)
 				{
-					parkTruckAt(truck, convoy.loadSystemId);
+					continue;
 				}
+
+				if (cameFromSystemId != 0)
+				{
+					setMoverPlaceToArrivalJump(
+						world,
+						arrivedSystemId,
+						cameFromSystemId,
+						truck.placeId);
+				}
+
+				parkTruckAt(truck, arrivedSystemId);
 			}
 
 			Fleet* fleet = world.fleetById(convoy.escortFleetId);
 			if (fleet != nullptr)
 			{
-				fleet->systemId = convoy.loadSystemId;
+				fleet->systemId = arrivedSystemId;
+				if (cameFromSystemId != 0)
+				{
+					setMoverPlaceToArrivalJump(
+						world,
+						arrivedSystemId,
+						cameFromSystemId,
+						fleet->placeId);
+				}
+
 				fleet->motion.route.clear();
 				fleet->motion.hop = 0;
 				fleet->motion.progress = 0.0f;
@@ -729,6 +1038,26 @@ namespace
 
 			Fleet* fleet = world.fleetById(convoy.escortFleetId);
 			if (fleet == nullptr)
+			{
+				continue;
+			}
+
+			bool membersStillCarrying = false;
+			for (const auto& truck : world.trucks)
+			{
+				if (truck.convoyId != convoy.id || !truckHasCargoHaulRole(world, truck))
+				{
+					continue;
+				}
+
+				if (truck.cargoAmount > 0)
+				{
+					membersStillCarrying = true;
+					break;
+				}
+			}
+
+			if (membersStillCarrying)
 			{
 				continue;
 			}
@@ -862,7 +1191,8 @@ namespace
 	void moveTrucks(WorldData& world)
 	{
 		advanceInSystemMovers(world);
-		parkStandingGroupAtLoadIfEmptyTransitArrived(world);
+		resumeConvoyGalaxyPathWhenMembersAtOutboundJump(world);
+		parkConvoyWhenLastHopArrived(world);
 
 		for (auto& truck : world.trucks)
 		{
@@ -874,6 +1204,11 @@ namespace
 		for (auto& truck : world.trucks)
 		{
 			dumpIfCarrying(world, truck);
+		}
+
+		for (auto& truck : world.trucks)
+		{
+			beginCrawlToHaulTransferPlace(world, truck);
 		}
 
 		finishStandingRunsAfterDump(world);
@@ -904,7 +1239,14 @@ namespace
 
 			if (advanceAlongLane(world, truck.motion))
 			{
-				setPlaceFromLaneIfLastHopArrived(world, truck.motion, truck.placeId);
+				long long parkedSystemId = truckSystemId(truck);
+				continueGalaxyPathAfterHop(
+					world,
+					parkedSystemId,
+					truck.inSystem,
+					truck.motion,
+					truck.placeId,
+					false);
 			}
 		}
 
@@ -916,9 +1258,21 @@ namespace
 			}
 
 			convoy.motion.speed = slowestMemberSpeed(world, convoy.id);
-			advanceAlongLane(world, convoy.motion);
-			copyConvoyMotionOntoMembers(world, convoy);
-			copyConvoyMotionOntoEscortFleet(world, convoy);
+			if (!advanceAlongLane(world, convoy.motion))
+			{
+				copyConvoyMotionOntoMembers(world, convoy);
+				copyConvoyMotionOntoEscortFleet(world, convoy);
+				continue;
+			}
+
+			if (convoy.motion.hop == static_cast<int>(convoy.motion.route.size()) - 1)
+			{
+				copyConvoyMotionOntoMembers(world, convoy);
+				copyConvoyMotionOntoEscortFleet(world, convoy);
+				continue;
+			}
+
+			pauseConvoyAtIntermediateArrival(world, convoy);
 		}
 	}
 
@@ -1186,39 +1540,13 @@ namespace
 			return;
 		}
 
-		if (fleet.motion.hop < 0 ||
-			fleet.motion.hop >= static_cast<int>(fleet.motion.route.size()))
-		{
-			return;
-		}
-
-		fleet.systemId = fleet.motion.route[static_cast<size_t>(fleet.motion.hop)];
-		if (fleet.motion.hop >= 1)
-		{
-			setMoverPlaceToArrivalJump(
-				world,
-				fleet.systemId,
-				fleet.motion.route[static_cast<size_t>(fleet.motion.hop - 1)],
-				fleet.placeId);
-		}
-
-		if (fleet.motion.hop == static_cast<int>(fleet.motion.route.size()) - 1)
-		{
-			fleet.motion.route.clear();
-			fleet.motion.hop = 0;
-			return;
-		}
-
-		const std::vector<long long> remaining(
-			fleet.motion.route.begin() + fleet.motion.hop,
-			fleet.motion.route.end());
-		beginGalaxyPathOrCrawlToOutboundJump(
+		continueGalaxyPathAfterHop(
 			world,
 			fleet.systemId,
 			fleet.inSystem,
 			fleet.motion,
 			fleet.placeId,
-			remaining);
+			true);
 	}
 
 	void moveFleets(WorldData& world)
@@ -1351,6 +1679,7 @@ namespace
 		applyDeferredNeedPosts(world);
 		syncHaulJobsFromUncoveredNeed(world);
 		applyExtraction(world);
+		applyPendingStockpileCredits(world);
 		applyFactoryProduction(world);
 		applyCivilianConsumption(world);
 		applyYardSlipConstruction(world);

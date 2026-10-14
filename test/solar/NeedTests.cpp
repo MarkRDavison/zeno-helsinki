@@ -1,6 +1,7 @@
 #include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <World/SystemPlaces.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace slr
@@ -110,13 +111,19 @@ TEST_CASE("arrival still lowers need", "[slr][Need]")
 			.progress = 0.0f,
 			.direction = 1,
 			.speed = 25.0f },
+		.placeId = HelionYardPlaceId,
 		.cargoGoodId = SteelGoodId,
 		.cargoAmount = TruckCapacity_Steel,
 		.haulJobId = job->id });
+	world.yards.clear();
 
 	stepGalaxy(world);
 
 	REQUIRE(getInbound(*helion, SteelGoodId) == 0);
+	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
+
+	stepGalaxy(world);
+
 	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == TruckCapacity_Steel);
 	REQUIRE(getNeed(*helion, SteelGoodId) == 1000 - TruckCapacity_Steel);
 }

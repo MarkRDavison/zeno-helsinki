@@ -83,6 +83,14 @@ namespace slr
 		const WorldData& world,
 		long long systemId,
 		long long placeId);
+	const SystemPlace* haulLoadPlaceForGood(
+		const WorldData& world,
+		long long systemId,
+		long long goodId);
+	const SystemPlace* haulDumpPlaceForGood(
+		const WorldData& world,
+		long long systemId,
+		long long goodId);
 	const char* systemPlaceKindName(SystemPlaceKind kind);
 	bool moverCanStartHyperlaneFromPlace(
 		const WorldData& world,
@@ -137,6 +145,13 @@ namespace slr
 		InSystemMotion& inSystem,
 		LaneMotion& motion,
 		long long& placeId);
+	void continueGalaxyPathAfterHop(
+		WorldData& world,
+		long long& parkedSystemId,
+		InSystemMotion& inSystem,
+		LaneMotion& motion,
+		long long& placeId,
+		bool clearRouteOnLastHop);
 
 	void placeJumpOnOutRadiusTowardNeighbor(
 		SystemLayout& layout,

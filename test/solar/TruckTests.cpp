@@ -1,3 +1,4 @@
+#include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/StarterMap.hpp>
@@ -193,10 +194,12 @@ TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
 	world.mines.clear();
 	const HaulJob* job = haulJobFor(world, 1, SteelGoodId);
 	REQUIRE(job != nullptr);
+	world.yards.clear();
 	world.trucks.push_back(Truck{
 		.id = 1,
 		.empireId = HelionEmpireId,
 		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
+		.placeId = HelionYardPlaceId,
 		.cargoGoodId = SteelGoodId,
 		.cargoAmount = TruckCapacity_Steel,
 		.haulJobId = job->id,
@@ -206,11 +209,153 @@ TEST_CASE("truck dump raises Helion stockpile and lowers need", "[slr][Truck]")
 
 	const StarSystem* helion = world.systemById(1);
 	REQUIRE(helion != nullptr);
-	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == TruckCapacity_Steel);
-	REQUIRE(getNeed(*helion, SteelGoodId) == 1150);
+	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
 	REQUIRE(getInbound(*helion, SteelGoodId) == 0);
 	REQUIRE(world.trucks[0].cargoAmount == 0);
 	REQUIRE(world.trucks[0].haulJobId == 0);
+	REQUIRE(world.trucks[0].placeId == HelionYardPlaceId);
+
+	stepGalaxy(world);
+
+	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == TruckCapacity_Steel);
+	REQUIRE(getNeed(*helion, SteelGoodId) == 1150);
+}
+
+TEST_CASE("loaded steel truck crawls Kestrel between Junction and Helion jumps", "[slr][Truck]")
+{
+	WorldData world = makeStarterMap();
+	world.trucks.clear();
+	world.convoys.clear();
+	world.mines.clear();
+	world.yards.clear();
+	const HaulJob* job = haulJobFor(world, 1, SteelGoodId);
+	REQUIRE(job != nullptr);
+	const SystemPlace* junctionKestrelJump =
+		jumpPlaceForLaneNeighbor(world, JunctionSystemId, KestrelSystemId);
+	REQUIRE(junctionKestrelJump != nullptr);
+	world.convoys.push_back(Convoy{
+		.id = 1,
+		.haulJobId = job->id,
+		.empireId = HelionEmpireId,
+		.loadSystemId = JunctionSystemId,
+		.motion = {
+			.route = { JunctionSystemId, KestrelSystemId, HelionSystemId },
+			.hop = 0,
+			.progress = 0.0f,
+			.direction = 1,
+			.speed = 25.0f } });
+	world.trucks.push_back(Truck{
+		.id = 1,
+		.empireId = HelionEmpireId,
+		.motion = {
+			.route = { JunctionSystemId, KestrelSystemId, HelionSystemId },
+			.hop = 0,
+			.progress = 0.0f,
+			.direction = 1,
+			.speed = 25.0f },
+		.placeId = junctionKestrelJump->id,
+		.cargoGoodId = SteelGoodId,
+		.cargoAmount = TruckCapacity_Steel,
+		.haulJobId = job->id,
+		.convoyId = 1,
+		.classId = HelionCivilianTruckClassId });
+
+	const SystemPlace* kestrelJunctionJump =
+		jumpPlaceForLaneNeighbor(world, KestrelSystemId, JunctionSystemId);
+	const SystemPlace* kestrelHelionJump =
+		jumpPlaceForLaneNeighbor(world, KestrelSystemId, HelionSystemId);
+	REQUIRE(kestrelJunctionJump != nullptr);
+	REQUIRE(kestrelHelionJump != nullptr);
+
+	bool crawledKestrel = false;
+	for (int i = 0; i < 256; ++i)
+	{
+		stepGalaxy(world);
+		if (isTruckAtSystem(world.trucks[0], KestrelSystemId) &&
+			inSystemMotionIsCrawling(world.trucks[0].inSystem) &&
+			world.trucks[0].inSystem.fromPlaceId == kestrelJunctionJump->id &&
+			world.trucks[0].inSystem.toPlaceId == kestrelHelionJump->id)
+		{
+			crawledKestrel = true;
+			REQUIRE(world.trucks[0].cargoAmount == TruckCapacity_Steel);
+			REQUIRE(getStockpileAmount(*world.systemById(HelionSystemId), SteelGoodId) == 0);
+			REQUIRE_FALSE(convoyIsUnderway(*world.convoyById(1)));
+		}
+
+		if (world.trucks[0].cargoAmount == 0)
+		{
+			break;
+		}
+	}
+
+	REQUIRE(crawledKestrel);
+	REQUIRE(world.trucks[0].placeId == HelionYardPlaceId);
+	REQUIRE(world.trucks[0].cargoAmount == 0);
+	REQUIRE(getStockpileAmount(*world.systemById(HelionSystemId), SteelGoodId) == 0);
+	stepGalaxy(world);
+	REQUIRE(getStockpileAmount(*world.systemById(HelionSystemId), SteelGoodId) == TruckCapacity_Steel);
+}
+
+TEST_CASE("steel at the Helion Kestrel jump does not enter stockpile that tick", "[slr][Truck]")
+{
+	WorldData world = makeStarterMap();
+	world.trucks.clear();
+	world.mines.clear();
+	world.yards.clear();
+	const HaulJob* job = haulJobFor(world, 1, SteelGoodId);
+	REQUIRE(job != nullptr);
+	world.trucks.push_back(Truck{
+		.id = 1,
+		.empireId = HelionEmpireId,
+		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
+		.placeId = HelionKestrelJumpPlaceId,
+		.cargoGoodId = SteelGoodId,
+		.cargoAmount = TruckCapacity_Steel,
+		.haulJobId = job->id,
+		.classId = HelionCivilianTruckClassId });
+
+	stepGalaxy(world);
+
+	const StarSystem* helion = world.systemById(1);
+	REQUIRE(helion != nullptr);
+	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
+	REQUIRE(world.trucks[0].cargoAmount == TruckCapacity_Steel);
+	REQUIRE(inSystemMotionIsCrawling(world.trucks[0].inSystem));
+
+	stepUntilTruckAtPlace(world, 1, HelionYardPlaceId);
+	REQUIRE(world.trucks[0].placeId == HelionYardPlaceId);
+	REQUIRE(world.trucks[0].cargoAmount == 0);
+	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == 0);
+
+	stepGalaxy(world);
+	REQUIRE(getStockpileAmount(*helion, SteelGoodId) == TruckCapacity_Steel);
+}
+
+TEST_CASE("empty truck at Rimward Junction jump does not load ore", "[slr][Truck]")
+{
+	WorldData world = makeStarterMap();
+	clearAvonSteel(world);
+	world.trucks.clear();
+	world.convoys.clear();
+	StarSystem* rimward = world.systemById(5);
+	REQUIRE(rimward != nullptr);
+	rimward->stocks[0].goodAmount = TruckCapacity_IronOre;
+	const HaulJob* job = haulJobFor(world, 3, IronOreGoodId);
+	REQUIRE(job != nullptr);
+	const SystemPlace* jump = jumpPlaceForLaneNeighbor(world, RimwardSystemId, JunctionSystemId);
+	REQUIRE(jump != nullptr);
+	world.trucks.push_back(Truck{
+		.id = 1,
+		.empireId = HelionEmpireId,
+		.motion = { .route = { 5 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
+		.placeId = jump->id,
+		.classId = HelionCivilianTruckClassId });
+
+	REQUIRE(execute(world, GameCommand::acceptHaulJob(1, job->id, CommandSource::Ai)));
+	stepGalaxy(world);
+
+	REQUIRE(world.trucks[0].cargoAmount == 0);
+	REQUIRE(getStockpileAmount(*rimward, IronOreGoodId) == TruckCapacity_IronOre + 100.f);
 }
 
 TEST_CASE("empty truck at Rimward does not load when mill and yard needs are 0", "[slr][Truck]")
@@ -297,6 +442,75 @@ TEST_CASE("destroy empty truck does not change inbound", "[slr][Truck]")
 	const StarSystem* helion = world.systemById(1);
 	REQUIRE(helion != nullptr);
 	REQUIRE(getInbound(*helion, SteelGoodId) == TruckCapacity_Steel);
+}
+
+TEST_CASE("truck without a system layout still dumps in-system this tick and credits stockpile next tick", "[slr][Truck]")
+{
+	WorldData world;
+	world.systems = { StarSystem{ .id = 1, .name = "A", .position = { 0.0f, 0.0f } } };
+	world.systems.front().stocks.push_back(GoodStock{
+		.goodId = SteelGoodId,
+		.goodAmount = 0,
+		.inbound = TruckCapacity_Steel,
+		.need = 1000 });
+	world.haulJobs.push_back(HaulJob{
+		.id = 1,
+		.destinationSystemId = 1,
+		.empireId = 1,
+		.goodId = SteelGoodId,
+		.amount = TruckCapacity_Steel });
+	world.trucks.push_back(Truck{
+		.id = 1,
+		.empireId = 1,
+		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
+		.cargoGoodId = SteelGoodId,
+		.cargoAmount = TruckCapacity_Steel,
+		.haulJobId = 1 });
+
+	stepGalaxy(world);
+
+	REQUIRE(world.trucks[0].cargoAmount == 0);
+	REQUIRE(getInbound(world.systems.front(), SteelGoodId) == 0);
+	REQUIRE(getStockpileAmount(world.systems.front(), SteelGoodId) == 0);
+
+	stepGalaxy(world);
+
+	REQUIRE(getStockpileAmount(world.systems.front(), SteelGoodId) == TruckCapacity_Steel);
+	REQUIRE(getNeed(world.systems.front(), SteelGoodId) == 1000 - TruckCapacity_Steel);
+}
+
+TEST_CASE("truck without a system layout still loads in-system", "[slr][Truck]")
+{
+	WorldData world;
+	world.systems = {
+		StarSystem{ .id = 1, .name = "A", .position = { 0.0f, 0.0f } },
+		StarSystem{ .id = 2, .name = "B", .position = { 200.0f, 0.0f } } };
+	world.systems.front().stocks.push_back(GoodStock{
+		.goodId = IronOreGoodId,
+		.goodAmount = TruckCapacity_IronOre });
+	world.systems[1].stocks.push_back(GoodStock{ .goodId = IronOreGoodId });
+	world.haulJobs.push_back(HaulJob{
+		.id = 1,
+		.destinationSystemId = 2,
+		.empireId = 1,
+		.goodId = IronOreGoodId,
+		.amount = TruckCapacity_IronOre });
+	world.convoys.push_back(Convoy{
+		.id = 1,
+		.haulJobId = 1,
+		.empireId = 1,
+		.loadSystemId = 1 });
+	world.trucks.push_back(Truck{
+		.id = 1,
+		.empireId = 1,
+		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
+		.haulJobId = 1,
+		.convoyId = 1 });
+
+	stepGalaxy(world);
+
+	REQUIRE(world.trucks[0].cargoAmount == TruckCapacity_IronOre);
+	REQUIRE(getStockpileAmount(world.systems.front(), IronOreGoodId) == 0);
 }
 
 }

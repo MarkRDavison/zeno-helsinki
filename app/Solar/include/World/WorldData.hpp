@@ -331,6 +331,13 @@ namespace slr
 		GoodAmount amount{ 0.f };
 	};
 
+	struct PendingStockpileCredit
+	{
+		long long systemId{ 0 };
+		long long goodId{ 0 };
+		GoodAmount amount{ 0.f };
+	};
+
 	struct Convoy
 	{
 		long long id{ 0 };
@@ -359,6 +366,7 @@ namespace slr
 		std::vector<Factory> factories;
 		std::vector<Truck> trucks;
 		std::vector<HaulJob> haulJobs;
+		std::vector<PendingStockpileCredit> pendingStockpileCredits;
 		std::vector<Convoy> convoys;
 		std::vector<ShipClass> shipClasses;
 		std::vector<Fleet> fleets;

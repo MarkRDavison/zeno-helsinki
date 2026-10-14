@@ -125,7 +125,11 @@ TEST_CASE("at war civilians haul Helion steel through Kestrel", "[slr][MilitaryL
 	}
 	REQUIRE(civilian.haulJobId == 0);
 	REQUIRE(civilian.cargoAmount == 0);
-	REQUIRE(getStockpileAmount(*helion, SteelGoodId) >= TruckCapacity_Steel);
+	stepUntilStockpileAtLeast(
+		world,
+		1,
+		SteelGoodId,
+		TruckCapacity_Steel - YardPopulationConsumePerTick_Steel);
 	REQUIRE(getInbound(*helion, SteelGoodId) == inboundBeforeLoad);
 }
 

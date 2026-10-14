@@ -1,5 +1,6 @@
 #include <Views/GalaxyDrawConstants.hpp>
 #include <World/GameCommand.hpp>
+#include <World/Goods.hpp>
 #include <World/PickFleet.hpp>
 #include <World/PickStarSystem.hpp>
 #include <World/StarterMap.hpp>
@@ -156,15 +157,31 @@ TEST_CASE("Kestrel Fleet to Rimward auto-crawls intermediates and stops at Rimwa
 	REQUIRE(execute(world, GameCommand::moveFleetToSystem(3, RimwardSystemId, CommandSource::Player)));
 	REQUIRE(inSystemMotionIsCrawling(kestrel->inSystem));
 
+	const SystemPlace* junctionKestrelJump =
+		jumpPlaceForLaneNeighbor(world, JunctionSystemId, KestrelSystemId);
+	const SystemPlace* junctionRimwardJump =
+		jumpPlaceForLaneNeighbor(world, JunctionSystemId, RimwardSystemId);
+	REQUIRE(junctionKestrelJump != nullptr);
+	REQUIRE(junctionRimwardJump != nullptr);
+	bool crawledJunction = false;
 	for (int i = 0; i < 256; ++i)
 	{
 		stepGalaxy(world);
+		if (kestrel->systemId == JunctionSystemId && inSystemMotionIsCrawling(kestrel->inSystem) &&
+			kestrel->inSystem.fromPlaceId == junctionKestrelJump->id &&
+			kestrel->inSystem.toPlaceId == junctionRimwardJump->id)
+		{
+			crawledJunction = true;
+		}
+
 		if (kestrel->systemId == RimwardSystemId && kestrel->motion.route.empty() &&
 			!inSystemMotionIsCrawling(kestrel->inSystem))
 		{
 			break;
 		}
 	}
+
+	REQUIRE(crawledJunction);
 
 	REQUIRE(kestrel->systemId == RimwardSystemId);
 	REQUIRE(kestrel->motion.route.empty());
@@ -173,6 +190,50 @@ TEST_CASE("Kestrel Fleet to Rimward auto-crawls intermediates and stops at Rimwa
 	REQUIRE(rimwardJunctionJump != nullptr);
 	REQUIRE(kestrel->placeId == rimwardJunctionJump->id);
 	REQUIRE(kestrel->placeId != RimwardMinePlaceId);
+}
+
+TEST_CASE("Helion to Junction crawls Kestrel from the Helion jump to the Junction jump", "[slr][FleetOrder]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	REQUIRE(home != nullptr);
+	putFleetAtJumpToward(world, 1, KestrelSystemId);
+	REQUIRE(home->placeId == HelionKestrelJumpPlaceId);
+	REQUIRE(execute(world, GameCommand::moveFleetToSystem(1, JunctionSystemId, CommandSource::Player)));
+
+	const SystemPlace* kestrelHelionJump =
+		jumpPlaceForLaneNeighbor(world, KestrelSystemId, HelionSystemId);
+	const SystemPlace* kestrelJunctionJump =
+		jumpPlaceForLaneNeighbor(world, KestrelSystemId, JunctionSystemId);
+	const SystemPlace* junctionKestrelJump =
+		jumpPlaceForLaneNeighbor(world, JunctionSystemId, KestrelSystemId);
+	REQUIRE(kestrelHelionJump != nullptr);
+	REQUIRE(kestrelJunctionJump != nullptr);
+	REQUIRE(junctionKestrelJump != nullptr);
+
+	bool crawledKestrel = false;
+	for (int i = 0; i < 256; ++i)
+	{
+		stepGalaxy(world);
+		if (home->systemId == KestrelSystemId && inSystemMotionIsCrawling(home->inSystem) &&
+			home->inSystem.fromPlaceId == kestrelHelionJump->id &&
+			home->inSystem.toPlaceId == kestrelJunctionJump->id)
+		{
+			crawledKestrel = true;
+			REQUIRE(home->motion.route.size() < 2);
+		}
+
+		if (home->systemId == JunctionSystemId && home->motion.route.empty() &&
+			!inSystemMotionIsCrawling(home->inSystem))
+		{
+			break;
+		}
+	}
+
+	REQUIRE(crawledKestrel);
+	REQUIRE(home->systemId == JunctionSystemId);
+	REQUIRE(home->placeId == junctionKestrelJump->id);
+	REQUIRE(home->placeId != JunctionFactoryPlaceId);
 }
 
 TEST_CASE("Kestrel arrival then return sits at Helion Kestrel jump not the yard", "[slr][FleetOrder]")

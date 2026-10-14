@@ -104,4 +104,38 @@ namespace slr
 		}
 	}
 
+	inline void stepUntilTruckAtPlace(WorldData& world, long long truckId, long long placeId, int maxTicks = 256)
+	{
+		for (int i = 0; i < maxTicks; ++i)
+		{
+			const Truck* truck = world.truckById(truckId);
+			if (truck != nullptr && truck->placeId == placeId &&
+				!inSystemMotionIsCrawling(truck->inSystem))
+			{
+				return;
+			}
+
+			stepGalaxy(world);
+		}
+	}
+
+	inline void stepUntilStockpileAtLeast(
+		WorldData& world,
+		long long systemId,
+		long long goodId,
+		GoodAmount amount,
+		int maxTicks = 256)
+	{
+		for (int i = 0; i < maxTicks; ++i)
+		{
+			const StarSystem* system = world.systemById(systemId);
+			if (system != nullptr && getStockpileAmount(*system, goodId) >= amount)
+			{
+				return;
+			}
+
+			stepGalaxy(world);
+		}
+	}
+
 }

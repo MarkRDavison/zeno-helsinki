@@ -244,6 +244,34 @@ TEST_CASE("MoveFleetToSystem from the Helion Kestrel jump clears place on a gala
 	REQUIRE(home->placeId == 0);
 }
 
+TEST_CASE("after an intermediate hop the truck crawls with a parked system id", "[slr][SystemPlaces]")
+{
+	WorldData world = makeStarterMap();
+	const SystemPlace* kestrelJunctionJump =
+		jumpPlaceForLaneNeighbor(world, KestrelSystemId, JunctionSystemId);
+	REQUIRE(kestrelJunctionJump != nullptr);
+	Truck truck{
+		.id = 1,
+		.motion = {
+			.route = { JunctionSystemId, KestrelSystemId, HelionSystemId },
+			.hop = 1,
+			.progress = 0.0f,
+			.direction = 1,
+			.speed = 25.0f },
+		.placeId = kestrelJunctionJump->id };
+	long long parkedSystemId = KestrelSystemId;
+	continueGalaxyPathAfterHop(
+		world,
+		parkedSystemId,
+		truck.inSystem,
+		truck.motion,
+		truck.placeId,
+		false);
+	REQUIRE(inSystemMotionIsCrawling(truck.inSystem));
+	REQUIRE(truckSystemId(truck) == KestrelSystemId);
+	REQUIRE(truck.motion.route == std::vector<long long>{ KestrelSystemId });
+}
+
 TEST_CASE("truck at Rimward mine crawls to the Junction jump then FTL", "[slr][SystemPlaces]")
 {
 	WorldData world = makeStarterMap();
@@ -266,7 +294,11 @@ TEST_CASE("truck at Rimward mine crawls to the Junction jump then FTL", "[slr][S
 	parked = world.truckById(truckId);
 	REQUIRE(parked != nullptr);
 	REQUIRE(parked->motion.route.size() >= 2);
-	REQUIRE(parked->placeId == 0);
+	const SystemPlace* outbound =
+		jumpPlaceForLaneNeighbor(world, RimwardSystemId, JunctionSystemId);
+	REQUIRE(outbound != nullptr);
+	REQUIRE(parked->placeId == outbound->id);
+	REQUIRE_FALSE(inSystemMotionIsCrawling(parked->inSystem));
 }
 
 TEST_CASE("a jump inside the out radius is rejected", "[slr][SystemPlaces]")
@@ -283,6 +315,26 @@ TEST_CASE("a jump inside the out radius is rejected", "[slr][SystemPlaces]")
 		.position = { 10.0f, 0.0f },
 		.neighborSystemId = 2 };
 	REQUIRE_FALSE(jumpPlaceIsAtOrOutsideOutRadius(layout, insideJump));
+}
+
+TEST_CASE("haul load and dump places follow mine then mill then yard", "[slr][SystemPlaces]")
+{
+	const WorldData world = makeStarterMap();
+	const SystemPlace* rimwardMine = haulLoadPlaceForGood(world, RimwardSystemId, IronOreGoodId);
+	REQUIRE(rimwardMine != nullptr);
+	REQUIRE(rimwardMine->id == RimwardMinePlaceId);
+
+	const SystemPlace* junctionOreDump = haulDumpPlaceForGood(world, JunctionSystemId, IronOreGoodId);
+	REQUIRE(junctionOreDump != nullptr);
+	REQUIRE(junctionOreDump->id == JunctionFactoryPlaceId);
+
+	const SystemPlace* junctionSteelLoad = haulLoadPlaceForGood(world, JunctionSystemId, SteelGoodId);
+	REQUIRE(junctionSteelLoad != nullptr);
+	REQUIRE(junctionSteelLoad->id == JunctionFactoryPlaceId);
+
+	const SystemPlace* helionSteelDump = haulDumpPlaceForGood(world, HelionSystemId, SteelGoodId);
+	REQUIRE(helionSteelDump != nullptr);
+	REQUIRE(helionSteelDump->id == HelionYardPlaceId);
 }
 
 TEST_CASE("placeJumpOnOutRadiusTowardNeighbor lands on the ring", "[slr][SystemPlaces]")
