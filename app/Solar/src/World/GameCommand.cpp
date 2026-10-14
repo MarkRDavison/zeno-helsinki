@@ -49,6 +49,7 @@ namespace
 		fleet->motion.hop = 0;
 		fleet->motion.progress = 0.0f;
 		fleet->motion.direction = 1;
+		fleet->placeId = 0;
 		return true;
 	}
 
@@ -172,6 +173,7 @@ namespace
 			truck->motion.hop = 0;
 			truck->motion.progress = 0.0f;
 			truck->motion.direction = 1;
+			truck->placeId = 0;
 		}
 		else
 		{

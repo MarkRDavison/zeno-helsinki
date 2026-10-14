@@ -102,6 +102,10 @@ namespace
 			truck.motion.progress = convoy.motion.progress;
 			truck.motion.direction = convoy.motion.direction;
 			truck.motion.speed = speed;
+			if (truck.motion.route.size() >= 2)
+			{
+				truck.placeId = 0;
+			}
 		}
 	}
 
@@ -124,6 +128,10 @@ namespace
 		fleet->motion.progress = convoy.motion.progress;
 		fleet->motion.direction = convoy.motion.direction;
 		fleet->motion.speed = speed;
+		if (fleet->motion.route.size() >= 2)
+		{
+			fleet->placeId = 0;
+		}
 		if (fleet->motion.hop >= 0 &&
 			fleet->motion.hop < static_cast<int>(fleet->motion.route.size()))
 		{

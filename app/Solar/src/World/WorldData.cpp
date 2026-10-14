@@ -1506,6 +1506,7 @@ namespace slr
 		truck.motion.hop = 0;
 		truck.motion.progress = 0.0f;
 		truck.motion.direction = 1;
+		truck.placeId = 0;
 		return true;
 	}
 
@@ -2292,11 +2293,13 @@ namespace slr
 
 		const StarSystem* system = world.systemById(yard.systemId);
 		const std::string systemName = system != nullptr ? system->name : "yard";
+		const SystemPlace* yardPlace = yardPlaceForSystem(world, yard.systemId);
 		world.fleets.push_back(Fleet{
 			.id = nextFleetId(world),
 			.empireId = yard.empireId,
 			.name = systemName + " yard",
 			.systemId = yard.systemId,
+			.placeId = yardPlace != nullptr ? yardPlace->id : 0,
 			.motion = { .speed = 50.0f } });
 		return world.fleets.back();
 	}

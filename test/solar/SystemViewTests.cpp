@@ -92,6 +92,21 @@ TEST_CASE("pickSystemPlace hits Helion star, yard, and Kestrel jump", "[slr][Sys
 	REQUIRE(pickSystemPlace(*helion, glm::vec2{ 400.0f, 400.0f }) == nullptr);
 }
 
+TEST_CASE("pick at Helion yard is still the yard when Home Fleet is parked there", "[slr][SystemView]")
+{
+	const WorldData world = makeStarterMap();
+	const SystemLayout* helion = world.systemLayoutBySystemId(HelionSystemId);
+	REQUIRE(helion != nullptr);
+	const Fleet* home = world.fleetById(1);
+	REQUIRE(home != nullptr);
+	REQUIRE(home->placeId == HelionYardPlaceId);
+
+	const SystemPlace* yard = pickSystemPlace(*helion, HelionYardPlaceOffset);
+	REQUIRE(yard != nullptr);
+	REQUIRE(yard->kind == SystemPlaceKind::Yard);
+	REQUIRE(yard->id == HelionYardPlaceId);
+}
+
 TEST_CASE("pickSystemPlace prefers yard over star when both would hit", "[slr][SystemView]")
 {
 	SystemLayout layout;

@@ -22,6 +22,7 @@ TEST_CASE("execute move Helion to Kestrel then they arrive", "[slr][FleetOrder]"
 	REQUIRE(world.fleets.front().motion.route.size() >= 2);
 	REQUIRE(world.fleets.front().motion.route.front() == 1);
 	REQUIRE(world.fleets.front().motion.route.back() == 2);
+	REQUIRE(world.fleets.front().placeId == 0);
 
 	for (int i = 0; i < 64; ++i)
 	{

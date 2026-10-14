@@ -176,6 +176,7 @@ namespace
 					.progress = 0.0f,
 					.direction = 1,
 					.speed = starterTruckSpeed(world, truckId) },
+				.placeId = RimwardMinePlaceId,
 				.classId = HelionCivilianTruckClassId });
 		}
 		world.trucks.push_back(Truck{
@@ -217,6 +218,7 @@ namespace
 					.progress = 0.0f,
 					.direction = 1,
 					.speed = starterTruckSpeed(world, truckId) },
+				.placeId = HelionYardPlaceId,
 				.classId = HelionMilitaryTruckClassId });
 		}
 
@@ -233,6 +235,7 @@ namespace
 					.progress = 0.0f,
 					.direction = 1,
 					.speed = starterTruckSpeed(world, truckId) },
+				.placeId = HelionYardPlaceId,
 				.classId = HelionTenderClassId });
 		}
 
@@ -388,6 +391,7 @@ namespace
 			.empireId = HelionEmpireId,
 			.name = "Home Fleet",
 			.systemId = 1,
+			.placeId = HelionYardPlaceId,
 			.motion = { .speed = homeFleetSpeed } });
 		appendFullMagazineHulls(world, world.fleets.back(), nikeId, 8);
 		appendFullMagazineHulls(world, world.fleets.back(), destroyerId, 12);

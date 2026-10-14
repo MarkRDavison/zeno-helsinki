@@ -214,6 +214,7 @@ namespace slr
 		long long id{ 0 };
 		long long empireId{ 0 };
 		LaneMotion motion;
+		long long placeId{ 0 };
 		long long cargoGoodId{ 0 };
 		// TODO: eventually trucks can transport more than 1 thing at a time
 		// i.e. have room for X standard containers
@@ -277,6 +278,7 @@ namespace slr
 		long long empireId{ 0 };
 		std::string name;
 		long long systemId{ 0 };
+		long long placeId{ 0 };
 		std::vector<ClassCount> composition;
 		std::vector<FleetHull> hulls;
 		LaneMotion motion;

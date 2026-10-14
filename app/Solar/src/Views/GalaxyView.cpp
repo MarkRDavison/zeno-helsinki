@@ -7,6 +7,7 @@
 #include <World/LaneMotion.hpp>
 #include <World/PickFleet.hpp>
 #include <World/PickTruck.hpp>
+#include <World/SystemPlaces.hpp>
 #include <helsinki/Renderer/Resource/TextSystem.hpp>
 #include <helsinki/Renderer/Resource/VertexArrayResource.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/TextPushConstantObject.hpp>
@@ -412,6 +413,14 @@ namespace
 					ImGui::TextUnformatted(empire->name.c_str());
 				}
 
+				if (const SystemPlace* place = parkedPlaceInSystem(
+						*_world,
+						truckSystemId(*truck),
+						truck->placeId))
+				{
+					ImGui::TextUnformatted(systemPlaceKindName(place->kind));
+				}
+
 				const HaulJob* job = _world->haulJobById(truck->haulJobId);
 				if (job != nullptr)
 				{
@@ -545,6 +554,11 @@ namespace
 				else if (at != nullptr)
 				{
 					ImGui::TextUnformatted(("at " + at->name).c_str());
+					if (const SystemPlace* place =
+							parkedPlaceInSystem(*_world, fleet->systemId, fleet->placeId))
+					{
+						ImGui::TextUnformatted(systemPlaceKindName(place->kind));
+					}
 				}
 				for (const auto& row : fleet->composition)
 				{

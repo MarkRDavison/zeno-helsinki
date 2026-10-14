@@ -15,6 +15,8 @@ namespace
 	constexpr float SystemMapPad = 48.0f;
 	constexpr float SystemMapYardMarkerHalf = 7.0f;
 	constexpr float SystemMapJumpMarkerRadius = 6.0f;
+	constexpr float SystemMapMoverOffsetX = 16.0f;
+	constexpr float SystemMapMoverSlotY = 14.0f;
 
 	ImVec2 systemSpaceToScreen(const ImVec2& origin, float scale, glm::vec2 systemPos)
 	{
@@ -73,6 +75,31 @@ namespace
 			ImVec2(center.x, center.y + halfExtent),
 			ImVec2(center.x - halfExtent, center.y) };
 		drawList->AddConvexPolyFilled(points, 4, fillColour);
+	}
+
+	void drawFleetChevron(ImDrawList* drawList, const ImVec2& tip, ImU32 colour)
+	{
+		const ImVec2 points[3] = {
+			ImVec2(tip.x, tip.y - 8.0f),
+			ImVec2(tip.x + 6.0f, tip.y + 6.0f),
+			ImVec2(tip.x - 6.0f, tip.y + 6.0f) };
+		drawList->AddConvexPolyFilled(points, 3, colour);
+	}
+
+	void drawTruckPill(ImDrawList* drawList, const ImVec2& center, ImU32 colour)
+	{
+		drawList->AddRectFilled(
+			ImVec2(center.x - 8.0f, center.y - 4.0f),
+			ImVec2(center.x + 8.0f, center.y + 4.0f),
+			colour,
+			4.0f);
+	}
+
+	ImVec2 moverScreenAtPlace(const ImVec2& placeScreen, int slot)
+	{
+		return ImVec2(
+			placeScreen.x + SystemMapMoverOffsetX,
+			placeScreen.y - SystemMapMoverSlotY * static_cast<float>(slot + 1));
 	}
 
 	const char* inspectorTitleForPlace(SystemPlaceKind kind)
@@ -218,6 +245,35 @@ namespace
 					mineFillColour(selected),
 					12);
 				drawPlaceLabel(drawList, mineScreen, "Mine");
+			}
+		}
+
+		for (const auto& place : layout->places)
+		{
+			int moverSlot = 0;
+			const ImVec2 placeScreen = systemSpaceToScreen(origin, scale, place.position);
+			for (const auto& fleet : world.fleets)
+			{
+				if (fleet.systemId != systemId || !fleetIsParked(fleet) || fleet.placeId != place.id)
+				{
+					continue;
+				}
+
+				const ImVec2 moverScreen = moverScreenAtPlace(placeScreen, moverSlot++);
+				drawFleetChevron(drawList, moverScreen, IM_COL32(240, 90, 90, 255));
+				drawPlaceLabel(drawList, moverScreen, fleet.name.c_str());
+			}
+
+			for (const auto& truck : world.trucks)
+			{
+				if (!isTruckAtSystem(truck, systemId) || truck.placeId != place.id)
+				{
+					continue;
+				}
+
+				const ImVec2 moverScreen = moverScreenAtPlace(placeScreen, moverSlot++);
+				drawTruckPill(drawList, moverScreen, IM_COL32(240, 165, 55, 255));
+				drawPlaceLabel(drawList, moverScreen, "truck");
 			}
 		}
 

@@ -255,6 +255,44 @@ namespace
 		return jumpPlaceForLaneNeighbor(*layout, neighborSystemId);
 	}
 
+	const SystemPlace* parkedPlaceInSystem(
+		const WorldData& world,
+		long long systemId,
+		long long placeId)
+	{
+		if (placeId == 0)
+		{
+			return nullptr;
+		}
+
+		const SystemLayout* layout = world.systemLayoutBySystemId(systemId);
+		if (layout == nullptr)
+		{
+			return nullptr;
+		}
+
+		return placeById(*layout, placeId);
+	}
+
+	const char* systemPlaceKindName(SystemPlaceKind kind)
+	{
+		switch (kind)
+		{
+		case SystemPlaceKind::Star:
+			return "Star";
+		case SystemPlaceKind::Jump:
+			return "Jump";
+		case SystemPlaceKind::Yard:
+			return "Yard";
+		case SystemPlaceKind::Factory:
+			return "Factory";
+		case SystemPlaceKind::Mine:
+			return "Mine";
+		}
+
+		return "Place";
+	}
+
 	void placeJumpOnOutRadiusTowardNeighbor(
 		SystemLayout& layout,
 		glm::vec2 neighborGalaxyDelta,

@@ -63,6 +63,11 @@ namespace slr
 		const WorldData& world,
 		long long systemId,
 		long long neighborSystemId);
+	const SystemPlace* parkedPlaceInSystem(
+		const WorldData& world,
+		long long systemId,
+		long long placeId);
+	const char* systemPlaceKindName(SystemPlaceKind kind);
 
 	void placeJumpOnOutRadiusTowardNeighbor(
 		SystemLayout& layout,

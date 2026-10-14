@@ -1,3 +1,4 @@
+#include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/SystemPlaces.hpp>
@@ -129,6 +130,56 @@ TEST_CASE("starter map still has Junction factory and Rimward mine rows", "[slr]
 	}
 
 	REQUIRE(rimwardHasMine);
+}
+
+TEST_CASE("Home Fleet is at the Helion yard; Kestrel Fleet has no place", "[slr][SystemPlaces]")
+{
+	const WorldData world = makeStarterMap();
+	const Fleet* home = world.fleetById(1);
+	REQUIRE(home != nullptr);
+	REQUIRE(home->placeId == HelionYardPlaceId);
+	REQUIRE(parkedPlaceInSystem(world, HelionSystemId, home->placeId) != nullptr);
+	REQUIRE(parkedPlaceInSystem(world, HelionSystemId, home->placeId)->kind == SystemPlaceKind::Yard);
+
+	const Fleet* kestrelFleet = world.fleetById(3);
+	REQUIRE(kestrelFleet != nullptr);
+	REQUIRE(kestrelFleet->placeId == 0);
+	REQUIRE(parkedPlaceInSystem(world, KestrelSystemId, kestrelFleet->placeId) == nullptr);
+}
+
+TEST_CASE("parked Rimward trucks sit at the mine; flying truck has no place", "[slr][SystemPlaces]")
+{
+	const WorldData world = makeStarterMap();
+	bool sawParkedMineTruck = false;
+	bool sawFlyingWithoutPlace = false;
+	for (const auto& truck : world.trucks)
+	{
+		if (isTruckAtSystem(truck, RimwardSystemId))
+		{
+			REQUIRE(truck.placeId == RimwardMinePlaceId);
+			sawParkedMineTruck = true;
+		}
+
+		if (truck.motion.progress > 0.0f)
+		{
+			REQUIRE(truck.placeId == 0);
+			sawFlyingWithoutPlace = true;
+		}
+	}
+
+	REQUIRE(sawParkedMineTruck);
+	REQUIRE(sawFlyingWithoutPlace);
+}
+
+TEST_CASE("MoveFleetToSystem clears Home Fleet place on a galaxy lane", "[slr][SystemPlaces]")
+{
+	WorldData world = makeStarterMap();
+	const long long fleetId = 1;
+	REQUIRE(execute(world, GameCommand::moveFleetToSystem(fleetId, KestrelSystemId, CommandSource::Player)));
+	const Fleet* home = world.fleetById(fleetId);
+	REQUIRE(home != nullptr);
+	REQUIRE(home->motion.route.size() >= 2);
+	REQUIRE(home->placeId == 0);
 }
 
 TEST_CASE("a jump inside the out radius is rejected", "[slr][SystemPlaces]")
