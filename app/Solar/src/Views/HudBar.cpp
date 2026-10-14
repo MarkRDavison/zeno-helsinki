@@ -6,7 +6,12 @@
 namespace slr
 {
 
-	HudBarResult HudBar::draw(const SimClock& clock, long long tick, const WorldData& world) const
+	HudBarResult HudBar::draw(
+		const SimClock& clock,
+		long long tick,
+		const WorldData& world,
+		MainViewKind mainViewKind,
+		std::optional<long long> selectedSystemId) const
 	{
 		HudBarResult hud{};
 		const std::string date = formatGalaxyDate(tick);
@@ -16,6 +21,7 @@ namespace slr
 		const float policiesWidth = 88.0f;
 		const float designWidth = 88.0f;
 		const float researchWidth = 88.0f;
+		const float systemNavWidth = 88.0f;
 		const float timeWidth = ImGui::CalcTextSize(date.c_str()).x + gap +
 			TimeChrome::SpeedButtonWidth * 4.0f + gap * 3.0f;
 
@@ -36,8 +42,8 @@ namespace slr
 		ImGui::SetCursorPosX(padding);
 		ImGui::SetCursorPosY(8.0f);
 		const float situationWidth =
-			ImGui::GetWindowSize().x - padding * 2.0f - gap * 4.0f - policiesWidth - designWidth -
-			researchWidth - timeWidth;
+			ImGui::GetWindowSize().x - padding * 2.0f - gap * 5.0f - policiesWidth - designWidth -
+			researchWidth - systemNavWidth - timeWidth;
 		ImGui::BeginChild(
 			"SituationChrome",
 			ImVec2(situationWidth, rowHeight),
@@ -45,6 +51,31 @@ namespace slr
 			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings);
 		_situationChrome.draw(world);
 		ImGui::EndChild();
+
+		ImGui::SameLine(0.0f, gap);
+		if (mainViewKind == MainViewKind::System)
+		{
+			if (ImGui::Button("Galaxy", ImVec2(systemNavWidth, rowHeight)))
+			{
+				hud.returnToGalaxy = true;
+			}
+		}
+		else
+		{
+			const bool canOpen = selectedSystemId.has_value();
+			if (!canOpen)
+			{
+				ImGui::BeginDisabled();
+			}
+			if (ImGui::Button("Open", ImVec2(systemNavWidth, rowHeight)))
+			{
+				hud.openSystemView = true;
+			}
+			if (!canOpen)
+			{
+				ImGui::EndDisabled();
+			}
+		}
 
 		ImGui::SameLine(0.0f, gap);
 		if (ImGui::Button("Policies", ImVec2(policiesWidth, rowHeight)))

@@ -50,7 +50,12 @@ namespace slr
 		_imgui.setBuildUi(
 			[this]
 			{
-				const HudBarResult hud = _hudBar.draw(_clock, _world.tick, _world);
+				const HudBarResult hud = _hudBar.draw(
+					_clock,
+					_world.tick,
+					_world,
+					_mainView.kind(),
+					_galaxy.selectedSystemId());
 				if (hud.time.speed.has_value())
 				{
 					_clock.setSpeed(hud.time.speed.value());
@@ -71,12 +76,29 @@ namespace slr
 				{
 					_researchChrome.toggleOpen();
 				}
+				if (hud.returnToGalaxy)
+				{
+					_mainView.returnToGalaxy();
+				}
+				if (hud.openSystemView && _galaxy.selectedSystemId().has_value())
+				{
+					_mainView.openSystem(*_galaxy.selectedSystemId());
+				}
 				_engagementPolicyChrome.draw(_world, _pendingCommands);
 				_galaxy.drawBattleReport();
-				if (!_galaxy.drawInspector(_pendingCommands))
+				if (_mainView.isGalaxy())
 				{
-					_galaxy.setSelectedSystemId(std::nullopt);
+					std::optional<long long> openSystemRequested;
+					if (!_galaxy.drawInspector(_pendingCommands, openSystemRequested))
+					{
+						_galaxy.setSelectedSystemId(std::nullopt);
+					}
+					if (openSystemRequested.has_value())
+					{
+						_mainView.openSystem(*openSystemRequested);
+					}
 				}
+				_systemView.draw(_world, _mainView);
 				_designChrome.draw(_world, _pendingCommands);
 				_researchChrome.draw(_world, _pendingCommands);
 			});
@@ -197,13 +219,19 @@ namespace slr
 			"entity_pipeline",
 			[this](hl::PipelineDrawData& pdd)
 			{
-				_galaxy.drawGraph(pdd, *_resourceManager);
+				if (_mainView.isGalaxy())
+				{
+					_galaxy.drawGraph(pdd, *_resourceManager);
+				}
 			});
 		registerPipelineDraw(
 			"sdf_text_pipeline",
 			[this](hl::PipelineDrawData& pdd)
 			{
-				_galaxy.drawLabels(pdd, _engine.getTextSystem());
+				if (_mainView.isGalaxy())
+				{
+					_galaxy.drawLabels(pdd, _engine.getTextSystem());
+				}
 			});
 
 		EngineScene::initialise(
@@ -218,7 +246,7 @@ namespace slr
 
 	void GameEngineScene::update(uint32_t, float delta)
 	{
-		if (!hl::imgui::Context::wantCaptureMouse())
+		if (_mainView.isGalaxy() && !hl::imgui::Context::wantCaptureMouse())
 		{
 			const auto mouse = _engine.getInputManager().getMousePosition();
 			const bool middleDown = _engine.getInputManager().isButtonDown(GLFW_MOUSE_BUTTON_MIDDLE);
@@ -312,7 +340,7 @@ namespace slr
 		}
 		else if (auto se = dynamic_cast<const hl::ScrollEvent*>(&event))
 		{
-			if (!hl::imgui::Context::wantCaptureMouse())
+			if (_mainView.isGalaxy() && !hl::imgui::Context::wantCaptureMouse())
 			{
 				_galaxyCamera->zoomAtScreen(_engine.getInputManager().getMousePosition(), se->getY());
 			}

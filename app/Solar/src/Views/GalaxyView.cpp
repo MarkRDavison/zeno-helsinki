@@ -352,7 +352,9 @@ namespace
 		}
 	}
 
-	bool GalaxyView::drawInspector(std::vector<GameCommand>& pendingCommands)
+	bool GalaxyView::drawInspector(
+		std::vector<GameCommand>& pendingCommands,
+		std::optional<long long>& openSystemRequested)
 	{
 		if (_world == nullptr)
 		{
@@ -847,6 +849,10 @@ namespace
 		{
 			ImGui::TextUnformatted(system->name.c_str());
 			ImGui::TextUnformatted(("id " + std::to_string(system->id)).c_str());
+			if (ImGui::Button("Open system"))
+			{
+				openSystemRequested = system->id;
+			}
 			const Empire* owner = _world->empireById(system->empireId);
 			ImGui::TextUnformatted(owner != nullptr ? owner->name.c_str() : "unowned");
 			ImGui::TextUnformatted(systemOwnershipTypeName(systemOwnershipType(*_world, system->id)));

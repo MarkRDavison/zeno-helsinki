@@ -29,7 +29,9 @@ namespace slr
 
 		void drawGraph(hl::PipelineDrawData& pdd, hl::ResourceManager& resourceManager) const;
 		void drawLabels(hl::PipelineDrawData& pdd, hl::TextSystem& textSystem) const;
-		bool drawInspector(std::vector<GameCommand>& pendingCommands);
+		bool drawInspector(
+			std::vector<GameCommand>& pendingCommands,
+			std::optional<long long>& openSystemRequested);
 		void drawBattleReport();
 
 	private:

@@ -2,10 +2,12 @@
 
 #include <Views/DesignChrome.hpp>
 #include <Views/EngagementPolicyChrome.hpp>
-#include <Views/ResearchChrome.hpp>
 #include <Views/GalaxyCamera.hpp>
 #include <Views/GalaxyView.hpp>
 #include <Views/HudBar.hpp>
+#include <Views/MainView.hpp>
+#include <Views/ResearchChrome.hpp>
+#include <Views/SystemView.hpp>
 #include <World/GameCommand.hpp>
 #include <World/SimClock.hpp>
 #include <World/WorldData.hpp>
@@ -45,6 +47,8 @@ namespace slr
 		WorldData _world;
 		SimClock _clock;
 		HudBar _hudBar;
+		MainView _mainView;
+		SystemView _systemView;
 		EngagementPolicyChrome _engagementPolicyChrome;
 		DesignChrome _designChrome;
 		ResearchChrome _researchChrome;
