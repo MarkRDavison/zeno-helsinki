@@ -114,10 +114,10 @@ TEST_CASE("StartYardBuild appends a truck class without spending steel", "[slr][
 	REQUIRE(world.trucks.size() == static_cast<size_t>(trucksBefore));
 }
 
-TEST_CASE("StartYardBuild rejects a combat class and a rival truck class", "[slr][YardTruck]")
+TEST_CASE("StartYardBuild rejects a rival warship class and a rival truck class", "[slr][YardTruck]")
 {
 	WorldData world = makeStarterMap();
-	REQUIRE_FALSE(execute(world, GameCommand::startYardBuild(1, 1, CommandSource::Player)));
+	REQUIRE_FALSE(execute(world, GameCommand::startYardBuild(1, 3, CommandSource::Player)));
 	REQUIRE_FALSE(execute(
 		world,
 		GameCommand::startYardBuild(1, AshreachCivilianTruckClassId, CommandSource::Player)));

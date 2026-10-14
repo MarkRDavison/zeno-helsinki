@@ -671,7 +671,7 @@ namespace
 		}
 
 		const ShipClass* shipClass = world.shipClassById(order.classId);
-		if (shipClass == nullptr || !shipClassIsTruckOfEmpire(*shipClass, yard->empireId))
+		if (shipClass == nullptr || !shipClassIsYardHullBuildOfEmpire(*shipClass, yard->empireId))
 		{
 			return false;
 		}

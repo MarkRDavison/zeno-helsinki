@@ -242,7 +242,24 @@ namespace
 					continue;
 				}
 
-				const std::string buttonId = "Queue " + shipClass.name + "##" + std::to_string(shipClass.id);
+				const std::string buttonId = "Queue " + shipClass.name + "##truck" + std::to_string(shipClass.id);
+				if (ImGui::Button(buttonId.c_str()))
+				{
+					pendingCommands.push_back(GameCommand::startYardBuild(
+						systemId,
+						shipClass.id,
+						CommandSource::Player));
+				}
+			}
+
+			for (const auto& shipClass : world.shipClasses)
+			{
+				if (!shipClassIsWarshipOfEmpire(shipClass, yard.empireId))
+				{
+					continue;
+				}
+
+				const std::string buttonId = "Queue " + shipClass.name + "##warship" + std::to_string(shipClass.id);
 				if (ImGui::Button(buttonId.c_str()))
 				{
 					pendingCommands.push_back(GameCommand::startYardBuild(

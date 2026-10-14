@@ -2216,6 +2216,12 @@ namespace slr
 		return shipClass.empireId == empireId && shipClassHasRole(shipClass, HullRole::Warship);
 	}
 
+	bool shipClassIsYardHullBuildOfEmpire(const ShipClass& shipClass, long long empireId)
+	{
+		return shipClassIsTruckOfEmpire(shipClass, empireId) ||
+			shipClassIsWarshipOfEmpire(shipClass, empireId);
+	}
+
 	GoodAmount hullSteelPerTick(const ShipClass& shipClass)
 	{
 		if (shipClass.buildTicks <= 0)
@@ -2394,6 +2400,12 @@ namespace slr
 		world.trucks.push_back(truck);
 	}
 
+	void deliverNewBuildWarshipHullAtYard(WorldData& world, Yard& yard, const ShipClass& shipClass)
+	{
+		Fleet& fleet = fleetAtYardForCompletedRefit(world, yard, 0);
+		appendFullMagazineHulls(world, fleet, shipClass.id, 1);
+	}
+
 	void applyYardHullConstruction(WorldData& world)
 	{
 		for (auto& yard : world.yards)
@@ -2460,7 +2472,15 @@ namespace slr
 					continue;
 				}
 
-				spawnParkedTruckFromClass(world, yard, *shipClass);
+				if (shipClassIsTruckOfEmpire(*shipClass, yard.empireId))
+				{
+					spawnParkedTruckFromClass(world, yard, *shipClass);
+				}
+				else if (shipClassIsWarshipOfEmpire(*shipClass, yard.empireId))
+				{
+					deliverNewBuildWarshipHullAtYard(world, yard, *shipClass);
+				}
+
 				clearYardSlipHullJob(*slip);
 			}
 		}

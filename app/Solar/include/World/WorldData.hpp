@@ -570,6 +570,7 @@ namespace slr
 	void applyYardSlipConstruction(WorldData& world);
 	bool shipClassIsTruckOfEmpire(const ShipClass& shipClass, long long empireId);
 	bool shipClassIsWarshipOfEmpire(const ShipClass& shipClass, long long empireId);
+	bool shipClassIsYardHullBuildOfEmpire(const ShipClass& shipClass, long long empireId);
 	GoodAmount hullSteelPerTick(const ShipClass& shipClass);
 	GoodAmount refitSteelPerTick();
 	long long nextTruckId(const WorldData& world);
