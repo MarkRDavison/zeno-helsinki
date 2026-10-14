@@ -1,5 +1,6 @@
 #include <Views/PlaceInspectChrome.hpp>
 #include <World/Goods.hpp>
+#include <World/WorldData.hpp>
 #include <imgui.h>
 #include <algorithm>
 #include <string>
@@ -57,6 +58,7 @@ namespace
 
 	void drawMinePlaceInspector(const WorldData& world, long long systemId)
 	{
+		const StarSystem* system = world.systemById(systemId);
 		int mineIndex = 0;
 		for (const auto& mine : world.mines)
 		{
@@ -68,9 +70,10 @@ namespace
 			ImGui::TextUnformatted("Mine");
 			const std::string mineTableId = "mine_" + std::to_string(mineIndex++);
 			if (!mine.outputsPerTick.empty() &&
-				ImGui::BeginTable(mineTableId.c_str(), 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				ImGui::BeginTable(mineTableId.c_str(), 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 			{
 				ImGui::TableSetupColumn("good");
+				ImGui::TableSetupColumn("stockpile");
 				ImGui::TableSetupColumn("per tick");
 				ImGui::TableSetupColumn("max");
 				ImGui::TableHeadersRow();
@@ -80,8 +83,12 @@ namespace
 					ImGui::TableSetColumnIndex(0);
 					ImGui::TextUnformatted(goodName(output.goodId));
 					ImGui::TableSetColumnIndex(1);
-					ImGui::TextUnformatted(std::to_string(output.amountPerTick).c_str());
+					const GoodAmount onHand =
+						system != nullptr ? getStockpileAmount(*system, output.goodId) : 0.f;
+					ImGui::TextUnformatted(std::to_string(onHand).c_str());
 					ImGui::TableSetColumnIndex(2);
+					ImGui::TextUnformatted(std::to_string(output.amountPerTick).c_str());
+					ImGui::TableSetColumnIndex(3);
 					ImGui::TextUnformatted(std::to_string(output.maxStockpile).c_str());
 				}
 
@@ -363,6 +370,7 @@ namespace
 
 	void drawFactoryPlaceInspector(const WorldData& world, long long systemId)
 	{
+		const StarSystem* system = world.systemById(systemId);
 		int factoryIndex = 0;
 		for (const auto& factory : world.factories)
 		{
@@ -374,15 +382,17 @@ namespace
 			ImGui::TextUnformatted("Factory");
 			const std::string factoryTableId = "factory_" + std::to_string(factoryIndex++);
 			const ProductRampSpec* rampSpec = productRampSpecForGood(factory.outputGoodId);
-			const int factoryColumnCount = rampSpec != nullptr ? 6 : 5;
+			const int factoryColumnCount = rampSpec != nullptr ? 8 : 7;
 			if (ImGui::BeginTable(
 					factoryTableId.c_str(),
 					factoryColumnCount,
 					ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 			{
 				ImGui::TableSetupColumn("input");
+				ImGui::TableSetupColumn("in stock");
 				ImGui::TableSetupColumn("in/tick");
 				ImGui::TableSetupColumn("output");
+				ImGui::TableSetupColumn("out stock");
 				ImGui::TableSetupColumn("out/tick");
 				ImGui::TableSetupColumn("max");
 				if (rampSpec != nullptr)
@@ -408,6 +418,23 @@ namespace
 				}
 				ImGui::TableSetColumnIndex(1);
 				{
+					std::string inputStock;
+					for (const auto& input : factory.inputsPerTick)
+					{
+						if (!inputStock.empty())
+						{
+							inputStock += "\n";
+						}
+
+						const GoodAmount onHand =
+							system != nullptr ? getStockpileAmount(*system, input.goodId) : 0.f;
+						inputStock += std::to_string(onHand);
+					}
+
+					ImGui::TextUnformatted(inputStock.c_str());
+				}
+				ImGui::TableSetColumnIndex(2);
+				{
 					std::string inputRates;
 					for (const auto& input : factory.inputsPerTick)
 					{
@@ -421,9 +448,15 @@ namespace
 
 					ImGui::TextUnformatted(inputRates.c_str());
 				}
-				ImGui::TableSetColumnIndex(2);
-				ImGui::TextUnformatted(goodName(factory.outputGoodId));
 				ImGui::TableSetColumnIndex(3);
+				ImGui::TextUnformatted(goodName(factory.outputGoodId));
+				ImGui::TableSetColumnIndex(4);
+				{
+					const GoodAmount outputOnHand =
+						system != nullptr ? getStockpileAmount(*system, factory.outputGoodId) : 0.f;
+					ImGui::TextUnformatted(std::to_string(outputOnHand).c_str());
+				}
+				ImGui::TableSetColumnIndex(5);
 				{
 					std::string outRate = std::to_string(factory.outputAmountPerTick);
 					if (factory.ticksPerOutput > 1)
@@ -437,11 +470,11 @@ namespace
 
 					ImGui::TextUnformatted(outRate.c_str());
 				}
-				ImGui::TableSetColumnIndex(4);
+				ImGui::TableSetColumnIndex(6);
 				ImGui::TextUnformatted(std::to_string(factory.outputMaxStockpile).c_str());
 				if (rampSpec != nullptr)
 				{
-					ImGui::TableSetColumnIndex(5);
+					ImGui::TableSetColumnIndex(7);
 					ImGui::TextUnformatted(
 						(std::to_string(factory.productEfficiencyPerThousand / 10) + "%").c_str());
 				}

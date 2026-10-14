@@ -12,7 +12,9 @@ namespace slr
 	{
 		Star,
 		Jump,
-		Yard
+		Yard,
+		Factory,
+		Mine
 	};
 
 	struct SystemPlace
@@ -37,6 +39,11 @@ namespace slr
 	constexpr long long HelionKestrelJumpPlaceId = 2;
 	constexpr long long HelionYardPlaceId = 3;
 	const glm::vec2 HelionYardPlaceOffset{ 30.0f, 0.0f };
+	constexpr long long RimwardSystemId = 5;
+	constexpr long long JunctionFactoryPlaceId = 10;
+	constexpr long long RimwardMinePlaceId = 20;
+	const glm::vec2 JunctionFactoryPlaceOffset{ -28.0f, 18.0f };
+	const glm::vec2 RimwardMinePlaceOffset{ 32.0f, -12.0f };
 
 	float outRadiusFromStarSize(float starSize);
 	float outRadiusForLayout(const SystemLayout& layout);
@@ -45,9 +52,13 @@ namespace slr
 	const SystemPlace* pickSystemPlace(const SystemLayout& layout, glm::vec2 systemPos);
 	const SystemPlace* starPlaceOf(const SystemLayout& layout);
 	const SystemPlace* yardPlaceOf(const SystemLayout& layout);
+	const SystemPlace* factoryPlaceOf(const SystemLayout& layout);
+	const SystemPlace* minePlaceOf(const SystemLayout& layout);
 	const SystemPlace* jumpPlaceForLaneNeighbor(const SystemLayout& layout, long long neighborSystemId);
 	const SystemPlace* starPlaceForSystem(const WorldData& world, long long systemId);
 	const SystemPlace* yardPlaceForSystem(const WorldData& world, long long systemId);
+	const SystemPlace* factoryPlaceForSystem(const WorldData& world, long long systemId);
+	const SystemPlace* minePlaceForSystem(const WorldData& world, long long systemId);
 	const SystemPlace* jumpPlaceForLaneNeighbor(
 		const WorldData& world,
 		long long systemId,
@@ -59,5 +70,7 @@ namespace slr
 		long long neighborSystemId);
 	bool jumpPlaceIsAtOrOutsideOutRadius(const SystemLayout& layout, const SystemPlace& jumpPlace);
 	void addHelionSystemPlaces(WorldData& world);
+	void addJunctionSystemPlaces(WorldData& world);
+	void addRimwardSystemPlaces(WorldData& world);
 
 }

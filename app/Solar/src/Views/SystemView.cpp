@@ -51,6 +51,30 @@ namespace
 		return selected ? IM_COL32(200, 240, 150, 255) : IM_COL32(160, 200, 120, 255);
 	}
 
+	ImU32 factoryFillColour(bool selected)
+	{
+		return selected ? IM_COL32(255, 220, 160, 255) : IM_COL32(220, 180, 120, 255);
+	}
+
+	ImU32 mineFillColour(bool selected)
+	{
+		return selected ? IM_COL32(190, 210, 255, 255) : IM_COL32(150, 170, 220, 255);
+	}
+
+	void drawDiamondMarker(
+		ImDrawList* drawList,
+		const ImVec2& center,
+		float halfExtent,
+		ImU32 fillColour)
+	{
+		const ImVec2 points[4] = {
+			ImVec2(center.x, center.y - halfExtent),
+			ImVec2(center.x + halfExtent, center.y),
+			ImVec2(center.x, center.y + halfExtent),
+			ImVec2(center.x - halfExtent, center.y) };
+		drawList->AddConvexPolyFilled(points, 4, fillColour);
+	}
+
 	const char* inspectorTitleForPlace(SystemPlaceKind kind)
 	{
 		switch (kind)
@@ -61,6 +85,10 @@ namespace
 			return "Jump";
 		case SystemPlaceKind::Yard:
 			return "Yard";
+		case SystemPlaceKind::Factory:
+			return "Factory";
+		case SystemPlaceKind::Mine:
+			return "Mine";
 		}
 
 		return "Place";
@@ -160,9 +188,7 @@ namespace
 			{
 				const ImVec2 jumpScreen = systemSpaceToScreen(origin, scale, place.position);
 				drawList->AddCircleFilled(jumpScreen, SystemMapJumpMarkerRadius, jumpFillColour(selected), 12);
-				const StarSystem* neighbor = world.systemById(place.neighborSystemId);
-				const char* jumpName = neighbor != nullptr ? neighbor->name.c_str() : "Jump";
-				drawPlaceLabel(drawList, jumpScreen, jumpName);
+				drawPlaceLabel(drawList, jumpScreen, "Jump");
 			}
 			else if (place.kind == SystemPlaceKind::Yard)
 			{
@@ -172,6 +198,26 @@ namespace
 					ImVec2(yardScreen.x + SystemMapYardMarkerHalf, yardScreen.y + SystemMapYardMarkerHalf),
 					yardFillColour(selected));
 				drawPlaceLabel(drawList, yardScreen, "Yard");
+			}
+			else if (place.kind == SystemPlaceKind::Factory)
+			{
+				const ImVec2 factoryScreen = systemSpaceToScreen(origin, scale, place.position);
+				drawDiamondMarker(
+					drawList,
+					factoryScreen,
+					SystemMapYardMarkerHalf,
+					factoryFillColour(selected));
+				drawPlaceLabel(drawList, factoryScreen, "Mill");
+			}
+			else if (place.kind == SystemPlaceKind::Mine)
+			{
+				const ImVec2 mineScreen = systemSpaceToScreen(origin, scale, place.position);
+				drawList->AddCircleFilled(
+					mineScreen,
+					SystemMapJumpMarkerRadius,
+					mineFillColour(selected),
+					12);
+				drawPlaceLabel(drawList, mineScreen, "Mine");
 			}
 		}
 
@@ -220,6 +266,14 @@ namespace
 			else if (selected->kind == SystemPlaceKind::Yard)
 			{
 				drawYardPlaceInspector(world, systemId, pendingCommands);
+			}
+			else if (selected->kind == SystemPlaceKind::Factory)
+			{
+				drawFactoryPlaceInspector(world, systemId);
+			}
+			else if (selected->kind == SystemPlaceKind::Mine)
+			{
+				drawMinePlaceInspector(world, systemId);
 			}
 		}
 		ImGui::End();

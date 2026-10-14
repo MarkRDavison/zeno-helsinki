@@ -36,6 +36,66 @@ namespace
 		return nullptr;
 	}
 
+	void addJumpsForAllLaneNeighbors(WorldData& world, SystemLayout& layout)
+	{
+		const StarSystem* system = world.systemById(layout.systemId);
+		if (system == nullptr)
+		{
+			return;
+		}
+
+		for (const auto& lane : world.hyperlanes)
+		{
+			long long neighborId = 0;
+			if (lane.a == layout.systemId)
+			{
+				neighborId = lane.b;
+			}
+			else if (lane.b == layout.systemId)
+			{
+				neighborId = lane.a;
+			}
+			else
+			{
+				continue;
+			}
+
+			if (!hasHyperlane(world, layout.systemId, neighborId))
+			{
+				continue;
+			}
+
+			if (jumpPlaceForLaneNeighbor(layout, neighborId) != nullptr)
+			{
+				continue;
+			}
+
+			const StarSystem* neighbor = world.systemById(neighborId);
+			if (neighbor == nullptr)
+			{
+				continue;
+			}
+
+			placeJumpOnOutRadiusTowardNeighbor(
+				layout,
+				neighbor->position - system->position,
+				neighborId);
+		}
+	}
+
+	SystemLayout makeLayoutWithStarAndJumps(WorldData& world, long long systemId, float starSize)
+	{
+		SystemLayout layout;
+		layout.systemId = systemId;
+		layout.starSize = starSize;
+		layout.places.push_back(SystemPlace{
+			.id = nextSystemPlaceId(layout),
+			.kind = SystemPlaceKind::Star,
+			.position = { 0.0f, 0.0f } });
+		addJumpsForAllLaneNeighbors(world, layout);
+		return layout;
+	}
+
 }
 
 	float outRadiusFromStarSize(float starSize)
@@ -114,6 +174,16 @@ namespace
 		return placeOfKind(layout, SystemPlaceKind::Yard);
 	}
 
+	const SystemPlace* factoryPlaceOf(const SystemLayout& layout)
+	{
+		return placeOfKind(layout, SystemPlaceKind::Factory);
+	}
+
+	const SystemPlace* minePlaceOf(const SystemLayout& layout)
+	{
+		return placeOfKind(layout, SystemPlaceKind::Mine);
+	}
+
 	const SystemPlace* jumpPlaceForLaneNeighbor(const SystemLayout& layout, long long neighborSystemId)
 	{
 		for (const auto& place : layout.places)
@@ -147,6 +217,28 @@ namespace
 		}
 
 		return yardPlaceOf(*layout);
+	}
+
+	const SystemPlace* factoryPlaceForSystem(const WorldData& world, long long systemId)
+	{
+		const SystemLayout* layout = world.systemLayoutBySystemId(systemId);
+		if (layout == nullptr)
+		{
+			return nullptr;
+		}
+
+		return factoryPlaceOf(*layout);
+	}
+
+	const SystemPlace* minePlaceForSystem(const WorldData& world, long long systemId)
+	{
+		const SystemLayout* layout = world.systemLayoutBySystemId(systemId);
+		if (layout == nullptr)
+		{
+			return nullptr;
+		}
+
+		return minePlaceOf(*layout);
 	}
 
 	const SystemPlace* jumpPlaceForLaneNeighbor(
@@ -190,25 +282,16 @@ namespace
 
 	void addHelionSystemPlaces(WorldData& world)
 	{
-		SystemLayout layout;
-		layout.systemId = HelionSystemId;
-		layout.starSize = HelionStarSize;
-		layout.places.push_back(SystemPlace{
-			.id = HelionStarPlaceId,
-			.kind = SystemPlaceKind::Star,
-			.position = { 0.0f, 0.0f } });
-
-		const StarSystem* helion = world.systemById(HelionSystemId);
-		const StarSystem* kestrel = world.systemById(KestrelSystemId);
-		if (helion != nullptr && kestrel != nullptr && hasHyperlane(world, HelionSystemId, KestrelSystemId))
+		SystemLayout layout = makeLayoutWithStarAndJumps(world, HelionSystemId, HelionStarSize);
+		for (auto& place : layout.places)
 		{
-			placeJumpOnOutRadiusTowardNeighbor(
-				layout,
-				kestrel->position - helion->position,
-				KestrelSystemId);
-			if (layout.places.back().kind == SystemPlaceKind::Jump)
+			if (place.kind == SystemPlaceKind::Star)
 			{
-				layout.places.back().id = HelionKestrelJumpPlaceId;
+				place.id = HelionStarPlaceId;
+			}
+			else if (place.kind == SystemPlaceKind::Jump && place.neighborSystemId == KestrelSystemId)
+			{
+				place.id = HelionKestrelJumpPlaceId;
 			}
 		}
 
@@ -217,6 +300,26 @@ namespace
 			.kind = SystemPlaceKind::Yard,
 			.position = HelionYardPlaceOffset });
 
+		world.systemLayouts.push_back(std::move(layout));
+	}
+
+	void addJunctionSystemPlaces(WorldData& world)
+	{
+		SystemLayout layout = makeLayoutWithStarAndJumps(world, JunctionSystemId, HelionStarSize);
+		layout.places.push_back(SystemPlace{
+			.id = JunctionFactoryPlaceId,
+			.kind = SystemPlaceKind::Factory,
+			.position = JunctionFactoryPlaceOffset });
+		world.systemLayouts.push_back(std::move(layout));
+	}
+
+	void addRimwardSystemPlaces(WorldData& world)
+	{
+		SystemLayout layout = makeLayoutWithStarAndJumps(world, RimwardSystemId, HelionStarSize);
+		layout.places.push_back(SystemPlace{
+			.id = RimwardMinePlaceId,
+			.kind = SystemPlaceKind::Mine,
+			.position = RimwardMinePlaceOffset });
 		world.systemLayouts.push_back(std::move(layout));
 	}
 

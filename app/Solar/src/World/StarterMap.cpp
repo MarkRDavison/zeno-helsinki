@@ -62,6 +62,8 @@ namespace
 		addLane(world, 4, 8);
 		addLane(world, 6, 8);
 		addHelionSystemPlaces(world);
+		addJunctionSystemPlaces(world);
+		addRimwardSystemPlaces(world);
 
 		StarSystem* rimward = world.systemById(5);
 		rimward->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .goodAmount = 0, .need = 0 });

@@ -38,20 +38,97 @@ TEST_CASE("Helion has a star, derived out radius, Kestrel jump, and yard place",
 	REQUIRE(glm::length(yard->position - star->position) < outRadiusForLayout(*helion));
 }
 
-TEST_CASE("systems other than Helion have no layout", "[slr][SystemPlaces]")
+TEST_CASE("Junction has mill place and jumps for each incident lane", "[slr][SystemPlaces]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.systemLayouts.size() == 1);
-	for (const auto& system : world.systems)
-	{
-		if (system.id == HelionSystemId)
-		{
-			REQUIRE(world.systemLayoutBySystemId(system.id) != nullptr);
-			continue;
-		}
+	const SystemLayout* junction = world.systemLayoutBySystemId(JunctionSystemId);
+	REQUIRE(junction != nullptr);
+	REQUIRE(junction->starSize == Catch::Approx(HelionStarSize));
 
-		REQUIRE(world.systemLayoutBySystemId(system.id) == nullptr);
+	const SystemPlace* star = starPlaceForSystem(world, JunctionSystemId);
+	REQUIRE(star != nullptr);
+
+	for (long long neighborId : { KestrelSystemId, 4LL, RimwardSystemId, 6LL })
+	{
+		REQUIRE(hasHyperlane(world, JunctionSystemId, neighborId));
+		const SystemPlace* jump = jumpPlaceForLaneNeighbor(world, JunctionSystemId, neighborId);
+		REQUIRE(jump != nullptr);
+		REQUIRE(jumpPlaceIsAtOrOutsideOutRadius(*junction, *jump));
 	}
+
+	const SystemPlace* factory = factoryPlaceForSystem(world, JunctionSystemId);
+	REQUIRE(factory != nullptr);
+	REQUIRE(factory->kind == SystemPlaceKind::Factory);
+	REQUIRE(factory->id == JunctionFactoryPlaceId);
+	REQUIRE(glm::length(factory->position - star->position) < outRadiusForLayout(*junction));
+
+	const SystemPlace* picked = pickSystemPlace(*junction, factory->position);
+	REQUIRE(picked != nullptr);
+	REQUIRE(picked->kind == SystemPlaceKind::Factory);
+}
+
+TEST_CASE("Rimward has mine place and jumps for each incident lane", "[slr][SystemPlaces]")
+{
+	const WorldData world = makeStarterMap();
+	const SystemLayout* rimward = world.systemLayoutBySystemId(RimwardSystemId);
+	REQUIRE(rimward != nullptr);
+
+	const SystemPlace* star = starPlaceForSystem(world, RimwardSystemId);
+	REQUIRE(star != nullptr);
+
+	for (long long neighborId : { JunctionSystemId, 7LL })
+	{
+		REQUIRE(hasHyperlane(world, RimwardSystemId, neighborId));
+		const SystemPlace* jump = jumpPlaceForLaneNeighbor(world, RimwardSystemId, neighborId);
+		REQUIRE(jump != nullptr);
+		REQUIRE(jumpPlaceIsAtOrOutsideOutRadius(*rimward, *jump));
+	}
+
+	const SystemPlace* mine = minePlaceForSystem(world, RimwardSystemId);
+	REQUIRE(mine != nullptr);
+	REQUIRE(mine->kind == SystemPlaceKind::Mine);
+	REQUIRE(mine->id == RimwardMinePlaceId);
+	REQUIRE(glm::length(mine->position - star->position) < outRadiusForLayout(*rimward));
+
+	const SystemPlace* picked = pickSystemPlace(*rimward, mine->position);
+	REQUIRE(picked != nullptr);
+	REQUIRE(picked->kind == SystemPlaceKind::Mine);
+}
+
+TEST_CASE("Helion has no factory place; Kestrel has no layout", "[slr][SystemPlaces]")
+{
+	const WorldData world = makeStarterMap();
+	REQUIRE(world.systemLayouts.size() == 3);
+	REQUIRE(factoryPlaceForSystem(world, HelionSystemId) == nullptr);
+	REQUIRE(minePlaceForSystem(world, HelionSystemId) == nullptr);
+	REQUIRE(world.systemLayoutBySystemId(KestrelSystemId) == nullptr);
+}
+
+TEST_CASE("starter map still has Junction factory and Rimward mine rows", "[slr][SystemPlaces]")
+{
+	const WorldData world = makeStarterMap();
+	bool junctionHasFactory = false;
+	for (const auto& factory : world.factories)
+	{
+		if (factory.systemId == JunctionSystemId)
+		{
+			junctionHasFactory = true;
+			break;
+		}
+	}
+
+	REQUIRE(junctionHasFactory);
+	bool rimwardHasMine = false;
+	for (const auto& mine : world.mines)
+	{
+		if (mine.systemId == RimwardSystemId)
+		{
+			rimwardHasMine = true;
+			break;
+		}
+	}
+
+	REQUIRE(rimwardHasMine);
 }
 
 TEST_CASE("a jump inside the out radius is rejected", "[slr][SystemPlaces]")
