@@ -4,6 +4,7 @@
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
 #include <World/TruckCargo.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 
@@ -44,6 +45,7 @@ TEST_CASE("Helion trucks still haul Rimward to Junction while the rival parks at
 	const long long jobId = job->id;
 	stepGalaxy(world);
 	REQUIRE(world.trucks[0].haulJobId == jobId);
+	stepUntilTruckHasGalaxyRoute(world, world.trucks[0].id);
 	REQUIRE(world.trucks[0].motion.route == civilianLanePath(world, 5, 3, HelionEmpireId));
 	REQUIRE(civilianLanePath(world, 5, 3, HelionEmpireId) == shortestLanePath(world, 5, 3));
 }

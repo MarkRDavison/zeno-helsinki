@@ -4,6 +4,7 @@
 #include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
+#include <World/SystemPlaces.hpp>
 #include <World/TruckCargo.hpp>
 #include <algorithm>
 #include <vector>
@@ -87,6 +88,25 @@ namespace
 		}
 	}
 
+	void setPlaceFromLaneIfLastHopArrived(WorldData& world, const LaneMotion& motion, long long& placeId)
+	{
+		if (motion.progress != 0.0f || motion.route.size() < 2)
+		{
+			return;
+		}
+
+		if (motion.hop != static_cast<int>(motion.route.size()) - 1 || motion.hop < 1)
+		{
+			return;
+		}
+
+		setMoverPlaceToArrivalJump(
+			world,
+			motion.route[static_cast<size_t>(motion.hop)],
+			motion.route[static_cast<size_t>(motion.hop - 1)],
+			placeId);
+	}
+
 	void copyConvoyMotionOntoMembers(WorldData& world, const Convoy& convoy)
 	{
 		for (auto& truck : world.trucks)
@@ -104,7 +124,16 @@ namespace
 			truck.motion.speed = speed;
 			if (truck.motion.route.size() >= 2)
 			{
-				truck.placeId = 0;
+				if (truck.motion.progress == 0.0f &&
+					truck.motion.hop == static_cast<int>(truck.motion.route.size()) - 1)
+				{
+					setPlaceFromLaneIfLastHopArrived(world, truck.motion, truck.placeId);
+				}
+				else
+				{
+					truck.placeId = 0;
+					truck.inSystem = InSystemMotion{};
+				}
 			}
 		}
 	}
@@ -130,7 +159,16 @@ namespace
 		fleet->motion.speed = speed;
 		if (fleet->motion.route.size() >= 2)
 		{
-			fleet->placeId = 0;
+			if (fleet->motion.progress == 0.0f &&
+				fleet->motion.hop == static_cast<int>(fleet->motion.route.size()) - 1)
+			{
+				setPlaceFromLaneIfLastHopArrived(world, fleet->motion, fleet->placeId);
+			}
+			else
+			{
+				fleet->placeId = 0;
+				fleet->inSystem = InSystemMotion{};
+			}
 		}
 		if (fleet->motion.hop >= 0 &&
 			fleet->motion.hop < static_cast<int>(fleet->motion.route.size()))
@@ -297,6 +335,15 @@ namespace
 				fleet->systemId = group.route[static_cast<size_t>(group.hop)];
 				if (group.hop == static_cast<int>(group.route.size()) - 1)
 				{
+					if (group.hop >= 1)
+					{
+						setMoverPlaceToArrivalJump(
+							world,
+							fleet->systemId,
+							group.route[static_cast<size_t>(group.hop - 1)],
+							fleet->placeId);
+					}
+
 					fleet->motion.route.clear();
 					fleet->motion.hop = 0;
 				}
@@ -313,6 +360,7 @@ namespace
 				if (fleet->motion.route.size() < 2)
 				{
 					parkTruckAt(*truck, fleet->systemId);
+					truck->placeId = fleet->placeId;
 					continue;
 				}
 
@@ -368,6 +416,65 @@ namespace
 				militaryPath);
 			if (path.size() < 2)
 			{
+				continue;
+			}
+
+			bool canDepart = true;
+			for (const auto& truck : world.trucks)
+			{
+				if (truck.convoyId != convoy.id)
+				{
+					continue;
+				}
+
+				if (!moverCanStartHyperlaneFromPlace(world, convoy.loadSystemId, truck.placeId, path[1]))
+				{
+					canDepart = false;
+					break;
+				}
+			}
+
+			if (canDepart && convoyIsStanding(convoy))
+			{
+				const Fleet* escort = world.fleetById(convoy.escortFleetId);
+				if (escort != nullptr &&
+					!moverCanStartHyperlaneFromPlace(world, escort->systemId, escort->placeId, path[1]))
+				{
+					canDepart = false;
+				}
+			}
+
+			if (!canDepart)
+			{
+				for (auto& truck : world.trucks)
+				{
+					if (truck.convoyId != convoy.id)
+					{
+						continue;
+					}
+
+					startCrawlToNeighborJump(
+						world,
+						convoy.loadSystemId,
+						path[1],
+						truck.inSystem,
+						truck.placeId);
+				}
+
+				if (convoyIsStanding(convoy))
+				{
+					Fleet* escort = world.fleetById(convoy.escortFleetId);
+					if (escort != nullptr)
+					{
+						startCrawlToNeighborJump(
+							world,
+							escort->systemId,
+							path[1],
+							escort->inSystem,
+							escort->placeId);
+					}
+				}
+
 				continue;
 			}
 
@@ -652,6 +759,62 @@ namespace
 				continue;
 			}
 
+			if (!moverCanStartHyperlaneFromPlace(world, fleet->systemId, fleet->placeId, path[1]))
+			{
+				startCrawlToNeighborJump(
+					world,
+					fleet->systemId,
+					path[1],
+					fleet->inSystem,
+					fleet->placeId);
+				continue;
+			}
+
+			bool trucksCanLeave = true;
+			for (const auto& truck : world.trucks)
+			{
+				if (truck.convoyId != convoy.id || !truckHasCargoHaulRole(world, truck))
+				{
+					continue;
+				}
+
+				if (!isTruckAtSystem(truck, convoy.loadSystemId))
+				{
+					continue;
+				}
+
+				if (!moverCanStartHyperlaneFromPlace(world, convoy.loadSystemId, truck.placeId, path[1]))
+				{
+					trucksCanLeave = false;
+					break;
+				}
+			}
+
+			if (!trucksCanLeave)
+			{
+				for (auto& truck : world.trucks)
+				{
+					if (truck.convoyId != convoy.id || !truckHasCargoHaulRole(world, truck))
+					{
+						continue;
+					}
+
+					if (!isTruckAtSystem(truck, convoy.loadSystemId))
+					{
+						continue;
+					}
+
+					startCrawlToNeighborJump(
+						world,
+						convoy.loadSystemId,
+						path[1],
+						truck.inSystem,
+						truck.placeId);
+				}
+
+				continue;
+			}
+
 			convoy.motion.route = path;
 			convoy.motion.hop = 0;
 			convoy.motion.progress = 0.0f;
@@ -663,8 +826,42 @@ namespace
 		}
 	}
 
+	void advanceInSystemMovers(WorldData& world)
+	{
+		for (auto& truck : world.trucks)
+		{
+			if (!advanceInSystemCrawl(
+					world,
+					truckSystemId(truck),
+					truck.inSystem,
+					truck.placeId,
+					truck.motion.speed))
+			{
+				continue;
+			}
+
+			applyPendingGalaxyRouteAfterCrawl(truck.inSystem, truck.motion, truck.placeId);
+		}
+
+		for (auto& fleet : world.fleets)
+		{
+			if (!advanceInSystemCrawl(
+					world,
+					fleet.systemId,
+					fleet.inSystem,
+					fleet.placeId,
+					fleet.motion.speed))
+			{
+				continue;
+			}
+
+			applyPendingGalaxyRouteAfterCrawl(fleet.inSystem, fleet.motion, fleet.placeId);
+		}
+	}
+
 	void moveTrucks(WorldData& world)
 	{
+		advanceInSystemMovers(world);
 		parkStandingGroupAtLoadIfEmptyTransitArrived(world);
 
 		for (auto& truck : world.trucks)
@@ -700,7 +897,15 @@ namespace
 				}
 			}
 
-			advanceAlongLane(world, truck.motion);
+			if (inSystemMotionIsCrawling(truck.inSystem))
+			{
+				continue;
+			}
+
+			if (advanceAlongLane(world, truck.motion))
+			{
+				setPlaceFromLaneIfLastHopArrived(world, truck.motion, truck.placeId);
+			}
 		}
 
 		for (auto& convoy : world.convoys)
@@ -988,11 +1193,32 @@ namespace
 		}
 
 		fleet.systemId = fleet.motion.route[static_cast<size_t>(fleet.motion.hop)];
+		if (fleet.motion.hop >= 1)
+		{
+			setMoverPlaceToArrivalJump(
+				world,
+				fleet.systemId,
+				fleet.motion.route[static_cast<size_t>(fleet.motion.hop - 1)],
+				fleet.placeId);
+		}
+
 		if (fleet.motion.hop == static_cast<int>(fleet.motion.route.size()) - 1)
 		{
 			fleet.motion.route.clear();
 			fleet.motion.hop = 0;
+			return;
 		}
+
+		const std::vector<long long> remaining(
+			fleet.motion.route.begin() + fleet.motion.hop,
+			fleet.motion.route.end());
+		beginGalaxyPathOrCrawlToOutboundJump(
+			world,
+			fleet.systemId,
+			fleet.inSystem,
+			fleet.motion,
+			fleet.placeId,
+			remaining);
 	}
 
 	void moveFleets(WorldData& world)
@@ -1008,6 +1234,11 @@ namespace
 			if (escort != nullptr && convoyIsStanding(*escort) && escort->haulJobId == 0 &&
 				fleet.motion.route.size() >= 2 &&
 				standingEscortHasInGroupMembers(world, *escort, fleet))
+			{
+				continue;
+			}
+
+			if (inSystemMotionIsCrawling(fleet.inSystem))
 			{
 				continue;
 			}

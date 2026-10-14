@@ -3,6 +3,8 @@
 #include <World/LaneMotion.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <World/SystemPlaces.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace slr
@@ -86,12 +88,14 @@ TEST_CASE("two empty trucks accept the Junction ore job and pathfind Rimward to 
 	REQUIRE(world.trucks[0].convoyId != 0);
 	REQUIRE(world.trucks[0].convoyId == world.trucks[1].convoyId);
 	REQUIRE(world.trucks[0].convoyId != flyingConvoyId);
-	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 3));
-	REQUIRE(world.trucks[1].motion.route == shortestLanePath(world, 5, 3));
 	const HaulJob* job = world.haulJobById(jobId);
 	REQUIRE(job != nullptr);
 	REQUIRE(world.trucks[2].haulJobId == 0);
 	REQUIRE(job->amount == amountBefore - 2 * TruckCapacity_IronOre);
+	stepUntilTruckHasGalaxyRoute(world, world.trucks[0].id);
+	stepUntilTruckHasGalaxyRoute(world, world.trucks[1].id);
+	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 3));
+	REQUIRE(world.trucks[1].motion.route == shortestLanePath(world, 5, 3));
 }
 
 TEST_CASE("second accept drops when remaining room is one truckload", "[slr][Job]")
@@ -108,11 +112,13 @@ TEST_CASE("second accept drops when remaining room is one truckload", "[slr][Job
 		.id = 10,
 		.empireId = HelionEmpireId,
 		.motion = { .route = { 5 }, .speed = 25.0f },
+		.placeId = RimwardMinePlaceId,
 		.classId = HelionCivilianTruckClassId });
 	world.trucks.push_back(Truck{
 		.id = 11,
 		.empireId = HelionEmpireId,
 		.motion = { .route = { 5 }, .speed = 25.0f },
+		.placeId = RimwardMinePlaceId,
 		.classId = HelionCivilianTruckClassId });
 
 	REQUIRE(execute(
@@ -141,6 +147,7 @@ TEST_CASE("Helion truck does not accept an Ashreach haul job", "[slr][Job]")
 		.id = 1,
 		.empireId = HelionEmpireId,
 		.motion = { .route = { 5 }, .speed = 25.0f },
+		.placeId = RimwardMinePlaceId,
 		.classId = HelionCivilianTruckClassId });
 
 	REQUIRE_FALSE(execute(

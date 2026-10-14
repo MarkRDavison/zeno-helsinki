@@ -554,11 +554,16 @@ namespace
 				else if (at != nullptr)
 				{
 					ImGui::TextUnformatted(("at " + at->name).c_str());
-					if (const SystemPlace* place =
+					if (inSystemMotionIsCrawling(fleet->inSystem))
+					{
+						ImGui::TextUnformatted("sublight");
+					}
+					else if (const SystemPlace* place =
 							parkedPlaceInSystem(*_world, fleet->systemId, fleet->placeId))
 					{
 						ImGui::TextUnformatted(systemPlaceKindName(place->kind));
 					}
+
 				}
 				for (const auto& row : fleet->composition)
 				{

@@ -7,6 +7,7 @@
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
 #include <World/WorldData.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -155,6 +156,7 @@ namespace TenderTests
 		Fleet* kestrel = world.fleetById(3);
 		REQUIRE(kestrel != nullptr);
 		kestrel->systemId = 1;
+		kestrel->placeId = HelionYardPlaceId;
 		kestrel->motion.route.clear();
 		kestrel->motion.progress = 0.0f;
 		REQUIRE(execute(
@@ -172,6 +174,8 @@ namespace TenderTests
 			}
 		}
 
+		putFleetAtJumpToward(world, 3, 2);
+		putTrucksAtSystemJumpToward(world, 1, 2);
 		REQUIRE(execute(world, GameCommand::moveFleetToSystem(3, 3, CommandSource::Player)));
 		stepGalaxy(world);
 		for (const auto& truck : world.trucks)
@@ -193,6 +197,7 @@ namespace TenderTests
 		Fleet* kestrel = world.fleetById(3);
 		REQUIRE(kestrel != nullptr);
 		kestrel->systemId = 1;
+		kestrel->placeId = HelionYardPlaceId;
 		kestrel->motion.route.clear();
 		kestrel->motion.progress = 0.0f;
 		kestrel->motion.speed = 50.0f;
@@ -209,6 +214,8 @@ namespace TenderTests
 			}
 		}
 
+		putFleetAtJumpToward(world, 3, 2);
+		putTrucksAtSystemJumpToward(world, 1, 2);
 		REQUIRE(execute(world, GameCommand::moveFleetToSystem(3, 3, CommandSource::Player)));
 		stepGalaxy(world);
 		REQUIRE(kestrel->motion.speed == Catch::Approx(50.0f));
@@ -240,12 +247,15 @@ namespace TenderTests
 		Fleet* kestrel = world.fleetById(3);
 		REQUIRE(kestrel != nullptr);
 		kestrel->systemId = 1;
+		kestrel->placeId = HelionYardPlaceId;
 		kestrel->motion.route.clear();
 		kestrel->motion.progress = 0.0f;
 		REQUIRE(execute(
 			world,
 			GameCommand::setFleetEscort(3, true, 0, 0, 2, CommandSource::Player)));
 		stepGalaxy(world);
+		putFleetAtJumpToward(world, 3, 2);
+		putTrucksAtSystemJumpToward(world, 1, 2);
 		REQUIRE(execute(world, GameCommand::moveFleetToSystem(3, 3, CommandSource::Player)));
 		stepGalaxy(world);
 		REQUIRE(kestrel->motion.progress > 0.0f);
@@ -283,6 +293,7 @@ namespace TenderTests
 		Fleet* kestrel = world.fleetById(3);
 		REQUIRE(kestrel != nullptr);
 		kestrel->systemId = 1;
+		kestrel->placeId = HelionYardPlaceId;
 		kestrel->motion.route.clear();
 		kestrel->motion.progress = 0.0f;
 		kestrel->motion.speed = 50.0f;
@@ -314,6 +325,9 @@ namespace TenderTests
 		REQUIRE(withFleet != nullptr);
 		REQUIRE(joiner != nullptr);
 		parkTruckAt(*joiner, 5);
+		putTrucksAtSystemJumpToward(world, 5, 3);
+		putFleetAtJumpToward(world, 3, 2);
+		putTrucksAtSystemJumpToward(world, 1, 2);
 		REQUIRE(execute(world, GameCommand::moveFleetToSystem(3, 3, CommandSource::Player)));
 		stepGalaxy(world);
 		REQUIRE(withFleet->motion.route == kestrel->motion.route);
@@ -334,6 +348,7 @@ namespace TenderTests
 		Fleet* kestrel = world.fleetById(3);
 		REQUIRE(kestrel != nullptr);
 		kestrel->systemId = 3;
+		kestrel->placeId = JunctionFactoryPlaceId;
 		kestrel->motion.route.clear();
 		kestrel->motion.progress = 0.0f;
 		REQUIRE(execute(
@@ -355,6 +370,8 @@ namespace TenderTests
 		}
 
 		REQUIRE(civilianLanePath(world, 3, 4, HelionEmpireId).empty());
+		putFleetAtJumpToward(world, 3, 4);
+		putTrucksAtSystemJumpToward(world, 3, 4);
 		REQUIRE(execute(world, GameCommand::moveFleetToSystem(3, 4, CommandSource::Player)));
 		stepGalaxy(world);
 		for (const auto& truck : world.trucks)
@@ -470,6 +487,7 @@ namespace TenderTests
 		combo.empireId = HelionEmpireId;
 		combo.classId = comboClassId;
 		combo.motion = { .route = { 1 }, .speed = 25.0f };
+		combo.placeId = HelionYardPlaceId;
 		REQUIRE(truckHasRole(world, combo, HullRole::MilitaryCargo));
 		REQUIRE(truckHasRole(world, combo, HullRole::Tender));
 

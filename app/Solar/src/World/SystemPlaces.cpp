@@ -1,6 +1,8 @@
 #include <World/SystemPlaces.hpp>
 #include <World/Goods.hpp>
 #include <World/WorldData.hpp>
+#include <algorithm>
+#include <optional>
 
 namespace slr
 {
@@ -293,6 +295,238 @@ namespace
 		return "Place";
 	}
 
+	bool moverCanStartHyperlaneFromPlace(
+		const WorldData& world,
+		long long systemId,
+		long long placeId,
+		long long firstNeighborSystemId)
+	{
+		if (world.systemLayoutBySystemId(systemId) == nullptr)
+		{
+			return true;
+		}
+
+		const SystemPlace* outbound = jumpPlaceForLaneNeighbor(world, systemId, firstNeighborSystemId);
+		return outbound != nullptr && placeId == outbound->id;
+	}
+
+	void setMoverPlaceToArrivalJump(
+		const WorldData& world,
+		long long arrivedSystemId,
+		long long cameFromSystemId,
+		long long& placeId)
+	{
+		const SystemPlace* jump = jumpPlaceForLaneNeighbor(world, arrivedSystemId, cameFromSystemId);
+		placeId = jump != nullptr ? jump->id : 0;
+	}
+
+	bool inSystemMotionIsCrawling(const InSystemMotion& motion)
+	{
+		return motion.toPlaceId != 0;
+	}
+
+	std::optional<glm::vec2> inSystemMoverPosition(
+		const WorldData& world,
+		long long systemId,
+		long long placeId,
+		const InSystemMotion& motion)
+	{
+		const SystemLayout* layout = world.systemLayoutBySystemId(systemId);
+		if (layout == nullptr)
+		{
+			return std::nullopt;
+		}
+
+		if (inSystemMotionIsCrawling(motion))
+		{
+			const SystemPlace* from = placeById(*layout, motion.fromPlaceId);
+			const SystemPlace* to = placeById(*layout, motion.toPlaceId);
+			if (from == nullptr || to == nullptr)
+			{
+				return std::nullopt;
+			}
+
+			return glm::mix(from->position, to->position, motion.progress);
+		}
+
+		if (const SystemPlace* parked = placeById(*layout, placeId))
+		{
+			return parked->position;
+		}
+
+		return std::nullopt;
+	}
+
+	bool startInSystemCrawl(
+		const WorldData& world,
+		long long systemId,
+		long long fromPlaceId,
+		long long toPlaceId,
+		InSystemMotion& motion,
+		long long& placeId)
+	{
+		const SystemLayout* layout = world.systemLayoutBySystemId(systemId);
+		if (layout == nullptr)
+		{
+			return false;
+		}
+
+		if (placeById(*layout, fromPlaceId) == nullptr || placeById(*layout, toPlaceId) == nullptr)
+		{
+			return false;
+		}
+
+		if (fromPlaceId == toPlaceId)
+		{
+			placeId = toPlaceId;
+			motion.fromPlaceId = 0;
+			motion.toPlaceId = 0;
+			motion.progress = 0.0f;
+			motion.pendingGalaxyRoute.clear();
+			return true;
+		}
+
+		if (motion.fromPlaceId == fromPlaceId && motion.toPlaceId == toPlaceId)
+		{
+			return true;
+		}
+
+		motion.fromPlaceId = fromPlaceId;
+		motion.toPlaceId = toPlaceId;
+		motion.progress = 0.0f;
+		motion.pendingGalaxyRoute.clear();
+		placeId = 0;
+		return true;
+	}
+
+	bool startCrawlToNeighborJump(
+		const WorldData& world,
+		long long systemId,
+		long long neighborSystemId,
+		InSystemMotion& motion,
+		long long& placeId)
+	{
+		const SystemPlace* jump = jumpPlaceForLaneNeighbor(world, systemId, neighborSystemId);
+		if (jump == nullptr)
+		{
+			return false;
+		}
+
+		const long long fromPlaceId = placeId != 0 ? placeId : motion.fromPlaceId;
+		return startInSystemCrawl(world, systemId, fromPlaceId, jump->id, motion, placeId);
+	}
+
+	bool advanceInSystemCrawl(
+		const WorldData& world,
+		long long systemId,
+		InSystemMotion& motion,
+		long long& placeId,
+		float speed)
+	{
+		if (!inSystemMotionIsCrawling(motion))
+		{
+			return false;
+		}
+
+		const SystemLayout* layout = world.systemLayoutBySystemId(systemId);
+		if (layout == nullptr)
+		{
+			return false;
+		}
+
+		const SystemPlace* from = placeById(*layout, motion.fromPlaceId);
+		const SystemPlace* to = placeById(*layout, motion.toPlaceId);
+		if (from == nullptr || to == nullptr)
+		{
+			return false;
+		}
+
+		const float distance = glm::length(to->position - from->position);
+		if (distance <= JumpRingEpsilon || speed <= 0.0f)
+		{
+			placeId = motion.toPlaceId;
+			motion.fromPlaceId = 0;
+			motion.toPlaceId = 0;
+			motion.progress = 0.0f;
+			return true;
+		}
+
+		motion.progress = std::min(1.0f, motion.progress + speed / distance);
+		if (motion.progress < 1.0f)
+		{
+			return false;
+		}
+
+		placeId = motion.toPlaceId;
+		motion.fromPlaceId = 0;
+		motion.toPlaceId = 0;
+		motion.progress = 0.0f;
+		return true;
+	}
+
+	bool beginGalaxyPathOrCrawlToOutboundJump(
+		WorldData& world,
+		long long systemId,
+		InSystemMotion& inSystem,
+		LaneMotion& motion,
+		long long& placeId,
+		const std::vector<long long>& path)
+	{
+		if (path.size() < 2)
+		{
+			return false;
+		}
+
+		if (inSystem.pendingGalaxyRoute == path && inSystemMotionIsCrawling(inSystem))
+		{
+			return true;
+		}
+
+		if (moverCanStartHyperlaneFromPlace(world, systemId, placeId, path[1]))
+		{
+			motion.route = path;
+			motion.hop = 0;
+			motion.progress = 0.0f;
+			motion.direction = 1;
+			placeId = 0;
+			inSystem = InSystemMotion{};
+			return true;
+		}
+
+		if (!startCrawlToNeighborJump(world, systemId, path[1], inSystem, placeId))
+		{
+			return false;
+		}
+
+		inSystem.pendingGalaxyRoute = path;
+		if (motion.route.size() >= 2)
+		{
+			motion.route.clear();
+			motion.hop = 0;
+			motion.progress = 0.0f;
+		}
+
+		return true;
+	}
+
+	void applyPendingGalaxyRouteAfterCrawl(
+		InSystemMotion& inSystem,
+		LaneMotion& motion,
+		long long& placeId)
+	{
+		if (inSystemMotionIsCrawling(inSystem) || inSystem.pendingGalaxyRoute.size() < 2)
+		{
+			return;
+		}
+
+		motion.route = inSystem.pendingGalaxyRoute;
+		motion.hop = 0;
+		motion.progress = 0.0f;
+		motion.direction = 1;
+		placeId = 0;
+		inSystem = InSystemMotion{};
+	}
+
 	void placeJumpOnOutRadiusTowardNeighbor(
 		SystemLayout& layout,
 		glm::vec2 neighborGalaxyDelta,
@@ -359,6 +593,84 @@ namespace
 			.kind = SystemPlaceKind::Mine,
 			.position = RimwardMinePlaceOffset });
 		world.systemLayouts.push_back(std::move(layout));
+	}
+
+	void addKestrelSystemPlaces(WorldData& world)
+	{
+		SystemLayout layout = makeLayoutWithStarAndJumps(world, KestrelSystemId, HelionStarSize);
+		layout.places.push_back(SystemPlace{
+			.id = KestrelFactoryPlaceId,
+			.kind = SystemPlaceKind::Factory,
+			.position = KestrelFactoryPlaceOffset });
+		world.systemLayouts.push_back(std::move(layout));
+	}
+
+	void addPlacesForSystemsStillMissingLayout(WorldData& world)
+	{
+		for (const auto& system : world.systems)
+		{
+			if (world.systemLayoutBySystemId(system.id) != nullptr)
+			{
+				continue;
+			}
+
+			SystemLayout layout = makeLayoutWithStarAndJumps(world, system.id, HelionStarSize);
+			bool hasYard = false;
+			bool hasMine = false;
+			bool hasFactory = false;
+			for (const auto& yard : world.yards)
+			{
+				if (yard.systemId == system.id)
+				{
+					hasYard = true;
+					break;
+				}
+			}
+
+			for (const auto& mine : world.mines)
+			{
+				if (mine.systemId == system.id)
+				{
+					hasMine = true;
+					break;
+				}
+			}
+
+			for (const auto& factory : world.factories)
+			{
+				if (factory.systemId == system.id)
+				{
+					hasFactory = true;
+					break;
+				}
+			}
+
+			if (hasYard)
+			{
+				layout.places.push_back(SystemPlace{
+					.id = VesperYardPlaceId,
+					.kind = SystemPlaceKind::Yard,
+					.position = VesperYardPlaceOffset });
+			}
+
+			if (hasMine)
+			{
+				layout.places.push_back(SystemPlace{
+					.id = VesperMinePlaceId,
+					.kind = SystemPlaceKind::Mine,
+					.position = VesperMinePlaceOffset });
+			}
+
+			if (hasFactory)
+			{
+				layout.places.push_back(SystemPlace{
+					.id = AvonFactoryPlaceId,
+					.kind = SystemPlaceKind::Factory,
+					.position = AvonFactoryPlaceOffset });
+			}
+
+			world.systemLayouts.push_back(std::move(layout));
+		}
 	}
 
 }

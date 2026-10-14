@@ -47,14 +47,15 @@ TEST_CASE("opening Helion still reads star, out radius, jump, and yard", "[slr][
 
 TEST_CASE("opening a system with no layout does not invent places", "[slr][SystemView]")
 {
-	const WorldData world = makeStarterMap();
+	WorldData world;
+	world.systems.push_back(StarSystem{ .id = 99, .name = "Empty" });
 	MainView mainView;
-	mainView.openSystem(KestrelSystemId);
+	mainView.openSystem(99);
 	REQUIRE(mainView.isSystem());
-	REQUIRE(*mainView.openedSystemId() == KestrelSystemId);
-	REQUIRE(world.systemLayoutBySystemId(KestrelSystemId) == nullptr);
-	REQUIRE(starPlaceForSystem(world, KestrelSystemId) == nullptr);
-	REQUIRE(yardPlaceForSystem(world, KestrelSystemId) == nullptr);
+	REQUIRE(*mainView.openedSystemId() == 99);
+	REQUIRE(world.systemLayoutBySystemId(99) == nullptr);
+	REQUIRE(starPlaceForSystem(world, 99) == nullptr);
+	REQUIRE(yardPlaceForSystem(world, 99) == nullptr);
 }
 
 TEST_CASE("system main view is not galaxy so galaxy pick can be skipped", "[slr][SystemView]")

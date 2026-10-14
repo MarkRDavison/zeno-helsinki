@@ -20,6 +20,12 @@ namespace slr
 		long long systemId{ 0 };
 	};
 
+	struct MoveFleetToPlace
+	{
+		long long fleetId{ 0 };
+		long long placeId{ 0 };
+	};
+
 	struct AcceptHaulJob
 	{
 		long long truckId{ 0 };
@@ -124,6 +130,7 @@ namespace slr
 		CommandSource source{ CommandSource::Player };
 		std::variant<
 			MoveFleetToSystem,
+			MoveFleetToPlace,
 			AcceptHaulJob,
 			UpsertEngagementPolicy,
 			SetEmpireDefaultPolicy,
@@ -144,6 +151,10 @@ namespace slr
 		static GameCommand moveFleetToSystem(
 			long long fleetId,
 			long long systemId,
+			CommandSource source);
+		static GameCommand moveFleetToPlace(
+			long long fleetId,
+			long long placeId,
 			CommandSource source);
 		static GameCommand acceptHaulJob(
 			long long truckId,

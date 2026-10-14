@@ -45,12 +45,48 @@ namespace
 			return false;
 		}
 
-		fleet->motion.route = path;
-		fleet->motion.hop = 0;
-		fleet->motion.progress = 0.0f;
-		fleet->motion.direction = 1;
-		fleet->placeId = 0;
-		return true;
+		return beginGalaxyPathOrCrawlToOutboundJump(
+			world,
+			fleet->systemId,
+			fleet->inSystem,
+			fleet->motion,
+			fleet->placeId,
+			path);
+	}
+
+	bool applyMoveFleetToPlace(WorldData& world, const MoveFleetToPlace& order)
+	{
+		Fleet* fleet = world.fleetById(order.fleetId);
+		if (fleet == nullptr)
+		{
+			return false;
+		}
+
+		if (fleet->motion.route.size() >= 2)
+		{
+			return false;
+		}
+
+		const SystemLayout* layout = world.systemLayoutBySystemId(fleet->systemId);
+		if (layout == nullptr || placeById(*layout, order.placeId) == nullptr)
+		{
+			return false;
+		}
+
+		if (fleet->placeId == order.placeId && !inSystemMotionIsCrawling(fleet->inSystem))
+		{
+			return true;
+		}
+
+		const long long fromPlaceId =
+			fleet->placeId != 0 ? fleet->placeId : fleet->inSystem.fromPlaceId;
+		return startInSystemCrawl(
+			world,
+			fleet->systemId,
+			fromPlaceId,
+			order.placeId,
+			fleet->inSystem,
+			fleet->placeId);
 	}
 
 	bool applyAcceptHaulJob(WorldData& world, const AcceptHaulJob& order)
@@ -169,11 +205,16 @@ namespace
 				return false;
 			}
 
-			truck->motion.route = path;
-			truck->motion.hop = 0;
-			truck->motion.progress = 0.0f;
-			truck->motion.direction = 1;
-			truck->placeId = 0;
+			if (!beginGalaxyPathOrCrawlToOutboundJump(
+					world,
+					here,
+					truck->inSystem,
+					truck->motion,
+					truck->placeId,
+					path))
+			{
+				return false;
+			}
 		}
 		else
 		{
@@ -853,6 +894,17 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::moveFleetToPlace(
+		long long fleetId,
+		long long placeId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = MoveFleetToPlace{ .fleetId = fleetId, .placeId = placeId };
+		return command;
+	}
+
 	GameCommand GameCommand::acceptHaulJob(
 		long long truckId,
 		long long jobId,
@@ -1051,6 +1103,10 @@ namespace
 				if constexpr (std::is_same_v<Payload, MoveFleetToSystem>)
 				{
 					return applyMoveFleet(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, MoveFleetToPlace>)
+				{
+					return applyMoveFleetToPlace(world, payload);
 				}
 				else if constexpr (std::is_same_v<Payload, AcceptHaulJob>)
 				{

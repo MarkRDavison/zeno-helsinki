@@ -1,12 +1,15 @@
 #pragma once
 
 #include <helsinki/System/glm.hpp>
+#include <optional>
 #include <vector>
 
 namespace slr
 {
 
 	struct WorldData;
+	struct InSystemMotion;
+	struct LaneMotion;
 
 	enum class SystemPlaceKind
 	{
@@ -39,11 +42,23 @@ namespace slr
 	constexpr long long HelionKestrelJumpPlaceId = 2;
 	constexpr long long HelionYardPlaceId = 3;
 	const glm::vec2 HelionYardPlaceOffset{ 30.0f, 0.0f };
+	constexpr long long AshreachSystemId = 4;
 	constexpr long long RimwardSystemId = 5;
+	constexpr long long CalderaSystemId = 6;
+	constexpr long long NadirSystemId = 7;
+	constexpr long long VesperSystemId = 8;
 	constexpr long long JunctionFactoryPlaceId = 10;
 	constexpr long long RimwardMinePlaceId = 20;
+	constexpr long long KestrelFactoryPlaceId = 30;
+	constexpr long long AvonFactoryPlaceId = 40;
+	constexpr long long VesperYardPlaceId = 50;
+	constexpr long long VesperMinePlaceId = 51;
 	const glm::vec2 JunctionFactoryPlaceOffset{ -28.0f, 18.0f };
 	const glm::vec2 RimwardMinePlaceOffset{ 32.0f, -12.0f };
+	const glm::vec2 KestrelFactoryPlaceOffset{ 18.0f, 28.0f };
+	const glm::vec2 AvonFactoryPlaceOffset{ 20.0f, -24.0f };
+	const glm::vec2 VesperYardPlaceOffset{ 30.0f, 0.0f };
+	const glm::vec2 VesperMinePlaceOffset{ -32.0f, 12.0f };
 
 	float outRadiusFromStarSize(float starSize);
 	float outRadiusForLayout(const SystemLayout& layout);
@@ -68,6 +83,52 @@ namespace slr
 		long long systemId,
 		long long placeId);
 	const char* systemPlaceKindName(SystemPlaceKind kind);
+	bool moverCanStartHyperlaneFromPlace(
+		const WorldData& world,
+		long long systemId,
+		long long placeId,
+		long long firstNeighborSystemId);
+	void setMoverPlaceToArrivalJump(
+		const WorldData& world,
+		long long arrivedSystemId,
+		long long cameFromSystemId,
+		long long& placeId);
+	bool inSystemMotionIsCrawling(const InSystemMotion& motion);
+	std::optional<glm::vec2> inSystemMoverPosition(
+		const WorldData& world,
+		long long systemId,
+		long long placeId,
+		const InSystemMotion& motion);
+	bool startInSystemCrawl(
+		const WorldData& world,
+		long long systemId,
+		long long fromPlaceId,
+		long long toPlaceId,
+		InSystemMotion& motion,
+		long long& placeId);
+	bool startCrawlToNeighborJump(
+		const WorldData& world,
+		long long systemId,
+		long long neighborSystemId,
+		InSystemMotion& motion,
+		long long& placeId);
+	bool advanceInSystemCrawl(
+		const WorldData& world,
+		long long systemId,
+		InSystemMotion& motion,
+		long long& placeId,
+		float speed);
+	bool beginGalaxyPathOrCrawlToOutboundJump(
+		WorldData& world,
+		long long systemId,
+		InSystemMotion& inSystem,
+		LaneMotion& motion,
+		long long& placeId,
+		const std::vector<long long>& path);
+	void applyPendingGalaxyRouteAfterCrawl(
+		InSystemMotion& inSystem,
+		LaneMotion& motion,
+		long long& placeId);
 
 	void placeJumpOnOutRadiusTowardNeighbor(
 		SystemLayout& layout,
@@ -77,5 +138,7 @@ namespace slr
 	void addHelionSystemPlaces(WorldData& world);
 	void addJunctionSystemPlaces(WorldData& world);
 	void addRimwardSystemPlaces(WorldData& world);
+	void addKestrelSystemPlaces(WorldData& world);
+	void addPlacesForSystemsStillMissingLayout(WorldData& world);
 
 }

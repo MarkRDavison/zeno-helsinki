@@ -3,6 +3,7 @@
 #include <World/PickFleet.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <PutAtJump.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <string>
@@ -387,6 +388,7 @@ TEST_CASE("wipe leaves empty composition and report for both sides", "[slr][Comb
 TEST_CASE("Home Fleet arriving at Kestrel does not fight under hold fire", "[slr][Combat]")
 {
 	WorldData world = makeStarterMap();
+	putFleetAtJumpToward(world, 1, 2);
 	REQUIRE(execute(world, GameCommand::moveFleetToSystem(1, 2, CommandSource::Player)));
 	REQUIRE(world.battleReports.empty());
 

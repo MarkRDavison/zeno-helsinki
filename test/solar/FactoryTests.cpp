@@ -2,6 +2,8 @@
 #include <World/LaneMotion.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <World/SystemPlaces.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace slr
@@ -92,9 +94,10 @@ TEST_CASE("empty truck at Junction with mill steel takes Helion job along Juncti
 		.id = 1,
 		.empireId = HelionEmpireId,
 		.motion = { .route = { 3 }, .speed = 25.0f },
+		.placeId = JunctionFactoryPlaceId,
 		.classId = HelionCivilianTruckClassId });
 
-	stepGalaxy(world);
+	stepUntilTruckHasGalaxyRoute(world, 1);
 
 	REQUIRE(world.trucks[0].haulJobId == haulJobFor(world, 1, SteelGoodId)->id);
 	REQUIRE(world.trucks[0].cargoGoodId == SteelGoodId);

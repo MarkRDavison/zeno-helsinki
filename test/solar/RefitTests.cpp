@@ -2,6 +2,7 @@
 #include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace slr
@@ -168,6 +169,7 @@ TEST_CASE("a fleet that leaves mid-refit does not take the finished hull", "[slr
 	const long long hullId = lowestHullIdOfClass(*home, DestroyerClassId);
 
 	REQUIRE(execute(world, startDestroyerToNike()));
+	putFleetAtJumpToward(world, HomeFleetId, KestrelSystemId);
 	REQUIRE(execute(
 		world,
 		GameCommand::moveFleetToSystem(HomeFleetId, KestrelSystemId, CommandSource::Player)));
@@ -281,6 +283,7 @@ TEST_CASE("StartYardRefit rejects an in-transit fleet", "[slr][Refit]")
 {
 	WorldData world = makeStarterMap();
 	silenceHelionTrafficAndPopulation(world);
+	putFleetAtJumpToward(world, HomeFleetId, KestrelSystemId);
 	REQUIRE(execute(
 		world,
 		GameCommand::moveFleetToSystem(HomeFleetId, KestrelSystemId, CommandSource::Player)));

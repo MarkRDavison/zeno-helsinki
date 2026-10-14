@@ -2,6 +2,7 @@
 #include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/SystemPlaces.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -96,13 +97,73 @@ TEST_CASE("Rimward has mine place and jumps for each incident lane", "[slr][Syst
 	REQUIRE(picked->kind == SystemPlaceKind::Mine);
 }
 
-TEST_CASE("Helion has no factory place; Kestrel has no layout", "[slr][SystemPlaces]")
+TEST_CASE("Helion has no factory place; Kestrel has jumps and a factory", "[slr][SystemPlaces]")
 {
 	const WorldData world = makeStarterMap();
-	REQUIRE(world.systemLayouts.size() == 3);
+	REQUIRE(world.systemLayouts.size() == world.systems.size());
 	REQUIRE(factoryPlaceForSystem(world, HelionSystemId) == nullptr);
 	REQUIRE(minePlaceForSystem(world, HelionSystemId) == nullptr);
-	REQUIRE(world.systemLayoutBySystemId(KestrelSystemId) == nullptr);
+	const SystemLayout* kestrel = world.systemLayoutBySystemId(KestrelSystemId);
+	REQUIRE(kestrel != nullptr);
+	REQUIRE(jumpPlaceForLaneNeighbor(world, KestrelSystemId, HelionSystemId) != nullptr);
+	REQUIRE(jumpPlaceForLaneNeighbor(world, KestrelSystemId, JunctionSystemId) != nullptr);
+	REQUIRE(jumpPlaceForLaneNeighbor(world, KestrelSystemId, AvonSystemId) != nullptr);
+	const SystemPlace* factory = factoryPlaceForSystem(world, KestrelSystemId);
+	REQUIRE(factory != nullptr);
+	REQUIRE(factory->kind == SystemPlaceKind::Factory);
+	REQUIRE(factory->id == KestrelFactoryPlaceId);
+	REQUIRE(glm::length(factory->position - starPositionInSystemSpace(*kestrel)) < outRadiusForLayout(*kestrel));
+	const SystemPlace* picked = pickSystemPlace(*kestrel, factory->position);
+	REQUIRE(picked != nullptr);
+	REQUIRE(picked->kind == SystemPlaceKind::Factory);
+}
+
+TEST_CASE("every starter system has a star and a jump per incident lane", "[slr][SystemPlaces]")
+{
+	const WorldData world = makeStarterMap();
+	REQUIRE(world.systemLayouts.size() == world.systems.size());
+	for (const auto& system : world.systems)
+	{
+		const SystemLayout* layout = world.systemLayoutBySystemId(system.id);
+		REQUIRE(layout != nullptr);
+		REQUIRE(starPlaceForSystem(world, system.id) != nullptr);
+		for (const auto& lane : world.hyperlanes)
+		{
+			long long neighborId = 0;
+			if (lane.a == system.id)
+			{
+				neighborId = lane.b;
+			}
+			else if (lane.b == system.id)
+			{
+				neighborId = lane.a;
+			}
+			else
+			{
+				continue;
+			}
+
+			const SystemPlace* jump = jumpPlaceForLaneNeighbor(world, system.id, neighborId);
+			REQUIRE(jump != nullptr);
+			REQUIRE(jumpPlaceIsAtOrOutsideOutRadius(*layout, *jump));
+		}
+	}
+
+	REQUIRE(yardPlaceForSystem(world, AshreachSystemId) == nullptr);
+	REQUIRE(factoryPlaceForSystem(world, CalderaSystemId) == nullptr);
+	REQUIRE(minePlaceForSystem(world, NadirSystemId) == nullptr);
+	REQUIRE(factoryPlaceForSystem(world, AvonSystemId) != nullptr);
+	REQUIRE(factoryPlaceForSystem(world, AvonSystemId)->id == AvonFactoryPlaceId);
+	REQUIRE(yardPlaceForSystem(world, VesperSystemId) != nullptr);
+	REQUIRE(yardPlaceForSystem(world, VesperSystemId)->id == VesperYardPlaceId);
+	REQUIRE(minePlaceForSystem(world, VesperSystemId) != nullptr);
+	REQUIRE(minePlaceForSystem(world, VesperSystemId)->id == VesperMinePlaceId);
+	const Fleet* ashreach = world.fleetById(2);
+	REQUIRE(ashreach != nullptr);
+	const SystemPlace* ashreachJump =
+		jumpPlaceForLaneNeighbor(world, AshreachSystemId, JunctionSystemId);
+	REQUIRE(ashreachJump != nullptr);
+	REQUIRE(ashreach->placeId == ashreachJump->id);
 }
 
 TEST_CASE("starter map still has Junction factory and Rimward mine rows", "[slr][SystemPlaces]")
@@ -132,7 +193,7 @@ TEST_CASE("starter map still has Junction factory and Rimward mine rows", "[slr]
 	REQUIRE(rimwardHasMine);
 }
 
-TEST_CASE("Home Fleet is at the Helion yard; Kestrel Fleet has no place", "[slr][SystemPlaces]")
+TEST_CASE("Home Fleet is at the Helion yard; Kestrel Fleet is at the factory", "[slr][SystemPlaces]")
 {
 	const WorldData world = makeStarterMap();
 	const Fleet* home = world.fleetById(1);
@@ -143,8 +204,8 @@ TEST_CASE("Home Fleet is at the Helion yard; Kestrel Fleet has no place", "[slr]
 
 	const Fleet* kestrelFleet = world.fleetById(3);
 	REQUIRE(kestrelFleet != nullptr);
-	REQUIRE(kestrelFleet->placeId == 0);
-	REQUIRE(parkedPlaceInSystem(world, KestrelSystemId, kestrelFleet->placeId) == nullptr);
+	REQUIRE(kestrelFleet->placeId == KestrelFactoryPlaceId);
+	REQUIRE(parkedPlaceInSystem(world, KestrelSystemId, kestrelFleet->placeId)->kind == SystemPlaceKind::Factory);
 }
 
 TEST_CASE("parked Rimward trucks sit at the mine; flying truck has no place", "[slr][SystemPlaces]")
@@ -171,15 +232,41 @@ TEST_CASE("parked Rimward trucks sit at the mine; flying truck has no place", "[
 	REQUIRE(sawFlyingWithoutPlace);
 }
 
-TEST_CASE("MoveFleetToSystem clears Home Fleet place on a galaxy lane", "[slr][SystemPlaces]")
+TEST_CASE("MoveFleetToSystem from the Helion Kestrel jump clears place on a galaxy lane", "[slr][SystemPlaces]")
 {
 	WorldData world = makeStarterMap();
 	const long long fleetId = 1;
+	putFleetAtJumpToward(world, fleetId, KestrelSystemId);
 	REQUIRE(execute(world, GameCommand::moveFleetToSystem(fleetId, KestrelSystemId, CommandSource::Player)));
 	const Fleet* home = world.fleetById(fleetId);
 	REQUIRE(home != nullptr);
 	REQUIRE(home->motion.route.size() >= 2);
 	REQUIRE(home->placeId == 0);
+}
+
+TEST_CASE("truck at Rimward mine crawls to the Junction jump then FTL", "[slr][SystemPlaces]")
+{
+	WorldData world = makeStarterMap();
+	Truck* parked = nullptr;
+	for (auto& truck : world.trucks)
+	{
+		if (isTruckAtSystem(truck, RimwardSystemId) && truck.placeId == RimwardMinePlaceId)
+		{
+			parked = &truck;
+			break;
+		}
+	}
+
+	REQUIRE(parked != nullptr);
+	const long long truckId = parked->id;
+	REQUIRE(pathTruckToSystem(world, *parked, HelionSystemId));
+	REQUIRE(inSystemMotionIsCrawling(parked->inSystem));
+	REQUIRE(parked->motion.route.size() < 2);
+	stepUntilTruckHasGalaxyRoute(world, truckId);
+	parked = world.truckById(truckId);
+	REQUIRE(parked != nullptr);
+	REQUIRE(parked->motion.route.size() >= 2);
+	REQUIRE(parked->placeId == 0);
 }
 
 TEST_CASE("a jump inside the out radius is rejected", "[slr][SystemPlaces]")

@@ -64,6 +64,7 @@ namespace
 		addHelionSystemPlaces(world);
 		addJunctionSystemPlaces(world);
 		addRimwardSystemPlaces(world);
+		addKestrelSystemPlaces(world);
 
 		StarSystem* rimward = world.systemById(5);
 		rimward->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .goodAmount = 0, .need = 0 });
@@ -159,6 +160,7 @@ namespace
 			.populationReservedPiles = {
 				GoodQuantity{ .goodId = SteelGoodId, .amount = YardPopulationReserved_Steel } },
 			.slips = { YardSlip{ .id = 2, .remainingBuildTicks = 0 } } });
+		addPlacesForSystemsStillMissingLayout(world);
 		postNeedsFromConsumerShortfalls(world, *helion);
 		postNeedsFromConsumerShortfalls(world, *kestrel);
 		postNeedsFromConsumerShortfalls(world, *junction);
@@ -400,14 +402,23 @@ namespace
 			.empireId = HelionEmpireId,
 			.name = "Kestrel Fleet",
 			.systemId = 2,
+			.placeId = KestrelFactoryPlaceId,
 			.motion = { .speed = homeFleetSpeed } });
 		appendEmptyMagazineHulls(world, world.fleets.back(), nikeId, 4);
 		appendEmptyMagazineHulls(world, world.fleets.back(), destroyerId, 4);
+		long long ashreachParkPlaceId = 0;
+		if (const SystemPlace* ashreachJunctionJump =
+				jumpPlaceForLaneNeighbor(world, AshreachSystemId, JunctionSystemId))
+		{
+			ashreachParkPlaceId = ashreachJunctionJump->id;
+		}
+
 		world.fleets.push_back(Fleet{
 			.id = 2,
 			.empireId = AshreachEmpireId,
 			.name = "Ashreach Fleet",
-			.systemId = 4,
+			.systemId = AshreachSystemId,
+			.placeId = ashreachParkPlaceId,
 			.motion = { .speed = homeFleetSpeed } });
 		appendFullMagazineHulls(world, world.fleets.back(), lanceId, 6);
 		appendFullMagazineHulls(world, world.fleets.back(), cutterId, 10);

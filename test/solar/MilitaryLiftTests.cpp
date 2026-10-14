@@ -3,6 +3,7 @@
 #include <World/LaneMotion.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace slr
@@ -46,6 +47,7 @@ namespace MilitaryLiftTests
 			.id = id,
 			.empireId = HelionEmpireId,
 			.motion = { .route = { systemId }, .speed = 25.0f },
+			.placeId = parkedInstallationPlaceId(world, systemId),
 			.classId = isMilitary ? HelionMilitaryTruckClassId : HelionCivilianTruckClassId });
 		return world.trucks.back();
 	}
@@ -101,6 +103,7 @@ TEST_CASE("at war civilians haul Helion steel through Kestrel", "[slr][MilitaryL
 
 	REQUIRE(execute(world, GameCommand::acceptHaulJob(civilian.id, steel->id, CommandSource::Ai)));
 	REQUIRE(civilian.haulJobId == steel->id);
+	stepUntilTruckHasGalaxyRoute(world, civilian.id);
 	REQUIRE(civilian.motion.route == haulLanePath(world, 5, 3, HelionEmpireId, false, false));
 
 	const StarSystem* helion = world.systemById(1);

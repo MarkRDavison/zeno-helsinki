@@ -2,8 +2,10 @@
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/StarterMap.hpp>
+#include <World/SystemPlaces.hpp>
 #include <World/StepGalaxy.hpp>
 #include <World/TruckCargo.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -57,6 +59,7 @@ TEST_CASE("two Rimward empties join one new convoy; size 1 still exists", "[slr]
 	REQUIRE(world.trucks[0].convoyId != flyingConvoyId);
 	REQUIRE(countTrucksInConvoy(world, world.trucks[0].convoyId) == 2);
 	REQUIRE(countTrucksInConvoy(world, flyingConvoyId) == 1);
+	stepUntilConvoyUnderway(world, world.trucks[0].convoyId);
 	REQUIRE(convoyIsUnderway(*world.convoyById(world.trucks[0].convoyId)));
 	REQUIRE(convoyIsUnderway(*world.convoyById(flyingConvoyId)));
 }
@@ -70,6 +73,7 @@ TEST_CASE("loaded truck waits at supply for a straggler on the same convoy", "[s
 	world.trucks[1].motion.route = { 3 };
 	world.trucks[1].motion.hop = 0;
 	world.trucks[1].motion.progress = 0.0f;
+	world.trucks[1].placeId = JunctionFactoryPlaceId;
 
 	stepGalaxy(world);
 
@@ -87,7 +91,7 @@ TEST_CASE("loaded truck waits at supply for a straggler on the same convoy", "[s
 	const long long convoyId = world.trucks[0].convoyId;
 	while (!convoyIsUnderway(*world.convoyById(convoyId)))
 	{
-		REQUIRE(world.tick < 40);
+		REQUIRE(world.tick < 256);
 		REQUIRE(isTruckAtSystem(world.trucks[0], 5));
 		stepGalaxy(world);
 	}
@@ -105,6 +109,7 @@ TEST_CASE("assembled convoy hops at the slowest member speed", "[slr][Convoy]")
 	world.trucks[1].motion.speed = 25.0f;
 
 	stepGalaxy(world);
+	stepUntilConvoyUnderway(world, world.trucks[0].convoyId);
 
 	const Convoy* convoy = world.convoyById(world.trucks[0].convoyId);
 	REQUIRE(convoy != nullptr);
@@ -134,13 +139,14 @@ TEST_CASE("destroy a waiting empty lets the loaded truck depart", "[slr][Convoy]
 	world.trucks[1].motion.route = { 3 };
 	world.trucks[1].motion.hop = 0;
 	world.trucks[1].motion.progress = 0.0f;
+	world.trucks[1].placeId = JunctionFactoryPlaceId;
 
 	stepGalaxy(world);
 
 	REQUIRE_FALSE(convoyIsUnderway(*world.convoyById(world.trucks[0].convoyId)));
 	REQUIRE(destroyTruckAndReduceInbound(world, world.trucks[1].id));
 
-	stepGalaxy(world);
+	stepUntilConvoyUnderway(world, world.trucks[0].convoyId);
 
 	REQUIRE(world.trucks.size() == 1);
 	REQUIRE(convoyIsUnderway(*world.convoyById(world.trucks[0].convoyId)));

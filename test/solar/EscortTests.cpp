@@ -5,6 +5,7 @@
 #include <World/PickTruck.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
@@ -42,6 +43,8 @@ TEST_CASE("escort stance joins empties up to N at the fleet", "[slr][Escort]")
 {
 	WorldData world = makeStarterMap();
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 2, 0, 0, CommandSource::Player)));
 	const Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
@@ -65,6 +68,8 @@ TEST_CASE("standing group does not take a haul job until N are at the rally", "[
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 3, 0, 0, CommandSource::Player)));
 
 	stepGalaxy(world);
@@ -83,12 +88,14 @@ TEST_CASE("dump does not dissolve a standing convoy", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 1, 0, 0, CommandSource::Player)));
 
 	const long long standingId = world.fleetById(1)->escortConvoyId;
 	while (world.trucks[0].cargoAmount == 0 || world.trucks[0].haulJobId == 0)
 	{
-		REQUIRE(world.tick < 40);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
@@ -98,7 +105,7 @@ TEST_CASE("dump does not dissolve a standing convoy", "[slr][Escort]")
 	const long long dest = job->destinationSystemId;
 	while (world.trucks[0].haulJobId != 0)
 	{
-		REQUIRE(world.tick < 80);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
@@ -113,23 +120,25 @@ TEST_CASE("after dump the standing group can take another job", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 1, 0, 0, CommandSource::Player)));
 
 	while (world.trucks[0].haulJobId == 0)
 	{
-		REQUIRE(world.tick < 40);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
 	while (world.trucks[0].haulJobId != 0)
 	{
-		REQUIRE(world.tick < 80);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
 	while (world.trucks[0].haulJobId == 0)
 	{
-		REQUIRE(world.tick < 120);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
@@ -142,23 +151,25 @@ TEST_CASE("escort travels to the load system instead of jumping onto the deliver
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 1, 0, 0, CommandSource::Player)));
 
 	while (world.trucks[0].haulJobId == 0)
 	{
-		REQUIRE(world.tick < 40);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
 	while (world.trucks[0].haulJobId != 0)
 	{
-		REQUIRE(world.tick < 80);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
 	while (world.trucks[0].haulJobId == 0)
 	{
-		REQUIRE(world.tick < 120);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
@@ -179,6 +190,8 @@ TEST_CASE("clear escort releases assembling trucks", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 3, 0, 0, CommandSource::Player)));
 	stepGalaxy(world);
 	const long long standingId = world.fleetById(1)->escortConvoyId;
@@ -196,12 +209,14 @@ TEST_CASE("escorted trucks use the convoy hop, not a parked system offset", "[sl
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 1, 0, 0, CommandSource::Player)));
 
 	const long long standingId = world.fleetById(1)->escortConvoyId;
 	while (!convoyIsUnderway(*world.convoyById(standingId)))
 	{
-		REQUIRE(world.tick < 40);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
@@ -229,6 +244,8 @@ TEST_CASE("joining standing trucks stay on their own hop with no escort trail", 
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 3, 0, 0, CommandSource::Player)));
 	stepGalaxy(world);
 
@@ -255,11 +272,13 @@ TEST_CASE("move fleet while escorting a run fails", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 1);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 1, 0, 0, CommandSource::Player)));
 
 	while (!convoyIsUnderway(*world.convoyById(world.fleetById(1)->escortConvoyId)))
 	{
-		REQUIRE(world.tick < 40);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 
@@ -271,6 +290,8 @@ TEST_CASE("move fleet while assembling relocates the rally", "[slr][Escort]")
 	WorldData world = makeStarterMap();
 	keepFirstEmptyTrucks(world, 2);
 	parkFleetAt(world, 1, 5);
+	putFleetAtJumpToward(world, 1, 3);
+	putTrucksAtSystemJumpToward(world, 5, 3);
 	REQUIRE(execute(world, GameCommand::setFleetEscort(1, true, 3, 0, 0, CommandSource::Player)));
 	stepGalaxy(world);
 	REQUIRE(world.fleetById(1)->escortConvoyId != 0);
@@ -297,7 +318,7 @@ TEST_CASE("job-group dump still dissolves", "[slr][Escort]")
 	const long long jobGroupId = world.trucks[0].convoyId;
 	while (world.trucks[0].haulJobId != 0)
 	{
-		REQUIRE(world.tick < 80);
+		REQUIRE(world.tick < 256);
 		stepGalaxy(world);
 	}
 

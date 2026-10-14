@@ -1502,12 +1502,13 @@ namespace slr
 			return false;
 		}
 
-		truck.motion.route = path;
-		truck.motion.hop = 0;
-		truck.motion.progress = 0.0f;
-		truck.motion.direction = 1;
-		truck.placeId = 0;
-		return true;
+		return beginGalaxyPathOrCrawlToOutboundJump(
+			world,
+			here,
+			truck.inSystem,
+			truck.motion,
+			truck.placeId,
+			path);
 	}
 
 	bool convoyJobGroupIsMilitary(const WorldData& world, const Convoy& convoy)

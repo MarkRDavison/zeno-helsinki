@@ -254,7 +254,8 @@ namespace
 			const ImVec2 placeScreen = systemSpaceToScreen(origin, scale, place.position);
 			for (const auto& fleet : world.fleets)
 			{
-				if (fleet.systemId != systemId || !fleetIsParked(fleet) || fleet.placeId != place.id)
+				if (fleet.systemId != systemId || !fleetIsParked(fleet) ||
+					inSystemMotionIsCrawling(fleet.inSystem) || fleet.placeId != place.id)
 				{
 					continue;
 				}
@@ -266,7 +267,8 @@ namespace
 
 			for (const auto& truck : world.trucks)
 			{
-				if (!isTruckAtSystem(truck, systemId) || truck.placeId != place.id)
+				if (!isTruckAtSystem(truck, systemId) || inSystemMotionIsCrawling(truck.inSystem) ||
+					truck.placeId != place.id)
 				{
 					continue;
 				}
@@ -275,6 +277,42 @@ namespace
 				drawTruckPill(drawList, moverScreen, IM_COL32(240, 165, 55, 255));
 				drawPlaceLabel(drawList, moverScreen, "truck");
 			}
+		}
+
+		for (const auto& fleet : world.fleets)
+		{
+			if (fleet.systemId != systemId || !inSystemMotionIsCrawling(fleet.inSystem))
+			{
+				continue;
+			}
+
+			const auto pos = inSystemMoverPosition(world, systemId, fleet.placeId, fleet.inSystem);
+			if (!pos.has_value())
+			{
+				continue;
+			}
+
+			const ImVec2 moverScreen = systemSpaceToScreen(origin, scale, *pos);
+			drawFleetChevron(drawList, moverScreen, IM_COL32(240, 90, 90, 255));
+			drawPlaceLabel(drawList, moverScreen, fleet.name.c_str());
+		}
+
+		for (const auto& truck : world.trucks)
+		{
+			if (!isTruckAtSystem(truck, systemId) || !inSystemMotionIsCrawling(truck.inSystem))
+			{
+				continue;
+			}
+
+			const auto pos = inSystemMoverPosition(world, systemId, truck.placeId, truck.inSystem);
+			if (!pos.has_value())
+			{
+				continue;
+			}
+
+			const ImVec2 moverScreen = systemSpaceToScreen(origin, scale, *pos);
+			drawTruckPill(drawList, moverScreen, IM_COL32(240, 165, 55, 255));
+			drawPlaceLabel(drawList, moverScreen, "truck");
 		}
 
 		ImGui::InvisibleButton("system_map_canvas", canvasSize);

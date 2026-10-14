@@ -3,6 +3,8 @@
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
 #include <World/TruckCargo.hpp>
+#include <World/SystemPlaces.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
@@ -163,6 +165,7 @@ TEST_CASE("truck loads ore at Rimward for the Junction mill job", "[slr][Truck]"
 		.id = 1,
 		.empireId = HelionEmpireId,
 		.motion = { .route = { 5 }, .hop = 0, .progress = 0.0f, .direction = 1, .speed = 25.0f },
+		.placeId = RimwardMinePlaceId,
 		.cargoGoodId = 0,
 		.cargoAmount = 0,
 		.classId = HelionCivilianTruckClassId });
@@ -179,6 +182,7 @@ TEST_CASE("truck loads ore at Rimward for the Junction mill job", "[slr][Truck]"
 	REQUIRE(world.trucks[0].cargoGoodId == IronOreGoodId);
 	REQUIRE(world.trucks[0].cargoAmount == TruckCapacity_IronOre);
 	REQUIRE(world.trucks[0].haulJobId != 0);
+	stepUntilTruckHasGalaxyRoute(world, 1);
 	REQUIRE(world.trucks[0].motion.route == shortestLanePath(world, 5, 3));
 }
 

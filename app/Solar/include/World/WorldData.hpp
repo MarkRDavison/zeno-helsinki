@@ -209,12 +209,21 @@ namespace slr
 		float speed{ 0.0f };
 	};
 
+	struct InSystemMotion
+	{
+		long long fromPlaceId{ 0 };
+		long long toPlaceId{ 0 };
+		float progress{ 0.0f };
+		std::vector<long long> pendingGalaxyRoute;
+	};
+
 	struct Truck
 	{
 		long long id{ 0 };
 		long long empireId{ 0 };
 		LaneMotion motion;
 		long long placeId{ 0 };
+		InSystemMotion inSystem;
 		long long cargoGoodId{ 0 };
 		// TODO: eventually trucks can transport more than 1 thing at a time
 		// i.e. have room for X standard containers
@@ -279,6 +288,7 @@ namespace slr
 		std::string name;
 		long long systemId{ 0 };
 		long long placeId{ 0 };
+		InSystemMotion inSystem;
 		std::vector<ClassCount> composition;
 		std::vector<FleetHull> hulls;
 		LaneMotion motion;
