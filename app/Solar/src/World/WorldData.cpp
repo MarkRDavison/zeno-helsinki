@@ -2462,10 +2462,17 @@ namespace slr
 		for (const auto& yard : world.yards)
 		{
 			std::vector<ParkedHullRef> hulls;
+			const SystemPlace* yardPlace = yardPlaceForSystem(world, yard.systemId);
+			if (yardPlace == nullptr)
+			{
+				continue;
+			}
+
 			for (const auto& fleet : world.fleets)
 			{
 				if (fleet.empireId != yard.empireId || fleet.systemId != yard.systemId ||
-					!fleetIsParked(fleet))
+					!fleetIsParked(fleet) ||
+					!moverIsParkedAtPlace(fleet.inSystem, fleet.placeId, *yardPlace))
 				{
 					continue;
 				}
@@ -2538,7 +2545,7 @@ namespace slr
 		}
 	}
 
-	bool tenderIsParkedAtSameEmpireYard(const WorldData& world, const Truck& truck)
+	bool tenderIsParkedAtSameEmpireYardPlace(const WorldData& world, const Truck& truck)
 	{
 		if (!truckHasRole(world, truck, HullRole::Tender) || truck.motion.progress > 0.0f)
 		{
@@ -2547,7 +2554,14 @@ namespace slr
 
 		const long long systemId = truckSystemId(truck);
 		const Yard* yard = yardAtSystem(world, systemId);
-		return yard != nullptr && yard->empireId == truck.empireId && isTruckAtSystem(truck, systemId);
+		const SystemPlace* yardPlace = yardPlaceForSystem(world, systemId);
+		if (yard == nullptr || yardPlace == nullptr || yard->empireId != truck.empireId ||
+			!isTruckAtSystem(truck, systemId))
+		{
+			return false;
+		}
+
+		return moverIsParkedAtPlace(truck.inSystem, truck.placeId, *yardPlace);
 	}
 
 	void applyTenderLoadFromYard(WorldData& world)
@@ -2555,7 +2569,7 @@ namespace slr
 		std::vector<long long> tenderIds;
 		for (const auto& truck : world.trucks)
 		{
-			if (!tenderIsParkedAtSameEmpireYard(world, truck))
+			if (!tenderIsParkedAtSameEmpireYardPlace(world, truck))
 			{
 				continue;
 			}
@@ -2631,12 +2645,13 @@ namespace slr
 			long long hullId{ 0 };
 			long long empireId{ 0 };
 			long long systemId{ 0 };
+			long long placeId{ 0 };
 		};
 
 		std::vector<MagazineHullRef> hulls;
 		for (const auto& fleet : world.fleets)
 		{
-			if (!fleetIsParked(fleet))
+			if (!fleetIsParked(fleet) || inSystemMotionIsCrawling(fleet.inSystem))
 			{
 				continue;
 			}
@@ -2655,7 +2670,8 @@ namespace slr
 					.fleetId = fleet.id,
 					.hullId = hull.id,
 					.empireId = fleet.empireId,
-					.systemId = fleet.systemId });
+					.systemId = fleet.systemId,
+					.placeId = fleet.placeId });
 			}
 		}
 
@@ -2669,13 +2685,13 @@ namespace slr
 			for (auto& truck : world.trucks)
 			{
 				if (!truckHasRole(world, truck, HullRole::Tender) || truck.motion.progress > 0.0f ||
-					truck.cargoAmount <= 0 || !isCombatMissileGood(truck.cargoGoodId) ||
-					truck.empireId != ref.empireId)
+					inSystemMotionIsCrawling(truck.inSystem) || truck.cargoAmount <= 0 ||
+					!isCombatMissileGood(truck.cargoGoodId) || truck.empireId != ref.empireId)
 				{
 					continue;
 				}
 
-				if (tenderIsParkedAtSameEmpireYard(world, truck))
+				if (tenderIsParkedAtSameEmpireYardPlace(world, truck))
 				{
 					continue;
 				}
@@ -2692,7 +2708,7 @@ namespace slr
 					continue;
 				}
 
-				if (!isTruckAtSystem(truck, ref.systemId))
+				if (!isTruckAtSystem(truck, ref.systemId) || truck.placeId != ref.placeId)
 				{
 					continue;
 				}

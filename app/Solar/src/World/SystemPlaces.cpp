@@ -389,6 +389,19 @@ namespace
 		return motion.toPlaceId != 0;
 	}
 
+	bool moverIsParkedAtPlace(
+		const InSystemMotion& inSystem,
+		long long placeId,
+		const SystemPlace& place)
+	{
+		if (inSystemMotionIsCrawling(inSystem))
+		{
+			return false;
+		}
+
+		return placeId == place.id;
+	}
+
 	std::optional<glm::vec2> inSystemMoverPosition(
 		const WorldData& world,
 		long long systemId,

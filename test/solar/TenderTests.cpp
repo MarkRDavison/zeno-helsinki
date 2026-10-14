@@ -1,6 +1,7 @@
 #include <Views/GalaxyDrawConstants.hpp>
 #include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
+#include <World/SystemPlaces.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/PickFleet.hpp>
 #include <World/PickTruck.hpp>
@@ -102,6 +103,25 @@ namespace TenderTests
 		REQUIRE_FALSE(execute(
 			world,
 			GameCommand::acceptHaulJob(tender->id, steel->id, CommandSource::Ai)));
+	}
+
+	TEST_CASE("tender at the Helion jump does not load from the yard", "[slr][Tender]")
+	{
+		WorldData world = makeStarterMap();
+		REQUIRE(execute(
+			world,
+			GameCommand::setFleetEscort(1, true, 0, 0, 1, CommandSource::Player)));
+		stepGalaxy(world);
+		Truck* tender = firstTender(world);
+		REQUIRE(tender != nullptr);
+		putTrucksAtSystemJumpToward(world, HelionSystemId, KestrelSystemId);
+		const StarSystem* helion = world.systemById(HelionSystemId);
+		REQUIRE(helion != nullptr);
+		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
+
+		stepGalaxy(world);
+		REQUIRE(tender->cargoAmount == 0);
+		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
 	}
 
 	TEST_CASE("parked tender at a yard loads one missile per tick", "[slr][Tender]")
@@ -397,17 +417,19 @@ namespace TenderTests
 		REQUIRE(tender != nullptr);
 		tender->cargoGoodId = MissileGoodId;
 		tender->cargoAmount = 5;
-		parkTruckAt(*tender, 3);
+		parkTruckAt(*tender, JunctionSystemId);
+		tender->placeId = JunctionFactoryPlaceId;
 
 		Fleet* home = world.fleetById(1);
 		REQUIRE(home != nullptr);
-		home->systemId = 3;
+		home->systemId = JunctionSystemId;
+		home->placeId = JunctionFactoryPlaceId;
 		home->motion.route.clear();
 		home->motion.progress = 0.0f;
 		FleetHull* hull = hullByLowestId(*home);
 		hull->magazine.clear();
 
-		const StarSystem* helion = world.systemById(1);
+		const StarSystem* helion = world.systemById(HelionSystemId);
 		REQUIRE(helion != nullptr);
 		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
 
@@ -415,6 +437,34 @@ namespace TenderTests
 		REQUIRE(magazineUsed(hull->magazine) == 1.f);
 		REQUIRE(tender->cargoAmount == 4);
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
+	}
+
+	TEST_CASE("tender at the mill does not unload into a fleet at the jump", "[slr][Tender]")
+	{
+		WorldData world = makeStarterMap();
+		REQUIRE(execute(
+			world,
+			GameCommand::setFleetEscort(1, true, 0, 0, 1, CommandSource::Player)));
+		stepGalaxy(world);
+		Truck* tender = firstTender(world);
+		REQUIRE(tender != nullptr);
+		tender->cargoGoodId = MissileGoodId;
+		tender->cargoAmount = 5;
+		parkTruckAt(*tender, JunctionSystemId);
+		tender->placeId = JunctionFactoryPlaceId;
+
+		Fleet* home = world.fleetById(1);
+		REQUIRE(home != nullptr);
+		home->systemId = JunctionSystemId;
+		home->motion.route.clear();
+		home->motion.progress = 0.0f;
+		putFleetAtJumpToward(world, 1, HelionSystemId);
+		FleetHull* hull = hullByLowestId(*home);
+		hull->magazine.clear();
+
+		applyTenderUnloadIntoMagazines(world);
+		REQUIRE(magazineUsed(hull->magazine) == 0.f);
+		REQUIRE(tender->cargoAmount == 5);
 	}
 
 	TEST_CASE("in-transit tender does not unload", "[slr][Tender]")
@@ -452,11 +502,13 @@ namespace TenderTests
 		REQUIRE(tender != nullptr);
 		tender->cargoGoodId = MissileGoodId;
 		tender->cargoAmount = 5;
-		parkTruckAt(*tender, 3);
+		parkTruckAt(*tender, JunctionSystemId);
+		tender->placeId = JunctionFactoryPlaceId;
 
 		Fleet* home = world.fleetById(1);
 		REQUIRE(home != nullptr);
-		home->systemId = 3;
+		home->systemId = JunctionSystemId;
+		home->placeId = JunctionFactoryPlaceId;
 		home->motion.progress = 0.0f;
 		home->motion.route.clear();
 
@@ -510,7 +562,8 @@ namespace TenderTests
 		combo.convoyId = 0;
 		combo.cargoAmount = 0;
 		combo.cargoGoodId = 0;
-		parkTruckAt(combo, 1);
+		parkTruckAt(combo, HelionSystemId);
+		combo.placeId = HelionYardPlaceId;
 		std::erase_if(world.trucks, [](const Truck& truck) {
 			return truck.id != 900 && truck.classId == HelionTenderClassId;
 		});
@@ -522,8 +575,11 @@ namespace TenderTests
 			GameCommand::setFleetEscort(1, true, 0, 0, 1, CommandSource::Player)));
 		stepGalaxy(world);
 		REQUIRE(comboAfter->convoyId != 0);
+		parkTruckAt(*comboAfter, HelionSystemId);
+		comboAfter->placeId = HelionYardPlaceId;
+		comboAfter->inSystem = {};
 
-		const StarSystem* helion = world.systemById(1);
+		const StarSystem* helion = world.systemById(HelionSystemId);
 		REQUIRE(helion != nullptr);
 		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
 		stepGalaxy(world);

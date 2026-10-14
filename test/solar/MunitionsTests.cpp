@@ -2,6 +2,7 @@
 #include <World/DesiredCargo.hpp>
 #include <World/GameCommand.hpp>
 #include <World/Goods.hpp>
+#include <World/SystemPlaces.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -91,11 +92,13 @@ namespace MunitionsTests
 		REQUIRE(tender != nullptr);
 		tender->cargoGoodId = MissileGoodId;
 		tender->cargoAmount = 5;
-		parkTruckAt(*tender, 3);
+		parkTruckAt(*tender, JunctionSystemId);
+		tender->placeId = JunctionFactoryPlaceId;
 
 		Fleet* home = world.fleetById(1);
 		REQUIRE(home != nullptr);
-		home->systemId = 3;
+		home->systemId = JunctionSystemId;
+		home->placeId = JunctionFactoryPlaceId;
 		home->motion.route.clear();
 		home->motion.progress = 0.0f;
 		FleetHull* hull = nullptr;

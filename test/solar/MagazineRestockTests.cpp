@@ -1,6 +1,8 @@
+#include <PutAtJump.hpp>
 #include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <World/SystemPlaces.hpp>
 #include <World/WorldData.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -215,6 +217,51 @@ namespace MagazineRestockTests
 		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
 	}
 
+	TEST_CASE("fleet at the Helion jump does not restock", "[solar][MagazineRestock]")
+	{
+		WorldData world = makeStarterMap();
+		silenceHelionTrafficAndPopulation(world);
+		Fleet* home = world.fleetById(1);
+		REQUIRE(home != nullptr);
+		putFleetAtJumpToward(world, 1, KestrelSystemId);
+		FleetHull* hull = hullByLowestId(*home);
+		hull->magazine.clear();
+
+		StarSystem* helion = world.systemById(HelionSystemId);
+		REQUIRE(helion != nullptr);
+		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
+
+		applyYardMagazineRestock(world);
+		REQUIRE(magazineUsed(hull->magazine) == 0.f);
+		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
+	}
+
+	TEST_CASE("fleet crawling to the yard does not restock", "[solar][MagazineRestock]")
+	{
+		WorldData world = makeStarterMap();
+		silenceHelionTrafficAndPopulation(world);
+		Fleet* home = world.fleetById(1);
+		REQUIRE(home != nullptr);
+		putFleetAtJumpToward(world, 1, KestrelSystemId);
+		REQUIRE(startInSystemCrawl(
+			world,
+			HelionSystemId,
+			home->placeId,
+			HelionYardPlaceId,
+			home->inSystem,
+			home->placeId));
+		FleetHull* hull = hullByLowestId(*home);
+		hull->magazine.clear();
+
+		StarSystem* helion = world.systemById(HelionSystemId);
+		REQUIRE(helion != nullptr);
+		const long long pileBefore = getStockpileAmount(*helion, MissileGoodId);
+
+		applyYardMagazineRestock(world);
+		REQUIRE(magazineUsed(hull->magazine) == 0.f);
+		REQUIRE(getStockpileAmount(*helion, MissileGoodId) == pileBefore);
+	}
+
 	TEST_CASE("rival fleet at a yard does not restock", "[solar][MagazineRestock]")
 	{
 		WorldData world = makeStarterMap();
@@ -230,7 +277,8 @@ namespace MagazineRestockTests
 		}
 
 		REQUIRE(kestrel != nullptr);
-		kestrel->systemId = 1;
+		kestrel->systemId = HelionSystemId;
+		kestrel->placeId = HelionYardPlaceId;
 		kestrel->motion.progress = 0.0f;
 		kestrel->motion.route.clear();
 		FleetHull* hull = hullByLowestId(*kestrel);

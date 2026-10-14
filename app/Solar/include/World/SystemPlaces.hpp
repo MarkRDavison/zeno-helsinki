@@ -103,6 +103,10 @@ namespace slr
 		long long cameFromSystemId,
 		long long& placeId);
 	bool inSystemMotionIsCrawling(const InSystemMotion& motion);
+	bool moverIsParkedAtPlace(
+		const InSystemMotion& inSystem,
+		long long placeId,
+		const SystemPlace& place);
 	std::optional<glm::vec2> inSystemMoverPosition(
 		const WorldData& world,
 		long long systemId,
