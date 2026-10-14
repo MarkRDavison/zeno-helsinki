@@ -1035,6 +1035,25 @@ namespace
 					 std::to_string(side.missilesAfter))
 						.c_str());
 			}
+
+			if (!_world->empires.empty())
+			{
+				const long long playerEmpireId = _world->empires.front().id;
+				for (const auto& gain : report.intelGainedThisBattle)
+				{
+					if (gain.observerEmpireId != playerEmpireId)
+					{
+						continue;
+					}
+
+					const ShipClass* shipClass = _world->shipClassById(gain.classId);
+					const std::string className =
+						shipClass != nullptr ? shipClass->name
+											 : ("class " + std::to_string(gain.classId));
+					ImGui::TextUnformatted(
+						("Survivors reported enemy class: " + className).c_str());
+				}
+			}
 		}
 
 		ImGui::End();

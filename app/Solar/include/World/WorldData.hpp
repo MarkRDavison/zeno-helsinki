@@ -315,12 +315,29 @@ namespace slr
 		long long missilesAfter{ 0 };
 	};
 
+	struct BattleIntelGain
+	{
+		long long observerEmpireId{ 0 };
+		long long subjectEmpireId{ 0 };
+		long long classId{ 0 };
+	};
+
+	struct ObservedEnemyShipClass
+	{
+		long long observerEmpireId{ 0 };
+		long long subjectEmpireId{ 0 };
+		long long classId{ 0 };
+		long long firstObservedTick{ 0 };
+		int sightingCount{ 0 };
+	};
+
 	struct BattleReport
 	{
 		long long id{ 0 };
 		long long tick{ 0 };
 		long long systemId{ 0 };
 		std::vector<BattleSideReport> sides;
+		std::vector<BattleIntelGain> intelGainedThisBattle;
 	};
 
 	struct CivilianLoss
@@ -380,6 +397,7 @@ namespace slr
 		std::vector<Fleet> fleets;
 		std::vector<EngagementPolicy> engagementPolicies;
 		std::vector<BattleReport> battleReports;
+		std::vector<ObservedEnemyShipClass> observedEnemyShipClasses;
 		std::vector<long long> encounterStanceFleeMeetingExclusions;
 		std::vector<CivilianLoss> civilianLosses;
 		std::vector<EmpireWar> empireWars;

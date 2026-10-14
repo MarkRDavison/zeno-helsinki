@@ -1,4 +1,5 @@
 #include <World/Combat.hpp>
+#include <World/Intel.hpp>
 #include <World/TruckCargo.hpp>
 #include <helsinki/System/Utils/SplitMix64.hpp>
 #include <algorithm>
@@ -541,6 +542,7 @@ namespace
 			side.missilesAfter = fleetMissileAmmo(*fleet);
 		}
 
+		applyBattleSurvivorIntel(world, report);
 		world.battleReports.push_back(std::move(report));
 	}
 
