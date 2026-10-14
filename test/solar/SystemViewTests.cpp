@@ -1,4 +1,5 @@
 #include <Views/MainView.hpp>
+#include <Views/SystemView.hpp>
 #include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/SystemPlaces.hpp>
@@ -63,6 +64,63 @@ TEST_CASE("system main view is not galaxy so galaxy pick can be skipped", "[slr]
 	mainView.openSystem(HelionSystemId);
 	REQUIRE_FALSE(mainView.isGalaxy());
 	REQUIRE(mainView.isSystem());
+}
+
+TEST_CASE("pickSystemPlace hits Helion star, yard, and Kestrel jump", "[slr][SystemView]")
+{
+	const WorldData world = makeStarterMap();
+	const SystemLayout* helion = world.systemLayoutBySystemId(HelionSystemId);
+	REQUIRE(helion != nullptr);
+
+	const SystemPlace* star = pickSystemPlace(*helion, starPositionInSystemSpace(*helion));
+	REQUIRE(star != nullptr);
+	REQUIRE(star->kind == SystemPlaceKind::Star);
+	REQUIRE(star->id == HelionStarPlaceId);
+
+	const SystemPlace* yard = pickSystemPlace(*helion, HelionYardPlaceOffset);
+	REQUIRE(yard != nullptr);
+	REQUIRE(yard->kind == SystemPlaceKind::Yard);
+	REQUIRE(yard->id == HelionYardPlaceId);
+
+	const SystemPlace* jump = jumpPlaceForLaneNeighbor(*helion, KestrelSystemId);
+	REQUIRE(jump != nullptr);
+	const SystemPlace* pickedJump = pickSystemPlace(*helion, jump->position);
+	REQUIRE(pickedJump != nullptr);
+	REQUIRE(pickedJump->kind == SystemPlaceKind::Jump);
+	REQUIRE(pickedJump->id == HelionKestrelJumpPlaceId);
+
+	REQUIRE(pickSystemPlace(*helion, glm::vec2{ 400.0f, 400.0f }) == nullptr);
+}
+
+TEST_CASE("pickSystemPlace prefers yard over star when both would hit", "[slr][SystemView]")
+{
+	SystemLayout layout;
+	layout.starSize = 24.0f;
+	layout.places.push_back(SystemPlace{
+		.id = 1,
+		.kind = SystemPlaceKind::Star,
+		.position = { 0.0f, 0.0f } });
+	layout.places.push_back(SystemPlace{
+		.id = 2,
+		.kind = SystemPlaceKind::Yard,
+		.position = { 10.0f, 0.0f } });
+	const SystemPlace* picked = pickSystemPlace(layout, glm::vec2{ 10.0f, 0.0f });
+	REQUIRE(picked != nullptr);
+	REQUIRE(picked->kind == SystemPlaceKind::Yard);
+	REQUIRE(placeById(layout, 2) == picked);
+}
+
+TEST_CASE("leaving the system view clears selected place", "[slr][SystemView]")
+{
+	SystemView view;
+	MainView mainView;
+	mainView.openSystem(HelionSystemId);
+	view.setSelectedPlaceId(HelionYardPlaceId);
+	REQUIRE(view.selectedPlaceId().has_value());
+
+	mainView.returnToGalaxy();
+	view.applyMainView(mainView);
+	REQUIRE_FALSE(view.selectedPlaceId().has_value());
 }
 
 }

@@ -48,6 +48,52 @@ namespace
 		return outRadiusFromStarSize(layout.starSize);
 	}
 
+	const SystemPlace* placeById(const SystemLayout& layout, long long placeId)
+	{
+		for (const auto& place : layout.places)
+		{
+			if (place.id == placeId)
+			{
+				return &place;
+			}
+		}
+
+		return nullptr;
+	}
+
+	const SystemPlace* pickSystemPlace(const SystemLayout& layout, glm::vec2 systemPos)
+	{
+		const SystemPlace* nearestMarker = nullptr;
+		float nearestMarkerDistance = SystemPlaceMarkerHitRadius;
+		for (const auto& place : layout.places)
+		{
+			if (place.kind == SystemPlaceKind::Star)
+			{
+				continue;
+			}
+
+			const float distance = glm::length(place.position - systemPos);
+			if (distance <= SystemPlaceMarkerHitRadius && distance <= nearestMarkerDistance)
+			{
+				nearestMarkerDistance = distance;
+				nearestMarker = &place;
+			}
+		}
+
+		if (nearestMarker != nullptr)
+		{
+			return nearestMarker;
+		}
+
+		const SystemPlace* star = starPlaceOf(layout);
+		if (star != nullptr && glm::length(star->position - systemPos) <= layout.starSize)
+		{
+			return star;
+		}
+
+		return nullptr;
+	}
+
 	glm::vec2 starPositionInSystemSpace(const SystemLayout& layout)
 	{
 		if (const SystemPlace* star = starPlaceOf(layout))

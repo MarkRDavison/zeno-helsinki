@@ -98,7 +98,7 @@ namespace slr
 						_mainView.openSystem(*openSystemRequested);
 					}
 				}
-				_systemView.draw(_world, _mainView);
+				_systemView.draw(_world, _mainView, _pendingCommands);
 				_designChrome.draw(_world, _pendingCommands);
 				_researchChrome.draw(_world, _pendingCommands);
 			});

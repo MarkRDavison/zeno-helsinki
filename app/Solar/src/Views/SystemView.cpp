@@ -1,5 +1,6 @@
 #include <Views/SystemView.hpp>
 #include <Views/HudBar.hpp>
+#include <Views/PlaceInspectChrome.hpp>
 #include <World/SystemPlaces.hpp>
 #include <algorithm>
 #include <imgui.h>
@@ -12,10 +13,22 @@ namespace
 
 	constexpr float SystemMapDefaultFitRadius = 120.0f;
 	constexpr float SystemMapPad = 48.0f;
+	constexpr float SystemMapYardMarkerHalf = 7.0f;
+	constexpr float SystemMapJumpMarkerRadius = 6.0f;
 
 	ImVec2 systemSpaceToScreen(const ImVec2& origin, float scale, glm::vec2 systemPos)
 	{
 		return ImVec2(origin.x + systemPos.x * scale, origin.y - systemPos.y * scale);
+	}
+
+	glm::vec2 screenToSystemSpace(const ImVec2& origin, float scale, const ImVec2& screen)
+	{
+		if (scale <= 0.0f)
+		{
+			return glm::vec2{ 0.0f, 0.0f };
+		}
+
+		return glm::vec2((screen.x - origin.x) / scale, -(screen.y - origin.y) / scale);
 	}
 
 	void drawPlaceLabel(ImDrawList* drawList, const ImVec2& screen, const char* text)
@@ -23,10 +36,52 @@ namespace
 		drawList->AddText(ImVec2(screen.x + 8.0f, screen.y - 8.0f), IM_COL32(230, 230, 235, 255), text);
 	}
 
+	ImU32 starFillColour(bool selected)
+	{
+		return selected ? IM_COL32(255, 235, 140, 255) : IM_COL32(255, 210, 80, 255);
+	}
+
+	ImU32 jumpFillColour(bool selected)
+	{
+		return selected ? IM_COL32(230, 245, 255, 255) : IM_COL32(180, 210, 255, 255);
+	}
+
+	ImU32 yardFillColour(bool selected)
+	{
+		return selected ? IM_COL32(200, 240, 150, 255) : IM_COL32(160, 200, 120, 255);
+	}
+
+	const char* inspectorTitleForPlace(SystemPlaceKind kind)
+	{
+		switch (kind)
+		{
+		case SystemPlaceKind::Star:
+			return "Star";
+		case SystemPlaceKind::Jump:
+			return "Jump";
+		case SystemPlaceKind::Yard:
+			return "Yard";
+		}
+
+		return "Place";
+	}
+
 }
 
-	void SystemView::draw(const WorldData& world, MainView& mainView) const
+	void SystemView::applyMainView(const MainView& mainView)
 	{
+		if (!mainView.isSystem())
+		{
+			_selectedPlaceId.reset();
+		}
+	}
+
+	void SystemView::draw(
+		const WorldData& world,
+		MainView& mainView,
+		std::vector<GameCommand>& pendingCommands)
+	{
+		applyMainView(mainView);
 		if (!mainView.isSystem() || !mainView.openedSystemId().has_value())
 		{
 			return;
@@ -55,6 +110,7 @@ namespace
 		if (ImGui::Button("Galaxy"))
 		{
 			mainView.returnToGalaxy();
+			_selectedPlaceId.reset();
 			ImGui::End();
 			ImGui::PopStyleVar(2);
 			return;
@@ -80,6 +136,9 @@ namespace
 		const float scale = usable > 0.0f ? usable / (fitRadius * 2.0f) : 1.0f;
 		const glm::vec2 starPos = starPositionInSystemSpace(*layout);
 		const ImVec2 starScreen = systemSpaceToScreen(origin, scale, starPos);
+		const bool starSelected =
+			_selectedPlaceId.has_value() && starPlaceOf(*layout) != nullptr &&
+			*_selectedPlaceId == starPlaceOf(*layout)->id;
 
 		drawList->AddCircle(
 			starScreen,
@@ -90,16 +149,17 @@ namespace
 		drawList->AddCircleFilled(
 			starScreen,
 			layout->starSize * scale,
-			IM_COL32(255, 210, 80, 255),
+			starFillColour(starSelected),
 			32);
 		drawPlaceLabel(drawList, starScreen, "Star");
 
 		for (const auto& place : layout->places)
 		{
+			const bool selected = _selectedPlaceId.has_value() && *_selectedPlaceId == place.id;
 			if (place.kind == SystemPlaceKind::Jump)
 			{
 				const ImVec2 jumpScreen = systemSpaceToScreen(origin, scale, place.position);
-				drawList->AddCircleFilled(jumpScreen, 6.0f, IM_COL32(180, 210, 255, 255), 12);
+				drawList->AddCircleFilled(jumpScreen, SystemMapJumpMarkerRadius, jumpFillColour(selected), 12);
 				const StarSystem* neighbor = world.systemById(place.neighborSystemId);
 				const char* jumpName = neighbor != nullptr ? neighbor->name.c_str() : "Jump";
 				drawPlaceLabel(drawList, jumpScreen, jumpName);
@@ -107,18 +167,66 @@ namespace
 			else if (place.kind == SystemPlaceKind::Yard)
 			{
 				const ImVec2 yardScreen = systemSpaceToScreen(origin, scale, place.position);
-				const float half = 7.0f;
 				drawList->AddRectFilled(
-					ImVec2(yardScreen.x - half, yardScreen.y - half),
-					ImVec2(yardScreen.x + half, yardScreen.y + half),
-					IM_COL32(160, 200, 120, 255));
+					ImVec2(yardScreen.x - SystemMapYardMarkerHalf, yardScreen.y - SystemMapYardMarkerHalf),
+					ImVec2(yardScreen.x + SystemMapYardMarkerHalf, yardScreen.y + SystemMapYardMarkerHalf),
+					yardFillColour(selected));
 				drawPlaceLabel(drawList, yardScreen, "Yard");
 			}
 		}
 
-		ImGui::Dummy(canvasSize);
+		ImGui::InvisibleButton("system_map_canvas", canvasSize);
+		if (ImGui::IsItemClicked())
+		{
+			const glm::vec2 systemPos = screenToSystemSpace(origin, scale, ImGui::GetIO().MousePos);
+			const SystemPlace* picked = pickSystemPlace(*layout, systemPos);
+			if (picked != nullptr)
+			{
+				_selectedPlaceId = picked->id;
+			}
+			else
+			{
+				_selectedPlaceId.reset();
+			}
+		}
+
 		ImGui::End();
 		ImGui::PopStyleVar(2);
+
+		if (!_selectedPlaceId.has_value())
+		{
+			return;
+		}
+
+		const SystemPlace* selected = placeById(*layout, *_selectedPlaceId);
+		if (selected == nullptr)
+		{
+			_selectedPlaceId.reset();
+			return;
+		}
+
+		bool inspectorOpen = true;
+		ImGui::SetNextWindowPos(ImVec2(24.0f, 56.0f), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin(inspectorTitleForPlace(selected->kind), &inspectorOpen))
+		{
+			if (selected->kind == SystemPlaceKind::Star)
+			{
+				drawStarPlaceInspector(*layout, *selected);
+			}
+			else if (selected->kind == SystemPlaceKind::Jump)
+			{
+				drawJumpPlaceInspector(world, *selected);
+			}
+			else if (selected->kind == SystemPlaceKind::Yard)
+			{
+				drawYardPlaceInspector(world, systemId, pendingCommands);
+			}
+		}
+		ImGui::End();
+		if (!inspectorOpen)
+		{
+			_selectedPlaceId.reset();
+		}
 	}
 
 }

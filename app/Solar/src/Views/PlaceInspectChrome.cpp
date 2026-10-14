@@ -39,6 +39,22 @@ namespace
 
 }
 
+	void drawStarPlaceInspector(const SystemLayout& layout, const SystemPlace& place)
+	{
+		ImGui::TextUnformatted("Star");
+		ImGui::TextUnformatted(("size " + std::to_string(layout.starSize)).c_str());
+		ImGui::TextUnformatted(("out radius " + std::to_string(outRadiusForLayout(layout))).c_str());
+		ImGui::TextUnformatted(
+			("position " + std::to_string(place.position.x) + ", " + std::to_string(place.position.y)).c_str());
+	}
+
+	void drawJumpPlaceInspector(const WorldData& world, const SystemPlace& place)
+	{
+		ImGui::TextUnformatted("Jump");
+		const StarSystem* neighbor = world.systemById(place.neighborSystemId);
+		ImGui::TextUnformatted(neighbor != nullptr ? neighbor->name.c_str() : "unknown neighbour");
+	}
+
 	void drawMinePlaceInspector(const WorldData& world, long long systemId)
 	{
 		int mineIndex = 0;

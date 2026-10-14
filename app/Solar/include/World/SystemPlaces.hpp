@@ -31,6 +31,7 @@ namespace slr
 	};
 
 	constexpr float OutRadiusPerStarSize = 5.0f;
+	constexpr float SystemPlaceMarkerHitRadius = 10.0f;
 	constexpr float HelionStarSize = 24.0f;
 	constexpr long long HelionStarPlaceId = 1;
 	constexpr long long HelionKestrelJumpPlaceId = 2;
@@ -40,6 +41,8 @@ namespace slr
 	float outRadiusFromStarSize(float starSize);
 	float outRadiusForLayout(const SystemLayout& layout);
 	glm::vec2 starPositionInSystemSpace(const SystemLayout& layout);
+	const SystemPlace* placeById(const SystemLayout& layout, long long placeId);
+	const SystemPlace* pickSystemPlace(const SystemLayout& layout, glm::vec2 systemPos);
 	const SystemPlace* starPlaceOf(const SystemLayout& layout);
 	const SystemPlace* yardPlaceOf(const SystemLayout& layout);
 	const SystemPlace* jumpPlaceForLaneNeighbor(const SystemLayout& layout, long long neighborSystemId);

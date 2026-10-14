@@ -7,6 +7,8 @@
 namespace slr
 {
 
+	void drawStarPlaceInspector(const SystemLayout& layout, const SystemPlace& place);
+	void drawJumpPlaceInspector(const WorldData& world, const SystemPlace& place);
 	void drawYardPlaceInspector(
 		const WorldData& world,
 		long long systemId,
