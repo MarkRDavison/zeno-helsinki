@@ -357,6 +357,29 @@ namespace
 		return std::nullopt;
 	}
 
+	bool moversAreWithinSystemBattleMeetingRadius(
+		const WorldData& world,
+		long long systemId,
+		long long placeIdA,
+		const InSystemMotion& inSystemA,
+		long long placeIdB,
+		const InSystemMotion& inSystemB)
+	{
+		if (world.systemLayoutBySystemId(systemId) == nullptr)
+		{
+			return true;
+		}
+
+		const auto positionA = inSystemMoverPosition(world, systemId, placeIdA, inSystemA);
+		const auto positionB = inSystemMoverPosition(world, systemId, placeIdB, inSystemB);
+		if (!positionA.has_value() || !positionB.has_value())
+		{
+			return false;
+		}
+
+		return glm::length(*positionA - *positionB) <= SystemBattleMeetingRadius;
+	}
+
 	bool startInSystemCrawl(
 		const WorldData& world,
 		long long systemId,

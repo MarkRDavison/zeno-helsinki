@@ -103,6 +103,16 @@ namespace CombatTests
 		appendFullMagazineHulls(world, world.fleets.back(), classId, count);
 	}
 
+	void parkHomeAtAshreachWithRival(WorldData& world)
+	{
+		Fleet* home = world.fleetById(1);
+		REQUIRE(home != nullptr);
+		home->systemId = AshreachSystemId;
+		home->motion.route.clear();
+		home->motion.progress = 0.0f;
+		putFleetAtJumpToward(world, 1, JunctionSystemId);
+	}
+
 TEST_CASE("starter map has two empires and rival classes at Ashreach", "[slr][Combat]")
 {
 	const WorldData world = makeStarterMap();
@@ -317,11 +327,7 @@ TEST_CASE("same seed twice matches folded counts", "[slr][Combat]")
 	auto makeWorld = []()
 	{
 		WorldData world = makeStarterMap();
-		Fleet* home = world.fleetById(1);
-		REQUIRE(home != nullptr);
-		home->systemId = 4;
-		home->motion.route.clear();
-		home->motion.progress = 0.0f;
+		parkHomeAtAshreachWithRival(world);
 		REQUIRE(execute(
 			world,
 			GameCommand::setFleetPolicyOverride(
@@ -591,9 +597,7 @@ TEST_CASE("two dry weapons-free fleets sit and do not fight", "[slr][Combat]")
 	Fleet* rival = world.fleetById(2);
 	REQUIRE(home != nullptr);
 	REQUIRE(rival != nullptr);
-	home->systemId = 4;
-	home->motion.route.clear();
-	home->motion.progress = 0.0f;
+	parkHomeAtAshreachWithRival(world);
 	emptyFleetMissileAmmo(*home);
 	emptyFleetMissileAmmo(*rival);
 	const long long homeShips = fleetShipCount(*home);
@@ -625,9 +629,7 @@ TEST_CASE("dry weapons-free does not open fire on a loaded hold-fire fleet", "[s
 	Fleet* rival = world.fleetById(2);
 	REQUIRE(home != nullptr);
 	REQUIRE(rival != nullptr);
-	home->systemId = 4;
-	home->motion.route.clear();
-	home->motion.progress = 0.0f;
+	parkHomeAtAshreachWithRival(world);
 	emptyFleetMissileAmmo(*home);
 	REQUIRE(fleetHasJoinedMissileAmmo(*rival));
 	REQUIRE(execute(
@@ -649,9 +651,7 @@ TEST_CASE("loaded weapons-free still fights a dry fleet in the same system", "[s
 	Fleet* rival = world.fleetById(2);
 	REQUIRE(home != nullptr);
 	REQUIRE(rival != nullptr);
-	home->systemId = 4;
-	home->motion.route.clear();
-	home->motion.progress = 0.0f;
+	parkHomeAtAshreachWithRival(world);
 	emptyFleetMissileAmmo(*home);
 	const long long rivalAmmoBefore = fleetMissileAmmo(*rival);
 	REQUIRE(rivalAmmoBefore > 0);
@@ -679,9 +679,7 @@ TEST_CASE("one remaining missile is enough to open fire", "[slr][Combat]")
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 4;
-	home->motion.route.clear();
-	home->motion.progress = 0.0f;
+	parkHomeAtAshreachWithRival(world);
 	emptyFleetMissileAmmo(*home);
 	REQUIRE(!home->hulls.empty());
 	addMagazineGood(home->hulls.front().magazine, MissileGoodId, 1.f);
@@ -693,6 +691,70 @@ TEST_CASE("one remaining missile is enough to open fire", "[slr][Combat]")
 			CommandSource::Player)));
 	stepGalaxy(world);
 	REQUIRE(world.battleReports.size() == 1);
+}
+
+TEST_CASE("weapons-free fleets at two Kestrel jumps do not fight", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	home->systemId = KestrelSystemId;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 1, HelionSystemId);
+	rival->systemId = KestrelSystemId;
+	rival->motion.route.clear();
+	rival->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 2, JunctionSystemId);
+	const long long homeShips = fleetShipCount(*home);
+	const long long rivalShips = fleetShipCount(*rival);
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(1, HelionWeaponsFreePolicyId, CommandSource::Player)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(2, AshreachWeaponsFreePolicyId, CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.empty());
+	REQUIRE(fleetShipCount(*home) == homeShips);
+	REQUIRE(fleetShipCount(*rival) == rivalShips);
+}
+
+TEST_CASE("weapons-free fleets at the Kestrel mill fight; a far jump picket survives", "[slr][Combat]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	Fleet* kestrel = world.fleetById(3);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	REQUIRE(kestrel != nullptr);
+	home->systemId = KestrelSystemId;
+	home->placeId = KestrelFactoryPlaceId;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	rival->systemId = KestrelSystemId;
+	rival->placeId = KestrelFactoryPlaceId;
+	rival->motion.route.clear();
+	rival->motion.progress = 0.0f;
+	kestrel->systemId = KestrelSystemId;
+	kestrel->motion.route.clear();
+	kestrel->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 3, HelionSystemId);
+	const long long picketShips = fleetShipCount(*kestrel);
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(1, HelionWeaponsFreePolicyId, CommandSource::Player)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(2, AshreachWeaponsFreePolicyId, CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE(world.battleReports.size() == 1);
+	REQUIRE(world.battleReports.front().systemId == KestrelSystemId);
+	REQUIRE(fleetShipCount(*kestrel) == picketShips);
+	REQUIRE(kestrel->placeId == jumpPlaceForLaneNeighbor(world, KestrelSystemId, HelionSystemId)->id);
 }
 
 }

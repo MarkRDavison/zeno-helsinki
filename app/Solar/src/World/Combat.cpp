@@ -7,6 +7,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <numeric>
 #include <set>
 #include <vector>
 
@@ -563,6 +564,110 @@ namespace
 		hull = std::max(0LL, hull - damage);
 	}
 
+	bool fleetAndTruckShareBattleMeeting(const WorldData& world, const Fleet& fleet, const Truck& truck)
+	{
+		if (!isTruckAtSystem(truck, fleet.systemId))
+		{
+			return false;
+		}
+
+		return moversAreWithinSystemBattleMeetingRadius(
+			world,
+			fleet.systemId,
+			fleet.placeId,
+			fleet.inSystem,
+			truck.placeId,
+			truck.inSystem);
+	}
+
+	int meetingClusterRoot(std::vector<int>& parent, int index)
+	{
+		while (parent[static_cast<size_t>(index)] != index)
+		{
+			parent[static_cast<size_t>(index)] = parent[static_cast<size_t>(parent[static_cast<size_t>(index)])];
+			index = parent[static_cast<size_t>(index)];
+		}
+
+		return index;
+	}
+
+	void uniteMeetingClusters(std::vector<int>& parent, int a, int b)
+	{
+		const int rootA = meetingClusterRoot(parent, a);
+		const int rootB = meetingClusterRoot(parent, b);
+		if (rootA != rootB)
+		{
+			parent[static_cast<size_t>(rootB)] = rootA;
+		}
+	}
+
+	std::vector<std::vector<long long>> clusterParkedFleetsIntoMeetings(
+		const WorldData& world,
+		const std::vector<long long>& fleetIds)
+	{
+		std::vector<std::vector<long long>> clusters;
+		if (fleetIds.empty())
+		{
+			return clusters;
+		}
+
+		const Fleet* first = world.fleetById(fleetIds.front());
+		if (first == nullptr)
+		{
+			return clusters;
+		}
+
+		if (world.systemLayoutBySystemId(first->systemId) == nullptr)
+		{
+			clusters.push_back(fleetIds);
+			return clusters;
+		}
+
+		std::vector<int> parent(fleetIds.size());
+		std::iota(parent.begin(), parent.end(), 0);
+		for (size_t i = 0; i < fleetIds.size(); ++i)
+		{
+			const Fleet* fleetA = world.fleetById(fleetIds[i]);
+			if (fleetA == nullptr)
+			{
+				continue;
+			}
+
+			for (size_t j = i + 1; j < fleetIds.size(); ++j)
+			{
+				const Fleet* fleetB = world.fleetById(fleetIds[j]);
+				if (fleetB == nullptr)
+				{
+					continue;
+				}
+
+				if (moversAreWithinSystemBattleMeetingRadius(
+						world,
+						fleetA->systemId,
+						fleetA->placeId,
+						fleetA->inSystem,
+						fleetB->placeId,
+						fleetB->inSystem))
+				{
+					uniteMeetingClusters(parent, static_cast<int>(i), static_cast<int>(j));
+				}
+			}
+		}
+
+		std::map<int, std::vector<long long>> byRoot;
+		for (size_t i = 0; i < fleetIds.size(); ++i)
+		{
+			byRoot[meetingClusterRoot(parent, static_cast<int>(i))].push_back(fleetIds[i]);
+		}
+
+		for (auto& [root, ids] : byRoot)
+		{
+			clusters.push_back(std::move(ids));
+		}
+
+		return clusters;
+	}
+
 	void destroyEnemyTrucksAtWeaponsFreeFleets(WorldData& world)
 	{
 		std::vector<long long> truckIdsToDestroy;
@@ -581,7 +686,7 @@ namespace
 
 			for (const auto& truck : world.trucks)
 			{
-				if (truck.empireId == fleet.empireId || !isTruckAtSystem(truck, fleet.systemId))
+				if (truck.empireId == fleet.empireId || !fleetAndTruckShareBattleMeeting(world, fleet, truck))
 				{
 					continue;
 				}
@@ -618,7 +723,10 @@ namespace
 
 		for (auto& [systemId, fleetIds] : parkedBySystem)
 		{
-			resolveSystemBattle(world, systemId, fleetIds);
+			for (auto& meeting : clusterParkedFleetsIntoMeetings(world, fleetIds))
+			{
+				resolveSystemBattle(world, systemId, meeting);
+			}
 		}
 	}
 

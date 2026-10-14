@@ -2,6 +2,8 @@
 #include <World/Goods.hpp>
 #include <World/StarterMap.hpp>
 #include <World/StepGalaxy.hpp>
+#include <World/SystemPlaces.hpp>
+#include <PutAtJump.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace slr
@@ -31,9 +33,10 @@ TEST_CASE("two hold-fire fleets sharing a system do not fight", "[slr][Engagemen
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 4;
+	home->systemId = AshreachSystemId;
 	home->motion.route.clear();
 	home->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 1, JunctionSystemId);
 	stepGalaxy(world);
 	REQUIRE(world.battleReports.empty());
 }
@@ -43,9 +46,10 @@ TEST_CASE("fleet override weapons-free starts a fight against hold fire", "[slr]
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 4;
+	home->systemId = AshreachSystemId;
 	home->motion.route.clear();
 	home->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 1, JunctionSystemId);
 	REQUIRE(execute(
 		world,
 		GameCommand::setFleetPolicyOverride(
@@ -118,9 +122,10 @@ TEST_CASE("setting Helion default to weapons free starts a fight at Ashreach", "
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 4;
+	home->systemId = AshreachSystemId;
 	home->motion.route.clear();
 	home->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 1, JunctionSystemId);
 	REQUIRE(execute(
 		world,
 		GameCommand::setEmpireDefaultPolicy(
@@ -161,6 +166,7 @@ TEST_CASE("weapons-free fleet destroys an enemy truck and lowers inbound", "[slr
 		.id = 99,
 		.empireId = AshreachEmpireId,
 		.motion = { .route = { 1 }, .hop = 0, .progress = 0.0f, .speed = 25.0f },
+		.placeId = HelionYardPlaceId,
 		.cargoGoodId = IronOreGoodId,
 		.cargoAmount = 40,
 		.haulJobId = 99 });

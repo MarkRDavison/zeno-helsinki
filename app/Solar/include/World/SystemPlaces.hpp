@@ -37,6 +37,7 @@ namespace slr
 
 	constexpr float OutRadiusPerStarSize = 5.0f;
 	constexpr float SystemPlaceMarkerHitRadius = 10.0f;
+	constexpr float SystemBattleMeetingRadius = 35.0f;
 	constexpr float HelionStarSize = 24.0f;
 	constexpr long long HelionStarPlaceId = 1;
 	constexpr long long HelionKestrelJumpPlaceId = 2;
@@ -99,6 +100,13 @@ namespace slr
 		long long systemId,
 		long long placeId,
 		const InSystemMotion& motion);
+	bool moversAreWithinSystemBattleMeetingRadius(
+		const WorldData& world,
+		long long systemId,
+		long long placeIdA,
+		const InSystemMotion& inSystemA,
+		long long placeIdB,
+		const InSystemMotion& inSystemB);
 	bool startInSystemCrawl(
 		const WorldData& world,
 		long long systemId,

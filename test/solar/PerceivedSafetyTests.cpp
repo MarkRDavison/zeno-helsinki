@@ -231,14 +231,41 @@ TEST_CASE("a fleet fight sets the empire pair at war", "[slr][PerceivedSafety]")
 	WorldData world = makeStarterMap();
 	Fleet* home = world.fleetById(1);
 	REQUIRE(home != nullptr);
-	home->systemId = 4;
+	home->systemId = AshreachSystemId;
 	home->motion.route.clear();
 	home->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 1, JunctionSystemId);
 	REQUIRE(execute(
 		world,
 		GameCommand::setFleetPolicyOverride(1, HelionWeaponsFreePolicyId, CommandSource::Player)));
 	stepGalaxy(world);
 	REQUIRE(empiresAreAtWar(world, HelionEmpireId, AshreachEmpireId));
+}
+
+TEST_CASE("weapons-free fleets at opposite Kestrel jumps do not set war", "[slr][PerceivedSafety]")
+{
+	WorldData world = makeStarterMap();
+	Fleet* home = world.fleetById(1);
+	Fleet* rival = world.fleetById(2);
+	REQUIRE(home != nullptr);
+	REQUIRE(rival != nullptr);
+	home->systemId = KestrelSystemId;
+	home->motion.route.clear();
+	home->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 1, HelionSystemId);
+	rival->systemId = KestrelSystemId;
+	rival->motion.route.clear();
+	rival->motion.progress = 0.0f;
+	putFleetAtJumpToward(world, 2, JunctionSystemId);
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(1, HelionWeaponsFreePolicyId, CommandSource::Player)));
+	REQUIRE(execute(
+		world,
+		GameCommand::setFleetPolicyOverride(2, AshreachWeaponsFreePolicyId, CommandSource::Player)));
+	stepGalaxy(world);
+	REQUIRE_FALSE(empiresAreAtWar(world, HelionEmpireId, AshreachEmpireId));
+	REQUIRE(world.battleReports.empty());
 }
 
 }
