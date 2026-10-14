@@ -2,6 +2,7 @@
 #include <World/Goods.hpp>
 #include <World/LaneMotion.hpp>
 #include <World/ShipDesign.hpp>
+#include <World/SystemPlaces.hpp>
 #include <World/TruckCargo.hpp>
 #include <helsinki/System/Utils/SplitMix64.hpp>
 #include <utility>
@@ -60,6 +61,7 @@ namespace
 		addLane(world, 6, 7);
 		addLane(world, 4, 8);
 		addLane(world, 6, 8);
+		addHelionSystemPlaces(world);
 
 		StarSystem* rimward = world.systemById(5);
 		rimward->stocks.push_back(GoodStock{ .goodId = IronOreGoodId, .goodAmount = 0, .need = 0 });

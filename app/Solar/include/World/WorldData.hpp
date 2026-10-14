@@ -3,6 +3,7 @@
 #include <World/DesiredCargo.hpp>
 #include <World/Goods.hpp>
 #include <World/Research.hpp>
+#include <World/SystemPlaces.hpp>
 #include <helsinki/System/glm.hpp>
 #include <cstdint>
 #include <string>
@@ -339,6 +340,7 @@ namespace slr
 		std::uint64_t masterSeed{ 1 };
 		std::vector<Empire> empires;
 		std::vector<StarSystem> systems;
+		std::vector<SystemLayout> systemLayouts;
 		std::vector<Hyperlane> hyperlanes;
 		std::vector<Mine> mines;
 		std::vector<Yard> yards;
@@ -359,6 +361,8 @@ namespace slr
 		Empire* empireById(long long id);
 		const StarSystem* systemById(long long id) const;
 		StarSystem* systemById(long long id);
+		const SystemLayout* systemLayoutBySystemId(long long systemId) const;
+		SystemLayout* systemLayoutBySystemId(long long systemId);
 		const ShipClass* shipClassById(long long id) const;
 		ShipClass* shipClassById(long long id);
 		const Fleet* fleetById(long long id) const;

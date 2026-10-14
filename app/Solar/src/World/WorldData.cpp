@@ -80,6 +80,24 @@ namespace slr
 		return const_cast<StarSystem*>(static_cast<const WorldData*>(this)->systemById(id));
 	}
 
+	const SystemLayout* WorldData::systemLayoutBySystemId(long long systemId) const
+	{
+		for (const auto& layout : systemLayouts)
+		{
+			if (layout.systemId == systemId)
+			{
+				return &layout;
+			}
+		}
+
+		return nullptr;
+	}
+
+	SystemLayout* WorldData::systemLayoutBySystemId(long long systemId)
+	{
+		return const_cast<SystemLayout*>(static_cast<const WorldData*>(this)->systemLayoutBySystemId(systemId));
+	}
+
 	const ShipClass* WorldData::shipClassById(long long id) const
 	{
 		for (const auto& shipClass : shipClasses)
