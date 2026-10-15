@@ -18,9 +18,11 @@
 #include <imgui.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace slr
@@ -29,6 +31,13 @@ namespace
 {
 	char fleetRenameBuffer[128]{};
 	long long fleetRenameBufferFleetId{ 0 };
+	std::unordered_map<std::uint64_t, int> fleetClassSplitCount;
+
+	std::uint64_t fleetClassSplitKey(long long fleetId, long long classId)
+	{
+		return (static_cast<std::uint64_t>(fleetId) << 32) |
+			static_cast<std::uint64_t>(classId);
+	}
 
 	const glm::vec4 NodeColour{ 0.75f, 0.85f, 1.0f, 1.0f };
 	const glm::vec4 SelectedNodeColour{ 1.0f, 0.95f, 0.75f, 1.0f };
@@ -573,6 +582,24 @@ namespace
 				const long long playerEmpireId =
 					_world->empires.empty() ? 0 : _world->empires.front().id;
 				const bool playerFleet = isPlayerFleet(*_world, *fleet);
+				const bool fleetOrganizable = fleetIsOrganizable(*fleet);
+				const bool fleetOrganizeBlocked = fleetBlocksFleetOrganize(*_world, *fleet);
+				const bool canOrganize =
+					playerFleet && fleetOrganizable && !fleetOrganizeBlocked;
+				if (playerFleet && !canOrganize)
+				{
+					if (!fleetOrganizable)
+					{
+						ImGui::TextUnformatted(
+							"Split/merge: fleet must be parked at a place, not crawling or in transit.");
+					}
+					else
+					{
+						ImGui::TextUnformatted(
+							"Split/merge: clear standing escort or active convoy job first.");
+					}
+				}
+
 				for (const auto& row : fleet->composition)
 				{
 					const ShipClass* shipClass = _world->shipClassById(row.classId);
@@ -614,26 +641,58 @@ namespace
 					}
 
 					ImGui::TextUnformatted(line.c_str());
+
+					if (shipClassIsWarshipOfEmpire(*shipClass, fleet->empireId))
+					{
+						ImGui::PushID(static_cast<int>(row.classId));
+						int& splitCount =
+							fleetClassSplitCount[fleetClassSplitKey(fleet->id, row.classId)];
+						if (splitCount < 1)
+						{
+							splitCount = 1;
+						}
+
+						const long long maxSplit = row.count;
+						const long long maxWithoutEmptying = fleetShipCount(*fleet) - 1;
+						const long long splitCap = std::min(maxSplit, maxWithoutEmptying);
+
+						const std::string peelLabel = "Peel " + shipClass->name;
+						ImGui::InputInt(peelLabel.c_str(), &splitCount, 0, 0);
+						if (splitCount < 1)
+						{
+							splitCount = 1;
+						}
+						if (splitCap > 0 && splitCount > static_cast<int>(splitCap))
+						{
+							splitCount = static_cast<int>(splitCap);
+						}
+
+						if (!canOrganize || splitCap <= 0)
+						{
+							ImGui::BeginDisabled();
+						}
+
+						const std::string splitButtonLabel = "Split " + shipClass->name;
+						if (ImGui::Button(splitButtonLabel.c_str()))
+						{
+							pendingCommands.push_back(GameCommand::splitFleetByClass(
+								fleet->id,
+								row.classId,
+								splitCount,
+								CommandSource::Player));
+						}
+
+						if (!canOrganize || splitCap <= 0)
+						{
+							ImGui::EndDisabled();
+						}
+
+						ImGui::PopID();
+					}
 				}
 
 				if (playerFleet)
 				{
-					const bool canOrganize =
-						fleetIsOrganizable(*fleet) && !fleetBlocksFleetOrganize(*_world, *fleet);
-					if (!canOrganize)
-					{
-						if (!fleetIsOrganizable(*fleet))
-						{
-							ImGui::TextUnformatted(
-								"Split/merge: fleet must be parked at a place, not crawling or in transit.");
-						}
-						else
-						{
-							ImGui::TextUnformatted(
-								"Split/merge: clear standing escort or active convoy job first.");
-						}
-					}
-
 					if (fleetRenameBufferFleetId != fleet->id)
 					{
 						fleetRenameBufferFleetId = fleet->id;
@@ -651,54 +710,6 @@ namespace
 							fleet->id,
 							fleetRenameBuffer,
 							CommandSource::Player));
-					}
-
-					for (const auto& row : fleet->composition)
-					{
-						const ShipClass* shipClass = _world->shipClassById(row.classId);
-						if (shipClass == nullptr ||
-							!shipClassIsWarshipOfEmpire(*shipClass, fleet->empireId))
-						{
-							continue;
-						}
-
-						ImGui::PushID(static_cast<int>(row.classId));
-						int splitCount = 1;
-						ImGui::InputInt("Split count", &splitCount, 0, 0);
-						if (splitCount < 1)
-						{
-							splitCount = 1;
-						}
-
-						const long long maxSplit = row.count;
-						const long long maxWithoutEmptying =
-							fleetShipCount(*fleet) - 1;
-						const long long splitCap = std::min(maxSplit, maxWithoutEmptying);
-						if (splitCount > static_cast<int>(splitCap))
-						{
-							splitCount = static_cast<int>(splitCap);
-						}
-
-						if (!canOrganize || splitCap <= 0)
-						{
-							ImGui::BeginDisabled();
-						}
-
-						if (ImGui::Button("Split"))
-						{
-							pendingCommands.push_back(GameCommand::splitFleetByClass(
-								fleet->id,
-								row.classId,
-								splitCount,
-								CommandSource::Player));
-						}
-
-						if (!canOrganize || splitCap <= 0)
-						{
-							ImGui::EndDisabled();
-						}
-
-						ImGui::PopID();
 					}
 
 					if (canOrganize)
