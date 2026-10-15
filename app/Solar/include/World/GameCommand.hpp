@@ -126,6 +126,25 @@ namespace slr
 		long long projectId{ 0 };
 	};
 
+	struct SplitFleetByClass
+	{
+		long long sourceFleetId{ 0 };
+		long long classId{ 0 };
+		long long count{ 0 };
+	};
+
+	struct MergeFleets
+	{
+		long long intoFleetId{ 0 };
+		long long fromFleetId{ 0 };
+	};
+
+	struct RenameFleet
+	{
+		long long fleetId{ 0 };
+		std::string name;
+	};
+
 	struct GameCommand
 	{
 		CommandSource source{ CommandSource::Player };
@@ -146,7 +165,10 @@ namespace slr
 			CreateShipClass,
 			SetDesiredCargo,
 			StartResearchProject,
-			StopResearchProject>
+			StopResearchProject,
+			SplitFleetByClass,
+			MergeFleets,
+			RenameFleet>
 			payload;
 
 		static GameCommand moveFleetToSystem(
@@ -222,6 +244,16 @@ namespace slr
 			long long empireId,
 			long long projectId,
 			CommandSource source);
+		static GameCommand splitFleetByClass(
+			long long sourceFleetId,
+			long long classId,
+			long long count,
+			CommandSource source);
+		static GameCommand mergeFleets(
+			long long intoFleetId,
+			long long fromFleetId,
+			CommandSource source);
+		static GameCommand renameFleet(long long fleetId, std::string name, CommandSource source);
 	};
 
 	bool execute(WorldData& world, const GameCommand& command);

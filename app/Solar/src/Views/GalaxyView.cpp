@@ -18,6 +18,7 @@
 #include <imgui.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <optional>
 #include <string>
 #include <vector>
@@ -26,6 +27,9 @@ namespace slr
 {
 namespace
 {
+	char fleetRenameBuffer[128]{};
+	long long fleetRenameBufferFleetId{ 0 };
+
 	const glm::vec4 NodeColour{ 0.75f, 0.85f, 1.0f, 1.0f };
 	const glm::vec4 SelectedNodeColour{ 1.0f, 0.95f, 0.75f, 1.0f };
 	const glm::vec4 LaneColour{ 0.28f, 0.36f, 0.48f, 1.0f };
@@ -610,6 +614,116 @@ namespace
 					}
 
 					ImGui::TextUnformatted(line.c_str());
+				}
+
+				if (playerFleet)
+				{
+					const bool canOrganize =
+						fleetIsOrganizable(*fleet) && !fleetBlocksFleetOrganize(*_world, *fleet);
+					if (!canOrganize)
+					{
+						if (!fleetIsOrganizable(*fleet))
+						{
+							ImGui::TextUnformatted(
+								"Split/merge: fleet must be parked at a place, not crawling or in transit.");
+						}
+						else
+						{
+							ImGui::TextUnformatted(
+								"Split/merge: clear standing escort or active convoy job first.");
+						}
+					}
+
+					if (fleetRenameBufferFleetId != fleet->id)
+					{
+						fleetRenameBufferFleetId = fleet->id;
+						std::snprintf(
+							fleetRenameBuffer,
+							sizeof(fleetRenameBuffer),
+							"%s",
+							fleet->name.c_str());
+					}
+
+					ImGui::InputText("Rename", fleetRenameBuffer, sizeof(fleetRenameBuffer));
+					if (ImGui::Button("Apply name"))
+					{
+						pendingCommands.push_back(GameCommand::renameFleet(
+							fleet->id,
+							fleetRenameBuffer,
+							CommandSource::Player));
+					}
+
+					for (const auto& row : fleet->composition)
+					{
+						const ShipClass* shipClass = _world->shipClassById(row.classId);
+						if (shipClass == nullptr ||
+							!shipClassIsWarshipOfEmpire(*shipClass, fleet->empireId))
+						{
+							continue;
+						}
+
+						ImGui::PushID(static_cast<int>(row.classId));
+						int splitCount = 1;
+						ImGui::InputInt("Split count", &splitCount, 0, 0);
+						if (splitCount < 1)
+						{
+							splitCount = 1;
+						}
+
+						const long long maxSplit = row.count;
+						const long long maxWithoutEmptying =
+							fleetShipCount(*fleet) - 1;
+						const long long splitCap = std::min(maxSplit, maxWithoutEmptying);
+						if (splitCount > static_cast<int>(splitCap))
+						{
+							splitCount = static_cast<int>(splitCap);
+						}
+
+						if (!canOrganize || splitCap <= 0)
+						{
+							ImGui::BeginDisabled();
+						}
+
+						if (ImGui::Button("Split"))
+						{
+							pendingCommands.push_back(GameCommand::splitFleetByClass(
+								fleet->id,
+								row.classId,
+								splitCount,
+								CommandSource::Player));
+						}
+
+						if (!canOrganize || splitCap <= 0)
+						{
+							ImGui::EndDisabled();
+						}
+
+						ImGui::PopID();
+					}
+
+					if (canOrganize)
+					{
+						ImGui::TextUnformatted("Merge with");
+						for (const auto& other : _world->fleets)
+						{
+							if (other.id == fleet->id || !isPlayerFleet(*_world, other) ||
+								!fleetsShareOrganizePlace(*fleet, other) ||
+								fleetShipCount(other) <= 0 ||
+								fleetBlocksFleetOrganize(*_world, other))
+							{
+								continue;
+							}
+
+							const std::string mergeLabel = "Merge " + other.name;
+							if (ImGui::Button(mergeLabel.c_str()))
+							{
+								pendingCommands.push_back(GameCommand::mergeFleets(
+									fleet->id,
+									other.id,
+									CommandSource::Player));
+							}
+						}
+					}
 				}
 
 				{

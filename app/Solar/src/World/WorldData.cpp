@@ -892,6 +892,97 @@ namespace slr
 		return nextId;
 	}
 
+	bool fleetBlocksFleetOrganize(const WorldData& world, const Fleet& fleet)
+	{
+		if (fleet.escortConvoyId == 0)
+		{
+			return false;
+		}
+
+		const Convoy* convoy = world.convoyById(fleet.escortConvoyId);
+		if (convoy == nullptr)
+		{
+			return false;
+		}
+
+		return convoyIsStanding(*convoy) || convoy->haulJobId != 0 || convoyIsUnderway(*convoy);
+	}
+
+	bool fleetIsOrganizable(const Fleet& fleet)
+	{
+		return fleetIsParked(fleet) && !inSystemMotionIsCrawling(fleet.inSystem) &&
+			fleetShipCount(fleet) > 0;
+	}
+
+	bool fleetsShareOrganizePlace(const Fleet& a, const Fleet& b)
+	{
+		return a.empireId == b.empireId && a.systemId == b.systemId && a.placeId == b.placeId;
+	}
+
+	bool removeFleetById(WorldData& world, long long fleetId)
+	{
+		for (auto fleet = world.fleets.begin(); fleet != world.fleets.end(); ++fleet)
+		{
+			if (fleet->id != fleetId)
+			{
+				continue;
+			}
+
+			world.fleets.erase(fleet);
+			return true;
+		}
+
+		return false;
+	}
+
+	bool peelFleetHullsByClass(Fleet& source, long long classId, long long count, Fleet& dest)
+	{
+		if (count <= 0)
+		{
+			return false;
+		}
+
+		std::vector<long long> hullIds;
+		for (const auto& hull : source.hulls)
+		{
+			if (hull.classId == classId)
+			{
+				hullIds.push_back(hull.id);
+			}
+		}
+
+		std::sort(hullIds.begin(), hullIds.end());
+		if (static_cast<long long>(hullIds.size()) < count)
+		{
+			return false;
+		}
+
+		if (fleetShipCount(source) - count < 1)
+		{
+			return false;
+		}
+
+		for (long long i = 0; i < count; ++i)
+		{
+			const long long hullId = hullIds[static_cast<size_t>(i)];
+			for (auto hull = source.hulls.begin(); hull != source.hulls.end(); ++hull)
+			{
+				if (hull->id != hullId)
+				{
+					continue;
+				}
+
+				dest.hulls.push_back(std::move(*hull));
+				source.hulls.erase(hull);
+				break;
+			}
+		}
+
+		syncFleetCompositionFromHulls(source);
+		syncFleetCompositionFromHulls(dest);
+		return true;
+	}
+
 	long long fleetMissileAmmo(const Fleet& fleet)
 	{
 		long long ammo = 0;

@@ -531,6 +531,11 @@ namespace slr
 	void syncFleetCompositionFromHulls(Fleet& fleet);
 	bool removeFleetHull(Fleet& fleet, long long hullId);
 	long long nextFleetId(const WorldData& world);
+	bool fleetBlocksFleetOrganize(const WorldData& world, const Fleet& fleet);
+	bool fleetIsOrganizable(const Fleet& fleet);
+	bool fleetsShareOrganizePlace(const Fleet& a, const Fleet& b);
+	bool removeFleetById(WorldData& world, long long fleetId);
+	bool peelFleetHullsByClass(Fleet& source, long long classId, long long count, Fleet& dest);
 	void appendFullMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count);
 	void appendEmptyMagazineHulls(WorldData& world, Fleet& fleet, long long classId, long long count);
 	long long systemOwnershipScore(const WorldData& world, long long systemId);

@@ -4,6 +4,7 @@
 #include <World/LaneMotion.hpp>
 #include <World/ShipDesign.hpp>
 #include <algorithm>
+#include <cctype>
 #include <type_traits>
 #include <utility>
 
@@ -11,6 +12,25 @@ namespace slr
 {
 namespace
 {
+
+	std::string trimFleetName(const std::string& name)
+	{
+		size_t start = 0;
+		while (start < name.size() &&
+			std::isspace(static_cast<unsigned char>(name[start])) != 0)
+		{
+			++start;
+		}
+
+		size_t end = name.size();
+		while (end > start &&
+			std::isspace(static_cast<unsigned char>(name[end - 1])) != 0)
+		{
+			--end;
+		}
+
+		return name.substr(start, end - start);
+	}
 
 	bool applyMoveFleet(WorldData& world, const MoveFleetToSystem& order)
 	{
@@ -770,6 +790,140 @@ namespace
 		return true;
 	}
 
+	bool applySplitFleetByClass(WorldData& world, const SplitFleetByClass& order)
+	{
+		Fleet* sourceFleet = world.fleetById(order.sourceFleetId);
+		if (sourceFleet == nullptr || order.count <= 0)
+		{
+			return false;
+		}
+
+		if (!fleetIsOrganizable(*sourceFleet) || fleetBlocksFleetOrganize(world, *sourceFleet))
+		{
+			return false;
+		}
+
+		const ShipClass* shipClass = world.shipClassById(order.classId);
+		if (shipClass == nullptr || !shipClassIsWarshipOfEmpire(*shipClass, sourceFleet->empireId))
+		{
+			return false;
+		}
+
+		if (classCountFor(sourceFleet->composition, order.classId) < order.count)
+		{
+			return false;
+		}
+
+		if (fleetShipCount(*sourceFleet) - order.count < 1)
+		{
+			return false;
+		}
+
+		const long long newFleetId = nextFleetId(world);
+		std::string splitName = sourceFleet->name + " split";
+		if (splitName.empty())
+		{
+			splitName = "Fleet " + std::to_string(newFleetId);
+		}
+
+		const long long sourceEmpireId = sourceFleet->empireId;
+		const long long sourceSystemId = sourceFleet->systemId;
+		const long long sourcePlaceId = sourceFleet->placeId;
+		const LaneMotion sourceMotion = sourceFleet->motion;
+		const long long sourcePolicyId = sourceFleet->policyId;
+
+		world.fleets.push_back(Fleet{
+			.id = newFleetId,
+			.empireId = sourceEmpireId,
+			.name = splitName,
+			.systemId = sourceSystemId,
+			.placeId = sourcePlaceId,
+			.motion = sourceMotion,
+			.policyId = sourcePolicyId });
+		sourceFleet = world.fleetById(order.sourceFleetId);
+		Fleet* destFleet = world.fleetById(newFleetId);
+		if (sourceFleet == nullptr || destFleet == nullptr ||
+			!peelFleetHullsByClass(*sourceFleet, order.classId, order.count, *destFleet))
+		{
+			removeFleetById(world, newFleetId);
+			return false;
+		}
+
+		ensureFleetClassDesiredCargo(*destFleet, order.classId);
+		return true;
+	}
+
+	bool applyMergeFleets(WorldData& world, const MergeFleets& order)
+	{
+		if (order.intoFleetId == order.fromFleetId)
+		{
+			return false;
+		}
+
+		Fleet* intoFleet = world.fleetById(order.intoFleetId);
+		Fleet* fromFleet = world.fleetById(order.fromFleetId);
+		if (intoFleet == nullptr || fromFleet == nullptr)
+		{
+			return false;
+		}
+
+		const long long survivorId = std::min(order.intoFleetId, order.fromFleetId);
+		const long long loserId = std::max(order.intoFleetId, order.fromFleetId);
+		Fleet* survivor = world.fleetById(survivorId);
+		Fleet* loser = world.fleetById(loserId);
+		if (survivor == nullptr || loser == nullptr)
+		{
+			return false;
+		}
+
+		if (!fleetIsOrganizable(*survivor) || !fleetIsOrganizable(*loser))
+		{
+			return false;
+		}
+
+		if (fleetBlocksFleetOrganize(world, *survivor) || fleetBlocksFleetOrganize(world, *loser))
+		{
+			return false;
+		}
+
+		if (!fleetsShareOrganizePlace(*survivor, *loser))
+		{
+			return false;
+		}
+
+		std::vector<FleetHull> loserHulls = std::move(loser->hulls);
+		std::sort(
+			loserHulls.begin(),
+			loserHulls.end(),
+			[](const FleetHull& a, const FleetHull& b) { return a.id < b.id; });
+		for (FleetHull& hull : loserHulls)
+		{
+			ensureFleetClassDesiredCargo(*survivor, hull.classId);
+			survivor->hulls.push_back(std::move(hull));
+		}
+
+		syncFleetCompositionFromHulls(*survivor);
+		return removeFleetById(world, loserId);
+	}
+
+	bool applyRenameFleet(WorldData& world, const RenameFleet& order)
+	{
+		Fleet* fleet = world.fleetById(order.fleetId);
+		if (fleet == nullptr)
+		{
+			return false;
+		}
+
+		const std::string trimmed = trimFleetName(order.name);
+		if (trimmed.empty())
+		{
+			return false;
+		}
+
+		fleet->name = trimmed;
+		return true;
+	}
+
 	bool applyCreateShipClass(WorldData& world, const CreateShipClass& order)
 	{
 		if (world.empireById(order.empireId) == nullptr)
@@ -1098,6 +1252,40 @@ namespace
 		return command;
 	}
 
+	GameCommand GameCommand::splitFleetByClass(
+		long long sourceFleetId,
+		long long classId,
+		long long count,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = SplitFleetByClass{
+			.sourceFleetId = sourceFleetId,
+			.classId = classId,
+			.count = count };
+		return command;
+	}
+
+	GameCommand GameCommand::mergeFleets(
+		long long intoFleetId,
+		long long fromFleetId,
+		CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = MergeFleets{ .intoFleetId = intoFleetId, .fromFleetId = fromFleetId };
+		return command;
+	}
+
+	GameCommand GameCommand::renameFleet(long long fleetId, std::string name, CommandSource source)
+	{
+		GameCommand command;
+		command.source = source;
+		command.payload = RenameFleet{ .fleetId = fleetId, .name = std::move(name) };
+		return command;
+	}
+
 	bool execute(WorldData& world, const GameCommand& command)
 	{
 		return std::visit(
@@ -1171,6 +1359,18 @@ namespace
 				else if constexpr (std::is_same_v<Payload, StopResearchProject>)
 				{
 					return applyStopResearchProject(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, SplitFleetByClass>)
+				{
+					return applySplitFleetByClass(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, MergeFleets>)
+				{
+					return applyMergeFleets(world, payload);
+				}
+				else if constexpr (std::is_same_v<Payload, RenameFleet>)
+				{
+					return applyRenameFleet(world, payload);
 				}
 				else
 				{
