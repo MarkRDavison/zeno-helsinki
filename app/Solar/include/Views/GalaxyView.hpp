@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Views/MainView.hpp>
 #include <World/GameCommand.hpp>
 #include <World/WorldData.hpp>
 #include <helsinki/Renderer/Vulkan/RenderGraph/PipelineDrawData.hpp>
@@ -31,7 +32,8 @@ namespace slr
 		void drawLabels(hl::PipelineDrawData& pdd, hl::TextSystem& textSystem) const;
 		bool drawInspector(
 			std::vector<GameCommand>& pendingCommands,
-			std::optional<long long>& openSystemRequested);
+			std::optional<long long>& openSystemRequested,
+			MainViewKind viewKind = MainViewKind::Galaxy);
 		void drawBattleReport();
 
 	private:

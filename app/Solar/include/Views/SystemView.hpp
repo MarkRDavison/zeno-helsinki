@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Views/MainView.hpp>
+#include <Views/SystemMapCamera.hpp>
 #include <World/GameCommand.hpp>
 #include <World/WorldData.hpp>
 #include <optional>
@@ -8,6 +9,8 @@
 
 namespace slr
 {
+
+	class GalaxyView;
 
 	class SystemView
 	{
@@ -23,10 +26,19 @@ namespace slr
 			_selectedPlaceId = placeId;
 		}
 
-		void draw(const WorldData& world, MainView& mainView, std::vector<GameCommand>& pendingCommands);
+		SystemMapCamera& camera() { return _camera; }
+		const SystemMapCamera& camera() const { return _camera; }
+
+		void draw(
+			const WorldData& world,
+			MainView& mainView,
+			GalaxyView& galaxy,
+			std::vector<GameCommand>& pendingCommands);
 
 	private:
 		std::optional<long long> _selectedPlaceId;
+		SystemMapCamera _camera;
+		std::optional<long long> _cameraSystemId;
 	};
 
 }

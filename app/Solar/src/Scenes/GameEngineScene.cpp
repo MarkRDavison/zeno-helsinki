@@ -82,14 +82,19 @@ namespace slr
 				}
 				if (hud.openSystemView && _galaxy.selectedSystemId().has_value())
 				{
-					_mainView.openSystem(*_galaxy.selectedSystemId());
+					const long long openId = *_galaxy.selectedSystemId();
+					_galaxy.setSelectedSystemId(std::nullopt);
+					_mainView.openSystem(openId);
 				}
 				_engagementPolicyChrome.draw(_world, _pendingCommands);
 				_galaxy.drawBattleReport();
-				if (_mainView.isGalaxy())
+				if (_mainView.isGalaxy() || _mainView.isSystem())
 				{
 					std::optional<long long> openSystemRequested;
-					if (!_galaxy.drawInspector(_pendingCommands, openSystemRequested))
+					if (!_galaxy.drawInspector(
+							_pendingCommands,
+							openSystemRequested,
+							_mainView.kind()))
 					{
 						_galaxy.setSelectedSystemId(std::nullopt);
 					}
@@ -98,7 +103,7 @@ namespace slr
 						_mainView.openSystem(*openSystemRequested);
 					}
 				}
-				_systemView.draw(_world, _mainView, _pendingCommands);
+				_systemView.draw(_world, _mainView, _galaxy, _pendingCommands);
 				_designChrome.draw(_world, _pendingCommands);
 				_researchChrome.draw(_world, _pendingCommands);
 			});

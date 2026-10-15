@@ -1,6 +1,11 @@
 #include <Views/SystemView.hpp>
+#include <Views/GalaxyView.hpp>
 #include <Views/HudBar.hpp>
+#include <Views/MoverDrawColours.hpp>
 #include <Views/PlaceInspectChrome.hpp>
+#include <Views/SystemMapMoverLayout.hpp>
+#include <World/GameCommand.hpp>
+#include <World/PickSystemMap.hpp>
 #include <World/SystemPlaces.hpp>
 #include <algorithm>
 #include <imgui.h>
@@ -11,27 +16,8 @@ namespace slr
 namespace
 {
 
-	constexpr float SystemMapDefaultFitRadius = 120.0f;
-	constexpr float SystemMapPad = 48.0f;
 	constexpr float SystemMapYardMarkerHalf = 7.0f;
 	constexpr float SystemMapJumpMarkerRadius = 6.0f;
-	constexpr float SystemMapMoverOffsetX = 16.0f;
-	constexpr float SystemMapMoverSlotY = 14.0f;
-
-	ImVec2 systemSpaceToScreen(const ImVec2& origin, float scale, glm::vec2 systemPos)
-	{
-		return ImVec2(origin.x + systemPos.x * scale, origin.y - systemPos.y * scale);
-	}
-
-	glm::vec2 screenToSystemSpace(const ImVec2& origin, float scale, const ImVec2& screen)
-	{
-		if (scale <= 0.0f)
-		{
-			return glm::vec2{ 0.0f, 0.0f };
-		}
-
-		return glm::vec2((screen.x - origin.x) / scale, -(screen.y - origin.y) / scale);
-	}
 
 	void drawPlaceLabel(ImDrawList* drawList, const ImVec2& screen, const char* text)
 	{
@@ -95,13 +81,6 @@ namespace
 			4.0f);
 	}
 
-	ImVec2 moverScreenAtPlace(const ImVec2& placeScreen, int slot)
-	{
-		return ImVec2(
-			placeScreen.x + SystemMapMoverOffsetX,
-			placeScreen.y - SystemMapMoverSlotY * static_cast<float>(slot + 1));
-	}
-
 	const char* inspectorTitleForPlace(SystemPlaceKind kind)
 	{
 		switch (kind)
@@ -121,6 +100,31 @@ namespace
 		return "Place";
 	}
 
+	const char* truckLabel(const WorldData& world, const Truck& truck)
+	{
+		if (truckHasRole(world, truck, HullRole::Tender))
+		{
+			return "tender";
+		}
+
+		if (truckHasRole(world, truck, HullRole::MilitaryCargo))
+		{
+			return "military";
+		}
+
+		return "truck";
+	}
+
+	bool fleetMayReceiveMoveOrder(const WorldData& world, const Fleet& fleet)
+	{
+		if (fleet.escortConvoyId == 0)
+		{
+			return true;
+		}
+
+		return !fleetBlocksFleetOrganize(world, fleet);
+	}
+
 }
 
 	void SystemView::applyMainView(const MainView& mainView)
@@ -128,12 +132,14 @@ namespace
 		if (!mainView.isSystem())
 		{
 			_selectedPlaceId.reset();
+			_cameraSystemId.reset();
 		}
 	}
 
 	void SystemView::draw(
 		const WorldData& world,
 		MainView& mainView,
+		GalaxyView& galaxy,
 		std::vector<GameCommand>& pendingCommands)
 	{
 		applyMainView(mainView);
@@ -180,30 +186,37 @@ namespace
 			return;
 		}
 
-		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		ImGui::SameLine();
+		if (ImGui::Button("Reset view"))
+		{
+			_camera.resetToFit(*layout);
+		}
+
 		const ImVec2 canvasMin = ImGui::GetCursorScreenPos();
 		const ImVec2 canvasSize = ImGui::GetContentRegionAvail();
-		const ImVec2 origin(
-			canvasMin.x + canvasSize.x * 0.5f,
-			canvasMin.y + canvasSize.y * 0.5f);
-		const float fitRadius = (std::max)(outRadiusForLayout(*layout), SystemMapDefaultFitRadius);
-		const float usable = (std::min)(canvasSize.x, canvasSize.y) - SystemMapPad * 2.0f;
-		const float scale = usable > 0.0f ? usable / (fitRadius * 2.0f) : 1.0f;
+		_camera.setCanvas(canvasMin, canvasSize);
+		if (!_cameraSystemId.has_value() || *_cameraSystemId != systemId)
+		{
+			_cameraSystemId = systemId;
+			_camera.resetToFit(*layout);
+		}
+
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
 		const glm::vec2 starPos = starPositionInSystemSpace(*layout);
-		const ImVec2 starScreen = systemSpaceToScreen(origin, scale, starPos);
+		const ImVec2 starScreen = _camera.systemSpaceToScreen(starPos);
 		const bool starSelected =
 			_selectedPlaceId.has_value() && starPlaceOf(*layout) != nullptr &&
 			*_selectedPlaceId == starPlaceOf(*layout)->id;
 
 		drawList->AddCircle(
 			starScreen,
-			outRadiusForLayout(*layout) * scale,
+			outRadiusForLayout(*layout) * _camera.effectiveScale(),
 			IM_COL32(90, 140, 190, 220),
 			64,
 			2.0f);
 		drawList->AddCircleFilled(
 			starScreen,
-			layout->starSize * scale,
+			layout->starSize * _camera.effectiveScale(),
 			starFillColour(starSelected),
 			32);
 		drawPlaceLabel(drawList, starScreen, "Star");
@@ -211,122 +224,150 @@ namespace
 		for (const auto& place : layout->places)
 		{
 			const bool selected = _selectedPlaceId.has_value() && *_selectedPlaceId == place.id;
+			const ImVec2 placeScreen = _camera.systemSpaceToScreen(place.position);
 			if (place.kind == SystemPlaceKind::Jump)
 			{
-				const ImVec2 jumpScreen = systemSpaceToScreen(origin, scale, place.position);
-				drawList->AddCircleFilled(jumpScreen, SystemMapJumpMarkerRadius, jumpFillColour(selected), 12);
-				drawPlaceLabel(drawList, jumpScreen, "Jump");
+				drawList->AddCircleFilled(
+					placeScreen,
+					SystemMapJumpMarkerRadius,
+					jumpFillColour(selected),
+					12);
+				drawPlaceLabel(drawList, placeScreen, "Jump");
 			}
 			else if (place.kind == SystemPlaceKind::Yard)
 			{
-				const ImVec2 yardScreen = systemSpaceToScreen(origin, scale, place.position);
 				drawList->AddRectFilled(
-					ImVec2(yardScreen.x - SystemMapYardMarkerHalf, yardScreen.y - SystemMapYardMarkerHalf),
-					ImVec2(yardScreen.x + SystemMapYardMarkerHalf, yardScreen.y + SystemMapYardMarkerHalf),
+					ImVec2(placeScreen.x - SystemMapYardMarkerHalf, placeScreen.y - SystemMapYardMarkerHalf),
+					ImVec2(placeScreen.x + SystemMapYardMarkerHalf, placeScreen.y + SystemMapYardMarkerHalf),
 					yardFillColour(selected));
-				drawPlaceLabel(drawList, yardScreen, "Yard");
+				drawPlaceLabel(drawList, placeScreen, "Yard");
 			}
 			else if (place.kind == SystemPlaceKind::Factory)
 			{
-				const ImVec2 factoryScreen = systemSpaceToScreen(origin, scale, place.position);
-				drawDiamondMarker(
-					drawList,
-					factoryScreen,
-					SystemMapYardMarkerHalf,
-					factoryFillColour(selected));
-				drawPlaceLabel(drawList, factoryScreen, "Mill");
+				drawDiamondMarker(drawList, placeScreen, SystemMapYardMarkerHalf, factoryFillColour(selected));
+				drawPlaceLabel(drawList, placeScreen, "Mill");
 			}
 			else if (place.kind == SystemPlaceKind::Mine)
 			{
-				const ImVec2 mineScreen = systemSpaceToScreen(origin, scale, place.position);
 				drawList->AddCircleFilled(
-					mineScreen,
+					placeScreen,
 					SystemMapJumpMarkerRadius,
 					mineFillColour(selected),
 					12);
-				drawPlaceLabel(drawList, mineScreen, "Mine");
+				drawPlaceLabel(drawList, placeScreen, "Mine");
 			}
 		}
 
-		for (const auto& place : layout->places)
+		const std::vector<SystemMapMoverDraw> movers = listMoversForSystem(world, systemId, *layout);
+		for (const auto& mover : movers)
 		{
-			int moverSlot = 0;
-			const ImVec2 placeScreen = systemSpaceToScreen(origin, scale, place.position);
-			for (const auto& fleet : world.fleets)
+			const ImVec2 moverScreen = _camera.systemSpaceToScreen(mover.systemPosition);
+			if (mover.ref.kind == SystemMapMoverKind::Fleet)
 			{
-				if (fleet.systemId != systemId || !fleetIsParked(fleet) ||
-					inSystemMotionIsCrawling(fleet.inSystem) || fleet.placeId != place.id)
+				const Fleet* fleet = world.fleetById(mover.ref.id);
+				if (fleet == nullptr)
 				{
 					continue;
 				}
 
-				const ImVec2 moverScreen = moverScreenAtPlace(placeScreen, moverSlot++);
-				drawFleetChevron(drawList, moverScreen, IM_COL32(240, 90, 90, 255));
-				drawPlaceLabel(drawList, moverScreen, fleet.name.c_str());
+				const bool selected =
+					galaxy.selectedFleetId().has_value() && *galaxy.selectedFleetId() == fleet->id;
+				drawFleetChevron(
+					drawList,
+					moverScreen,
+					vec4ToImU32(fleetDrawColour(world, *fleet, selected)));
+				drawPlaceLabel(drawList, moverScreen, fleet->name.c_str());
 			}
-
-			for (const auto& truck : world.trucks)
+			else
 			{
-				if (!isTruckAtSystem(truck, systemId) || inSystemMotionIsCrawling(truck.inSystem) ||
-					truck.placeId != place.id)
+				const Truck* truck = world.truckById(mover.ref.id);
+				if (truck == nullptr)
 				{
 					continue;
 				}
 
-				const ImVec2 moverScreen = moverScreenAtPlace(placeScreen, moverSlot++);
-				drawTruckPill(drawList, moverScreen, IM_COL32(240, 165, 55, 255));
-				drawPlaceLabel(drawList, moverScreen, "truck");
+				const bool selected =
+					galaxy.selectedTruckId().has_value() && *galaxy.selectedTruckId() == truck->id;
+				drawTruckPill(
+					drawList,
+					moverScreen,
+					vec4ToImU32(truckDrawColour(world, *truck, selected)));
+				drawPlaceLabel(drawList, moverScreen, truckLabel(world, *truck));
 			}
-		}
-
-		for (const auto& fleet : world.fleets)
-		{
-			if (fleet.systemId != systemId || !inSystemMotionIsCrawling(fleet.inSystem))
-			{
-				continue;
-			}
-
-			const auto pos = inSystemMoverPosition(world, systemId, fleet.placeId, fleet.inSystem);
-			if (!pos.has_value())
-			{
-				continue;
-			}
-
-			const ImVec2 moverScreen = systemSpaceToScreen(origin, scale, *pos);
-			drawFleetChevron(drawList, moverScreen, IM_COL32(240, 90, 90, 255));
-			drawPlaceLabel(drawList, moverScreen, fleet.name.c_str());
-		}
-
-		for (const auto& truck : world.trucks)
-		{
-			if (!isTruckAtSystem(truck, systemId) || !inSystemMotionIsCrawling(truck.inSystem))
-			{
-				continue;
-			}
-
-			const auto pos = inSystemMoverPosition(world, systemId, truck.placeId, truck.inSystem);
-			if (!pos.has_value())
-			{
-				continue;
-			}
-
-			const ImVec2 moverScreen = systemSpaceToScreen(origin, scale, *pos);
-			drawTruckPill(drawList, moverScreen, IM_COL32(240, 165, 55, 255));
-			drawPlaceLabel(drawList, moverScreen, "truck");
 		}
 
 		ImGui::InvisibleButton("system_map_canvas", canvasSize);
-		if (ImGui::IsItemClicked())
+		const bool canvasHovered = ImGui::IsItemHovered();
+		if (canvasHovered)
 		{
-			const glm::vec2 systemPos = screenToSystemSpace(origin, scale, ImGui::GetIO().MousePos);
-			const SystemPlace* picked = pickSystemPlace(*layout, systemPos);
-			if (picked != nullptr)
+			if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
 			{
-				_selectedPlaceId = picked->id;
+				_camera.panByScreenDelta(ImGui::GetIO().MouseDelta);
+			}
+
+			const float wheel = ImGui::GetIO().MouseWheel;
+			if (wheel != 0.0f)
+			{
+				_camera.zoomAtScreen(
+					ImGui::GetIO().MousePos,
+					wheel > 0.0f ? 1 : -1);
+			}
+		}
+
+		if (canvasHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			const SystemMapPick pick = pickSystemMap(
+				world,
+				systemId,
+				*layout,
+				_camera,
+				movers,
+				ImGui::GetIO().MousePos);
+			if (pick.kind == SystemMapPickKind::Fleet)
+			{
+				galaxy.setSelectedFleetId(pick.id);
+				_selectedPlaceId.reset();
+			}
+			else if (pick.kind == SystemMapPickKind::Truck)
+			{
+				galaxy.setSelectedTruckId(pick.id);
+				_selectedPlaceId.reset();
+			}
+			else if (pick.kind == SystemMapPickKind::Place)
+			{
+				_selectedPlaceId = pick.id;
+				galaxy.setSelectedFleetId(std::nullopt);
+				galaxy.setSelectedTruckId(std::nullopt);
 			}
 			else
 			{
 				_selectedPlaceId.reset();
+				galaxy.setSelectedFleetId(std::nullopt);
+				galaxy.setSelectedTruckId(std::nullopt);
+			}
+		}
+
+		if (canvasHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+		{
+			const auto fleetId = galaxy.selectedFleetId();
+			if (fleetId.has_value())
+			{
+				const Fleet* fleet = world.fleetById(*fleetId);
+				const SystemMapPick pick = pickSystemMap(
+					world,
+					systemId,
+					*layout,
+					_camera,
+					movers,
+					ImGui::GetIO().MousePos);
+				if (fleet != nullptr && isPlayerFleet(world, *fleet) &&
+					pick.kind == SystemMapPickKind::Place && fleetMayReceiveMoveOrder(world, *fleet))
+				{
+					pendingCommands.push_back(GameCommand::moveFleetToPlace(
+						*fleetId,
+						pick.id,
+						CommandSource::Player));
+				}
 			}
 		}
 

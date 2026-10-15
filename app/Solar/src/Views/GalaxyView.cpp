@@ -2,6 +2,7 @@
 #include <GalaxyPushConstantObject.hpp>
 #include <Views/DesiredCargoChrome.hpp>
 #include <Views/GalaxyDrawConstants.hpp>
+#include <Views/MoverDrawColours.hpp>
 #include <World/GameCommand.hpp>
 #include <World/Intel.hpp>
 #include <World/Goods.hpp>
@@ -42,47 +43,6 @@ namespace
 	const glm::vec4 NodeColour{ 0.75f, 0.85f, 1.0f, 1.0f };
 	const glm::vec4 SelectedNodeColour{ 1.0f, 0.95f, 0.75f, 1.0f };
 	const glm::vec4 LaneColour{ 0.28f, 0.36f, 0.48f, 1.0f };
-	const glm::vec4 CivilianTruckColour{ 0.95f, 0.65f, 0.22f, 1.0f };
-	const glm::vec4 SelectedCivilianTruckColour{ 1.0f, 0.85f, 0.45f, 1.0f };
-	const glm::vec4 MilitaryTruckColour{ 0.85f, 0.15f, 0.72f, 1.0f };
-	const glm::vec4 SelectedMilitaryTruckColour{ 1.0f, 0.45f, 0.92f, 1.0f };
-	const glm::vec4 TenderColour{ 0.08f, 0.38f, 0.18f, 1.0f };
-	const glm::vec4 SelectedTenderColour{ 0.22f, 0.62f, 0.32f, 1.0f };
-	const glm::vec4 FleetColour{ 0.45f, 0.82f, 0.62f, 1.0f };
-	const glm::vec4 SelectedFleetColour{ 0.7f, 0.95f, 0.8f, 1.0f };
-	const glm::vec4 RivalFleetColour{ 0.85f, 0.38f, 0.4f, 1.0f };
-	const glm::vec4 SelectedRivalFleetColour{ 1.0f, 0.55f, 0.55f, 1.0f };
-
-	bool isPlayerFleet(const WorldData& world, const Fleet& fleet)
-	{
-		return world.empires.empty() || fleet.empireId == world.empires.front().id;
-	}
-
-	glm::vec4 fleetDrawColour(const WorldData& world, const Fleet& fleet, bool selected)
-	{
-		if (isPlayerFleet(world, fleet))
-		{
-			return selected ? SelectedFleetColour : FleetColour;
-		}
-
-		return selected ? SelectedRivalFleetColour : RivalFleetColour;
-	}
-
-	glm::vec4 truckDrawColour(const WorldData& world, const Truck& truck, bool selected)
-	{
-		if (truckHasRole(world, truck, HullRole::Tender))
-		{
-			return selected ? SelectedTenderColour : TenderColour;
-		}
-
-		if (truckHasRole(world, truck, HullRole::MilitaryCargo))
-		{
-			return selected ? SelectedMilitaryTruckColour : MilitaryTruckColour;
-		}
-
-		return selected ? SelectedCivilianTruckColour : CivilianTruckColour;
-	}
-
 	std::string convoyTrucksPresentOfTotal(const WorldData& world, const Convoy& convoy)
 	{
 		return std::to_string(countTrucksInConvoyPresent(world, convoy)) + "/" +
@@ -369,7 +329,8 @@ namespace
 
 	bool GalaxyView::drawInspector(
 		std::vector<GameCommand>& pendingCommands,
-		std::optional<long long>& openSystemRequested)
+		std::optional<long long>& openSystemRequested,
+		MainViewKind viewKind)
 	{
 		if (_world == nullptr)
 		{
@@ -1004,6 +965,11 @@ namespace
 			}
 			ImGui::End();
 			return open;
+		}
+
+		if (viewKind == MainViewKind::System)
+		{
+			return true;
 		}
 
 		if (!_selectedSystemId.has_value())
